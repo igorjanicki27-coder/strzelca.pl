@@ -10,29 +10,37 @@
     <style>
         :root { --coyote: #C19A6B; }
         body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e5e5e5; margin: 0; overflow-x: hidden; }
+        
         .hero-bg {
             height: 100vh; width: 100%;
             background: linear-gradient(rgba(10,10,10,0.85), #0a0a0a), url('./tlo.png');
             background-size: cover; background-position: center;
             display: flex; align-items: center; justify-content: center;
         }
+
         .hub-button { background: rgba(20, 20, 20, 0.8); border: 1px solid #333; transition: 0.3s; cursor: pointer; }
         .hub-button:hover:not(.disabled) { border-color: var(--coyote); transform: translateY(-5px); background: rgba(30, 30, 30, 0.9); }
         .hub-button.disabled { opacity: 0.25; cursor: not-allowed; filter: grayscale(1); }
+        
         .coyote-text { color: var(--coyote); font-family: 'Orbitron'; }
-
-        /* RENDEROWANIE TREŚCI */
+        
         .custom-render ul { list-style-type: disc !important; padding-left: 25px !important; margin: 15px 0 !important; }
         .custom-render li { margin-bottom: 5px !important; display: list-item !important; }
         .custom-render b, .custom-render strong { font-weight: bold !important; color: var(--coyote) !important; }
         .custom-render div[style*="text-align: center"], .custom-render p[style*="text-align: center"] { text-align: center !important; }
         .custom-render div[style*="text-align: right"], .custom-render p[style*="text-align: right"] { text-align: right !important; }
 
-        input, select, .editor-content { background: #000 !important; border: 1px solid #333 !important; color: white !important; padding: 14px 20px !important; border-radius: 10px; width: 100%; outline: none; }
+        input, select, .editor-content { 
+            background: #000 !important; border: 1px solid #333 !important; color: white !important; 
+            padding: 14px 20px !important; border-radius: 10px; width: 100%; outline: none; transition: 0.2s;
+        }
+        input:focus, .editor-content:focus { border-color: var(--coyote) !important; }
+
         .editor-content { min-height: 250px; overflow-y: auto; text-align: left; scrollbar-gutter: stable; }
         .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; background: #1a1a1a; padding: 10px; border-radius: 10px; border: 1px solid #333; }
         .toolbar button { background: #222; color: #fff; width: 38px; height: 38px; border-radius: 6px; transition: 0.2s; border: 1px solid #444; display: flex; align-items: center; justify-content: center; }
         .toolbar button:hover { background: var(--coyote); color: black; }
+        
         .btn-admin { background: var(--coyote); color: #000; font-weight: 900; text-transform: uppercase; padding: 16px; border-radius: 8px; cursor: pointer; }
     </style>
 </head>
@@ -41,16 +49,37 @@
     <div class="hero-bg">
         <div class="container mx-auto px-6 text-center">
             <h1 class="text-4xl md:text-6xl font-black mb-16 uppercase italic font-[Orbitron] tracking-tighter">STRZELCA<span class="coyote-text">.PL</span></h1>
+            
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
                 <a href="./sklep.strzelca.pl/index.html" class="hub-button p-10 rounded-3xl flex flex-col items-center">
                     <i class="fa-solid fa-cart-shopping text-4xl coyote-text mb-4"></i>
                     <span class="font-bold uppercase tracking-widest text-sm">Sklep</span>
                 </a>
+
+                <div class="hub-button disabled p-10 rounded-3xl flex flex-col items-center">
+                    <i class="fa-solid fa-pen-nib text-4xl mb-4 text-zinc-700"></i>
+                    <span class="font-bold uppercase tracking-widest text-sm text-zinc-700">Recenzje</span>
+                </div>
+
+                <div class="hub-button disabled p-10 rounded-3xl flex flex-col items-center">
+                    <i class="fa-solid fa-crosshairs text-4xl mb-4 text-zinc-700"></i>
+                    <span class="font-bold uppercase tracking-widest text-sm text-zinc-700">Zawody</span>
+                </div>
+
+                <div class="hub-button disabled p-10 rounded-3xl flex flex-col items-center">
+                    <i class="fa-solid fa-hand-holding-heart text-4xl mb-4 text-zinc-700"></i>
+                    <span class="font-bold uppercase tracking-widest text-sm text-zinc-700">Pomoc</span>
+                </div>
+
+                <div class="hub-button disabled p-10 rounded-3xl flex flex-col items-center">
+                    <i class="fa-solid fa-mug-hot text-4xl mb-4 text-zinc-700"></i>
+                    <span class="font-bold uppercase tracking-widest text-sm text-zinc-700">Kawa</span>
+                </div>
+
                 <a href="./kontakt.strzelca.pl/index.html" class="hub-button p-10 rounded-3xl flex flex-col items-center">
                     <i class="fa-solid fa-envelope-open-text text-4xl coyote-text mb-4"></i>
                     <span class="font-bold uppercase tracking-widest text-sm">Kontakt</span>
                 </a>
-                <div class="hub-button disabled p-10 rounded-3xl flex flex-col items-center"><i class="fa-solid fa-pen-nib text-4xl mb-4 text-zinc-700"></i><span class="font-bold uppercase tracking-widest text-sm text-zinc-700">Recenzje</span></div>
             </div>
         </div>
     </div>
@@ -74,15 +103,23 @@
                 <div class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-4 uppercase">
                     <h2 class="coyote-text font-bold italic font-[Orbitron]">System Zarządzania</h2>
                     <div class="flex space-x-4">
-                        <button onclick="window.toggleAdminModal()" class="text-zinc-400 text-[10px] font-bold border border-zinc-700 px-3 py-1 rounded">Zamknij podgląd</button>
-                        <button onclick="window.handleLogout()" class="text-red-900 text-[10px] font-black border border-red-900 px-3 py-1 rounded hover:bg-red-900 hover:text-white transition">Wyloguj</button>
+                        <button onclick="window.toggleAdminModal()" class="text-zinc-400 text-[10px] font-bold border border-zinc-700 px-3 py-1 rounded hover:text-white">Zamknij podgląd</button>
+                        <button onclick="window.handleLogout()" class="text-red-900 text-[10px] font-black border border-red-900 px-3 py-1 rounded hover:bg-red-900 transition">Wyloguj</button>
                     </div>
                 </div>
 
-                <div id="admin-sklep" class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-10" id="role-menu">
+                    <button id="menu-sklep" onclick="showAdminSection('sklep')" class="p-3 border border-zinc-700 rounded text-[9px] font-bold uppercase hover:border-[#C19A6B]">Sklep</button>
+                    <button id="menu-recenzje" onclick="showAdminSection('recenzje')" class="p-3 border border-zinc-700 rounded text-[9px] font-bold uppercase opacity-30 cursor-not-allowed">Recenzje</button>
+                    <button id="menu-zawody" onclick="showAdminSection('zawody')" class="p-3 border border-zinc-700 rounded text-[9px] font-bold uppercase opacity-30 cursor-not-allowed">Zawody</button>
+                    <button id="menu-pomoc" onclick="showAdminSection('pomoc')" class="p-3 border border-zinc-700 rounded text-[9px] font-bold uppercase opacity-30 cursor-not-allowed">Pomoc</button>
+                    <button id="menu-admin" onclick="showAdminSection('konta')" class="p-3 border border-zinc-700 rounded text-[9px] font-bold uppercase hover:border-[#C19A6B]">Konta</button>
+                </div>
+
+                <div id="admin-sklep" class="admin-sec hidden grid grid-cols-1 md:grid-cols-2 gap-10">
                     <div class="space-y-4">
                         <input type="hidden" id="edit-p-id">
-                        <input id="p-title" type="text" placeholder="Nazwa produktu">
+                        <input id="p-title" type="text" placeholder="Nazwa przedmiotu">
                         <input id="p-price" type="text" placeholder="Cena (np. 150 lub 100-200)">
                         <div class="toolbar">
                             <button onclick="formatDoc('bold')"><i class="fa-solid fa-bold"></i></button>
@@ -100,13 +137,27 @@
                     </div>
                     <div id="p-list-admin" class="space-y-2 overflow-y-auto max-h-[500px]"></div>
                 </div>
+
+                <div id="admin-konta" class="admin-sec hidden grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div class="space-y-4 bg-black/20 p-8 rounded-3xl border border-zinc-800">
+                        <h3 class="text-[10px] font-bold text-zinc-500 uppercase">Nowy Operator</h3>
+                        <input id="new-u-login" type="text" placeholder="Login">
+                        <input id="new-u-pass" type="password" placeholder="Hasło">
+                        <select id="new-u-role">
+                            <option value="admin">Główny Administrator</option>
+                            <option value="sklep">Administrator Sklepu</option>
+                        </select>
+                        <button onclick="window.addAccount()" class="btn-admin w-full text-xs mt-4">Utwórz konto</button>
+                    </div>
+                    <div id="u-list-admin" class="space-y-2"></div>
+                </div>
             </div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDocs, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
@@ -120,6 +171,14 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+
+        let attempts = {};
+        let currentUser = null;
+
+        window.onload = () => {
+            const saved = sessionStorage.getItem('st_logged_user');
+            if (saved) startSession(JSON.parse(saved));
+        };
 
         async function compressImage(file) {
             return new Promise((resolve) => {
@@ -142,11 +201,6 @@
             });
         }
 
-        window.onload = () => {
-            const saved = sessionStorage.getItem('st_logged_user');
-            if (saved) startSession(JSON.parse(saved));
-        };
-
         window.toggleAdminModal = () => document.getElementById('admin-modal').classList.toggle('hidden');
         window.formatDoc = (cmd) => { document.getElementById('p-desc').focus(); document.execCommand(cmd, false, null); };
         
@@ -165,24 +219,49 @@
             if(l === "login.strzelca" && p === "haslo.strzelca") {
                 const u = {login: l, role: 'admin'};
                 sessionStorage.setItem('st_logged_user', JSON.stringify(u));
-                startSession(u);
-            } else { alert("Błąd danych!"); }
+                startSession(u); return;
+            }
+            const uDoc = await getDoc(doc(db, "users", l));
+            if(!uDoc.exists()) { alert("Błąd!"); return; }
+            const userData = uDoc.data();
+            if(userData.status === 'locked') { alert("Konto zablokowane!"); return; }
+            if(userData.pass === p) {
+                attempts[l] = 0; sessionStorage.setItem('st_logged_user', JSON.stringify(userData));
+                startSession(userData);
+            } else {
+                attempts[l] = (attempts[l] || 0) + 1;
+                if(attempts[l] >= 5) { await updateDoc(doc(db, "users", l), { status: 'locked' }); alert("ZABLOKOWANO!"); }
+                else { alert(`Błędne hasło! Próba ${attempts[l]}/5`); }
+            }
         };
 
         function startSession(user) {
+            currentUser = user;
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('admin-panel').classList.remove('hidden');
-            fetchProducts();
+            const buttons = document.getElementById('role-menu').children;
+            for(let btn of buttons) {
+                if(user.role === 'admin') { btn.classList.remove('opacity-30', 'cursor-not-allowed'); btn.disabled = false; }
+                else if(btn.id !== `menu-${user.role}`) { btn.classList.add('opacity-30', 'cursor-not-allowed'); btn.disabled = true; }
+            }
+            showAdminSection('sklep');
         }
 
         window.handleLogout = () => { sessionStorage.removeItem('st_logged_user'); location.reload(); };
+
+        window.showAdminSection = (name) => {
+            document.querySelectorAll('.admin-sec').forEach(s => s.classList.add('hidden'));
+            const sec = document.getElementById(`admin-${name}`);
+            if(sec) sec.classList.remove('hidden');
+            if(name === 'sklep') fetchProducts();
+            if(name === 'konta') fetchAccounts();
+        };
 
         window.saveProduct = async () => {
             const id = document.getElementById('edit-id').value || Date.now().toString();
             const btn = document.getElementById('save-btn'); btn.innerText = "PRZETWARZANIE...";
             const file = document.getElementById('p-img').files[0];
             let mainImg = ""; if(file) mainImg = await compressImage(file);
-
             await setDoc(doc(db, "products", id), {
                 title: document.getElementById('p-title').value,
                 price: document.getElementById('p-price').value,
@@ -203,6 +282,28 @@
             });
         }
         window.deleteProd = async (id) => { if(confirm("Usuń?")) { await deleteDoc(doc(db, "products", id)); fetchProducts(); } };
+
+        window.addAccount = async () => {
+            const l = document.getElementById('new-u-login').value;
+            await setDoc(doc(db, "users", l), {
+                login: l, pass: document.getElementById('new-u-pass').value,
+                role: document.getElementById('new-u-role').value, status: 'active'
+            });
+            fetchAccounts();
+        };
+
+        async function fetchAccounts() {
+            const snap = await getDocs(collection(db, "users"));
+            const list = document.getElementById('u-list-admin'); list.innerHTML = "";
+            snap.forEach(d => {
+                const u = d.data();
+                list.innerHTML += `<div class="flex justify-between p-3 bg-black/40 rounded border border-zinc-800 mb-1">
+                    <span class="text-[10px] font-bold uppercase">${u.login} (${u.role})</span>
+                    <button onclick="window.deleteAcc('${u.login}')" class="text-red-900 font-bold uppercase">X</button>
+                </div>`;
+            });
+        }
+        window.deleteAcc = async (l) => { if(confirm("Usuń?")) { await deleteDoc(doc(db, "users", l)); fetchAccounts(); } };
     </script>
 </body>
 </html>
