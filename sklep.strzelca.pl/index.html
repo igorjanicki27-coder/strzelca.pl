@@ -10,28 +10,58 @@
     <style>
         :root { --coyote: #C19A6B; }
         body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e5e5e5; margin: 0; }
-        .hero-bg { height: 60vh; background: linear-gradient(rgba(10,10,10,0.7), #0a0a0a), url('../tlo.png'); background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; }
+        
+        /* Poprawiony Hero: gradient zaczyna się niżej (50%), a zdjęcie jest wycentrowane od góry */
+        .hero-bg { 
+            height: 65vh; 
+            background: linear-gradient(rgba(10,10,10,0.1) 0%, rgba(10,10,10,0.4) 50%, #0a0a0a 100%), url('../tlo.png'); 
+            background-size: cover; 
+            background-position: top center; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+        }
+
         .coyote-text { color: var(--coyote); font-family: 'Orbitron'; }
-        .card-dark { background: #111; border: 1px solid #1f1f1f; border-radius: 12px; }
+        .card-dark { background: #111; border: 1px solid #1f1f1f; border-radius: 12px; overflow: hidden; }
+        
+        /* Zdjęcia w kartach: widoczne w całości */
+        .product-img-container img { width: 100%; height: 100%; object-fit: contain; background: #080808; }
+
+        /* Renderowanie treści z panelu */
         .custom-render ul { list-style-type: disc !important; padding-left: 20px !important; margin: 10px 0 !important; }
         .custom-render li { margin-bottom: 5px !important; display: list-item !important; }
+        .custom-render b, .custom-render strong { font-weight: bold !important; color: var(--coyote) !important; }
+        .custom-render div[style*="text-align: center"] { text-align: center !important; }
+        .custom-render div[style*="text-align: right"] { text-align: right !important; }
+
+        /* Estetyczny scrollbar w modalach */
+        .details-scroll-area { max-height: 55vh; overflow-y: auto; padding-right: 20px; scrollbar-gutter: stable; }
+        .details-scroll-area::-webkit-scrollbar { width: 6px; }
+        .details-scroll-area::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        .details-scroll-area::-webkit-scrollbar-thumb:hover { background: var(--coyote); }
     </style>
 </head>
 <body>
-    <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md">
-        <div class="container mx-auto px-6 h-full flex justify-between items-center">
-            <div class="flex items-center space-x-6 uppercase font-bold text-[10px] tracking-widest italic">
-                <a href="../index.html" class="text-zinc-500 hover:text-white transition">STRZELCA.PL</a>
-                <div class="text-white">SKLEP.<span class="coyote-text">STRZELCA</span>.PL</div>
+    <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center">
+        <div class="container mx-auto px-6 relative flex justify-center items-center">
+            <a href="../index.html" class="absolute left-6 text-zinc-500 hover:text-white transition text-xl">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400">
+                SKLEP.<span class="coyote-text">STRZELCA</span>.PL
             </div>
-            <a href="#contact" class="text-[10px] font-bold uppercase tracking-[0.3em] hover:coyote-text transition">Kontakt</a>
         </div>
     </nav>
 
-    <header class="hero-bg text-center px-6 uppercase font-[Orbitron]">
-        <div>
-            <h1 class="text-3xl md:text-5xl mb-2 italic">Strzelaj <span class="coyote-text">z nami</span></h1>
-            <h1 class="text-2xl md:text-4xl italic">Strzelaj <span class="coyote-text">bezpiecznie</span></h1>
+    <header class="hero-bg text-center px-6 uppercase font-[Orbitron] tracking-tighter">
+        <div class="space-y-1">
+            <div class="text-2xl md:text-4xl font-black text-white italic">
+                Przeglądnij arsenał <span class="coyote-text">STRZELCA</span>
+            </div>
+            <div class="text-xl md:text-3xl font-bold text-zinc-400 italic">
+                Zamawiaj tylko u dostawcy z <span class="coyote-text">PL</span>
+            </div>
         </div>
     </header>
 
@@ -40,46 +70,70 @@
     </section>
 
     <div id="details-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-6 bg-black/95 backdrop-blur-md">
-        <div class="bg-zinc-900 p-8 rounded-3xl max-w-2xl w-full border border-zinc-800 relative">
-            <button onclick="document.getElementById('details-modal').classList.add('hidden')" class="absolute top-6 right-6 text-3xl text-zinc-500">&times;</button>
+        <div class="bg-zinc-900 p-8 rounded-3xl max-w-2xl w-full border border-zinc-800 relative shadow-2xl">
+            <button onclick="document.getElementById('details-modal').classList.add('hidden')" class="absolute top-6 right-6 text-3xl text-zinc-500 hover:text-white">&times;</button>
             <div id="details-content"></div>
         </div>
     </div>
 
-    <footer class="text-center py-10 border-t border-zinc-900 text-zinc-700 text-[10px] uppercase font-bold tracking-[0.4em]">
-        &copy; 2026 STRZELCA.PL | <a href="../index.html" class="hover:text-white transition">System Zarządzania</a>
+    <footer class="text-center py-12 border-t border-zinc-900 text-zinc-700 text-[10px] uppercase font-bold tracking-[0.5em]">
+        <a href="../index.html" class="hover:text-white transition">STRZELCA.PL</a> 
+        <span class="mx-4 text-zinc-800">|</span> 
+        <a href="../kontakt.strzelca.pl/index.html" class="hover:text-white transition">KONTAKT</a>
     </footer>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        const firebaseConfig = { apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc", authDomain: "strzelca-pl.firebaseapp.com", projectId: "strzelca-pl", storageBucket: "strzelca-pl.firebasestorage.app", messagingSenderId: "511362047688", appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd" };
-        const app = initializeApp(firebaseConfig); const db = getFirestore(app);
+        const firebaseConfig = { 
+            apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc", 
+            authDomain: "strzelca-pl.firebaseapp.com", 
+            projectId: "strzelca-pl", 
+            storageBucket: "strzelca-pl.firebasestorage.app", 
+            messagingSenderId: "511362047688", 
+            appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd" 
+        };
+        
+        const app = initializeApp(firebaseConfig); 
+        const db = getFirestore(app);
 
         const fetchAll = async () => {
-    // Sortowanie po nowym polu "order"
+            // Domyślne filtrowanie po kolejności ustawionej w panelu
             const q = query(collection(db, "products"), orderBy("order", "asc"));
             const snap = await getDocs(q);
-            const grid = document.getElementById('product-grid'); grid.innerHTML = "";
+            const grid = document.getElementById('product-grid'); 
+            grid.innerHTML = "";
+            
             snap.forEach(d => {
                 const p = d.data();
-                grid.innerHTML += `<div class="card-dark flex flex-col h-full overflow-hidden">
+                grid.innerHTML += `
+                <div class="card-dark flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50">
                     <div class="h-64 product-img-container"><img src="${p.img}"></div>
-                    <div class="p-8 flex flex-col flex-grow">
-                        <h3 class="text-xl font-bold uppercase mb-2 font-[Orbitron]">${p.title}</h3>
-                        <p class="coyote-text font-black text-2xl mb-6">${p.price} PLN</p>
-                        <button onclick="window.showDetails('${d.id}')" class="w-full py-4 bg-[#C19A6B] text-black text-[10px] uppercase font-black rounded">Szczegóły</button>
+                    <div class="p-8 flex flex-col flex-grow text-center">
+                        <h3 class="text-xl font-bold uppercase mb-2 font-[Orbitron] text-white tracking-tight">${p.title}</h3>
+                        <p class="coyote-text font-black text-2xl mb-8">${p.price} PLN</p>
+                        <div class="mt-auto flex flex-col gap-3">
+                            <button onclick="window.showDetails('${d.id}')" class="w-full py-3 border border-zinc-800 text-[10px] uppercase font-bold hover:bg-zinc-800 transition rounded tracking-widest text-zinc-400">Szczegóły</button>
+                            <a href="../kontakt.strzelca.pl/index.html" class="w-full py-4 bg-[#C19A6B] text-black text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center">Zamów</a>
+                        </div>
                     </div>
                 </div>`;
             });
         };
 
         window.showDetails = async (id) => {
-            const d = await getDoc(doc(db, "products", id)); const p = d.data();
-            document.getElementById('details-content').innerHTML = `<h2 class="text-2xl font-black uppercase mb-4 font-[Orbitron]">${p.title}</h2>
-                <div class="text-zinc-400 text-sm mb-6 max-h-[50vh] overflow-y-auto leading-relaxed custom-render">${p.desc}</div>
-                <p class="text-3xl font-black coyote-text mb-6">${p.price} PLN</p>`;
+            const d = await getDoc(doc(db, "products", id)); 
+            const p = d.data();
+            document.getElementById('details-content').innerHTML = `
+                <h2 class="text-2xl font-black uppercase mb-4 font-[Orbitron] text-white">${p.title}</h2>
+                <div class="text-zinc-400 text-sm mb-8 custom-render details-scroll-area leading-relaxed">
+                    ${p.desc}
+                </div>
+                <div class="flex justify-between items-center border-t border-zinc-800 pt-6">
+                    <p class="text-3xl font-black coyote-text">${p.price} PLN</p>
+                    <a href="../kontakt.strzelca.pl/index.html" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg">Złóż zamówienie</a>
+                </div>`;
             document.getElementById('details-modal').classList.remove('hidden');
         };
 
