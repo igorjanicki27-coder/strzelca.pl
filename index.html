@@ -11,13 +11,12 @@
         :root { --coyote: #C19A6B; }
         body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e5e5e5; margin: 0; overflow-x: hidden; }
         
-        /* Naprawa widoczności na mobile: min-height zamiast sztywnego h-screen */
-        .hero-bg {
+        /* Spójne tło dla całej strony (w tym stopki) */
+        .main-wrapper {
             min-height: 100vh; width: 100%;
             background: linear-gradient(rgba(10,10,10,0.85), #0a0a0a), url('./tlo.png');
             background-size: cover; background-position: center;
-            display: flex; align-items: center; justify-content: center;
-            padding: 40px 0;
+            display: flex; flex-direction: column; justify-content: space-between;
         }
 
         .hub-button { background: rgba(20, 20, 20, 0.8); border: 1px solid #333; transition: 0.3s; cursor: pointer; }
@@ -39,11 +38,15 @@
 </head>
 <body>
 
-    <div class="hero-bg">
-        <div class="container mx-auto px-6 text-center">
-            <h1 class="text-4xl md:text-6xl font-black mb-12 md:mb-16 uppercase italic font-[Orbitron] tracking-tighter pt-10">STRZELCA<span class="coyote-text">.PL</span></h1>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto pb-20">
+    <div class="main-wrapper">
+        <header class="container mx-auto px-6 text-center pt-12 md:pt-20">
+            <h1 class="text-4xl md:text-6xl font-black uppercase italic font-[Orbitron] tracking-tighter">
+                STRZELCA<span class="coyote-text">.PL</span>
+            </h1>
+        </header>
+
+        <main class="container mx-auto px-6 py-12 flex-grow flex items-center">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto w-full">
                 <a href="./sklep.strzelca.pl/index.html" class="hub-button p-10 rounded-3xl flex flex-col items-center">
                     <i class="fa-solid fa-cart-shopping text-4xl coyote-text mb-4"></i>
                     <span class="font-bold uppercase tracking-widest text-sm">Sklep</span>
@@ -59,12 +62,12 @@
                     <span class="font-bold uppercase tracking-widest text-sm">Kontakt</span>
                 </a>
             </div>
-        </div>
-    </div>
+        </main>
 
-    <footer class="fixed bottom-0 w-full py-6 text-center text-zinc-800 text-[10px] uppercase font-bold tracking-[0.4em] bg-black/50 backdrop-blur-sm">
-        STRZELCA.PL | <button onclick="window.toggleAdminModal()" class="hover:text-zinc-500 transition">System Zarządzania</button>
-    </footer>
+        <footer class="w-full py-8 text-center text-zinc-800 text-[10px] uppercase font-bold tracking-[0.4em]">
+            STRZELCA.PL | <button onclick="window.toggleAdminModal()" class="hover:text-zinc-500 transition">System Zarządzania</button>
+        </footer>
+    </div>
 
     <div id="admin-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
         <div class="max-w-5xl w-full bg-zinc-900 p-8 rounded-3xl border border-zinc-800 shadow-2xl overflow-y-auto max-h-[90vh]">
@@ -81,19 +84,27 @@
                 <div class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-4 uppercase">
                     <h2 class="coyote-text font-bold italic font-[Orbitron]">System Zarządzania</h2>
                     <div class="flex space-x-4">
-                        <button onclick="window.toggleAdminModal()" class="text-zinc-400 text-[10px] font-bold border border-zinc-700 px-3 py-1 rounded">Zamknij podgląd</button>
+                        <button onclick="window.toggleAdminModal()" class="text-zinc-400 text-[10px] font-bold border border-zinc-700 px-3 py-1 rounded">Zamknij</button>
                         <button onclick="window.handleLogout()" class="text-red-900 text-[10px] font-black border border-red-900 px-3 py-1 rounded">Wyloguj</button>
                     </div>
                 </div>
 
                 <div class="flex space-x-2 md:space-x-4 mb-8 overflow-x-auto pb-2">
-                    <button onclick="window.switchTab('sklep')" class="tab-btn px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-[#C19A6B]">Sklep</button>
-                    <button onclick="window.switchTab('kontakt')" class="tab-btn px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-[#C19A6B]">Kontakt</button>
-                    <button onclick="window.switchTab('konta')" class="tab-btn px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-[#C19A6B]">Konta</button>
+                    <button onclick="window.switchTab('sklep')" class="px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-[#C19A6B]">Sklep</button>
+                    <button onclick="window.switchTab('kontakt')" class="px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-[#C19A6B]">Kontakt</button>
+                    <button onclick="window.switchTab('konta')" class="px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-[#C19A6B]">Konta</button>
                 </div>
 
                 <div id="tab-sklep" class="admin-tab hidden grid grid-cols-1 md:grid-cols-2 gap-10">
                     <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-[10px] font-bold uppercase text-zinc-500 italic">Zarządzanie Produktami</h3>
+                            <div class="flex gap-2">
+                                <button onclick="window.exportToJS()" title="Pobierz backup produktów" class="text-coyote hover:text-white"><i class="fa-solid fa-download"></i></button>
+                                <button onclick="document.getElementById('import-file').click()" title="Wgraj produkty z pliku" class="text-coyote hover:text-white"><i class="fa-solid fa-upload"></i></button>
+                                <input type="file" id="import-file" class="hidden" accept=".json" onchange="window.importFromJS(this)">
+                            </div>
+                        </div>
                         <input type="hidden" id="edit-id">
                         <input id="p-title" type="text" placeholder="Nazwa przedmiotu">
                         <input id="p-price" type="text" placeholder="Cena (np. 150 lub 100-200)">
@@ -101,11 +112,12 @@
                             <button onclick="window.formatDoc('bold')"><i class="fa-solid fa-bold"></i></button>
                             <button onclick="window.formatDoc('italic')"><i class="fa-solid fa-italic"></i></button>
                             <button onclick="window.formatDoc('insertUnorderedList')"><i class="fa-solid fa-list-ul"></i></button>
+                            <button onclick="window.formatDoc('justifyLeft')"><i class="fa-solid fa-align-left"></i></button>
+                            <button onclick="window.formatDoc('justifyCenter')"><i class="fa-solid fa-align-center"></i></button>
                             <button onclick="window.triggerDescImg()"><i class="fa-solid fa-image"></i></button>
                         </div>
                         <div id="p-desc" class="editor-content custom-render" contenteditable="true"></div>
-                        <label class="text-[9px] text-zinc-500 block uppercase">Zdjęcie główne:</label>
-                        <input type="file" id="p-img" accept="image/*">
+                        <input type="file" id="p-img" accept="image/*" class="text-xs">
                         <button id="save-btn" onclick="window.saveProduct()" class="btn-admin w-full text-xs">Zatwierdź zmiany</button>
                     </div>
                     <div id="p-list-admin" class="space-y-2 overflow-y-auto max-h-[500px]"></div>
@@ -114,14 +126,14 @@
                 <div id="tab-kontakt" class="admin-tab hidden space-y-10">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
                         <div class="space-y-4">
-                            <h3 class="coyote-text text-sm uppercase font-bold mb-4">Ustawienia Rubryk (Placeholdery)</h3>
+                            <h3 class="coyote-text text-sm uppercase font-bold mb-4">Opisy rubryk (Placeholdery)</h3>
                             <input id="cfg-ph-name" type="text" placeholder="Placeholder: Imię">
                             <input id="cfg-ph-contact" type="text" placeholder="Placeholder: Email/Tel">
                             <textarea id="cfg-ph-msg" placeholder="Placeholder: Wiadomość" rows="3"></textarea>
                             <button onclick="window.saveContactConfig()" class="btn-admin w-full text-xs">Zapisz opisy</button>
                         </div>
                         <div class="space-y-4">
-                            <h3 class="coyote-text text-sm uppercase font-bold mb-4">Tematy Kontaktu</h3>
+                            <h3 class="coyote-text text-sm uppercase font-bold mb-4">Zarządzaj Tematami</h3>
                             <div class="flex gap-2">
                                 <input id="new-topic" type="text" placeholder="Nowy temat...">
                                 <button onclick="window.addTopic()" class="bg-zinc-800 px-4 rounded-lg hover:text-coyote">+</button>
@@ -133,7 +145,7 @@
 
                 <div id="tab-konta" class="admin-tab hidden grid grid-cols-1 md:grid-cols-2 gap-10">
                     <div class="space-y-4 bg-black/20 p-8 rounded-3xl border border-zinc-800">
-                        <h3 class="coyote-text text-sm uppercase font-bold">Nowy Operator</h3>
+                        <h3 class="coyote-text text-sm uppercase font-bold mb-4">Nowy Operator</h3>
                         <input id="new-u-login" type="text" placeholder="Login">
                         <input id="new-u-pass" type="password" placeholder="Hasło">
                         <button onclick="window.addAccount()" class="btn-admin w-full text-xs">Dodaj konto</button>
@@ -165,7 +177,7 @@
         let productsList = [];
         let contactTopics = [];
 
-        // --- CORE ---
+        // --- GLOBALNE FUNKCJE PANELU ---
         window.toggleAdminModal = () => document.getElementById('admin-modal').classList.toggle('hidden');
         
         window.switchTab = (tabId) => {
@@ -176,23 +188,12 @@
             if(tabId === 'kontakt') fetchContactConfig();
         };
 
-        window.handleLogin = () => {
-            const u = document.getElementById('adm-user').value, p = document.getElementById('adm-pass').value;
-            if(u === "login.strzelca" && p === "haslo.strzelca") {
-                sessionStorage.setItem('st_logged', 'true');
-                showPanel();
-            } else { alert("Błędne dane!"); }
+        window.formatDoc = (cmd) => {
+            document.getElementById('p-desc').focus();
+            document.execCommand(cmd, false, null);
         };
 
-        function showPanel() {
-            document.getElementById('login-section').classList.add('hidden');
-            document.getElementById('admin-panel').classList.remove('hidden');
-            window.switchTab('sklep');
-        }
-
-        window.handleLogout = () => { sessionStorage.removeItem('st_logged'); location.reload(); };
-
-        // --- SKLEP LOGIC ---
+        // --- LOGIKA SKLEPU ---
         async function compressImage(file) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
@@ -214,8 +215,6 @@
             });
         }
 
-        window.formatDoc = (cmd) => { document.getElementById('p-desc').focus(); document.execCommand(cmd, false, null); };
-        
         window.triggerDescImg = () => {
             const input = document.createElement('input');
             input.type = 'file'; input.accept = 'image/*';
@@ -232,19 +231,15 @@
             const file = document.getElementById('p-img').files[0];
             btn.innerText = "PRZETWARZANIE...";
             btn.disabled = true;
-
             try {
-                let mainImg = "";
-                if(file) mainImg = await compressImage(file);
-                const orderValue = document.getElementById('edit-id').value ? productsList.find(p => p.id === id).order : (productsList.length > 0 ? Math.max(...productsList.map(p => p.order)) + 1 : 0);
-
+                let mainImg = ""; if(file) mainImg = await compressImage(file);
+                const orderVal = document.getElementById('edit-id').value ? productsList.find(p => p.id === id).order : (productsList.length > 0 ? Math.max(...productsList.map(p => p.order)) + 1 : 0);
                 await setDoc(doc(db, "products", id), {
-                    title: document.getElementById('p-title').value,
+                    id: id, title: document.getElementById('p-title').value,
                     price: document.getElementById('p-price').value,
                     desc: document.getElementById('p-desc').innerHTML,
                     img: mainImg || (document.getElementById('edit-id').value ? productsList.find(p => p.id === id).img : ""),
-                    order: orderValue,
-                    date: Date.now()
+                    order: orderVal, date: Date.now()
                 }, { merge: true });
                 alert("Zapisano!"); location.reload();
             } catch (err) { alert(err.message); }
@@ -253,8 +248,7 @@
         async function fetchProducts() {
             const q = query(collection(db, "products"), orderBy("order", "asc"));
             const snap = await getDocs(q);
-            const list = document.getElementById('p-list-admin');
-            list.innerHTML = ""; productsList = [];
+            const list = document.getElementById('p-list-admin'); list.innerHTML = ""; productsList = [];
             snap.forEach(d => {
                 const data = d.data(); productsList.push({ id: d.id, ...data });
                 list.innerHTML += `<div class="flex justify-between items-center p-3 bg-black/40 rounded border border-zinc-800 mb-1">
@@ -269,8 +263,7 @@
         }
 
         window.moveProd = async (id, dir) => {
-            const idx = productsList.findIndex(p => p.id === id);
-            const nIdx = idx + dir;
+            const idx = productsList.findIndex(p => p.id === id); const nIdx = idx + dir;
             if (nIdx < 0 || nIdx >= productsList.length) return;
             const cur = productsList[idx], nei = productsList[nIdx];
             await setDoc(doc(db, "products", cur.id), { order: nei.order }, { merge: true });
@@ -278,9 +271,29 @@
             fetchProducts();
         };
 
-        window.deleteProd = async (id) => { if(confirm("Usunąć?")) { await deleteDoc(doc(db, "products", id)); fetchProducts(); } };
+        window.deleteProd = async (id) => { if(confirm("Usuń?")) { await deleteDoc(doc(db, "products", id)); fetchProducts(); } };
 
-        // --- KONTAKT CONFIG LOGIC ---
+        // --- BACKUP (IMPORT/EKSPORT) ---
+        window.exportToJS = () => {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(productsList));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "produkty_backup.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click(); downloadAnchorNode.remove();
+        };
+
+        window.importFromJS = (input) => {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const imported = JSON.parse(e.target.result);
+                for (const p of imported) { await setDoc(doc(db, "products", p.id), p); }
+                alert("Import zakończony!"); location.reload();
+            };
+            reader.readAsText(input.files[0]);
+        };
+
+        // --- KONTAKT CONFIG ---
         async function fetchContactConfig() {
             const docSnap = await getDoc(doc(db, "config", "contact"));
             if(docSnap.exists()){
@@ -288,8 +301,7 @@
                 document.getElementById('cfg-ph-name').value = data.ph_name || "";
                 document.getElementById('cfg-ph-contact').value = data.ph_contact || "";
                 document.getElementById('cfg-ph-msg').value = data.ph_msg || "";
-                contactTopics = data.topics || [];
-                renderTopics();
+                contactTopics = data.topics || []; renderTopics();
             }
         }
 
@@ -299,8 +311,7 @@
                 ph_contact: document.getElementById('cfg-ph-contact').value,
                 ph_msg: document.getElementById('cfg-ph-msg').value,
                 topics: contactTopics
-            }, { merge: true });
-            alert("Ustawienia zapisane!");
+            }, { merge: true }); alert("Zapisano!");
         };
 
         window.addTopic = () => {
@@ -311,15 +322,13 @@
         window.removeTopic = (idx) => { contactTopics.splice(idx, 1); renderTopics(); };
 
         window.moveTopic = (idx, dir) => {
-            const nIdx = idx + dir;
-            if(nIdx < 0 || nIdx >= contactTopics.length) return;
+            const nIdx = idx + dir; if(nIdx < 0 || nIdx >= contactTopics.length) return;
             [contactTopics[idx], contactTopics[nIdx]] = [contactTopics[nIdx], contactTopics[idx]];
             renderTopics();
         };
 
         function renderTopics() {
-            const list = document.getElementById('topics-list');
-            list.innerHTML = "";
+            const list = document.getElementById('topics-list'); list.innerHTML = "";
             contactTopics.forEach((t, i) => {
                 list.innerHTML += `<div class="flex justify-between items-center p-2 bg-black/60 border border-zinc-800 rounded">
                     <span class="text-xs">${t}</span>
@@ -332,7 +341,22 @@
             });
         }
 
-        // --- KONTA ---
+        // --- KONTA I LOGOWANIE ---
+        window.handleLogin = () => {
+            const u = document.getElementById('adm-user').value, p = document.getElementById('adm-pass').value;
+            if(u === "login.strzelca" && p === "haslo.strzelca") {
+                sessionStorage.setItem('st_logged', 'true'); showPanel();
+            } else { alert("Błąd!"); }
+        };
+
+        function showPanel() {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('admin-panel').classList.remove('hidden');
+            window.switchTab('sklep');
+        }
+
+        window.handleLogout = () => { sessionStorage.removeItem('st_logged'); location.reload(); };
+
         window.addAccount = async () => {
             const l = document.getElementById('new-u-login').value;
             await setDoc(doc(db, "users", l), { login: l, pass: document.getElementById('new-u-pass').value });
@@ -349,7 +373,7 @@
                 </div>`;
             });
         }
-        window.deleteAcc = async (id) => { if(confirm("Usuń konto?")) { await deleteDoc(doc(db, "users", id)); fetchAccounts(); } };
+        window.deleteAcc = async (id) => { if(confirm("Usuń?")) { await deleteDoc(doc(db, "users", id)); fetchAccounts(); } };
 
         if(sessionStorage.getItem('st_logged')) showPanel();
     </script>
