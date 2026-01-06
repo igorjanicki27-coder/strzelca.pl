@@ -167,24 +167,57 @@
             const email = document.getElementById('adm-user').value;
             const pass = document.getElementById('adm-pass').value;
 
+            if (!email || !pass) {
+                alert("Wprowadź email i hasło.");
+                return;
+            }
+
             try {
+                console.log('Attempting login for:', email);
                 await signInWithEmailAndPassword(auth, email, pass);
+                console.log('Login successful');
                 // Nie musimy nic więcej robić, onAuthStateChanged zajmie się resztą
             } catch (err) {
-                alert("Błąd autoryzacji: Nieuprawniony dostęp.");
-                console.error(err.code);
+                console.error('Login error:', err.code, err.message);
+                let errorMessage = "Błąd autoryzacji: Nieuprawniony dostęp.";
+
+                if (err.code === 'auth/user-not-found') {
+                    errorMessage = "Użytkownik nie istnieje.";
+                } else if (err.code === 'auth/wrong-password') {
+                    errorMessage = "Nieprawidłowe hasło.";
+                } else if (err.code === 'auth/invalid-email') {
+                    errorMessage = "Nieprawidłowy format email.";
+                } else if (err.code === 'auth/too-many-requests') {
+                    errorMessage = "Zbyt wiele prób logowania. Spróbuj później.";
+                }
+
+                alert(errorMessage);
             }
         };
 
         // --- MONITOROWANIE STANU ZALOGOWANIA ---
+        console.log('Firebase Auth initialized, checking current user...');
+
+        // Sprawdź czy użytkownik już jest zalogowany przy ładowaniu strony
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+            console.log('User already logged in on page load:', currentUser.email);
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('admin-panel').classList.remove('hidden');
+            window.switchTab('sklep');
+        }
+
         onAuthStateChanged(auth, (user) => {
+            console.log('Auth state changed:', user ? 'logged in' : 'logged out', user?.email || '');
             if (user) {
                 // Jesteś zalogowany!
+                console.log('User logged in:', user.email, 'UID:', user.uid);
                 document.getElementById('login-section').classList.add('hidden');
                 document.getElementById('admin-panel').classList.remove('hidden');
                 window.switchTab('sklep');
             } else {
                 // Jesteś wylogowany
+                console.log('User logged out');
                 document.getElementById('login-section').classList.remove('hidden');
                 document.getElementById('admin-panel').classList.add('hidden');
             }
