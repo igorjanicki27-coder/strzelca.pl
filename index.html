@@ -25,37 +25,37 @@
         .coyote-text { color: var(--coyote); font-family: 'Orbitron'; }
         .font-tactical { font-family: 'Orbitron', sans-serif; }
 
-        /* POPRAWIONE FORMULARZE - WIĘKSZY MARGINES WEWNĘTRZNY */
-        input, textarea, select { 
+        /* Formularze i Edytor */
+        input, select, .editor-content { 
             background: #000 !important; 
             border: 1px solid #333 !important; 
             color: white !important; 
-            padding: 14px 20px !important; /* Zwiększony padding (góra-dół 14px, boki 20px) */
+            padding: 14px 20px !important;
             border-radius: 10px; 
             width: 100%; 
             outline: none; 
-            transition: 0.2s;
         }
-        input:focus, textarea:focus, select:focus { border-color: var(--coyote) !important; box-shadow: 0 0 10px rgba(193, 154, 107, 0.1); }
+        .editor-content { min-height: 200px; overflow-y: auto; text-align: left; }
+        .editor-content img { max-width: 100px; margin: 10px 0; border-radius: 5px; }
         
-        .btn-admin { background: var(--coyote); color: #000; font-weight: 900; text-transform: uppercase; padding: 16px; border-radius: 8px; transition: 0.2s; cursor: pointer; }
-        .btn-admin:hover { background: #fff; }
+        .toolbar { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 5px; background: #1a1a1a; padding: 8px; border-radius: 8px; border: 1px solid #333; }
+        .toolbar button { background: #222; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; transition: 0.2s; }
+        .toolbar button:hover { background: var(--coyote); color: black; }
+        
+        .btn-admin { background: var(--coyote); color: #000; font-weight: 900; text-transform: uppercase; padding: 16px; border-radius: 8px; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div class="hero-bg">
         <div class="container mx-auto px-6 text-center">
-            <h1 class="text-4xl md:text-6xl font-black mb-16 uppercase italic font-tactical tracking-tighter">
-                STRZELCA<span class="coyote-text">.PL</span>
-            </h1>
-            
+            <h1 class="text-4xl md:text-6xl font-black mb-16 uppercase italic font-tactical tracking-tighter">STRZELCA<span class="coyote-text">.PL</span></h1>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
                 <a href="./sklep.strzelca.pl/index.html" class="hub-button p-10 rounded-3xl flex flex-col items-center">
                     <i class="fa-solid fa-cart-shopping text-4xl coyote-text mb-4"></i>
                     <span class="font-bold uppercase tracking-widest text-sm">Sklep</span>
                 </a>
-                <a href="./kontakt.strzelca.pl/index.html" class="hub-button p-10 rounded-3xl flex flex-col items-center">
+                <a href="./kontakt.strzelca.pl/index.html" class="hub-button p-10 rounded-3xl flex flex-col items-center border-zinc-700">
                     <i class="fa-solid fa-envelope-open-text text-4xl coyote-text mb-4"></i>
                     <span class="font-bold uppercase tracking-widest text-sm">Kontakt</span>
                 </a>
@@ -68,61 +68,49 @@
     </div>
 
     <footer class="fixed bottom-0 w-full py-6 text-center text-zinc-800 text-[10px] uppercase font-bold tracking-[0.4em]">
-        &copy; 2026 STRZELCA.PL | <button onclick="window.toggleAdminModal()" class="hover:text-zinc-500 transition font-bold">System</button>
+        &copy; 2026 STRZELCA.PL | <button onclick="window.toggleAdminModal()" class="hover:text-zinc-500 transition">System</button>
     </footer>
 
     <div id="admin-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
         <div class="max-w-5xl w-full bg-zinc-900 p-8 rounded-3xl border border-zinc-800 shadow-2xl overflow-y-auto max-h-[90vh]">
-            
             <div id="login-section" class="text-center py-12 max-w-sm mx-auto">
                 <h2 class="coyote-text text-xl mb-8 uppercase italic font-tactical">Autoryzacja Operatora</h2>
                 <input type="text" id="adm-user" placeholder="Login" class="mb-4 text-center">
                 <input type="password" id="adm-pass" placeholder="Hasło" class="mb-6 text-center">
-                <button onclick="window.handleLogin()" class="btn-admin w-full">Zaloguj do systemu</button>
-                <button onclick="window.toggleAdminModal()" class="mt-6 text-zinc-600 text-[10px] uppercase underline block mx-auto">Zamknij</button>
+                <button onclick="window.handleLogin()" class="btn-admin w-full">Zaloguj</button>
             </div>
 
             <div id="admin-panel" class="hidden">
                 <div class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-4">
-                    <h2 class="coyote-text font-bold uppercase italic font-tactical">Centrum Dowodzenia</h2>
+                    <h2 class="coyote-text font-bold uppercase italic font-tactical">System Zarządzania</h2>
                     <button onclick="location.reload()" class="text-red-900 text-[10px] font-black uppercase border border-red-900 px-3 py-1 rounded">Wyloguj</button>
                 </div>
 
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-10" id="role-menu">
-                    <button id="menu-sklep" onclick="showAdminSection('sklep')" class="p-3 border border-zinc-700 rounded text-[9px] font-bold uppercase hover:border-[#C19A6B] transition">Sklep</button>
-                    <button id="menu-recenzje" onclick="showAdminSection('recenzje')" class="p-3 border border-zinc-700 rounded text-[9px] font-bold uppercase hover:border-[#C19A6B] transition">Recenzje</button>
-                    <button id="menu-zawody" onclick="showAdminSection('zawody')" class="p-3 border border-zinc-700 rounded text-[9px] font-bold uppercase hover:border-[#C19A6B] transition">Zawody</button>
-                    <button id="menu-pomoc" onclick="showAdminSection('pomoc')" class="p-3 border border-zinc-700 rounded text-[9px] font-bold uppercase hover:border-[#C19A6B] transition">Pomoc</button>
-                    <button id="menu-admin" onclick="showAdminSection('konta')" class="p-3 border border-zinc-700 rounded text-[9px] font-bold uppercase hover:border-[#C19A6B] transition">Konta</button>
-                </div>
-
-                <div id="admin-sklep" class="admin-sec hidden grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <div class="space-y-4 bg-black/20 p-6 rounded-2xl border border-zinc-800">
-                        <h3 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Zarządzaj Asortymentem</h3>
+                <div id="admin-sklep" class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div class="space-y-4">
                         <input type="hidden" id="edit-p-id">
-                        <label class="text-[9px] text-zinc-600 block uppercase italic">Zdjęcie produktu:</label>
-                        <input type="file" id="p-img" accept="image/*" class="text-[10px] !p-2">
-                        <input id="p-title" type="text" placeholder="Nazwa przedmiotu">
-                        <input id="p-price" type="number" placeholder="Cena (PLN)">
-                        <textarea id="p-desc" placeholder="Opis wyposażenia i szczegóły..." class="h-32"></textarea>
+                        <input type="text" id="p-title" placeholder="Nazwa produktu">
+                        <input type="text" id="p-price" placeholder="Cena (np. 150 lub 100 - 150)">
+                        
+                        <div class="rich-editor">
+                            <div class="toolbar">
+                                <button onclick="formatDoc('bold')" title="Pogrubienie"><i class="fa-bold"></i></button>
+                                <button onclick="formatDoc('italic')" title="Kursywa"><i class="fa-italic"></i></button>
+                                <button onclick="formatDoc('insertUnorderedList')" title="Lista/Kropki"><i class="fa-list-ul"></i></button>
+                                <button onclick="formatDoc('justifyLeft')"><i class="fa-align-left"></i></button>
+                                <button onclick="formatDoc('justifyCenter')"><i class="fa-align-center"></i></button>
+                                <button onclick="triggerDescImg()" title="Wstaw zdjęcie do opisu"><i class="fa-image"></i></button>
+                                <input type="file" id="desc-img-input" accept="image/*" class="hidden" onchange="insertImgToEditor(this)">
+                            </div>
+                            <div id="p-desc" class="editor-content" contenteditable="true" placeholder="Opis przedmiotu..."></div>
+                        </div>
+
+                        <label class="text-[9px] text-zinc-600 block uppercase italic">Zdjęcie Główne (Tytułowe):</label>
+                        <input type="file" id="p-img" accept="image/*" class="text-[10px] !p-2 bg-black">
+                        
                         <button onclick="window.saveProduct()" class="btn-admin w-full text-xs">Zapisz produkt</button>
                     </div>
-                    <div id="p-list-admin" class="space-y-2 overflow-y-auto max-h-[450px]"></div>
-                </div>
-
-                <div id="admin-konta" class="admin-sec hidden grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <div class="space-y-4 bg-black/20 p-6 rounded-2xl border border-zinc-800">
-                        <h3 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Nowy Operator</h3>
-                        <input id="new-u-login" type="text" placeholder="Login">
-                        <input id="new-u-pass" type="password" placeholder="Hasło">
-                        <select id="new-u-role">
-                            <option value="admin">Super Administrator (Pełny dostęp)</option>
-                            <option value="sklep">Administrator Sklepu</option>
-                            <option value="pomoc">Administrator Pomocy</option>
-                        </select>
-                        <button onclick="window.addAccount()" class="btn-admin w-full text-xs">Utwórz konto</button>
-                    </div>
-                    <div id="u-list-admin" class="space-y-2"></div>
+                    <div id="p-list-admin" class="space-y-2 overflow-y-auto max-h-[500px]"></div>
                 </div>
             </div>
         </div>
@@ -130,7 +118,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, getDocs, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
           apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
@@ -145,60 +133,47 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        let attempts = {};
         window.toggleAdminModal = () => document.getElementById('admin-modal').classList.toggle('hidden');
+        window.formatDoc = (cmd) => document.execCommand(cmd, false, null);
+        window.triggerDescImg = () => document.getElementById('desc-img-input').click();
 
-        window.handleLogin = async () => {
-            const l = document.getElementById('adm-user').value;
-            const p = document.getElementById('adm-pass').value;
-            if(l === "login.strzelca" && p === "haslo.strzelca") { startSession({login: l, role: 'admin'}); return; }
-            const uDoc = await getDoc(doc(db, "users", l));
-            if(!uDoc.exists()) { alert("Błąd: Nie rozpoznano operatora."); return; }
-            const userData = uDoc.data();
-            if(userData.status === 'locked') { alert("Dostęp zablokowany: 5 nieudanych prób."); return; }
-            if(userData.pass === p) { attempts[l] = 0; startSession(userData); } 
-            else { 
-                attempts[l] = (attempts[l] || 0) + 1; 
-                if(attempts[l] >= 5) { await updateDoc(doc(db, "users", l), { status: 'locked' }); alert("KONTO ZABLOKOWANE!"); } 
-                else { alert(`Błędne hasło. Pozostało prób: ${5 - attempts[l]}`); }
+        window.insertImgToEditor = async (input) => {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = `<img src="${e.target.result}" style="max-width:200px; display:block; margin:10px auto;">`;
+                    document.getElementById('p-desc').focus();
+                    document.execCommand('insertHTML', false, img);
+                };
+                reader.readAsDataURL(input.files[0]);
             }
         };
 
-        function startSession(user) {
-            document.getElementById('login-section').classList.add('hidden');
-            document.getElementById('admin-panel').classList.remove('hidden');
-            const buttons = document.getElementById('role-menu').children;
-            for(let btn of buttons) {
-                if(user.role !== 'admin' && btn.id !== `menu-${user.role}`) { btn.classList.add('opacity-30', 'cursor-not-allowed'); btn.disabled = true; } 
-                else { btn.classList.remove('opacity-30', 'cursor-not-allowed'); btn.disabled = false; }
-            }
-            showAdminSection('sklep');
-        }
-
-        window.showAdminSection = (name) => {
-            document.querySelectorAll('.admin-sec').forEach(s => s.classList.add('hidden'));
-            document.getElementById(`admin-${name}`).classList.remove('hidden');
-            if(name === 'sklep') fetchProducts();
-            if(name === 'konta') fetchAccounts();
+        window.handleLogin = async () => {
+            if(document.getElementById('adm-user').value === "login.strzelca" && document.getElementById('adm-pass').value === "haslo.strzelca") {
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('admin-panel').classList.remove('hidden');
+                fetchProducts();
+            } else { alert("Odmowa dostępu."); }
         };
 
         window.saveProduct = async () => {
             const id = document.getElementById('edit-p-id').value || Date.now().toString();
             const file = document.getElementById('p-img').files[0];
-            let img = "";
+            let mainImg = "";
             if(file) {
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
-                img = await new Promise(r => reader.onload = () => r(reader.result));
+                mainImg = await new Promise(r => reader.onload = () => r(reader.result));
             }
             await setDoc(doc(db, "products", id), {
                 title: document.getElementById('p-title').value,
                 price: document.getElementById('p-price').value,
-                desc: document.getElementById('p-desc').value,
-                img: img || "",
+                desc: document.getElementById('p-desc').innerHTML,
+                img: mainImg || "",
                 date: Date.now()
             }, { merge: true });
-            alert("Dane wysłane do Firebase."); fetchProducts();
+            alert("Produkt zapisany!"); fetchProducts();
         };
 
         async function fetchProducts() {
@@ -207,39 +182,12 @@
             list.innerHTML = "";
             snap.forEach(d => {
                 list.innerHTML += `<div class="flex justify-between p-3 bg-black/40 rounded border border-zinc-800 mb-1">
-                    <span class="text-[10px] font-bold uppercase text-zinc-400">${d.data().title}</span>
-                    <button onclick="window.deleteProd('${d.id}')" class="text-red-900 font-black text-[10px] hover:text-white transition uppercase">Usuń</button>
+                    <span class="text-[10px] font-bold uppercase">${d.data().title}</span>
+                    <button onclick="window.deleteProd('${d.id}')" class="text-red-900 font-black text-[10px] uppercase">Usuń</button>
                 </div>`;
             });
         }
-        window.deleteProd = async (id) => { if(confirm("Usunąć produkt?")) { await deleteDoc(doc(db, "products", id)); fetchProducts(); } };
-
-        window.addAccount = async () => {
-            const l = document.getElementById('new-u-login').value;
-            await setDoc(doc(db, "users", l), {
-                login: l, pass: document.getElementById('new-u-pass').value,
-                role: document.getElementById('new-u-role').value, status: 'active'
-            });
-            alert("Konto utworzone."); fetchAccounts();
-        };
-
-        async function fetchAccounts() {
-            const snap = await getDocs(collection(db, "users"));
-            const list = document.getElementById('u-list-admin');
-            list.innerHTML = "";
-            snap.forEach(d => {
-                const u = d.data();
-                list.innerHTML += `<div class="flex justify-between p-3 bg-black/40 rounded border border-zinc-800 mb-1">
-                    <span class="text-[10px] font-bold uppercase text-zinc-300">${u.login} (${u.role})</span>
-                    <div class="flex space-x-3">
-                        <button onclick="window.toggleAcc('${u.login}', '${u.status}')" class="text-coyote text-[10px] font-bold uppercase">${u.status === 'active' ? 'Blokuj' : 'Odblokuj'}</button>
-                        <button onclick="window.deleteAcc('${u.login}')" class="text-red-900 font-bold text-[10px] uppercase">Usuń</button>
-                    </div>
-                </div>`;
-            });
-        }
-        window.toggleAcc = async (l, s) => { await updateDoc(doc(db, "users", l), { status: s === 'active' ? 'locked' : 'active' }); fetchAccounts(); };
-        window.deleteAcc = async (l) => { if(confirm("Usunąć konto?")) { await deleteDoc(doc(db, "users", l)); fetchAccounts(); } };
+        window.deleteProd = async (id) => { if(confirm("Usunąć?")) { await deleteDoc(doc(db, "products", id)); fetchProducts(); } };
     </script>
 </body>
 </html>
