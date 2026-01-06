@@ -22,99 +22,131 @@
     <title>kontakt.strzelca.pl | Wsparcie</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root { --coyote: #C19A6B; }
         body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e5e5e5; margin: 0; }
-        .hero-bg {
-            min-height: 100vh; background: linear-gradient(rgba(10,10,10,0.85), #0a0a0a), url('../tlo.png');
-            background-size: cover; background-position: center; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px;
-        }
-        .form-box { background: rgba(15,15,15,0.95); border: 1px solid #222; max-width: 800px; width: 100%; border-radius: 24px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); }
-        input, select, textarea { background: #000 !important; border: 1px solid #333 !important; color: white !important; padding: 15px !important; border-radius: 8px !important; outline: none; }
-        input:focus { border-color: var(--coyote) !important; }
+        .hero-bg { height: 40vh; background: linear-gradient(rgba(10,10,10,0.8), #0a0a0a), url('../tlo.png'); background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; }
         .coyote-text { color: var(--coyote); font-family: 'Orbitron'; }
+
+        input, select, textarea {
+            background: #111 !important;
+            border: 1px solid #222 !important;
+            color: white !important;
+            padding: 16px 20px !important;
+            border-radius: 12px;
+            width: 100%;
+            outline: none;
+            transition: 0.3s;
+        }
+        input:focus, select:focus, textarea:focus { border-color: var(--coyote) !important; background: #161616 !important; }
+
+        .btn-send {
+            background: var(--coyote);
+            color: black;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 20px;
+            border-radius: 12px;
+            transition: 0.3s;
+            cursor: pointer;
+        }
+        .btn-send:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(193, 154, 107, 0.2); }
     </style>
 </head>
 <body>
-    <main class="hero-bg text-center">
-        <section class="form-box mb-12 text-left">
-            <nav class="mb-6">
-                <button onclick="location.href='../index.html'" class="text-zinc-600 text-[10px] uppercase hover:text-white transition tracking-widest font-bold"><i class="fa-solid fa-arrow-left"></i> STRZELCA.PL</button>
-            </nav>
 
-            <header>
-                <h1 class="text-3xl font-black coyote-text mb-2 uppercase italic">Kontakt operacyjny</h1>
-                <p class="text-zinc-500 text-sm mb-10 leading-relaxed italic">Napisz do mnie – odpowiem najszybciej jak to możliwe.</p>
-            </header>
+    <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative">
+        <a href="../index.html" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <div class="container mx-auto px-6 flex justify-center">
+            <div class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400">
+                KONTAKT.<span class="coyote-text">STRZELCA</span>.PL
+            </div>
+        </div>
+    </nav>
 
-            <form action="https://formspree.io/f/kontakt@strzelca.pl" method="POST" id="main-contact-form" class="space-y-6 text-xs" role="form" aria-label="Formularz kontaktowy">
-                <input type="hidden" name="_subject" id="subject-full">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <input type="text" id="form-name" name="imię" placeholder="Imię i Nazwisko" required aria-label="Imię i nazwisko" aria-required="true">
-                    <input type="text" id="form-contact" name="kontakt" placeholder="Email / Telefon" required aria-label="Email lub telefon" aria-required="true">
-                </div>
-                <select id="form-topic" name="temat" class="w-full" aria-label="Temat wiadomości">
-                    <option>Pytanie o produkt</option>
-                    <option>Współpraca / Reklama</option>
-                    <option>Inne</option>
+    <header class="hero-bg text-center px-6 uppercase font-[Orbitron]">
+        <h1 class="text-3xl md:text-5xl font-black italic">Masz <span class="coyote-text">Pytania?</span></h1>
+    </header>
+
+    <section class="py-20 container mx-auto px-6 max-w-3xl">
+        <form id="contact-form" class="space-y-6 bg-zinc-900/50 p-8 md:p-12 rounded-3xl border border-zinc-800 shadow-2xl">
+            <div>
+                <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Temat wiadomości</label>
+                <select id="form-topic" required>
+                    <option value="" disabled selected>Ładowanie tematów...</option>
                 </select>
-                <textarea id="form-msg" name="wiadomość" rows="6" placeholder="W czym możemy pomóc?" class="w-full" aria-label="Treść wiadomości" aria-required="true"></textarea>
-                <button type="submit" class="bg-[#C19A6B] text-black w-full py-5 font-black uppercase tracking-widest text-[10px] rounded hover:bg-white transition" aria-label="Wyślij wiadomość">Nadaj wiadomość</button>
-            </form>
-        </section>
+            </div>
 
-        <footer class="flex space-x-14 text-4xl" role="contentinfo">
-            <a href="mailto:kontakt@strzelca.pl" aria-label="Napisz email" class="text-white hover:text-[#C19A6B] transition"><i class="fa-solid fa-envelope" aria-hidden="true"></i></a>
-            <a href="https://facebook.com" target="_blank" rel="noopener" aria-label="Odwiedź nasz Facebook" class="text-white hover:text-[#C19A6B] transition"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i></a>
-            <a href="https://instagram.com" target="_blank" rel="noopener" aria-label="Odwiedź nasz Instagram" class="text-white hover:text-[#C19A6B] transition"><i class="fa-brands fa-instagram" aria-hidden="true"></i></a>
-        </footer>
-    </main>
-    </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <input type="text" id="form-name" placeholder="Twoje Imię" required>
+                <input type="text" id="form-contact" placeholder="Email lub Telefon" required>
+            </div>
+
+            <textarea id="form-msg" rows="6" placeholder="W czym możemy pomóc?" required></textarea>
+
+            <button type="submit" class="btn-send w-full">Wyślij wiadomość</button>
+        </form>
+    </section>
+
+    <footer class="text-center py-10 border-t border-zinc-900 text-zinc-700 text-[10px] uppercase font-bold tracking-[0.4em]">
+        STRZELCA.PL | <a href="../index.html" class="hover:text-white transition">System Zarządzania</a>
+    </footer>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
-          apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
-          authDomain: "strzelca-pl.firebaseapp.com",
-          projectId: "strzelca-pl",
-          storageBucket: "strzelca-pl.firebasestorage.app",
-          messagingSenderId: "511362047688",
-          appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
-          measurementId: "G-9EJ2R3JPVD"
+            apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
+            authDomain: "strzelca-pl.firebaseapp.com",
+            projectId: "strzelca-pl",
+            storageBucket: "strzelca-pl.firebasestorage.app",
+            messagingSenderId: "511362047688",
+            appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
+            measurementId: "G-9EJ2R3JPVD"
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // --- ŁADOWANIE KONFIGURACJI Z BAZY ---
         const loadConfig = async () => {
-            const docSnap = await getDoc(doc(db, "config", "contact"));
-            if(docSnap.exists()){
-                const d = docSnap.data();
-                // Ustawianie placeholderów
-                document.getElementById('form-name').placeholder = d.ph_name || "Imię";
-                document.getElementById('form-contact').placeholder = d.ph_contact || "Email / Tel";
-                document.getElementById('form-msg').placeholder = d.ph_msg || "Wiadomość";
+            try {
+                const docSnap = await getDoc(doc(db, "config", "contact"));
+                if(docSnap.exists()){
+                    const d = docSnap.data();
 
-                // Dynamiczne tematy
-                const select = document.getElementById('form-topic');
-                select.innerHTML = '<option value="" disabled selected>Wybierz temat...</option>';
-                d.topics.forEach(t => {
-                    select.innerHTML += `<option value="${t}">${t}</option>`;
-                });
+                    // 1. Podmiana placeholderów (opisy rubryk)
+                    if(d.ph_name) document.getElementById('form-name').placeholder = d.ph_name;
+                    if(d.ph_contact) document.getElementById('form-contact').placeholder = d.ph_contact;
+                    if(d.ph_msg) document.getElementById('form-msg').placeholder = d.ph_msg;
+
+                    // 2. Dynamiczne tematy
+                    const select = document.getElementById('form-topic');
+                    select.innerHTML = '<option value="" disabled selected>Wybierz temat...</option>';
+                    if(d.topics && d.topics.length > 0) {
+                        d.topics.forEach(t => {
+                            select.innerHTML += `<option value="${t}">${t}</option>`;
+                        });
+                    } else {
+                        select.innerHTML = '<option value="Ogólny">Temat ogólny</option>';
+                    }
+                }
+            } catch (err) {
+                console.error("Błąd ładowania konfiguracji:", err);
             }
         };
+
         loadConfig();
 
-        document.getElementById('main-contact-form').onsubmit = async (e) => {
-            const countRef = doc(db, "meta", "form_counter");
-            const snap = await getDoc(countRef);
-            let val = snap.exists() ? snap.data().val + 1 : 1;
-            await setDoc(countRef, { val });
-            document.getElementById('subject-full').value = `Formularz kontaktowy ${val}/2026`;
-            return true;
+        // --- OBSŁUGA WYSYŁKI (Przykład na przyszłość) ---
+        document.getElementById('contact-form').onsubmit = (e) => {
+            e.preventDefault();
+            alert("Funkcja wysyłki zostanie zintegrowana w następnym kroku!");
         };
     </script>
 </body>
