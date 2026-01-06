@@ -71,7 +71,7 @@
         <div class="max-w-5xl w-full bg-zinc-900 p-8 rounded-3xl border border-zinc-800 shadow-2xl overflow-y-auto max-h-[90vh]">
             <div id="login-section" class="text-center py-12 max-w-sm mx-auto">
                 <h2 class="coyote-text text-xl mb-8 uppercase italic font-[Orbitron]">Autoryzacja</h2>
-                <input type="text" id="adm-user" placeholder="Login" class="mb-4 text-center">
+                <input type="email" id="adm-user" placeholder="Email administratora" class="mb-4 text-center">
                 <input type="password" id="adm-pass" placeholder="Hasło" class="mb-6 text-center">
                 <button onclick="window.handleLogin()" class="btn-admin w-full">Zaloguj</button>
                 <button onclick="window.toggleAdminModal()" class="mt-4 text-zinc-600 text-[10px] uppercase underline block">Zamknij</button>
@@ -89,7 +89,6 @@
                 <div class="flex space-x-4 mb-8 overflow-x-auto pb-2">
                     <button onclick="window.switchTab('sklep')" class="px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-coyote">Sklep</button>
                     <button onclick="window.switchTab('kontakt')" class="px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-coyote">Kontakt</button>
-                    <button onclick="window.switchTab('konta')" class="px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-coyote">Konta</button>
                 </div>
 
                 <div id="tab-sklep" class="admin-tab hidden grid grid-cols-1 md:grid-cols-2 gap-10">
@@ -129,15 +128,6 @@
                     </div>
                 </div>
 
-                <div id="tab-konta" class="admin-tab hidden grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <div class="space-y-4 bg-black/20 p-8 rounded-3xl border border-zinc-800">
-                        <h3 class="coyote-text text-sm uppercase font-bold">Nowy Operator</h3>
-                        <input id="new-u-login" type="text" placeholder="Login">
-                        <input id="new-u-pass" type="password" placeholder="Hasło">
-                        <button onclick="window.addAccount()" class="btn-admin w-full text-xs">Szyfruj i Dodaj</button>
-                    </div>
-                    <div id="u-list-admin" class="space-y-2"></div>
-                </div>
             </div>
         </div>
     </div>
@@ -145,6 +135,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, doc, setDoc, getDoc, getDocs, collection, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
@@ -158,15 +149,9 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
         let productsList = [];
         let contactTopics = [];
-
-        async function hashString(str) {
-            const msgUint8 = new TextEncoder().encode(str);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        }
 
         // Globalny dostęp do funkcji
         window.toggleAdminModal = () => document.getElementById('admin-modal').classList.toggle('hidden');
@@ -174,31 +159,40 @@
             document.querySelectorAll('.admin-tab').forEach(t => t.classList.add('hidden'));
             document.getElementById('tab-' + id).classList.remove('hidden');
             if(id === 'sklep') fetchProducts();
-            if(id === 'konta') fetchAccounts();
             if(id === 'kontakt') fetchContactConfig();
         };
 
-        // --- AUTORYZACJA ---
+        // --- AUTORYZACJA (FIREBASE AUTH) ---
         window.handleLogin = async () => {
-            const u = document.getElementById('adm-user').value;
-            const p = document.getElementById('adm-pass').value;
-            if(u === "login.strzelca" && p === "haslo.strzelca") {
-                sessionStorage.setItem('st_logged', 'true'); showPanel(); return;
+            const email = document.getElementById('adm-user').value;
+            const pass = document.getElementById('adm-pass').value;
+
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+                // Nie musimy nic więcej robić, onAuthStateChanged zajmie się resztą
+            } catch (err) {
+                alert("Błąd autoryzacji: Nieuprawniony dostęp.");
+                console.error(err.code);
             }
-            const uHash = await hashString(u);
-            const pHash = await hashString(p);
-            const uDoc = await getDoc(doc(db, "users", uHash));
-            if(uDoc.exists() && uDoc.data().passHash === pHash) {
-                sessionStorage.setItem('st_logged', 'true'); showPanel();
-            } else { alert("Błąd!"); }
         };
 
-        function showPanel() {
-            document.getElementById('login-section').classList.add('hidden');
-            document.getElementById('admin-panel').classList.remove('hidden');
-            window.switchTab('sklep');
-        }
-        window.handleLogout = () => { sessionStorage.removeItem('st_logged'); location.reload(); };
+        // --- MONITOROWANIE STANU ZALOGOWANIA ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // Jesteś zalogowany!
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('admin-panel').classList.remove('hidden');
+                window.switchTab('sklep');
+            } else {
+                // Jesteś wylogowany
+                document.getElementById('login-section').classList.remove('hidden');
+                document.getElementById('admin-panel').classList.add('hidden');
+            }
+        });
+
+        window.handleLogout = () => {
+            if(confirm("Czy na pewno wylogować?")) signOut(auth);
+        };
 
         // --- SKLEP ---
         async function compressImage(file) {
@@ -229,16 +223,29 @@
         window.saveProduct = async () => {
             const id = document.getElementById('edit-id').value || Date.now().toString();
             const file = document.getElementById('p-img').files[0];
-            let mainImg = ""; if(file) mainImg = await compressImage(file);
-            const orderVal = productsList.length;
-            await setDoc(doc(db, "products", id), {
-                title: document.getElementById('p-title').value,
-                price: document.getElementById('p-price').value,
-                desc: document.getElementById('p-desc').innerHTML,
-                img: mainImg || "", order: orderVal, date: Date.now(),
-                adminSecret: "STRZELCA_2026_PRO"
-            }, { merge: true });
-            location.reload();     
+
+            try {
+                let mainImg = "";
+                if(file) mainImg = await compressImage(file);
+                else if(document.getElementById('edit-id').value) {
+                    mainImg = productsList.find(p => p.id === id).img;
+                }
+
+                await setDoc(doc(db, "products", id), {
+                    title: document.getElementById('p-title').value,
+                    price: document.getElementById('p-price').value,
+                    desc: document.getElementById('p-desc').innerHTML,
+                    img: mainImg,
+                    order: productsList.length,
+                    date: Date.now()
+                    // adminSecret już nie jest potrzebny!
+                }, { merge: true });
+
+                alert("Zapisano pomyślnie!");
+                fetchProducts();
+            } catch (err) {
+                alert("Brak uprawnień do zapisu w bazie danych.");
+            }
         };
         async function fetchProducts() {
             const q = query(collection(db, "products"), orderBy("order", "asc"));
@@ -270,9 +277,8 @@
                 ph_name: document.getElementById('cfg-ph-name').value,
                 ph_contact: document.getElementById('cfg-ph-contact').value,
                 ph_msg: document.getElementById('cfg-ph-msg').value,
-                topics: contactTopics,
-                adminSecret: "STRZELCA_2026_PRO"
-            }, { merge: true }); alert("Zapisano!");
+                topics: contactTopics
+            }, { merge: true }); alert("Zapisano!"); alert("Zapisano!");
         };
         window.addTopic = () => {
             const v = document.getElementById('new-topic').value;
@@ -290,27 +296,6 @@
         window.removeTopic = (i) => { contactTopics.splice(i, 1); renderTopics(); };
 
         // --- KONTA ---
-        window.addAccount = async () => {
-            const u = document.getElementById('new-u-login').value;
-            const p = document.getElementById('new-u-pass').value;
-            const uH = await hashString(u);
-            const pH = await hashString(p);
-            await setDoc(doc(db, "users", uH), { loginPlain: u, passHash: pH, adminSecret: "STRZELCA_2026_PRO" });
-            fetchAccounts();
-        };
-        async function fetchAccounts() {
-            const snap = await getDocs(collection(db, "users"));
-            const list = document.getElementById('u-list-admin'); list.innerHTML = "";
-            snap.forEach(d => {
-                list.innerHTML += `<div class="flex justify-between p-3 bg-black/40 border border-zinc-800 rounded mb-1">
-                    <span class="text-[10px] font-bold uppercase">${d.data().loginPlain}</span>
-                    <button onclick="window.deleteAcc('${d.id}')" class="text-red-900 font-bold">USUŃ</button>
-                </div>`;
-            });
-        }
-        window.deleteAcc = async (id) => { if(confirm("Usuń?")) { await deleteDoc(doc(db, "users", id)); fetchAccounts(); } };
-
-        if(sessionStorage.getItem('st_logged')) showPanel();
     </script>
 </body>
 </html>
