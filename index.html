@@ -6,7 +6,7 @@
     <title>strzelca.pl | Centrum Dowodzenia</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root { --coyote: #C19A6B; }
         body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e5e5e5; margin: 0; overflow-x: hidden; }
@@ -25,24 +25,30 @@
         .coyote-text { color: var(--coyote); font-family: 'Orbitron'; }
         .font-tactical { font-family: 'Orbitron', sans-serif; }
 
-        /* Formularze i Edytor */
+        /* Poprawione pola tekstowe - większy margines wewnętrzny */
         input, select, .editor-content { 
             background: #000 !important; 
             border: 1px solid #333 !important; 
             color: white !important; 
-            padding: 14px 20px !important;
+            padding: 14px 20px !important; /* Luksusowy odstęp od krawędzi */
             border-radius: 10px; 
             width: 100%; 
             outline: none; 
+            transition: 0.2s;
         }
-        .editor-content { min-height: 200px; overflow-y: auto; text-align: left; }
-        .editor-content img { max-width: 100px; margin: 10px 0; border-radius: 5px; }
-        
-        .toolbar { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 5px; background: #1a1a1a; padding: 8px; border-radius: 8px; border: 1px solid #333; }
-        .toolbar button { background: #222; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; transition: 0.2s; }
-        .toolbar button:hover { background: var(--coyote); color: black; }
+        input:focus, .editor-content:focus { border-color: var(--coyote) !important; }
+
+        /* Edytor WYSIWYG */
+        .editor-content { min-height: 250px; overflow-y: auto; text-align: left; background: #000; border: 1px solid #333; }
+        .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; background: #1a1a1a; padding: 10px; border-radius: 10px; border: 1px solid #333; }
+        .toolbar button { 
+            background: #222; color: #fff; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; 
+            border-radius: 6px; transition: 0.2s; border: 1px solid #444;
+        }
+        .toolbar button:hover { background: var(--coyote); color: black; border-color: white; }
         
         .btn-admin { background: var(--coyote); color: #000; font-weight: 900; text-transform: uppercase; padding: 16px; border-radius: 8px; cursor: pointer; }
+        .btn-admin:hover { background: white; }
     </style>
 </head>
 <body>
@@ -55,7 +61,7 @@
                     <i class="fa-solid fa-cart-shopping text-4xl coyote-text mb-4"></i>
                     <span class="font-bold uppercase tracking-widest text-sm">Sklep</span>
                 </a>
-                <a href="./kontakt.strzelca.pl/index.html" class="hub-button p-10 rounded-3xl flex flex-col items-center border-zinc-700">
+                <a href="./kontakt.strzelca.pl/index.html" class="hub-button p-10 rounded-3xl flex flex-col items-center">
                     <i class="fa-solid fa-envelope-open-text text-4xl coyote-text mb-4"></i>
                     <span class="font-bold uppercase tracking-widest text-sm">Kontakt</span>
                 </a>
@@ -73,8 +79,9 @@
 
     <div id="admin-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
         <div class="max-w-5xl w-full bg-zinc-900 p-8 rounded-3xl border border-zinc-800 shadow-2xl overflow-y-auto max-h-[90vh]">
+            
             <div id="login-section" class="text-center py-12 max-w-sm mx-auto">
-                <h2 class="coyote-text text-xl mb-8 uppercase italic font-tactical">Autoryzacja Operatora</h2>
+                <h2 class="coyote-text text-xl mb-8 uppercase italic font-tactical">Dostęp Autoryzowany</h2>
                 <input type="text" id="adm-user" placeholder="Login" class="mb-4 text-center">
                 <input type="password" id="adm-pass" placeholder="Hasło" class="mb-6 text-center">
                 <button onclick="window.handleLogin()" class="btn-admin w-full">Zaloguj</button>
@@ -82,36 +89,55 @@
 
             <div id="admin-panel" class="hidden">
                 <div class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-4">
-                    <h2 class="coyote-text font-bold uppercase italic font-tactical">System Zarządzania</h2>
-                    <button onclick="location.reload()" class="text-red-900 text-[10px] font-black uppercase border border-red-900 px-3 py-1 rounded">Wyloguj</button>
+                    <h2 class="coyote-text font-bold uppercase italic font-tactical">Centrum Dowodzenia</h2>
+                    <button onclick="location.reload()" class="text-red-900 text-[10px] font-black uppercase border border-red-900 px-3 py-1 rounded hover:bg-red-900 hover:text-white transition">Wyloguj</button>
                 </div>
 
-                <div id="admin-sklep" class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div class="flex space-x-4 mb-10 overflow-x-auto pb-2">
+                    <button onclick="showAdminSection('sklep')" class="p-3 border border-zinc-700 rounded text-[10px] font-bold uppercase hover:border-[#C19A6B] min-w-[120px]">Sklep</button>
+                    <button onclick="showAdminSection('konta')" class="p-3 border border-zinc-700 rounded text-[10px] font-bold uppercase hover:border-[#C19A6B] min-w-[120px]">Konta</button>
+                </div>
+
+                <div id="admin-sklep" class="admin-sec grid grid-cols-1 md:grid-cols-2 gap-10">
                     <div class="space-y-4">
                         <input type="hidden" id="edit-p-id">
                         <input type="text" id="p-title" placeholder="Nazwa produktu">
-                        <input type="text" id="p-price" placeholder="Cena (np. 150 lub 100 - 150)">
+                        <input type="text" id="p-price" placeholder="Cena (np. 150 lub 100 - 450)">
                         
                         <div class="rich-editor">
                             <div class="toolbar">
-                                <button onclick="formatDoc('bold')" title="Pogrubienie"><i class="fa-bold"></i></button>
-                                <button onclick="formatDoc('italic')" title="Kursywa"><i class="fa-italic"></i></button>
-                                <button onclick="formatDoc('insertUnorderedList')" title="Lista/Kropki"><i class="fa-list-ul"></i></button>
-                                <button onclick="formatDoc('justifyLeft')"><i class="fa-align-left"></i></button>
-                                <button onclick="formatDoc('justifyCenter')"><i class="fa-align-center"></i></button>
-                                <button onclick="triggerDescImg()" title="Wstaw zdjęcie do opisu"><i class="fa-image"></i></button>
-                                <input type="file" id="desc-img-input" accept="image/*" class="hidden" onchange="insertImgToEditor(this)">
+                                <button onclick="formatDoc('bold')" title="Pogrubienie"><i class="fa-solid fa-bold"></i></button>
+                                <button onclick="formatDoc('italic')" title="Kursywa"><i class="fa-solid fa-italic"></i></button>
+                                <button onclick="formatDoc('insertUnorderedList')" title="Lista"><i class="fa-solid fa-list-ul"></i></button>
+                                <button onclick="formatDoc('justifyLeft')"><i class="fa-solid fa-align-left"></i></button>
+                                <button onclick="formatDoc('justifyCenter')"><i class="fa-solid fa-align-center"></i></button>
+                                <button onclick="window.triggerDescImg()" title="Wstaw zdjęcie"><i class="fa-solid fa-image"></i></button>
+                                <input type="file" id="desc-img-input" accept="image/*" class="hidden" onchange="window.insertImgToEditor(this)">
                             </div>
                             <div id="p-desc" class="editor-content" contenteditable="true" placeholder="Opis przedmiotu..."></div>
                         </div>
 
-                        <label class="text-[9px] text-zinc-600 block uppercase italic">Zdjęcie Główne (Tytułowe):</label>
-                        <input type="file" id="p-img" accept="image/*" class="text-[10px] !p-2 bg-black">
+                        <label class="text-[9px] text-zinc-600 block uppercase italic">Zdjęcie główne (widoczne na liście):</label>
+                        <input type="file" id="p-img" accept="image/*" class="text-[10px] !p-2 bg-black border-zinc-800">
                         
-                        <button onclick="window.saveProduct()" class="btn-admin w-full text-xs">Zapisz produkt</button>
+                        <button onclick="window.saveProduct()" class="btn-admin w-full text-xs">Zapisz Produkt</button>
                     </div>
                     <div id="p-list-admin" class="space-y-2 overflow-y-auto max-h-[500px]"></div>
                 </div>
+
+                <div id="admin-konta" class="admin-sec hidden grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div class="space-y-4 bg-black/20 p-8 rounded-3xl border border-zinc-800">
+                        <h3 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Nowy Operator</h3>
+                        <input id="new-u-login" type="text" placeholder="Login">
+                        <input id="new-u-pass" type="password" placeholder="Hasło">
+                        <select id="new-u-role">
+                            <option value="admin">Administrator Sklepu</option>
+                        </select>
+                        <button onclick="window.addAccount()" class="btn-admin w-full text-xs mt-4">Utwórz konto</button>
+                    </div>
+                    <div id="u-list-admin" class="space-y-2"></div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -133,15 +159,16 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // Funkcje Edytora
         window.toggleAdminModal = () => document.getElementById('admin-modal').classList.toggle('hidden');
-        window.formatDoc = (cmd) => document.execCommand(cmd, false, null);
+        window.formatDoc = (cmd) => { document.getElementById('p-desc').focus(); document.execCommand(cmd, false, null); };
         window.triggerDescImg = () => document.getElementById('desc-img-input').click();
-
+        
         window.insertImgToEditor = async (input) => {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const img = `<img src="${e.target.result}" style="max-width:200px; display:block; margin:10px auto;">`;
+                    const img = `<img src="${e.target.result}" style="max-width:300px; display:block; margin:15px auto; border-radius:8px; border: 1px solid #C19A6B;">`;
                     document.getElementById('p-desc').focus();
                     document.execCommand('insertHTML', false, img);
                 };
@@ -149,14 +176,23 @@
             }
         };
 
+        // Logowanie
         window.handleLogin = async () => {
             if(document.getElementById('adm-user').value === "login.strzelca" && document.getElementById('adm-pass').value === "haslo.strzelca") {
                 document.getElementById('login-section').classList.add('hidden');
                 document.getElementById('admin-panel').classList.remove('hidden');
                 fetchProducts();
-            } else { alert("Odmowa dostępu."); }
+            } else { alert("Błędne dane operatora."); }
         };
 
+        window.showAdminSection = (name) => {
+            document.querySelectorAll('.admin-sec').forEach(s => s.classList.add('hidden'));
+            document.getElementById(`admin-${name}`).classList.remove('hidden');
+            if(name === 'sklep') fetchProducts();
+            if(name === 'konta') fetchAccounts();
+        };
+
+        // Sklep: Zapis
         window.saveProduct = async () => {
             const id = document.getElementById('edit-p-id').value || Date.now().toString();
             const file = document.getElementById('p-img').files[0];
@@ -173,7 +209,7 @@
                 img: mainImg || "",
                 date: Date.now()
             }, { merge: true });
-            alert("Produkt zapisany!"); fetchProducts();
+            alert("Produkt zapisany w Firebase."); location.reload();
         };
 
         async function fetchProducts() {
@@ -181,13 +217,35 @@
             const list = document.getElementById('p-list-admin');
             list.innerHTML = "";
             snap.forEach(d => {
-                list.innerHTML += `<div class="flex justify-between p-3 bg-black/40 rounded border border-zinc-800 mb-1">
-                    <span class="text-[10px] font-bold uppercase">${d.data().title}</span>
-                    <button onclick="window.deleteProd('${d.id}')" class="text-red-900 font-black text-[10px] uppercase">Usuń</button>
+                list.innerHTML += `<div class="flex justify-between p-4 bg-black/40 rounded-xl border border-zinc-800 mb-2">
+                    <span class="text-[11px] font-bold uppercase text-zinc-300">${d.data().title}</span>
+                    <button onclick="window.deleteProd('${d.id}')" class="text-red-900 font-black text-[10px] uppercase hover:text-white">Usuń</button>
                 </div>`;
             });
         }
-        window.deleteProd = async (id) => { if(confirm("Usunąć?")) { await deleteDoc(doc(db, "products", id)); fetchProducts(); } };
+        window.deleteProd = async (id) => { if(confirm("Usunąć produkt trwale?")) { await deleteDoc(doc(db, "products", id)); fetchProducts(); } };
+
+        // Konta
+        window.addAccount = async () => {
+            const l = document.getElementById('new-u-login').value;
+            await setDoc(doc(db, "users", l), {
+                login: l, pass: document.getElementById('new-u-pass').value,
+                role: document.getElementById('new-u-role').value, status: 'active'
+            });
+            alert("Konto utworzone."); fetchAccounts();
+        };
+
+        async function fetchAccounts() {
+            const snap = await getDocs(collection(db, "users"));
+            const list = document.getElementById('u-list-admin');
+            list.innerHTML = "";
+            snap.forEach(d => {
+                list.innerHTML += `<div class="flex justify-between p-4 bg-black/40 rounded-xl border border-zinc-800 mb-2">
+                    <span class="text-[11px] font-bold uppercase text-zinc-300">${d.data().login}</span>
+                    <button onclick="window.deleteAcc('${d.id}')" class="text-red-900 font-black text-[10px] uppercase">Usuń</button>
+                </div>`;
+            });
+        }
     </script>
 </body>
 </html>
