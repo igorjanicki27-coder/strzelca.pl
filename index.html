@@ -9,8 +9,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root { --coyote: #C19A6B; }
-        body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e5e5e5; margin: 0; }
+        body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e5e5e5; margin: 0; overflow-x: hidden; }
         
+        /* Tło strony głównej */
         .hero-bg {
             height: 100vh; width: 100%;
             background: linear-gradient(rgba(10,10,10,0.85), #0a0a0a), url('./tlo.png');
@@ -24,19 +25,28 @@
         
         .coyote-text { color: var(--coyote); font-family: 'Orbitron'; }
         
-        /* FIX DLA KROPEK I LIST */
+        /* Styl dla renderowania treści z edytora (kropki i pogrubienia) */
         .custom-render ul { list-style-type: disc !important; padding-left: 25px !important; margin: 15px 0 !important; }
         .custom-render li { margin-bottom: 5px !important; display: list-item !important; }
         .custom-render b { font-weight: bold; color: var(--coyote); }
 
+        /* Poprawione marginesy wewnętrzne pól formularzy */
         input, select, .editor-content { 
-            background: #000 !important; border: 1px solid #333 !important; color: white !important; 
-            padding: 14px 20px !important; border-radius: 10px; width: 100%; outline: none; 
+            background: #000 !important; 
+            border: 1px solid #333 !important; 
+            color: white !important; 
+            padding: 14px 20px !important; /* Luksusowy margines od krawędzi */
+            border-radius: 10px; 
+            width: 100%; 
+            outline: none; 
+            transition: 0.2s;
         }
+        input:focus, .editor-content:focus { border-color: var(--coyote) !important; }
+
+        /* Edytor WYSIWYG */
         .editor-content { min-height: 250px; overflow-y: auto; text-align: left; }
-        
         .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; background: #1a1a1a; padding: 10px; border-radius: 10px; border: 1px solid #333; }
-        .toolbar button { background: #222; color: #fff; width: 36px; height: 36px; border-radius: 6px; transition: 0.2s; border: 1px solid #444; }
+        .toolbar button { background: #222; color: #fff; width: 38px; height: 38px; border-radius: 6px; transition: 0.2s; border: 1px solid #444; display: flex; align-items: center; justify-content: center; }
         .toolbar button:hover { background: var(--coyote); color: black; }
         
         .btn-admin { background: var(--coyote); color: #000; font-weight: 900; text-transform: uppercase; padding: 16px; border-radius: 8px; cursor: pointer; }
@@ -46,23 +56,29 @@
 
     <div class="hero-bg">
         <div class="container mx-auto px-6 text-center">
-            <h1 class="text-4xl md:text-6xl font-black mb-16 uppercase italic font-[Orbitron] tracking-tighter">STRZELCA<span class="coyote-text">.PL</span></h1>
+            <h1 class="text-4xl md:text-6xl font-black mb-16 uppercase italic font-[Orbitron] tracking-tighter">
+                STRZELCA<span class="coyote-text">.PL</span>
+            </h1>
+            
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
                 <a href="./sklep.strzelca.pl/index.html" class="hub-button p-10 rounded-3xl flex flex-col items-center">
                     <i class="fa-solid fa-cart-shopping text-4xl coyote-text mb-4"></i>
                     <span class="font-bold uppercase tracking-widest text-sm">Sklep</span>
                 </a>
+                <div class="hub-button disabled p-10 rounded-3xl flex flex-col items-center"><i class="fa-solid fa-pen-nib text-4xl mb-4 text-zinc-700"></i><span class="font-bold uppercase tracking-widest text-sm text-zinc-700">Recenzje</span></div>
+                <div class="hub-button disabled p-10 rounded-3xl flex flex-col items-center"><i class="fa-solid fa-crosshairs text-4xl mb-4 text-zinc-700"></i><span class="font-bold uppercase tracking-widest text-sm text-zinc-700">Zawody</span></div>
+                <div class="hub-button disabled p-10 rounded-3xl flex flex-col items-center"><i class="fa-solid fa-hand-holding-heart text-4xl mb-4 text-zinc-700"></i><span class="font-bold uppercase tracking-widest text-sm text-zinc-700">Pomoc</span></div>
+                <div class="hub-button disabled p-10 rounded-3xl flex flex-col items-center"><i class="fa-solid fa-mug-hot text-4xl mb-4 text-zinc-700"></i><span class="font-bold uppercase tracking-widest text-sm text-zinc-700">Kawa</span></div>
                 <a href="./kontakt.strzelca.pl/index.html" class="hub-button p-10 rounded-3xl flex flex-col items-center">
                     <i class="fa-solid fa-envelope-open-text text-4xl coyote-text mb-4"></i>
                     <span class="font-bold uppercase tracking-widest text-sm">Kontakt</span>
                 </a>
-                <div class="hub-button disabled p-10 rounded-3xl flex flex-col items-center"><i class="fa-solid fa-pen-nib text-4xl mb-4 text-zinc-700"></i><span class="font-bold uppercase tracking-widest text-sm text-zinc-700">Recenzje</span></div>
             </div>
         </div>
     </div>
 
     <footer class="fixed bottom-0 w-full py-6 text-center text-zinc-800 text-[10px] uppercase font-bold tracking-[0.4em]">
-        &copy; 2026 STRZELCA.PL | <button onclick="window.toggleAdminModal()" class="hover:text-zinc-500 transition">System</button>
+        &copy; 2026 STRZELCA.PL | <button onclick="window.toggleAdminModal()" class="hover:text-zinc-500 transition">System Zarządzania</button>
     </footer>
 
     <div id="admin-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
@@ -73,15 +89,24 @@
                 <input type="text" id="adm-user" placeholder="Login" class="mb-4 text-center">
                 <input type="password" id="adm-pass" placeholder="Hasło" class="mb-6 text-center">
                 <button onclick="window.handleLogin()" class="btn-admin w-full">Zaloguj</button>
+                <button onclick="window.toggleAdminModal()" class="mt-4 text-zinc-600 text-[10px] uppercase underline block mx-auto">Zamknij</button>
             </div>
 
             <div id="admin-panel" class="hidden">
                 <div class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-4 uppercase">
                     <h2 class="coyote-text font-bold italic font-[Orbitron]">System Zarządzania</h2>
-                    <button onclick="location.reload()" class="text-red-900 text-[10px] font-black uppercase border border-red-900 px-3 py-1 rounded">Wyloguj</button>
+                    <div class="flex space-x-4">
+                        <button onclick="window.toggleAdminModal()" class="text-zinc-400 text-[10px] font-bold uppercase border border-zinc-700 px-3 py-1 rounded hover:text-white">Zamknij podgląd</button>
+                        <button onclick="window.handleLogout()" class="text-red-900 text-[10px] font-black uppercase border border-red-900 px-3 py-1 rounded hover:bg-red-900 hover:text-white transition">Wyloguj</button>
+                    </div>
                 </div>
 
-                <div id="admin-sklep" class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-10" id="role-menu">
+                    <button id="menu-sklep" onclick="showAdminSection('sklep')" class="p-3 border border-zinc-700 rounded text-[9px] font-bold uppercase hover:border-[#C19A6B]">Sklep</button>
+                    <button id="menu-admin" onclick="showAdminSection('konta')" class="p-3 border border-zinc-700 rounded text-[9px] font-bold uppercase hover:border-[#C19A6B]">Konta</button>
+                </div>
+
+                <div id="admin-sklep" class="admin-sec hidden grid grid-cols-1 md:grid-cols-2 gap-10">
                     <div class="space-y-4">
                         <input type="hidden" id="edit-p-id">
                         <input type="text" id="p-title" placeholder="Nazwa produktu">
@@ -97,12 +122,26 @@
                             <div id="p-desc" class="editor-content custom-render" contenteditable="true" placeholder="Opis przedmiotu..."></div>
                         </div>
 
-                        <label class="text-[9px] text-zinc-600 block uppercase italic">Ścieżka zdjęcia głównego (np. ./zdjecia/apteczka1/glwne.png):</label>
+                        <label class="text-[9px] text-zinc-600 block uppercase italic">Ścieżka zdjęcia głównego (np. ./zdjecia/item1/fota.png):</label>
                         <input id="p-img-path" type="text" placeholder="./zdjecia/...">
                         
-                        <button onclick="window.saveProduct()" class="btn-admin w-full text-xs">Zapisz produkt</button>
+                        <button onclick="window.saveProduct()" class="btn-admin w-full text-xs">Zatwierdź produkt</button>
                     </div>
                     <div id="p-list-admin" class="space-y-2 overflow-y-auto max-h-[500px]"></div>
+                </div>
+
+                <div id="admin-konta" class="admin-sec hidden grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div class="space-y-4 bg-black/20 p-8 rounded-3xl border border-zinc-800">
+                        <h3 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Nowy Operator</h3>
+                        <input id="new-u-login" type="text" placeholder="Login">
+                        <input id="new-u-pass" type="password" placeholder="Hasło">
+                        <select id="new-u-role">
+                            <option value="admin">Główny Administrator</option>
+                            <option value="sklep">Administrator Sklepu</option>
+                        </select>
+                        <button onclick="window.addAccount()" class="btn-admin w-full text-xs mt-4">Utwórz konto</button>
+                    </div>
+                    <div id="u-list-admin" class="space-y-2"></div>
                 </div>
             </div>
         </div>
@@ -110,7 +149,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDocs, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
           apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
@@ -125,40 +164,96 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        let attempts = {};
+        let currentUser = null;
+
+        // Sprawdzanie sesji przy starcie
+        window.onload = () => {
+            const saved = sessionStorage.getItem('st_logged_user');
+            if (saved) startSession(JSON.parse(saved));
+        };
+
         window.toggleAdminModal = () => document.getElementById('admin-modal').classList.toggle('hidden');
         window.formatDoc = (cmd) => { document.getElementById('p-desc').focus(); document.execCommand(cmd, false, null); };
         
         window.insertPathImg = () => {
-            const path = prompt("Wpisz ścieżkę do zdjęcia (np. ./zdjecia/apteczka1/fotka.png):");
+            const path = prompt("Ścieżka do zdjęcia (np. ./zdjecia/x.png):");
             if (path) {
-                const imgTag = `<img src="${path}" style="max-width:100%; border-radius:8px; margin:15px 0; border:1px solid #C19A6B; display:block;">`;
+                const img = `<img src="${path}" style="max-width:100%; border-radius:8px; margin:15px 0; border:1px solid #C19A6B; display:block;">`;
                 document.getElementById('p-desc').focus();
-                document.execCommand('insertHTML', false, imgTag);
+                document.execCommand('insertHTML', false, img);
             }
         };
 
         window.handleLogin = async () => {
-            if(document.getElementById('adm-user').value === "login.strzelca" && document.getElementById('adm-pass').value === "haslo.strzelca") {
-                document.getElementById('login-section').classList.add('hidden');
-                document.getElementById('admin-panel').classList.remove('hidden');
-                fetchProducts();
-            } else { alert("Błąd."); }
+            const l = document.getElementById('adm-user').value;
+            const p = document.getElementById('adm-pass').value;
+
+            if(l === "login.strzelca" && p === "haslo.strzelca") {
+                const u = {login: l, role: 'admin'};
+                sessionStorage.setItem('st_logged_user', JSON.stringify(u));
+                startSession(u); return;
+            }
+
+            const uDoc = await getDoc(doc(db, "users", l));
+            if(!uDoc.exists()) { alert("Błąd operatora."); return; }
+            const userData = uDoc.data();
+
+            if(userData.status === 'locked') { alert("Konto zablokowane."); return; }
+
+            if(userData.pass === p) {
+                attempts[l] = 0;
+                sessionStorage.setItem('st_logged_user', JSON.stringify(userData));
+                startSession(userData);
+            } else {
+                attempts[l] = (attempts[l] || 0) + 1;
+                if(attempts[l] >= 5) {
+                    await updateDoc(doc(db, "users", l), { status: 'locked' });
+                    alert("KONTO ZABLOKOWANE!");
+                } else { alert(`Błędne hasło. Próba ${attempts[l]}/5`); }
+            }
+        };
+
+        function startSession(user) {
+            currentUser = user;
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('admin-panel').classList.remove('hidden');
+            
+            const buttons = document.getElementById('role-menu').children;
+            for(let btn of buttons) {
+                if(user.role !== 'admin' && btn.id !== `menu-${user.role}`) {
+                    btn.classList.add('opacity-30', 'cursor-not-allowed'); btn.disabled = true;
+                } else {
+                    btn.classList.remove('opacity-30', 'cursor-not-allowed'); btn.disabled = false;
+                }
+            }
+            showAdminSection('sklep');
+        }
+
+        window.handleLogout = () => {
+            if(confirm("Wylogować całkowicie?")) {
+                sessionStorage.removeItem('st_logged_user');
+                location.reload();
+            }
+        };
+
+        window.showAdminSection = (name) => {
+            document.querySelectorAll('.admin-sec').forEach(s => s.classList.add('hidden'));
+            document.getElementById(`admin-${name}`).classList.remove('hidden');
+            if(name === 'sklep') fetchProducts();
+            if(name === 'konta') fetchAccounts();
         };
 
         window.saveProduct = async () => {
             const id = document.getElementById('edit-p-id').value || Date.now().toString();
-            const title = document.getElementById('p-title').value;
-            const price = document.getElementById('p-price').value;
-            const desc = document.getElementById('p-desc').innerHTML;
-            const mainImg = document.getElementById('p-img-path').value;
-
-            if(!title || !price) return alert("Wypełnij dane!");
-
             await setDoc(doc(db, "products", id), {
-                title, price, desc, img: mainImg, date: Date.now()
+                title: document.getElementById('p-title').value,
+                price: document.getElementById('p-price').value,
+                desc: document.getElementById('p-desc').innerHTML,
+                img: document.getElementById('p-img-path').value,
+                date: Date.now()
             }, { merge: true });
-
-            alert("Produkt dodany pomyślnie."); location.reload();
+            alert("Produkt zapisany."); fetchProducts();
         };
 
         async function fetchProducts() {
@@ -166,13 +261,40 @@
             const list = document.getElementById('p-list-admin');
             list.innerHTML = "";
             snap.forEach(d => {
-                list.innerHTML += `<div class="flex justify-between p-3 bg-black/40 rounded border border-zinc-800 mb-2 uppercase text-[10px]">
-                    <span class="font-bold">${d.data().title}</span>
-                    <button onclick="window.deleteProd('${d.id}')" class="text-red-900 font-black">Usuń</button>
+                list.innerHTML += `<div class="flex justify-between p-3 bg-black/40 rounded border border-zinc-800 mb-1">
+                    <span class="text-[10px] font-bold uppercase text-zinc-400">${d.data().title}</span>
+                    <button onclick="window.deleteProd('${d.id}')" class="text-red-900 font-black text-[10px] uppercase">Usuń</button>
                 </div>`;
             });
         }
-        window.deleteProd = async (id) => { if(confirm("Usunąć?")) { await deleteDoc(doc(db, "products", id)); fetchProducts(); } };
+        window.deleteProd = async (id) => { if(confirm("Usunąć produkt?")) { await deleteDoc(doc(db, "products", id)); fetchProducts(); } };
+
+        window.addAccount = async () => {
+            const l = document.getElementById('new-u-login').value;
+            await setDoc(doc(db, "users", l), {
+                login: l, pass: document.getElementById('new-u-pass').value,
+                role: document.getElementById('new-u-role').value, status: 'active'
+            });
+            alert("Konto utworzone."); fetchAccounts();
+        };
+
+        async function fetchAccounts() {
+            const snap = await getDocs(collection(db, "users"));
+            const list = document.getElementById('u-list-admin');
+            list.innerHTML = "";
+            snap.forEach(d => {
+                const u = d.data();
+                list.innerHTML += `<div class="flex justify-between p-3 bg-black/40 rounded border border-zinc-800 mb-1">
+                    <span class="text-[10px] font-bold uppercase">${u.login} (${u.role})</span>
+                    <div class="flex space-x-3">
+                        <button onclick="window.toggleAcc('${u.login}', '${u.status}')" class="text-coyote text-[10px] font-bold uppercase">Blokuj/Odblokuj</button>
+                        <button onclick="window.deleteAcc('${u.login}')" class="text-red-900 font-bold text-[10px] uppercase">Usuń</button>
+                    </div>
+                </div>`;
+            });
+        }
+        window.toggleAcc = async (l, s) => { await updateDoc(doc(db, "users", l), { status: s === 'active' ? 'locked' : 'active' }); fetchAccounts(); };
+        window.deleteAcc = async (l) => { if(confirm("Usunąć konto?")) { await deleteDoc(doc(db, "users", l)); fetchAccounts(); } };
     </script>
 </body>
 </html>
