@@ -58,12 +58,14 @@
         const app = initializeApp(firebaseConfig); const db = getFirestore(app);
 
         const fetchAll = async () => {
-            const snap = await getDocs(collection(db, "products"));
+    // Sortowanie po nowym polu "order"
+            const q = query(collection(db, "products"), orderBy("order", "asc"));
+            const snap = await getDocs(q);
             const grid = document.getElementById('product-grid'); grid.innerHTML = "";
             snap.forEach(d => {
                 const p = d.data();
                 grid.innerHTML += `<div class="card-dark flex flex-col h-full overflow-hidden">
-                    <div class="h-64 bg-zinc-900"><img src="${p.img}" class="w-full h-full object-cover"></div>
+                    <div class="h-64 product-img-container"><img src="${p.img}"></div>
                     <div class="p-8 flex flex-col flex-grow">
                         <h3 class="text-xl font-bold uppercase mb-2 font-[Orbitron]">${p.title}</h3>
                         <p class="coyote-text font-black text-2xl mb-6">${p.price} PLN</p>

@@ -91,7 +91,6 @@
                             <button onclick="window.formatDoc('insertUnorderedList')"><i class="fa-solid fa-list-ul"></i></button>
                             <button onclick="window.formatDoc('justifyLeft')"><i class="fa-solid fa-align-left"></i></button>
                             <button onclick="window.formatDoc('justifyCenter')"><i class="fa-solid fa-align-center"></i></button>
-                            <button onclick="window.formatDoc('justifyRight')"><i class="fa-solid fa-align-right"></i></button>
                             <button onclick="window.triggerDescImg()"><i class="fa-solid fa-image"></i></button>
                         </div>
                         <div id="p-desc" class="editor-content custom-render" contenteditable="true"></div>
@@ -107,7 +106,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDocs, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDocs, collection, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
@@ -122,7 +121,8 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Funkcja kompresji
+        let productsList = [];
+
         async function compressImage(file) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
@@ -144,20 +144,13 @@
             });
         }
 
-        // Globalne przypisania dla przycisków
         window.toggleAdminModal = () => document.getElementById('admin-modal').classList.toggle('hidden');
-        
-        window.formatDoc = (cmd) => {
-            document.getElementById('p-desc').focus();
-            document.execCommand(cmd, false, null);
-        };
-
+        window.formatDoc = (cmd) => { document.getElementById('p-desc').focus(); document.execCommand(cmd, false, null); };
         window.triggerDescImg = () => {
             const input = document.createElement('input');
             input.type = 'file'; input.accept = 'image/*';
             input.onchange = async () => {
                 const base64 = await compressImage(input.files[0]);
-                document.getElementById('p-desc').focus();
                 document.execCommand('insertHTML', false, `<img src="${base64}" style="max-width:100%; border-radius:8px; margin:15px 0; border:1px solid #C19A6B; display:block;">`);
             };
             input.click();
@@ -181,27 +174,31 @@
             const id = document.getElementById('edit-id').value || Date.now().toString();
             const btn = document.getElementById('save-btn');
             const file = document.getElementById('p-img').files[0];
-            
             btn.innerText = "PRZETWARZANIE...";
             btn.disabled = true;
 
             try {
                 let mainImg = "";
                 if(file) mainImg = await compressImage(file);
+                
+                // Dla nowego produktu ustawiamy order na koniec listy
+                const orderValue = document.getElementById('edit-id').value ? 
+                    productsList.find(p => p.id === id).order : 
+                    (productsList.length > 0 ? Math.max(...productsList.map(p => p.order)) + 1 : 0);
 
                 await setDoc(doc(db, "products", id), {
                     title: document.getElementById('p-title').value,
                     price: document.getElementById('p-price').value,
                     desc: document.getElementById('p-desc').innerHTML,
-                    img: mainImg || "",
+                    img: mainImg || (document.getElementById('edit-id').value ? productsList.find(p => p.id === id).img : ""),
+                    order: orderValue,
                     date: Date.now()
                 }, { merge: true });
 
                 alert("Zapisano pomyślnie!");
                 location.reload();
             } catch (err) {
-                console.error(err);
-                alert("BŁĄD FIREBASE: " + err.message);
+                alert("BŁĄD: " + err.message);
             } finally {
                 btn.innerText = "ZATWIERDŹ ZMIANY";
                 btn.disabled = false;
@@ -209,16 +206,41 @@
         };
 
         async function fetchProducts() {
-            const snap = await getDocs(collection(db, "products"));
+            const q = query(collection(db, "products"), orderBy("order", "asc"));
+            const snap = await getDocs(q);
             const list = document.getElementById('p-list-admin');
             list.innerHTML = "";
+            productsList = [];
+            
             snap.forEach(d => {
-                list.innerHTML += `<div class="flex justify-between p-3 bg-black/40 rounded border border-zinc-800 mb-1">
-                    <span class="text-[10px] font-bold uppercase">${d.data().title}</span>
-                    <button onclick="window.deleteProd('${d.id}')" class="text-red-900 font-black">USUŃ</button>
+                const data = d.data();
+                productsList.push({ id: d.id, ...data });
+                list.innerHTML += `<div class="flex justify-between items-center p-3 bg-black/40 rounded border border-zinc-800 mb-1">
+                    <span class="text-[10px] font-bold uppercase">${data.title}</span>
+                    <div class="flex space-x-2">
+                        <button onclick="window.moveProd('${d.id}', -1)" class="text-white hover:text-coyote"><i class="fa-solid fa-arrow-up"></i></button>
+                        <button onclick="window.moveProd('${d.id}', 1)" class="text-white hover:text-coyote"><i class="fa-solid fa-arrow-down"></i></button>
+                        <button onclick="window.deleteProd('${d.id}')" class="text-red-900 font-black ml-4">USUŃ</button>
+                    </div>
                 </div>`;
             });
         }
+
+        window.moveProd = async (id, direction) => {
+            const index = productsList.findIndex(p => p.id === id);
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= productsList.length) return;
+
+            const current = productsList[index];
+            const neighbor = productsList[newIndex];
+
+            // Zamiana wartości order
+            const tempOrder = current.order;
+            await setDoc(doc(db, "products", current.id), { order: neighbor.order }, { merge: true });
+            await setDoc(doc(db, "products", neighbor.id), { order: tempOrder }, { merge: true });
+
+            fetchProducts();
+        };
 
         window.deleteProd = async (id) => {
             if(confirm("Usunąć produkt?")) {
@@ -228,7 +250,6 @@
         };
 
         window.handleLogout = () => { sessionStorage.removeItem('st_logged'); location.reload(); };
-
         if(sessionStorage.getItem('st_logged')) showPanel();
     </script>
 </body>
