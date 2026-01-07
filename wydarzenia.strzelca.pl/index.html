@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Wydarzenia strzelca.pl - najbliższe zawody, turnieje i eventy strzeleckie. Kalendarz wydarzeń dla strzelców.">
+    <meta name="description" content="Wydarzenia strzelca.pl - najbliższe zawody, turnieje i eventy strzelckie. Kalendarz wydarzeń dla strzelców.">
     <meta name="keywords" content="wydarzenia strzelca.pl, zawody strzeleckie, turnieje, eventy, kalendarz strzelecki">
     <meta name="author" content="Strzelca.pl">
     <meta name="robots" content="index, follow">
@@ -20,14 +20,495 @@
     <link rel="apple-touch-icon" href="../ikona.svg">
 
     <title>wydarzenia.strzelca.pl | Kalendarz Wydarzeń</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root { --coyote: #C19A6B; }
+        body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e5e5e5; margin: 0; overflow-x: hidden; }
+        .main-wrapper { min-height: 100vh; width: 100%; background: linear-gradient(rgba(10,10,10,0.85), #0a0a0a), url('../tlo.png'); background-size: cover; background-position: center; display: flex; flex-direction: column; justify-content: space-between; }
+        .coyote-text { color: var(--coyote); font-family: 'Orbitron'; }
+        .event-card { background: rgba(20, 20, 20, 0.8); border: 1px solid #333; transition: 0.3s; }
+        .event-card:hover { border-color: var(--coyote); transform: translateY(-2px); }
+        .calendar-day { background: rgba(30, 30, 30, 0.8); border: 1px solid #444; transition: 0.3s; cursor: pointer; }
+        .calendar-day:hover { background: rgba(40, 40, 40, 0.9); border-color: var(--coyote); }
+        .calendar-day.has-events { background: rgba(25, 25, 25, 0.9); border-color: var(--coyote); }
+        .calendar-day.today { border-color: var(--coyote); background: rgba(30, 30, 30, 1); }
+        .calendar-day.selected { border-color: var(--coyote); background: rgba(193, 154, 107, 0.2); }
+        .filter-active { border-color: var(--coyote); background: rgba(193, 154, 107, 0.1); color: var(--coyote); }
+        .event-detail-modal { background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); }
+    </style>
 </head>
 <body>
-    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #0a0a0a; color: #C19A6B; font-family: Arial, sans-serif;">
-        <div style="text-align: center;">
-            <h1 style="font-size: 2rem; margin-bottom: 1rem;">Wydarzenia Strzelca wkrótce dostępne</h1>
-            <p style="color: #e5e5e5;">Kalendarz wydarzeń strzeleckich jest w trakcie rozwoju.</p>
-            <a href="../index.html" style="color: #C19A6B; text-decoration: none; margin-top: 2rem; display: inline-block;">← Powrót do Centrum Dowodzenia</a>
+    <div class="main-wrapper">
+        <!-- Header -->
+        <header class="container mx-auto px-6 text-center pt-12 md:pt-20">
+            <div class="flex items-center justify-between mb-6">
+                <a href="../index.html" class="text-zinc-400 hover:text-coyote transition">
+                    <i class="fa-solid fa-arrow-left mr-2"></i>Powrót do Centrum Dowodzenia
+                </a>
+                <div class="text-sm text-zinc-500">
+                    <i class="fa-solid fa-calendar-alt mr-1"></i>
+                    Aktualizacja: <span id="last-update">ładowanie...</span>
+                </div>
+            </div>
+            <h1 class="text-4xl md:text-6xl font-black uppercase italic font-[Orbitron] tracking-tighter">WYDARZENIA<span class="coyote-text">.STRZELCA.PL</span></h1>
+            <p class="text-xl text-zinc-300 mt-4 max-w-2xl mx-auto">Kalendarz wydarzeń strzeleckich - zawody, turnieje, szkolenia i eventy</p>
+        </header>
+
+        <main class="container mx-auto px-6 py-12 flex-grow">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Calendar Section -->
+                <div class="lg:col-span-2">
+                    <div class="bg-zinc-900/50 backdrop-blur-md border border-zinc-700 rounded-2xl p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold coyote-text">Kalendarz Wydarzeń</h2>
+                            <div class="flex space-x-2">
+                                <button onclick="previousMonth()" class="bg-zinc-700 hover:bg-zinc-600 px-3 py-2 rounded-lg transition">
+                                    <i class="fa-solid fa-chevron-left"></i>
+                                </button>
+                                <div class="text-center min-w-[200px]">
+                                    <div id="current-month-year" class="text-lg font-bold coyote-text"></div>
+                                </div>
+                                <button onclick="nextMonth()" class="bg-zinc-700 hover:bg-zinc-600 px-3 py-2 rounded-lg transition">
+                                    <i class="fa-solid fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Calendar Grid -->
+                        <div class="grid grid-cols-7 gap-2 mb-4">
+                            <div class="text-center text-sm font-bold text-zinc-400 py-2">PON</div>
+                            <div class="text-center text-sm font-bold text-zinc-400 py-2">WT</div>
+                            <div class="text-center text-sm font-bold text-zinc-400 py-2">ŚR</div>
+                            <div class="text-center text-sm font-bold text-zinc-400 py-2">CZW</div>
+                            <div class="text-center text-sm font-bold text-zinc-400 py-2">PT</div>
+                            <div class="text-center text-sm font-bold text-zinc-400 py-2">SOB</div>
+                            <div class="text-center text-sm font-bold text-zinc-400 py-2">NIE</div>
+                        </div>
+
+                        <div id="calendar-grid" class="grid grid-cols-7 gap-2">
+                            <!-- Calendar days will be populated by JavaScript -->
+                        </div>
+
+                        <!-- Legend -->
+                        <div class="flex flex-wrap justify-center gap-4 mt-6 pt-4 border-t border-zinc-700">
+                            <div class="flex items-center space-x-2 text-sm">
+                                <div class="w-4 h-4 bg-zinc-700 rounded"></div>
+                                <span>Dzień bez wydarzeń</span>
+                            </div>
+                            <div class="flex items-center space-x-2 text-sm">
+                                <div class="w-4 h-4 border-2 border-coyote bg-zinc-800 rounded"></div>
+                                <span>Dzień z wydarzeniami</span>
+                            </div>
+                            <div class="flex items-center space-x-2 text-sm">
+                                <div class="w-4 h-4 border-2 border-coyote bg-coyote bg-opacity-20 rounded"></div>
+                                <span>Dzisiaj</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Events List Section -->
+                <div class="space-y-6">
+                    <!-- Filters -->
+                    <div class="bg-zinc-900/50 backdrop-blur-md border border-zinc-700 rounded-2xl p-6">
+                        <h3 class="text-lg font-bold coyote-text mb-4">Filtry</h3>
+                        <div class="space-y-3">
+                            <button onclick="setFilter('all')" id="filter-all" class="filter-active w-full text-left px-4 py-2 border border-zinc-700 rounded-lg hover:border-coyote transition">
+                                <i class="fa-solid fa-list mr-2"></i>Wszystkie wydarzenia
+                            </button>
+                            <button onclick="setFilter('upcoming')" id="filter-upcoming" class="w-full text-left px-4 py-2 border border-zinc-700 rounded-lg hover:border-coyote transition">
+                                <i class="fa-solid fa-calendar-plus mr-2"></i>Nadchodzące
+                            </button>
+                            <button onclick="setFilter('past')" id="filter-past" class="w-full text-left px-4 py-2 border border-zinc-700 rounded-lg hover:border-coyote transition">
+                                <i class="fa-solid fa-history mr-2"></i>Przeszłe
+                            </button>
+                        </div>
+
+                        <div class="mt-4 pt-4 border-t border-zinc-700">
+                            <h4 class="text-sm font-bold text-zinc-300 mb-2">Kategorie:</h4>
+                            <div class="space-y-2">
+                                <button onclick="setCategory('all')" id="cat-all" class="filter-active w-full text-left px-3 py-1 text-sm border border-zinc-700 rounded hover:border-coyote transition">
+                                    Wszystkie
+                                </button>
+                                <button onclick="setCategory('zawody')" id="cat-zawody" class="w-full text-left px-3 py-1 text-sm border border-zinc-700 rounded hover:border-coyote transition">
+                                    Zawody Strzeleckie
+                                </button>
+                                <button onclick="setCategory('szkolenie')" id="cat-szkolenie" class="w-full text-left px-3 py-1 text-sm border border-zinc-700 rounded hover:border-coyote transition">
+                                    Szkolenia
+                                </button>
+                                <button onclick="setCategory('wystawa')" id="cat-wystawa" class="w-full text-left px-3 py-1 text-sm border border-zinc-700 rounded hover:border-coyote transition">
+                                    Wystawy
+                                </button>
+                                <button onclick="setCategory('inne')" id="cat-inne" class="w-full text-left px-3 py-1 text-sm border border-zinc-700 rounded hover:border-coyote transition">
+                                    Inne
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Events List -->
+                    <div class="bg-zinc-900/50 backdrop-blur-md border border-zinc-700 rounded-2xl p-6">
+                        <h3 class="text-lg font-bold coyote-text mb-4">Lista Wydarzeń</h3>
+                        <div id="events-list" class="space-y-4 max-h-[600px] overflow-y-auto">
+                            <!-- Events will be loaded here -->
+                            <div class="text-center text-zinc-500 py-8">
+                                <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
+                                <div>Ładowanie wydarzeń...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Event Detail Modal -->
+        <div id="event-modal" class="fixed inset-0 z-50 hidden event-detail-modal">
+            <div class="flex items-center justify-center min-h-screen p-4">
+                <div class="bg-zinc-900 border border-zinc-700 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h2 id="modal-title" class="text-2xl font-bold coyote-text mb-2"></h2>
+                                <div id="modal-meta" class="text-sm text-zinc-400 space-y-1"></div>
+                            </div>
+                            <button onclick="closeEventModal()" class="text-zinc-400 hover:text-white text-xl">
+                                <i class="fa-solid fa-times"></i>
+                            </button>
+                        </div>
+
+                        <div id="modal-content" class="text-zinc-300 mb-6">
+                            <!-- Event content will be loaded here -->
+                        </div>
+
+                        <div class="flex space-x-4">
+                            <button onclick="closeEventModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 px-4 py-2 rounded-lg transition">
+                                Zamknij
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
+
+        <footer class="w-full py-10 text-center text-zinc-800 text-[10px] uppercase font-bold tracking-[0.4em]">
+            <a href="../index.html" class="hover:text-zinc-500 transition">STRZELCA.PL</a> |
+            <a href="https://dokumenty.strzelca.pl" class="hover:text-zinc-500 transition ml-4">DOKUMENTY - REGULAMINY, ZWROTY ITP.</a>
+        </footer>
     </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, query, orderBy, getDocs, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
+            authDomain: "strzelca-pl.firebaseapp.com",
+            projectId: "strzelca-pl",
+            storageBucket: "strzelca-pl.firebasestorage.app",
+            messagingSenderId: "511362047688",
+            appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
+            measurementId: "G-9EJ2R3JPVD"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let currentEvents = [];
+        let currentFilter = 'all';
+        let currentCategory = 'all';
+        let currentMonth = new Date().getMonth();
+        let currentYear = new Date().getFullYear();
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadEvents();
+            renderCalendar();
+            updateMonthYearDisplay();
+        });
+
+        // Load events from Firebase
+        async function loadEvents() {
+            try {
+                const q = query(collection(db, "events"), orderBy("date", "asc"));
+                const querySnapshot = await getDocs(q);
+                currentEvents = [];
+
+                querySnapshot.forEach((doc) => {
+                    const event = doc.data();
+                    if (event.published) {
+                        currentEvents.push({
+                            id: doc.id,
+                            ...event,
+                            dateObj: new Date(event.date)
+                        });
+                    }
+                });
+
+                updateLastUpdate();
+                renderEventsList();
+                renderCalendar();
+            } catch (error) {
+                console.error('Error loading events:', error);
+                document.getElementById('events-list').innerHTML = '<div class="text-center text-red-500 py-8">Błąd ładowania wydarzeń</div>';
+            }
+        }
+
+        function updateLastUpdate() {
+            document.getElementById('last-update').textContent = new Date().toLocaleString('pl-PL');
+        }
+
+        // Filter functions
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-active').forEach(el => {
+                el.classList.remove('filter-active');
+            });
+            document.getElementById(`filter-${filter}`).classList.add('filter-active');
+            renderEventsList();
+        }
+
+        function setCategory(category) {
+            currentCategory = category;
+            document.querySelectorAll('[id^="cat-"]').forEach(el => {
+                el.classList.remove('filter-active');
+            });
+            document.getElementById(`cat-${category}`).classList.add('filter-active');
+            renderEventsList();
+        }
+
+        // Render events list
+        function renderEventsList() {
+            const container = document.getElementById('events-list');
+            let filteredEvents = [...currentEvents];
+
+            // Apply filters
+            if (currentFilter === 'upcoming') {
+                filteredEvents = filteredEvents.filter(event => event.dateObj >= new Date());
+            } else if (currentFilter === 'past') {
+                filteredEvents = filteredEvents.filter(event => event.dateObj < new Date());
+            }
+
+            // Apply category filter
+            if (currentCategory !== 'all') {
+                filteredEvents = filteredEvents.filter(event => event.category === currentCategory);
+            }
+
+            // Sort by date
+            filteredEvents.sort((a, b) => a.dateObj - b.dateObj);
+
+            if (filteredEvents.length === 0) {
+                container.innerHTML = '<div class="text-center text-zinc-500 py-8">Brak wydarzeń spełniających kryteria</div>';
+                return;
+            }
+
+            container.innerHTML = filteredEvents.map(event => {
+                const isPast = event.dateObj < new Date();
+                const isToday = event.dateObj.toDateString() === new Date().toDateString();
+                const isFeatured = event.featured;
+
+                return `
+                    <div class="event-card p-4 rounded-xl cursor-pointer" onclick="showEventDetail('${event.id}')">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold text-white text-lg">${event.title}</h4>
+                            ${isFeatured ? '<span class="bg-yellow-600 text-black px-2 py-1 text-xs rounded">WYRÓŻNIONE</span>' : ''}
+                        </div>
+                        <div class="text-sm text-zinc-400 space-y-1 mb-3">
+                            <div class="flex items-center">
+                                <i class="fa-solid fa-calendar mr-2 text-coyote"></i>
+                                ${event.dateObj.toLocaleString('pl-PL', {
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fa-solid fa-map-marker-alt mr-2 text-coyote"></i>
+                                ${event.location}
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fa-solid fa-tag mr-2 text-coyote"></i>
+                                ${getCategoryName(event.category)}
+                            </div>
+                        </div>
+                        <div class="text-sm text-zinc-300 line-clamp-3">
+                            ${event.description.length > 150 ? event.description.substring(0, 150) + '...' : event.description}
+                        </div>
+                        ${isPast ? '<div class="mt-2 text-xs text-red-400 font-bold">WYDARZENIE MINĘŁO</div>' : ''}
+                        ${isToday ? '<div class="mt-2 text-xs text-green-400 font-bold">DZISIAJ!</div>' : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getCategoryName(category) {
+            const categories = {
+                'zawody': 'Zawody Strzeleckie',
+                'szkolenie': 'Szkolenie',
+                'wystawa': 'Wystawa',
+                'inne': 'Inne'
+            };
+            return categories[category] || category;
+        }
+
+        // Calendar functions
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+
+            const firstDay = new Date(currentYear, currentMonth, 1);
+            const lastDay = new Date(currentYear, currentMonth + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay() + 1); // Start from Monday
+
+            const today = new Date();
+            const todayStr = today.toDateString();
+
+            for (let i = 0; i < 42; i++) {
+                const date = new Date(startDate);
+                date.setDate(startDate.getDate() + i);
+
+                const dateStr = date.toDateString();
+                const isCurrentMonth = date.getMonth() === currentMonth;
+                const isToday = dateStr === todayStr;
+                const dayEvents = currentEvents.filter(event =>
+                    event.dateObj.toDateString() === dateStr
+                );
+
+                const dayDiv = document.createElement('div');
+                dayDiv.className = `calendar-day p-2 rounded-lg text-center min-h-[80px] ${isCurrentMonth ? '' : 'text-zinc-600'} ${isToday ? 'today' : ''} ${dayEvents.length > 0 ? 'has-events' : ''}`;
+                dayDiv.onclick = () => selectDate(date);
+
+                dayDiv.innerHTML = `
+                    <div class="font-bold text-sm mb-1">${date.getDate()}</div>
+                    <div class="space-y-1">
+                        ${dayEvents.slice(0, 2).map(event => `
+                            <div class="text-xs bg-coyote bg-opacity-20 text-coyote rounded px-1 py-0.5 truncate" title="${event.title}">
+                                ${event.title.length > 10 ? event.title.substring(0, 10) + '...' : event.title}
+                            </div>
+                        `).join('')}
+                        ${dayEvents.length > 2 ? `<div class="text-xs text-zinc-500">+${dayEvents.length - 2} więcej</div>` : ''}
+                    </div>
+                `;
+
+                grid.appendChild(dayDiv);
+            }
+        }
+
+        function updateMonthYearDisplay() {
+            const monthNames = ['Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
+                               'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'];
+            document.getElementById('current-month-year').textContent = `${monthNames[currentMonth]} ${currentYear}`;
+        }
+
+        function previousMonth() {
+            currentMonth--;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            updateMonthYearDisplay();
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            updateMonthYearDisplay();
+            renderCalendar();
+        }
+
+        function selectDate(date) {
+            // Highlight selected date
+            document.querySelectorAll('.calendar-day').forEach(day => {
+                day.classList.remove('selected');
+            });
+
+            // Find the clicked day and highlight it
+            const dayElements = document.querySelectorAll('.calendar-day');
+            const dayIndex = Math.floor((date - new Date(currentYear, currentMonth, 1 - new Date(currentYear, currentMonth, 1).getDay() + 1)) / (1000 * 60 * 60 * 24));
+            if (dayElements[dayIndex]) {
+                dayElements[dayIndex].classList.add('selected');
+            }
+
+            // Show events for selected date
+            const dayEvents = currentEvents.filter(event =>
+                event.dateObj.toDateString() === date.toDateString()
+            );
+
+            if (dayEvents.length > 0) {
+                if (dayEvents.length === 1) {
+                    showEventDetail(dayEvents[0].id);
+                } else {
+                    // Show a quick list of events for this date
+                    const eventList = dayEvents.map(event => `<li><a href="#" onclick="showEventDetail('${event.id}'); return false;" class="text-coyote hover:underline">${event.title}</a></li>`).join('');
+                    showNotification(`Wydarzenia w dniu ${date.toLocaleDateString('pl-PL')}:<br><ul class="mt-2">${eventList}</ul>`);
+                }
+            } else {
+                showNotification(`Brak wydarzeń w dniu ${date.toLocaleDateString('pl-PL')}`);
+            }
+        }
+
+        function showNotification(message) {
+            // Simple notification - you can enhance this
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-zinc-900 border border-zinc-700 rounded-lg p-4 z-50 max-w-sm';
+            notification.innerHTML = `
+                <div class="text-sm">${message}</div>
+                <button onclick="this.parentElement.remove()" class="mt-2 text-coyote hover:underline text-xs">Zamknij</button>
+            `;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 5000);
+        }
+
+        // Event detail modal
+        function showEventDetail(eventId) {
+            const event = currentEvents.find(e => e.id === eventId);
+            if (!event) return;
+
+            document.getElementById('modal-title').textContent = event.title;
+
+            const meta = [];
+            meta.push(`<i class="fa-solid fa-calendar mr-1"></i>${event.dateObj.toLocaleString('pl-PL', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            })}`);
+            meta.push(`<i class="fa-solid fa-map-marker-alt mr-1"></i>${event.location}`);
+            meta.push(`<i class="fa-solid fa-tag mr-1"></i>${getCategoryName(event.category)}`);
+
+            document.getElementById('modal-meta').innerHTML = meta.join('<br>');
+
+            document.getElementById('modal-content').innerHTML = `
+                <div class="prose prose-invert max-w-none">
+                    ${event.description.replace(/\n/g, '<br>')}
+                </div>
+            `;
+
+            document.getElementById('event-modal').classList.remove('hidden');
+        }
+
+        function closeEventModal() {
+            document.getElementById('event-modal').classList.add('hidden');
+        }
+
+        // Global functions for onclick handlers
+        window.setFilter = setFilter;
+        window.setCategory = setCategory;
+        window.showEventDetail = showEventDetail;
+        window.closeEventModal = closeEventModal;
+        window.previousMonth = previousMonth;
+        window.nextMonth = nextMonth;
+    </script>
 </body>
 </html>

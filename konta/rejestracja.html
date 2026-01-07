@@ -105,14 +105,6 @@
                 Dołącz do <span class="coyote-text">Operatorów</span>
             </h1>
 
-            <!-- Przyciski rejestracji społecznościowej -->
-            <div class="space-y-3 mb-8">
-                <button type="button" onclick="registerWithGoogle()" class="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg font-semibold transition flex items-center justify-center">
-                    <i class="fa-brands fa-google mr-3"></i>
-                    Zarejestruj przez Google
-                </button>
-            </div>
-
             <div class="relative my-6">
                 <div class="absolute inset-0 flex items-center">
                     <div class="w-full border-t border-zinc-600"></div>
@@ -220,7 +212,7 @@
                     <div class="checkbox-group">
                         <input type="checkbox" id="terms-accept" required>
                         <label for="terms-accept" class="text-sm">
-                            Akceptuję <a href="./regulamin.html" target="_blank" class="text-coyote hover:underline">regulamin</a> platformy strzelca.pl <span class="text-red-500">*</span>
+                            Akceptuję <a href="https://dokumenty.strzelca.pl#regulamin-platformy" target="_blank" class="text-coyote hover:underline">regulamin</a> platformy strzelca.pl <span class="text-red-500">*</span>
                         </label>
                     </div>
 
@@ -228,7 +220,7 @@
                     <div class="checkbox-group">
                         <input type="checkbox" id="privacy-accept" required>
                         <label for="privacy-accept" class="text-sm">
-                            Wyrażam zgodę na przetwarzanie danych osobowych zgodnie z <a href="./rodo.html" target="_blank" class="text-coyote hover:underline">polityką prywatności</a> (RODO) <span class="text-red-500">*</span>
+                            Wyrażam zgodę na przetwarzanie danych osobowych zgodnie z <a href="https://dokumenty.strzelca.pl#polityka-prywatnosci-platformy" target="_blank" class="text-coyote hover:underline">polityką prywatności</a> (RODO) <span class="text-red-500">*</span>
                         </label>
                     </div>
 
@@ -257,13 +249,14 @@
     </main>
 
     <footer class="text-center py-10 border-t border-zinc-900 text-zinc-700 text-[10px] uppercase font-bold tracking-[0.4em]">
-        STRZELCA.PL | <a href="../index.html" class="hover:text-white transition">Powrót do strony głównej</a>
+        <a href="../index.html" class="hover:text-white transition">STRZELCA.PL</a> |
+        <a href="https://dokumenty.strzelca.pl" class="hover:text-white transition ml-4">DOKUMENTY - REGULAMINY, ZWROTY ITP.</a>
     </footer>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        import { getAuth, createUserWithEmailAndPassword, sendEmailVerification, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
@@ -278,57 +271,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
-
-        // Konfiguracja providerów
-        const googleProvider = new GoogleAuthProvider();
-
-        // Funkcje rejestracji społecznościowej
-        window.registerWithGoogle = async () => {
-            try {
-                const result = await signInWithPopup(auth, googleProvider);
-                const user = result.user;
-                const baseName = user.displayName || user.email.split('@')[0];
-
-                // Zapisz podstawowe dane profilu dla konta Google
-                const baseName = user.displayName || user.email.split('@')[0];
-                const operatorName = `Operator ${baseName}`;
-
-                await setDoc(doc(db, "userProfiles", user.uid), {
-                    uid: user.uid,
-                    displayName: operatorName,
-                    email: user.email,
-                    firstName: user.displayName ? user.displayName.split(' ')[0] : baseName,
-                    lastName: user.displayName ? user.displayName.split(' ').slice(1).join(' ') : '',
-                    phone: '',
-                    parcelLocker: '',
-                    address: { street: '', buildingNumber: '', postalCode: '', city: '' },
-                    ageConfirmed: true, // Zakładamy że użytkownicy Google są pełnoletni
-                    termsAccepted: true,
-                    privacyAccepted: true,
-                    newsletter: true, // Domyślnie zapisujemy do newslettera
-                    createdAt: new Date(),
-                    emailVerified: user.emailVerified,
-                    role: 'user',
-                    status: 'active',
-                    provider: 'google'
-                });
-
-                alert(`Konto zostało utworzone przez Google! Witaj ${operatorName}!`);
-                window.location.href = '../index.html';
-
-            } catch (error) {
-                console.error('Google registration error:', error);
-                let errorMessage = 'Błąd rejestracji przez Google.';
-
-                if (error.code === 'auth/popup-closed-by-user') {
-                    errorMessage = 'Okno rejestracji zostało zamknięte.';
-                } else if (error.code === 'auth/cancelled-popup-request') {
-                    errorMessage = 'Żądanie zostało anulowane.';
-                }
-
-                alert(errorMessage);
-            }
-        };
 
 
         // Funkcje pomocnicze
@@ -428,14 +370,14 @@
 
                 // 1. Utwórz konto w Firebase Auth
                 const userCredential = await createUserWithEmailAndPassword(auth, formData.email, document.getElementById('password').value);
-                const user = userCredential.user;
+        const user = userCredential.user;
 
                 // 2. Wyślij email weryfikacyjny
                 await sendEmailVerification(user);
 
                         // 3. Przygotuj dane do zapisania (z szyfrowaniem wrażliwych danych)
                 const profileData = {
-                    uid: user.uid,
+            uid: user.uid,
                     displayName: formData.displayName,
                     gender: formData.gender,
                     firstName: formData.firstName,

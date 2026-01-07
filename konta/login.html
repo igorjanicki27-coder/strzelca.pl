@@ -66,18 +66,10 @@
     <main class="container mx-auto px-6 py-20 max-w-md">
         <div class="bg-zinc-900/50 p-8 md:p-12 rounded-3xl border border-zinc-800 shadow-2xl">
             <h1 class="text-3xl md:text-4xl font-black uppercase italic font-[Orbitron] text-center mb-8">
-                Witaj <span class="coyote-text">Operatorze</span>
+                <span class="coyote-text">KONTO STRZELCA</span>
             </h1>
 
-                <!-- Przyciski logowania społecznościowego -->
-                <div class="space-y-3">
-                    <button type="button" onclick="loginWithGoogle()" class="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg font-semibold transition flex items-center justify-center">
-                        <i class="fa-brands fa-google mr-3"></i>
-                        Kontynuuj z Google
-                    </button>
-                </div>
-
-                <div class="relative my-6">
+            <div class="relative my-6">
                     <div class="absolute inset-0 flex items-center">
                         <div class="w-full border-t border-zinc-600"></div>
                     </div>
@@ -97,23 +89,25 @@
                         <input type="password" id="password" placeholder="Twoje hasło" required>
                     </div>
 
-                    <div class="flex items-center justify-between text-sm">
+                    <div class="space-y-3 text-sm">
                         <label class="flex items-center">
                             <input type="checkbox" id="remember" class="mr-2">
                             <span>Zapamiętaj mnie</span>
                         </label>
-                        <a href="./reset-password.html" class="text-coyote hover:underline">Zapomniałeś hasła?</a>
+                        <div class="text-right">
+                            <span class="text-zinc-400">Zapomniałeś hasła? Skontaktuj się z administratorem</span>
+                        </div>
                     </div>
 
                     <button type="submit" class="btn-login" id="login-btn">
                         <i class="fa-solid fa-sign-in-alt mr-2"></i>
-                        Zaloguj się na konto Strzelca
+                        ZALOGUJ STRZELCA
                     </button>
                 </form>
 
                 <div class="text-center pt-4 border-t border-zinc-700">
                     <p class="text-zinc-400 text-sm">
-                        Nie jesteś Operatorem? <a href="./rejestracja.html" class="text-coyote hover:underline">Załóż konto Strzelca</a>
+                        Nie posiadasz konta Strzelca? <a href="./rejestracja.html" class="text-coyote hover:underline">Zarejestruj Strzelca</a>
                     </p>
                 </div>
             </form>
@@ -123,12 +117,13 @@
     </main>
 
     <footer class="text-center py-10 border-t border-zinc-900 text-zinc-700 text-[10px] uppercase font-bold tracking-[0.4em]">
-        STRZELCA.PL | <a href="../index.html" class="hover:text-white transition">Powrót do strony głównej</a>
+        <a href="../index.html" class="hover:text-white transition">STRZELCA.PL</a> |
+        <a href="https://dokumenty.strzelca.pl" class="hover:text-white transition ml-4">DOKUMENTY - REGULAMINY, ZWROTY ITP.</a>
     </footer>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, setPersistence, browserSessionPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, setPersistence, browserSessionPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
@@ -143,9 +138,6 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 
-        // Konfiguracja providerów
-        const googleProvider = new GoogleAuthProvider();
-
         function showStatus(message, isError = false) {
             const statusEl = document.getElementById('status-message');
             statusEl.textContent = message;
@@ -157,29 +149,6 @@
             }, 5000);
         }
 
-        // Funkcje logowania społecznościowego
-        window.loginWithGoogle = async () => {
-            try {
-                const result = await signInWithPopup(auth, googleProvider);
-                const user = result.user;
-
-                showStatus('Zalogowano przez Google! Przekierowanie...', false);
-                setTimeout(() => {
-                    window.location.href = '../index.html';
-                }, 1000);
-            } catch (error) {
-                console.error('Google login error:', error);
-                let errorMessage = 'Błąd logowania przez Google.';
-
-                if (error.code === 'auth/popup-closed-by-user') {
-                    errorMessage = 'Okno logowania zostało zamknięte.';
-                } else if (error.code === 'auth/cancelled-popup-request') {
-                    errorMessage = 'Żądanie zostało anulowane.';
-                }
-
-                showStatus(errorMessage, true);
-            }
-        };
 
 
         // Obsługa formularza logowania
