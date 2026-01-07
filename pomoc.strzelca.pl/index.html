@@ -11,13 +11,13 @@
     <!-- Open Graph dla Facebook -->
     <meta property="og:title" content="pomoc.strzelca.pl | Wsparcie">
     <meta property="og:description" content="Akcje charytatywne i wsparcie rozwoju strzelca.pl. Wesprzyj ważne inicjatywy społeczne i pomóż rozwijać naszą działalność.">
-    <meta property="og:image" content="../tlo:logo/logo.czarne.png">
+    <meta property="og:image" content="https://strzelca.pl/tlo:logo/logo.czarne.png">
     <meta property="og:url" content="https://pomoc.strzelca.pl">
     <meta property="og:type" content="website">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="../ikona.svg">
-    <link rel="apple-touch-icon" href="../ikona.svg">
+    <link rel="icon" type="image/svg+xml" href="https://strzelca.pl/ikona.svg">
+    <link rel="apple-touch-icon" href="https://strzelca.pl/ikona.svg">
 
     <title>pomoc.strzelca.pl | Wsparcie</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -35,7 +35,7 @@
         .main-wrapper {
             min-height: 100vh;
             width: 100%;
-            background: linear-gradient(rgba(10,10,10,0.85), #0a0a0a), url('../tlo.png');
+            background: linear-gradient(rgba(10,10,10,0.85), #0a0a0a), url('https://strzelca.pl/tlo.png');
             background-size: cover;
             background-position: center;
             display: flex;
@@ -93,7 +93,7 @@
 
         <!-- Nawigacja -->
         <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative" role="navigation" aria-label="Nawigacja główna">
-            <a href="../index.html" aria-label="Powrót do centrum dowodzenia" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl z-[60]">
+            <a href="https://strzelca.pl" aria-label="Powrót do centrum dowodzenia" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl z-[60]">
                 <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
             </a>
             <div class="container mx-auto px-6 flex justify-center items-center">
@@ -144,24 +144,17 @@
                     do budowania lepszej przyszłości dla naszego środowiska.
                 </p>
 
-                <div class="mb-8">
-                    <div class="text-sm text-zinc-400 mb-4">
-                        Wybierz kwotę do przekazania lub wpisz własną:
-                    </div>
-                    <div class="flex flex-wrap justify-center gap-4 mb-6">
-                        <button onclick="selectAmount(50)" class="amount-btn bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-3 rounded-lg transition">50 PLN</button>
-                        <button onclick="selectAmount(100)" class="amount-btn bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-3 rounded-lg transition">100 PLN</button>
-                        <button onclick="selectAmount(200)" class="amount-btn bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-3 rounded-lg transition">200 PLN</button>
-                        <input type="number" id="custom-amount" placeholder="Inna kwota" min="1" class="bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white text-center w-32" oninput="selectCustomAmount()">
-                    </div>
-                </div>
-
                 <!-- Przycisk Stripe -->
-                <div id="stripe-container" class="flex justify-center">
-                    <button id="donate-button" onclick="window.processDonation()" class="bg-[#635bff] hover:bg-[#5a52e3] text-white px-8 py-4 rounded-lg font-bold text-lg transition flex items-center gap-3">
-                        <i class="fab fa-stripe text-xl"></i>
-                        Przekaż darowiznę
-                    </button>
+                <div class="flex justify-center">
+                    <script async
+                      src="https://js.stripe.com/v3/buy-button.js">
+                    </script>
+
+                    <stripe-buy-button
+                      buy-button-id="buy_btn_1SmzvBCoixAPjvnwGm1XsRpP"
+                      publishable-key="pk_test_51SmzhGCoixAPjvnwV7RfZLsfOnNOgYabPHMhKOJL1wLRaNLJcNd3O1mHxkUZw8QTytyUEwk25aqTPNDB3aGoIOSg00a7BAlDzj"
+                    >
+                    </stripe-buy-button>
                 </div>
 
                 <p class="text-sm text-zinc-500 mt-6">
@@ -178,7 +171,7 @@
         </main>
 
         <footer class="w-full py-10 text-center text-zinc-800 text-[10px] uppercase font-bold tracking-[0.4em]">
-            <a href="../index.html" class="hover:text-zinc-500 transition">STRZELCA.PL</a> |
+            <a href="https://strzelca.pl" class="hover:text-zinc-500 transition">STRZELCA.PL</a> |
             <a href="https://dokumenty.strzelca.pl" class="hover:text-zinc-500 transition ml-4">DOKUMENTY - REGULAMINY, ZWROTY ITP.</a>
         </footer>
     </div>
@@ -247,7 +240,6 @@
         const auth = getAuth(app);
         let charityActions = [];
         let currentUser = null;
-        let selectedDonationAmount = 50; // Domyślna kwota w groszach (5 PLN)
 
         // Globalne funkcje
         window.toggleAdminModal = () => document.getElementById('admin-modal').classList.toggle('hidden');
@@ -257,58 +249,6 @@
             if(id === 'charity') fetchCharityActions();
         };
 
-        // Funkcje dla donacji
-        window.selectAmount = (amount) => {
-            document.getElementById('custom-amount').value = amount;
-            selectedDonationAmount = amount * 100; // Konwersja na grosze dla Stripe
-            updateDonateButton(amount);
-        };
-
-        window.selectCustomAmount = () => {
-            const amount = document.getElementById('custom-amount').value;
-            if(amount && amount > 0) {
-                selectedDonationAmount = Math.round(amount * 100); // Konwersja na grosze dla Stripe
-                updateDonateButton(amount);
-            }
-        };
-
-        function updateDonateButton(amount) {
-            const button = document.getElementById('donate-button');
-            button.innerHTML = `<i class="fab fa-stripe text-xl"></i> Przekaż ${amount} PLN`;
-            button.classList.add('ring-2', 'ring-coyote', 'ring-opacity-50');
-            setTimeout(() => {
-                button.classList.remove('ring-2', 'ring-coyote', 'ring-opacity-50');
-            }, 500);
-        }
-
-        // Funkcja przetwarzania donacji przez Stripe Checkout
-        window.processDonation = async () => {
-            if (!selectedDonationAmount || selectedDonationAmount < 100) {
-                alert('Minimalna kwota darowizny to 1 PLN');
-                return;
-            }
-
-            try {
-                // Tutaj można dodać wywołanie Stripe Checkout
-                // Na potrzeby demonstracji, wyświetlimy informacje o wybranej kwocie
-                alert(`Wybrano kwotę: ${(selectedDonationAmount / 100).toFixed(2)} PLN\n\nStripe Checkout zostanie zaimplementowany z prawdziwym kluczem API.`);
-
-                // Przykładowe wywołanie Stripe Checkout:
-                /*
-                const response = await fetch('/create-checkout-session', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ amount: selectedDonationAmount })
-                });
-                const session = await response.json();
-                window.location.href = session.url;
-                */
-
-            } catch (error) {
-                console.error('Błąd podczas przetwarzania donacji:', error);
-                alert('Wystąpił błąd podczas przetwarzania donacji. Spróbuj ponownie.');
-            }
-        };
 
         // Funkcja do rozwinięcia klauzuli donacji na stronie dokumentów
         window.expandDonationClause = () => {
@@ -515,11 +455,6 @@
 
         // Załaduj akcje przy starcie strony
         fetchCharityActions();
-
-        // Ustaw domyślną kwotę na przycisku
-        document.addEventListener('DOMContentLoaded', () => {
-            updateDonateButton(selectedDonationAmount / 100);
-        });
     </script>
 </body>
 </html>
