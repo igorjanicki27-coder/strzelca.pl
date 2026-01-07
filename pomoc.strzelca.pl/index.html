@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Pomoc strzelca.pl - wsparcie techniczne, instrukcje obsługi, FAQ. Znajdź odpowiedzi na najczęściej zadawane pytania.">
-    <meta name="keywords" content="pomoc strzelca.pl, wsparcie techniczne, FAQ, instrukcje obsługi, pomoc użytkownikom">
+    <meta name="description" content="Pomoc strzelca.pl - akcje charytatywne i wsparcie rozwoju firmy. Wesprzyj ważne inicjatywy i pomóż rozwijać naszą działalność.">
+    <meta name="keywords" content="pomoc strzelca.pl, akcje charytatywne, wsparcie rozwoju, donacje, pomoc społeczna">
     <meta name="author" content="Strzelca.pl">
     <meta name="robots" content="index, follow">
 
     <!-- Open Graph dla Facebook -->
     <meta property="og:title" content="pomoc.strzelca.pl | Wsparcie">
-    <meta property="og:description" content="Centrum pomocy strzelca.pl - FAQ, instrukcje, wsparcie techniczne. Znajdź odpowiedzi na swoje pytania.">
+    <meta property="og:description" content="Akcje charytatywne i wsparcie rozwoju strzelca.pl. Wesprzyj ważne inicjatywy społeczne i pomóż rozwijać naszą działalność.">
     <meta property="og:image" content="../tlo:logo/logo.czarne.png">
     <meta property="og:url" content="https://pomoc.strzelca.pl">
     <meta property="og:type" content="website">
@@ -20,14 +20,465 @@
     <link rel="apple-touch-icon" href="../ikona.svg">
 
     <title>pomoc.strzelca.pl | Wsparcie</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root { --coyote: #C19A6B; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0a0a;
+            color: #e5e5e5;
+            margin: 0;
+            overflow-x: hidden;
+        }
+        .main-wrapper {
+            min-height: 100vh;
+            width: 100%;
+            background: linear-gradient(rgba(10,10,10,0.85), #0a0a0a), url('../tlo.png');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .coyote-text { color: var(--coyote); font-family: 'Orbitron'; }
+        .charity-card {
+            background: rgba(20, 20, 20, 0.9);
+            border: 1px solid #333;
+            transition: 0.3s;
+        }
+        .charity-card:hover {
+            border-color: var(--coyote);
+            transform: translateY(-2px);
+        }
+        .donation-section {
+            background: rgba(15, 15, 15, 0.95);
+            border: 2px solid var(--coyote);
+            border-radius: 20px;
+        }
+    </style>
 </head>
 <body>
-    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #0a0a0a; color: #C19A6B; font-family: Arial, sans-serif;">
-        <div style="text-align: center;">
-            <h1 style="font-size: 2rem; margin-bottom: 1rem;">Centrum Pomocy wkrótce dostępne</h1>
-            <p style="color: #e5e5e5;">Sekcja pomocy technicznej jest w trakcie rozwoju.</p>
-            <a href="../index.html" style="color: #C19A6B; text-decoration: none; margin-top: 2rem; display: inline-block;">← Powrót do Centrum Dowodzenia</a>
+    <div class="main-wrapper">
+        <!-- Panel użytkownika -->
+        <div id="user-panel" class="fixed top-4 right-4 z-50 hidden">
+            <div class="bg-zinc-900/95 backdrop-blur-md border border-zinc-700 rounded-2xl p-4 shadow-2xl">
+                <div id="user-info" class="flex items-center space-x-3 mb-3">
+                    <div id="user-avatar" class="w-10 h-10 rounded-full bg-coyote flex items-center justify-center text-white font-bold">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                        <div>
+                            <div id="user-display-name" class="text-white font-semibold text-sm"></div>
+                            <div class="text-zinc-400 text-xs">Operator</div>
+                        </div>
+                </div>
+                <div class="space-y-2">
+                    <a href="../konta/profil.html" class="block text-zinc-300 hover:text-coyote transition text-sm">
+                        <i class="fa-solid fa-user mr-2"></i>Mój profil
+                    </a>
+                    <button onclick="logout()" class="block w-full text-left text-zinc-300 hover:text-red-400 transition text-sm">
+                        <i class="fa-solid fa-sign-out-alt mr-2"></i>Wyloguj się
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Przycisk logowania dla niezalogowanych -->
+        <div id="login-button" class="fixed top-4 right-4 z-50">
+            <a href="../konta/login.html" class="bg-coyote text-black px-4 py-2 rounded-lg font-semibold hover:bg-white transition shadow-lg">
+                <i class="fa-solid fa-sign-in-alt mr-2"></i>Zaloguj się
+            </a>
+        </div>
+
+        <!-- Nawigacja -->
+        <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative" role="navigation" aria-label="Nawigacja główna">
+            <a href="../index.html" aria-label="Powrót do centrum dowodzenia" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl z-[60]">
+                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+            </a>
+            <div class="container mx-auto px-6 flex justify-center items-center">
+                <div class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400">
+                    POMOC.<span class="coyote-text">STRZELCA</span>.PL
+                </div>
+            </div>
+        </nav>
+
+        <header class="container mx-auto px-6 text-center pt-12 md:pt-20">
+            <h1 class="text-4xl md:text-6xl font-black uppercase italic font-[Orbitron] tracking-tighter">
+                Wsparcie <span class="coyote-text">& Rozwój</span>
+            </h1>
+            <p class="text-xl text-zinc-400 mt-4 max-w-2xl mx-auto">
+                Wesprzyj ważne akcje społeczne i pomóż nam rozwijać działalność na rzecz społeczności strzeleckiej
+            </p>
+        </header>
+
+        <main class="container mx-auto px-6 py-12 flex-grow">
+            <!-- Sekcja Akcje Charytatywne -->
+            <section class="mb-20">
+                <h2 class="text-3xl md:text-4xl font-black uppercase italic font-[Orbitron] text-center mb-12 coyote-text">
+                    <i class="fa-solid fa-hand-holding-heart mr-4"></i>
+                    Akcje, które wspieramy
+                </h2>
+
+                <div id="charity-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Akcje będą ładowane dynamicznie -->
+                </div>
+
+                <div id="no-charity-message" class="text-center text-zinc-500 py-12">
+                    <div class="text-4xl mb-4">🤝</div>
+                    <div class="text-xl">Aktualnie nie prowadzimy aktywnych akcji charytatywnych</div>
+                    <div class="text-sm mt-2">Sprawdź ponownie wkrótce</div>
+                </div>
+            </section>
+
+            <!-- Sekcja Donacji -->
+            <section class="donation-section p-12 text-center">
+                <h2 class="text-3xl md:text-4xl font-black uppercase italic font-[Orbitron] mb-8 coyote-text">
+                    <i class="fa-solid fa-heart mr-4"></i>
+                    Dobrowolne wpłaty na rzecz rozwoju firmy
+                </h2>
+
+                <p class="text-lg text-zinc-300 mb-8 max-w-3xl mx-auto leading-relaxed">
+                    Twoja wpłata pomoże nam rozwijać działalność, wprowadzać nowe produkty i usługi,
+                    oraz wspierać społeczność strzelecką. Każda kwota ma znaczenie i przyczynia się
+                    do budowania lepszej przyszłości dla naszego środowiska.
+                </p>
+
+                <div class="mb-8">
+                    <div class="text-sm text-zinc-400 mb-4">
+                        Wybierz kwotę do przekazania lub wpisz własną:
+                    </div>
+                    <div class="flex flex-wrap justify-center gap-4 mb-6">
+                        <button onclick="selectAmount(50)" class="amount-btn bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-3 rounded-lg transition">50 PLN</button>
+                        <button onclick="selectAmount(100)" class="amount-btn bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-3 rounded-lg transition">100 PLN</button>
+                        <button onclick="selectAmount(200)" class="amount-btn bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-3 rounded-lg transition">200 PLN</button>
+                        <input type="number" id="custom-amount" placeholder="Inna kwota" min="1" class="bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white text-center w-32" oninput="selectCustomAmount()">
+                    </div>
+                </div>
+
+                <!-- Przycisk Stripe -->
+                <div id="stripe-container" class="flex justify-center">
+                    <script async
+                      src="https://js.stripe.com/v3/buy-button.js">
+                    </script>
+
+                    <stripe-buy-button
+                      buy-button-id="buy_btn_1SmzvBCoixAPjvnwGm1XsRpP"
+                      publishable-key="pk_test_51SmzhGCoixAPjvnwV7RfZLsfOnNOgYabPHMhKOJL1wLRaNLJcNd3O1mHxkUZw8QTytyUEwk25aqTPNDB3aGoIOSg00a7BAlDzj"
+                    >
+                    </stripe-buy-button>
+                </div>
+
+                <p class="text-sm text-zinc-500 mt-6">
+                    Wszystkie wpłaty są dobrowolne i nie wiążą się z żadnymi zobowiązaniami.
+                    Za pośrednictwem bezpiecznej bramki płatniczej Stripe.
+                </p>
+
+                <div class="text-center mt-4">
+                    <a href="../dokumenty.strzelca.pl/index.html#donation-clause" onclick="expandDonationClause()" class="text-xs text-zinc-400 hover:text-coyote transition underline">
+                        Klauzula Donacji
+                    </a>
+                </div>
+            </section>
+        </main>
+
+        <footer class="w-full py-10 text-center text-zinc-800 text-[10px] uppercase font-bold tracking-[0.4em]">
+            STRZELCA.PL | <button onclick="window.toggleAdminModal()" class="hover:text-zinc-500 transition">System Zarządzania</button>
+        </footer>
+    </div>
+
+    <!-- Modal administratora -->
+    <div id="admin-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
+        <div class="max-w-5xl w-full bg-zinc-900 p-8 rounded-3xl border border-zinc-800 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div id="login-section" class="text-center py-12 max-w-sm mx-auto">
+                <h2 class="coyote-text text-xl mb-8 uppercase italic font-[Orbitron]">Autoryzacja</h2>
+                <input type="email" id="adm-user" placeholder="Email administratora" class="mb-4 text-center">
+                <input type="password" id="adm-pass" placeholder="Hasło" class="mb-6 text-center">
+                <button onclick="window.handleLogin()" class="bg-coyote text-black px-6 py-3 rounded-lg font-bold uppercase">Zaloguj</button>
+                <button onclick="window.toggleAdminModal()" class="mt-4 text-zinc-600 text-[10px] uppercase underline block">Zamknij</button>
+            </div>
+
+            <div id="admin-panel" class="hidden">
+                <div class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-4 uppercase">
+                    <h2 class="coyote-text font-bold italic font-[Orbitron]">Centrum Operacyjne</h2>
+                    <div class="flex space-x-4">
+                        <button onclick="window.toggleAdminModal()" class="text-zinc-400 text-[10px] font-bold border border-zinc-700 px-3 py-1 rounded">Zamknij</button>
+                        <button onclick="window.handleLogout()" class="text-red-900 text-[10px] font-black border border-red-900 px-3 py-1 rounded">Wyloguj</button>
+                    </div>
+                </div>
+
+                <div class="flex space-x-4 mb-8 overflow-x-auto pb-2">
+                    <button onclick="window.switchTab('charity')" class="px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-coyote">Akcje Charytatywne</button>
+                </div>
+
+                <!-- Panel Akcji Charytatywnych -->
+                <div id="tab-charity" class="admin-tab hidden grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div class="space-y-4">
+                        <input type="hidden" id="charity-edit-id">
+                        <input id="charity-title" type="text" placeholder="Nazwa akcji">
+                        <input id="charity-date" type="date" placeholder="Data akcji">
+                        <textarea id="charity-description" placeholder="Opis akcji" rows="4"></textarea>
+                        <input type="file" id="charity-image" accept="image/*" class="text-sm">
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" id="charity-active">
+                            <span class="text-sm">Akcja aktywna</span>
+                        </label>
+                        <button id="save-charity-btn" onclick="window.saveCharity()" class="bg-coyote text-black px-6 py-3 rounded-lg font-bold uppercase w-full text-xs">Zapisz akcję</button>
+                    </div>
+                    <div id="charity-list-admin" class="space-y-2 overflow-y-auto max-h-[500px]"></div>
+                </div>
+            </div>
         </div>
     </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, getDocs, collection, deleteDoc, query, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
+            authDomain: "strzelca-pl.firebaseapp.com",
+            projectId: "strzelca-pl",
+            storageBucket: "strzelca-pl.firebasestorage.app",
+            messagingSenderId: "511362047688",
+            appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
+            measurementId: "G-9EJ2R3JPVD"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        let charityActions = [];
+        let currentUser = null;
+
+        // Globalne funkcje
+        window.toggleAdminModal = () => document.getElementById('admin-modal').classList.toggle('hidden');
+        window.switchTab = (id) => {
+            document.querySelectorAll('.admin-tab').forEach(t => t.classList.add('hidden'));
+            document.getElementById('tab-' + id).classList.remove('hidden');
+            if(id === 'charity') fetchCharityActions();
+        };
+
+        // Funkcje dla donacji
+        window.selectAmount = (amount) => {
+            document.getElementById('custom-amount').value = amount;
+            selectCustomAmount();
+        };
+
+        window.selectCustomAmount = () => {
+            const amount = document.getElementById('custom-amount').value;
+            if(amount && amount > 0) {
+                // Tutaj można zaktualizować przycisk Stripe z wybraną kwotą
+                console.log('Wybrana kwota:', amount);
+            }
+        };
+
+        // Funkcja do rozwinięcia klauzuli donacji na stronie dokumentów
+        window.expandDonationClause = () => {
+            // Przechowujemy informację o tym, że należy rozwinąć klauzulę donacji
+            sessionStorage.setItem('expandDonationClause', 'true');
+            // Przenosimy do strony dokumentów
+            window.location.href = '../dokumenty.strzelca.pl/index.html#donation-clause';
+        };
+
+        // Funkcje autoryzacji
+        window.handleLogin = async () => {
+            const email = document.getElementById('adm-user').value;
+            const pass = document.getElementById('adm-pass').value;
+
+            if (!email || !pass) {
+                alert("Wprowadź email i hasło.");
+                return;
+            }
+
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+            } catch (err) {
+                alert("Błąd autoryzacji: Nieuprawniony dostęp.");
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('admin-panel').classList.remove('hidden');
+                window.switchTab('charity');
+                currentUser = user;
+                updateUserPanel();
+            } else {
+                document.getElementById('login-section').classList.remove('hidden');
+                document.getElementById('admin-panel').classList.add('hidden');
+                currentUser = null;
+            }
+        });
+
+        window.handleLogout = () => {
+            if(confirm("Czy na pewno wylogować?")) signOut(auth);
+        };
+
+        // Funkcja panelu użytkownika
+        function updateUserPanel() {
+            const loginBtn = document.getElementById('login-button');
+            const userPanel = document.getElementById('user-panel');
+
+            if (currentUser) {
+                loginBtn.classList.add('hidden');
+                userPanel.classList.remove('hidden');
+
+                // Pobierz dane profilu
+                getDoc(doc(db, "userProfiles", currentUser.uid)).then((profileDoc) => {
+                    if (profileDoc.exists()) {
+                        const profile = profileDoc.data();
+                        document.getElementById('user-display-name').textContent = profile.displayName;
+                    }
+                }).catch(error => console.error('Error loading user profile:', error));
+            } else {
+                loginBtn.classList.remove('hidden');
+                userPanel.classList.add('hidden');
+            }
+        }
+
+        window.logout = async () => {
+            try {
+                await signOut(auth);
+                alert('Zostałeś wylogowany.');
+                location.reload();
+            } catch (error) {
+                alert('Błąd podczas wylogowywania.');
+            }
+        };
+
+        // Funkcje kompresji obrazów
+        async function compressImage(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader(); reader.readAsDataURL(file);
+                reader.onload = (e) => {
+                    const img = new Image(); img.src = e.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_W = 800; let w = img.width, h = img.height;
+                        if (w > MAX_W) { h *= MAX_W / w; w = MAX_W; }
+                        canvas.width = w; canvas.height = h;
+                        const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, w, h);
+                        resolve(canvas.toDataURL('image/jpeg', 0.7));
+                    };
+                };
+            });
+        }
+
+        // Funkcje zarządzania akcjami charytatywnymi
+        window.saveCharity = async () => {
+            const id = document.getElementById('charity-edit-id').value || Date.now().toString();
+            const file = document.getElementById('charity-image').files[0];
+
+            try {
+                let imageUrl = "";
+                if(file) imageUrl = await compressImage(file);
+                else if(document.getElementById('charity-edit-id').value) {
+                    const existing = charityActions.find(c => c.id === id);
+                    imageUrl = existing ? existing.image : "";
+                }
+
+                await setDoc(doc(db, "charity", id), {
+                    title: document.getElementById('charity-title').value,
+                    date: document.getElementById('charity-date').value,
+                    description: document.getElementById('charity-description').value,
+                    image: imageUrl,
+                    active: document.getElementById('charity-active').checked,
+                    order: charityActions.length,
+                    created: Date.now()
+                });
+
+                alert("Akcja została zapisana!");
+                clearCharityForm();
+                fetchCharityActions();
+            } catch (err) {
+                alert("Błąd podczas zapisywania akcji.");
+            }
+        };
+
+        function clearCharityForm() {
+            document.getElementById('charity-edit-id').value = '';
+            document.getElementById('charity-title').value = '';
+            document.getElementById('charity-date').value = '';
+            document.getElementById('charity-description').value = '';
+            document.getElementById('charity-image').value = '';
+            document.getElementById('charity-active').checked = true;
+        }
+
+        async function fetchCharityActions() {
+            const q = query(collection(db, "charity"), orderBy("order", "asc"));
+            const snap = await getDocs(q);
+            const list = document.getElementById('charity-list-admin');
+            const grid = document.getElementById('charity-grid');
+            const noMessage = document.getElementById('no-charity-message');
+
+            list.innerHTML = "";
+            grid.innerHTML = "";
+            charityActions = [];
+
+            let activeCount = 0;
+            snap.forEach(d => {
+                const data = d.data();
+                charityActions.push({id: d.id, ...data});
+
+                // Lista w panelu admina
+                list.innerHTML += `<div class="flex justify-between items-center p-3 bg-black/40 border border-zinc-800 rounded mb-1">
+                    <span class="text-[10px] font-bold uppercase">${data.title}</span>
+                    <div class="flex space-x-2">
+                        <button onclick="window.editCharity('${d.id}')" class="text-blue-400 text-xs">Edytuj</button>
+                        <button onclick="window.deleteCharity('${d.id}')" class="text-red-400 text-xs">Usuń</button>
+                    </div>
+                </div>`;
+
+                // Wyświetlanie na stronie publicznej tylko aktywne akcje
+                if(data.active) {
+                    activeCount++;
+                    const eventDate = new Date(data.date);
+                    const isPast = eventDate < new Date();
+
+                    grid.innerHTML += `
+                    <div class="charity-card p-6 rounded-xl">
+                        ${data.image ? `<div class="h-48 mb-4 rounded-lg overflow-hidden"><img src="${data.image}" alt="${data.title}" class="w-full h-full object-cover"></div>` : ''}
+                        <h3 class="text-xl font-bold uppercase mb-2 font-[Orbitron] coyote-text">${data.title}</h3>
+                        <div class="text-sm text-zinc-400 mb-2">
+                            📅 ${eventDate.toLocaleDateString('pl-PL')}
+                            ${isPast ? '<span class="ml-2 px-2 py-1 bg-red-600 text-white text-xs rounded">Zakończona</span>' : '<span class="ml-2 px-2 py-1 bg-green-600 text-white text-xs rounded">Aktywna</span>'}
+                        </div>
+                        <p class="text-zinc-300 text-sm leading-relaxed">${data.description}</p>
+                    </div>`;
+                }
+            });
+
+            // Pokaż/ukryj komunikat o braku akcji
+            if(activeCount === 0) {
+                noMessage.classList.remove('hidden');
+            } else {
+                noMessage.classList.add('hidden');
+            }
+        }
+
+        window.editCharity = (id) => {
+            const charity = charityActions.find(c => c.id === id);
+            if(charity) {
+                document.getElementById('charity-edit-id').value = charity.id;
+                document.getElementById('charity-title').value = charity.title;
+                document.getElementById('charity-date').value = charity.date;
+                document.getElementById('charity-description').value = charity.description;
+                document.getElementById('charity-active').checked = charity.active;
+            }
+        };
+
+        window.deleteCharity = async (id) => {
+            if(confirm("Usuń akcję?")) {
+                await deleteDoc(doc(db, "charity", id));
+                fetchCharityActions();
+            }
+        };
+
+        // Załaduj akcje przy starcie strony
+        fetchCharityActions();
+    </script>
 </body>
 </html>

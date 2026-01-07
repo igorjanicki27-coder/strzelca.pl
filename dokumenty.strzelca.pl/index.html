@@ -310,6 +310,40 @@
             document.querySelectorAll('.accordion-icon').forEach(icon => {
                 icon.classList.add('fa-chevron-down');
             });
+
+            // Obsługa automatycznego rozwinięcia klauzuli donacji
+            const urlHash = window.location.hash;
+            const shouldExpandDonation = sessionStorage.getItem('expandDonationClause');
+
+            if (urlHash === '#donation-clause' || shouldExpandDonation === 'true') {
+                // Wyczyść sessionStorage
+                sessionStorage.removeItem('expandDonationClause');
+
+                // Rozwiń sekcję z wzorami dokumentów
+                setTimeout(() => {
+                    toggleAccordion('wzory-dokumentow');
+
+                    // Przewiń do sekcji z klauzulą donacji
+                    const wzorySection = document.getElementById('wzory-dokumentow');
+                    if (wzorySection) {
+                        wzorySection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                        // Podświetl wiersz z klauzulą donacji na chwilę
+                        const donationRows = wzorySection.querySelectorAll('.accordion-body .grid .flex');
+                        donationRows.forEach(row => {
+                            const textElement = row.querySelector('span');
+                            if (textElement && textElement.textContent.includes('Klauzula Donacji')) {
+                                row.style.backgroundColor = 'rgba(193, 154, 107, 0.2)';
+                                row.style.borderRadius = '8px';
+                                setTimeout(() => {
+                                    row.style.backgroundColor = '';
+                                    row.style.borderRadius = '';
+                                }, 3000);
+                            }
+                        });
+                    }
+                }, 500);
+            }
         });
     </script>
 </body>

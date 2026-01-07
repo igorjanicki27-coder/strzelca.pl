@@ -128,7 +128,8 @@
                     <button onclick="window.switchTab('tematy')" class="px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-coyote">Tematy</button>
                     <button onclick="window.switchTab('wiadomosci')" class="px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-coyote">Wiadomości</button>
                     <button onclick="window.switchTab('czaty')" class="px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-coyote">Czaty</button>
-                    <button onclick="window.switchTab('wydarzenia')" class="px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-coyote">Wydarzenia</button>
+                    <button onclick="window.switchTab('wydarzenia')" class="px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-coyoe">Wydarzenia</button>
+                    <button onclick="window.switchTab('pomoc')" class="px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-coyote">Pomoc</button>
                     <button onclick="window.switchTab('uzytkownicy')" class="px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-coyote">Operatorzy</button>
                 </div>
 
@@ -272,6 +273,41 @@
                     </div>
                 </div>
 
+                <div id="tab-pomoc" class="admin-tab hidden space-y-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="coyote-text text-lg uppercase font-bold">Zarządzanie Akcjami Charytatywnymi</h3>
+                        <button onclick="window.refreshCharity()" class="text-zinc-400 hover:text-white px-3 py-1 border border-zinc-700 rounded text-xs">Odśwież</button>
+                    </div>
+
+                    <!-- Formularz dodawania/edycji akcji -->
+                    <div class="bg-zinc-900/50 rounded-2xl border border-zinc-800 p-6">
+                        <h4 class="text-sm font-bold text-white mb-4 uppercase">Dodaj/Edytuj Akcję Charytatywną</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <input type="hidden" id="charity-id">
+                            <input id="charity-title" type="text" placeholder="Nazwa akcji" class="bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-white">
+                            <input id="charity-date" type="date" class="bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-white">
+                            <div class="md:col-span-2">
+                                <textarea id="charity-description" rows="3" placeholder="Opis akcji..." class="bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-white w-full"></textarea>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" id="charity-active" class="rounded">
+                                <label for="charity-active" class="text-sm text-zinc-300">Akcja aktywna</label>
+                            </div>
+                        </div>
+                        <label class="text-sm text-zinc-400 block mb-2">Zdjęcie akcji (opcjonalne):</label>
+                        <input type="file" id="charity-image" accept="image/*" class="bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-white text-sm mb-4">
+                        <div class="flex space-x-2">
+                            <button onclick="window.saveCharity()" class="bg-coyote text-black px-4 py-2 rounded text-sm font-bold uppercase">Zapisz</button>
+                            <button onclick="window.clearCharityForm()" class="bg-zinc-700 text-white px-4 py-2 rounded text-sm">Wyczyść</button>
+                        </div>
+                    </div>
+
+                    <!-- Lista akcji -->
+                    <div id="charity-list" class="space-y-4 max-h-[600px] overflow-y-auto">
+                        <!-- Akcje będą ładowane dynamicznie -->
+                    </div>
+                </div>
+
                 <div id="tab-uzytkownicy" class="admin-tab hidden space-y-6">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="coyote-text text-lg uppercase font-bold">Zarządzanie Operatorami</h3>
@@ -374,6 +410,7 @@
             if(id === 'tematy') fetchTopicsAdmin();
             if(id === 'wiadomosci') fetchMessages();
             if(id === 'wydarzenia') fetchEvents();
+            if(id === 'pomoc') fetchCharity();
             if(id === 'uzytkownicy') fetchUsers();
             if(id === 'czaty') fetchConversations();
         };
@@ -1484,6 +1521,182 @@
             currentUser = user;
             updateUserPanel();
         });
+
+        // === ZARZĄDZANIE AKCJAMI CHARYTATYWNYMI ===
+        let charityList = [];
+
+        window.refreshCharity = () => {
+            fetchCharity();
+        };
+
+        async function fetchCharity() {
+            try {
+                const q = query(collection(db, "charity"), orderBy("order", "asc"));
+                const snap = await getDocs(q);
+                const list = document.getElementById('charity-list');
+                list.innerHTML = "";
+                charityList = [];
+
+                if (snap.empty) {
+                    list.innerHTML = '<div class="text-center text-zinc-500 py-8">Brak akcji charytatywnych</div>';
+                    return;
+                }
+
+                snap.forEach(d => {
+                    const charity = d.data();
+                    charityList.push({ id: d.id, ...charity });
+
+                    const eventDate = new Date(charity.date);
+                    const isPast = eventDate < new Date();
+                    const statusBadge = charity.active ? 'bg-green-600' : 'bg-gray-600';
+                    const statusText = charity.active ? 'AKTYWNA' : 'NIEAKTYWNA';
+
+                    list.innerHTML += `
+                    <div class="bg-zinc-900/30 p-4 rounded-lg border-l-4 ${charity.active ? 'border-l-coyote' : 'border-l-zinc-600'}">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <h4 class="text-white font-bold">${charity.title}</h4>
+                                    <span class="px-2 py-1 text-xs rounded ${statusBadge} text-white">${statusText}</span>
+                                    ${isPast ? '<span class="px-2 py-1 text-xs rounded bg-red-600 text-white">PRZESZŁA</span>' : ''}
+                                </div>
+                                <div class="text-sm text-zinc-400 space-y-1">
+                                    <div>📅 ${eventDate.toLocaleString('pl-PL')}</div>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2 ml-4">
+                                <button onclick="window.editCharity('${d.id}')" class="text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400 rounded text-xs">Edytuj</button>
+                                <button onclick="window.moveCharity('${d.id}', 'up')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 text-xs">↑</button>
+                                <button onclick="window.moveCharity('${d.id}', 'down')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 text-xs">↓</button>
+                                <button onclick="window.deleteCharity('${d.id}')" class="text-red-400 hover:text-red-300 px-2 py-1 border border-red-400 rounded text-xs">Usuń</button>
+                            </div>
+                        </div>
+                        <div class="text-sm text-zinc-300 mt-2">
+                            ${charity.description.length > 150 ? charity.description.substring(0, 150) + '...' : charity.description}
+                        </div>
+                    </div>`;
+                });
+            } catch (err) {
+                console.error('Błąd ładowania akcji:', err);
+                document.getElementById('charity-list').innerHTML = '<div class="text-center text-red-500 py-8">Błąd ładowania akcji</div>';
+            }
+        }
+
+        window.saveCharity = async () => {
+            const id = document.getElementById('charity-id').value || Date.now().toString();
+            const file = document.getElementById('charity-image').files[0];
+
+            try {
+                let imageUrl = "";
+                if(file) {
+                    // Kompresja obrazka
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    imageUrl = await new Promise((resolve) => {
+                        reader.onload = (e) => {
+                            const img = new Image(); img.src = e.target.result;
+                            img.onload = () => {
+                                const canvas = document.createElement('canvas');
+                                const MAX_W = 800; let w = img.width, h = img.height;
+                                if (w > MAX_W) { h *= MAX_W / w; w = MAX_W; }
+                                canvas.width = w; canvas.height = h;
+                                const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, w, h);
+                                resolve(canvas.toDataURL('image/jpeg', 0.7));
+                            };
+                        };
+                    });
+                } else if(document.getElementById('charity-id').value) {
+                    const existing = charityList.find(c => c.id === id);
+                    imageUrl = existing ? existing.image : "";
+                }
+
+                const charityData = {
+                    title: document.getElementById('charity-title').value,
+                    date: document.getElementById('charity-date').value,
+                    description: document.getElementById('charity-description').value,
+                    image: imageUrl,
+                    active: document.getElementById('charity-active').checked,
+                    order: charityList.length,
+                    created: Date.now()
+                };
+
+                if (!charityData.title || !charityData.date || !charityData.description) {
+                    alert('Wypełnij wszystkie wymagane pola (tytuł, data, opis)');
+                    return;
+                }
+
+                await setDoc(doc(db, "charity", id), charityData);
+                alert('Akcja charytatywna została zapisana!');
+                clearCharityForm();
+                fetchCharity();
+            } catch (err) {
+                console.error('Błąd zapisywania akcji:', err);
+                alert('Błąd podczas zapisywania akcji');
+            }
+        };
+
+        window.editCharity = (id) => {
+            const charity = charityList.find(c => c.id === id);
+            if (charity) {
+                document.getElementById('charity-id').value = charity.id;
+                document.getElementById('charity-title').value = charity.title;
+                document.getElementById('charity-date').value = charity.date;
+                document.getElementById('charity-description').value = charity.description;
+                document.getElementById('charity-active').checked = charity.active !== false;
+                document.getElementById('charity-image').value = ''; // Reset file input
+            }
+        };
+
+        window.clearCharityForm = () => {
+            document.getElementById('charity-id').value = '';
+            document.getElementById('charity-title').value = '';
+            document.getElementById('charity-date').value = '';
+            document.getElementById('charity-description').value = '';
+            document.getElementById('charity-active').checked = true;
+            document.getElementById('charity-image').value = '';
+        };
+
+        window.moveCharity = async (id, direction) => {
+            try {
+                const charityIndex = charityList.findIndex(c => c.id === id);
+                if (charityIndex === -1) return;
+
+                let swapIndex;
+                if (direction === 'up' && charityIndex > 0) {
+                    swapIndex = charityIndex - 1;
+                } else if (direction === 'down' && charityIndex < charityList.length - 1) {
+                    swapIndex = charityIndex + 1;
+                } else {
+                    return;
+                }
+
+                // Zamień kolejnością w tablicy
+                [charityList[charityIndex], charityList[swapIndex]] = [charityList[swapIndex], charityList[charityIndex]];
+
+                // Zaktualizuj kolejność w bazie danych
+                const batch = [];
+                charityList.forEach((charity, index) => {
+                    batch.push(updateDoc(doc(db, "charity", charity.id), { order: index }));
+                });
+
+                await Promise.all(batch);
+                fetchCharity();
+            } catch (err) {
+                console.error('Błąd przesuwania akcji:', err);
+                alert('Błąd podczas przesuwania akcji');
+            }
+        };
+
+        window.deleteCharity = async (id) => {
+            if (confirm('Czy na pewno chcesz usunąć tę akcję charytatywną?')) {
+                try {
+                    await deleteDoc(doc(db, "charity", id));
+                    fetchCharity();
+                } catch (err) {
+                    alert('Błąd podczas usuwania akcji');
+                }
+            }
+        };
 
     </script>
 </body>
