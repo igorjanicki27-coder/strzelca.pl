@@ -89,6 +89,7 @@
                 <div class="flex space-x-4 mb-8 overflow-x-auto pb-2">
                     <button onclick="window.switchTab('sklep')" class="px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-coyote">Sklep</button>
                     <button onclick="window.switchTab('kontakt')" class="px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-coyote">Kontakt</button>
+                    <button onclick="window.switchTab('wiadomosci')" class="px-6 py-2 border border-zinc-700 rounded-full text-[10px] font-bold uppercase hover:border-coyote">Wiadomości</button>
                 </div>
 
                 <div id="tab-sklep" class="admin-tab hidden grid grid-cols-1 md:grid-cols-2 gap-10">
@@ -128,6 +129,24 @@
                     </div>
                 </div>
 
+                <div id="tab-wiadomosci" class="admin-tab hidden space-y-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="coyote-text text-lg uppercase font-bold">Wiadomości z formularza kontaktowego</h3>
+                        <button onclick="window.refreshMessages()" class="text-zinc-400 hover:text-white px-3 py-1 border border-zinc-700 rounded text-xs">Odśwież</button>
+                    </div>
+
+                    <div class="flex space-x-4 mb-6">
+                        <button onclick="window.showMessageFilter('all')" class="filter-btn active px-4 py-2 border border-zinc-700 rounded text-xs uppercase" data-filter="all">Wszystkie</button>
+                        <button onclick="window.showMessageFilter('unread')" class="filter-btn px-4 py-2 border border-zinc-700 rounded text-xs uppercase" data-filter="unread">Nieprzeczytane</button>
+                        <button onclick="window.showMessageFilter('read')" class="filter-btn px-4 py-2 border border-zinc-700 rounded text-xs uppercase" data-filter="read">Przeczytane</button>
+                        <button onclick="window.showMessageFilter('done')" class="filter-btn px-4 py-2 border border-zinc-700 rounded text-xs uppercase" data-filter="done">Wykonane</button>
+                    </div>
+
+                    <div id="messages-list" class="space-y-4 max-h-[600px] overflow-y-auto">
+                        <!-- Wiadomości będą ładowane dynamicznie -->
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -152,6 +171,7 @@
         const auth = getAuth(app);
         let productsList = [];
         let contactTopics = [];
+        let currentMessageFilter = 'all';
 
         // Globalny dostęp do funkcji
         window.toggleAdminModal = () => document.getElementById('admin-modal').classList.toggle('hidden');
@@ -160,6 +180,7 @@
             document.getElementById('tab-' + id).classList.remove('hidden');
             if(id === 'sklep') fetchProducts();
             if(id === 'kontakt') fetchContactConfig();
+            if(id === 'wiadomosci') fetchMessages();
         };
 
         // --- AUTORYZACJA (FIREBASE AUTH) ---
@@ -327,6 +348,108 @@
             });
         }
         window.removeTopic = (i) => { contactTopics.splice(i, 1); renderTopics(); };
+
+        // --- WIADOMOŚCI ---
+        async function fetchMessages() {
+            try {
+                const q = query(collection(db, "messages"), orderBy("timestamp", "desc"));
+                const snap = await getDocs(q);
+                const list = document.getElementById('messages-list');
+                list.innerHTML = "";
+
+                if (snap.empty) {
+                    list.innerHTML = '<div class="text-center text-zinc-500 py-8">Brak wiadomości</div>';
+                    return;
+                }
+
+                snap.forEach(d => {
+                    const msg = d.data();
+                    const status = msg.status || 'unread';
+                    const shouldShow = currentMessageFilter === 'all' || status === currentMessageFilter;
+
+                    if (shouldShow) {
+                        const statusColors = {
+                            unread: 'border-l-red-500 bg-red-900/10',
+                            read: 'border-l-yellow-500 bg-yellow-900/10',
+                            done: 'border-l-green-500 bg-green-900/10'
+                        };
+
+                        const statusText = {
+                            unread: 'NIEPRZECZYTANA',
+                            read: 'PRZECZYTANA',
+                            done: 'WYKONANA'
+                        };
+
+                        list.innerHTML += `
+                        <div class="border-l-4 ${statusColors[status]} bg-zinc-900/30 p-4 rounded-r-lg">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <div class="text-sm font-bold text-white">${msg.name}</div>
+                                    <div class="text-xs text-zinc-400">${msg.email} • ${new Date(msg.timestamp).toLocaleString('pl-PL')}</div>
+                                    <div class="text-xs text-zinc-500 uppercase">${msg.topic}</div>
+                                </div>
+                                <div class="flex space-x-2">
+                                    ${status !== 'read' ? `<button onclick="window.markMessageAsRead('${d.id}')" class="text-xs px-2 py-1 bg-blue-600 text-white rounded">Oznacz jako przeczytaną</button>` : ''}
+                                    ${status !== 'done' ? `<button onclick="window.markMessageAsDone('${d.id}')" class="text-xs px-2 py-1 bg-green-600 text-white rounded">Oznacz jako wykonaną</button>` : ''}
+                                    <button onclick="window.deleteMessage('${d.id}')" class="text-xs px-2 py-1 bg-red-600 text-white rounded">Usuń</button>
+                                </div>
+                            </div>
+                            <div class="text-sm text-zinc-300 mt-2 p-3 bg-black/20 rounded border-l border-zinc-700">
+                                ${msg.message.replace(/\n/g, '<br>')}
+                            </div>
+                            <div class="text-xs text-zinc-500 mt-2 uppercase">${statusText[status]}</div>
+                        </div>`;
+                    }
+                });
+            } catch (err) {
+                console.error('Błąd ładowania wiadomości:', err);
+                document.getElementById('messages-list').innerHTML = '<div class="text-center text-red-500 py-8">Błąd ładowania wiadomości</div>';
+            }
+        }
+
+        window.showMessageFilter = (filter) => {
+            currentMessageFilter = filter;
+            // Aktualizuj wygląd przycisków
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active', 'border-coyote', 'text-coyote');
+                btn.classList.add('border-zinc-700');
+            });
+            document.querySelector(`[data-filter="${filter}"]`).classList.add('active', 'border-coyote', 'text-coyote');
+            fetchMessages();
+        };
+
+        window.refreshMessages = () => {
+            fetchMessages();
+        };
+
+        window.markMessageAsRead = async (id) => {
+            try {
+                await setDoc(doc(db, "messages", id), { status: 'read' }, { merge: true });
+                fetchMessages();
+            } catch (err) {
+                alert('Błąd podczas oznaczania wiadomości');
+            }
+        };
+
+        window.markMessageAsDone = async (id) => {
+            try {
+                await setDoc(doc(db, "messages", id), { status: 'done' }, { merge: true });
+                fetchMessages();
+            } catch (err) {
+                alert('Błąd podczas oznaczania wiadomości');
+            }
+        };
+
+        window.deleteMessage = async (id) => {
+            if (confirm('Czy na pewno chcesz usunąć tę wiadomość?')) {
+                try {
+                    await deleteDoc(doc(db, "messages", id));
+                    fetchMessages();
+                } catch (err) {
+                    alert('Błąd podczas usuwania wiadomości');
+                }
+            }
+        };
 
     </script>
 </body>
