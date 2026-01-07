@@ -74,7 +74,7 @@
                         </div>
                 </div>
                 <div class="space-y-2">
-                    <a href="../konta/profil.html" class="block text-zinc-300 hover:text-coyote transition text-sm">
+                    <a href="https://konto.strzelca.pl/profil.html" class="block text-zinc-300 hover:text-coyote transition text-sm">
                         <i class="fa-solid fa-user mr-2"></i>Mój profil
                     </a>
                     <button onclick="logout()" class="block w-full text-left text-zinc-300 hover:text-red-400 transition text-sm">
@@ -86,7 +86,7 @@
 
         <!-- Przycisk logowania dla niezalogowanych -->
         <div id="login-button" class="fixed top-4 right-4 z-50">
-            <a href="../konta/login.html" class="bg-coyote text-black px-4 py-2 rounded-lg font-semibold hover:bg-white transition shadow-lg">
+            <a href="https://konto.strzelca.pl/login.html" class="bg-coyote text-black px-4 py-2 rounded-lg font-semibold hover:bg-white transition shadow-lg">
                 <i class="fa-solid fa-sign-in-alt mr-2"></i>Zaloguj się
             </a>
         </div>
@@ -158,15 +158,10 @@
 
                 <!-- Przycisk Stripe -->
                 <div id="stripe-container" class="flex justify-center">
-                    <script async
-                      src="https://js.stripe.com/v3/buy-button.js">
-                    </script>
-
-                    <stripe-buy-button
-                      buy-button-id="buy_btn_1SmzvBCoixAPjvnwGm1XsRpP"
-                      publishable-key="pk_test_51SmzhGCoixAPjvnwV7RfZLsfOnNOgYabPHMhKOJL1wLRaNLJcNd3O1mHxkUZw8QTytyUEwk25aqTPNDB3aGoIOSg00a7BAlDzj"
-                    >
-                    </stripe-buy-button>
+                    <button id="donate-button" onclick="window.processDonation()" class="bg-[#635bff] hover:bg-[#5a52e3] text-white px-8 py-4 rounded-lg font-bold text-lg transition flex items-center gap-3">
+                        <i class="fab fa-stripe text-xl"></i>
+                        Przekaż darowiznę
+                    </button>
                 </div>
 
                 <p class="text-sm text-zinc-500 mt-6">
@@ -252,6 +247,7 @@
         const auth = getAuth(app);
         let charityActions = [];
         let currentUser = null;
+        let selectedDonationAmount = 50; // Domyślna kwota w groszach (5 PLN)
 
         // Globalne funkcje
         window.toggleAdminModal = () => document.getElementById('admin-modal').classList.toggle('hidden');
@@ -264,14 +260,53 @@
         // Funkcje dla donacji
         window.selectAmount = (amount) => {
             document.getElementById('custom-amount').value = amount;
-            selectCustomAmount();
+            selectedDonationAmount = amount * 100; // Konwersja na grosze dla Stripe
+            updateDonateButton(amount);
         };
 
         window.selectCustomAmount = () => {
             const amount = document.getElementById('custom-amount').value;
             if(amount && amount > 0) {
-                // Tutaj można zaktualizować przycisk Stripe z wybraną kwotą
-                console.log('Wybrana kwota:', amount);
+                selectedDonationAmount = Math.round(amount * 100); // Konwersja na grosze dla Stripe
+                updateDonateButton(amount);
+            }
+        };
+
+        function updateDonateButton(amount) {
+            const button = document.getElementById('donate-button');
+            button.innerHTML = `<i class="fab fa-stripe text-xl"></i> Przekaż ${amount} PLN`;
+            button.classList.add('ring-2', 'ring-coyote', 'ring-opacity-50');
+            setTimeout(() => {
+                button.classList.remove('ring-2', 'ring-coyote', 'ring-opacity-50');
+            }, 500);
+        }
+
+        // Funkcja przetwarzania donacji przez Stripe Checkout
+        window.processDonation = async () => {
+            if (!selectedDonationAmount || selectedDonationAmount < 100) {
+                alert('Minimalna kwota darowizny to 1 PLN');
+                return;
+            }
+
+            try {
+                // Tutaj można dodać wywołanie Stripe Checkout
+                // Na potrzeby demonstracji, wyświetlimy informacje o wybranej kwocie
+                alert(`Wybrano kwotę: ${(selectedDonationAmount / 100).toFixed(2)} PLN\n\nStripe Checkout zostanie zaimplementowany z prawdziwym kluczem API.`);
+
+                // Przykładowe wywołanie Stripe Checkout:
+                /*
+                const response = await fetch('/create-checkout-session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: selectedDonationAmount })
+                });
+                const session = await response.json();
+                window.location.href = session.url;
+                */
+
+            } catch (error) {
+                console.error('Błąd podczas przetwarzania donacji:', error);
+                alert('Wystąpił błąd podczas przetwarzania donacji. Spróbuj ponownie.');
             }
         };
 
@@ -480,6 +515,11 @@
 
         // Załaduj akcje przy starcie strony
         fetchCharityActions();
+
+        // Ustaw domyślną kwotę na przycisku
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDonateButton(selectedDonationAmount / 100);
+        });
     </script>
 </body>
 </html>

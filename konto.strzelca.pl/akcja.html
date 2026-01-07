@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Akcje konta - strzelca.pl">
+    <meta name="author" content="Strzelca.pl">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="../ikona.svg">
+    <link rel="apple-touch-icon" href="../ikona.svg">
+
+    <title>Akcje konta - strzelca.pl</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root { --coyote: #C19A6B; }
+        body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e5e5e5; margin: 0; overflow-x: hidden; }
+        .main-wrapper { min-height: 100vh; width: 100%; background: linear-gradient(rgba(10,10,10,0.85), #0a0a0a), url('../tlo.png'); background-size: cover; background-position: center; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .coyote-text { color: var(--coyote); font-family: 'Orbitron'; }
+        .spinner { border: 4px solid #333; border-top: 4px solid var(--coyote); border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .action-card { background: rgba(20, 20, 20, 0.95); border: 1px solid #333; border-radius: 20px; padding: 40px; text-align: center; max-width: 500px; width: 90%; }
+        .checkmark { width: 80px; height: 80px; margin: 0 auto 20px; position: relative; animation: checkmark-appear 1s ease-in-out; }
+        .checkmark::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(45deg); width: 25px; height: 40px; border: solid #10b981; border-width: 0 5px 5px 0; }
+        @keyframes checkmark-appear { 0% { opacity: 0; transform: scale(0.3); } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+
+        input {
+            background: #111 !important;
+            border: 1px solid #222 !important;
+            color: white !important;
+            padding: 16px 20px !important;
+            border-radius: 12px;
+            width: 100%;
+            outline: none;
+            transition: 0.3s;
+        }
+        input:focus {
+            border-color: var(--coyote) !important;
+            background: #161616 !important;
+        }
+
+        .btn-action {
+            background: var(--coyote);
+            color: black;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 20px;
+            border-radius: 12px;
+            transition: 0.3s;
+            cursor: pointer;
+            width: 100%;
+        }
+        .btn-action:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(193, 154, 107, 0.2); }
+        .btn-action:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .error-message {
+            color: #ef4444;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        <div class="action-card" id="action-content">
+            <!-- Treść zostanie załadowana dynamicznie przez JavaScript -->
+            <div class="spinner"></div>
+            <p class="text-lg text-zinc-300">Ładowanie...</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, applyActionCode, confirmPasswordReset, verifyPasswordResetCode } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
+            authDomain: "strzelca-pl.firebaseapp.com",
+            projectId: "strzelca-pl",
+            storageBucket: "strzelca-pl.firebasestorage.app",
+            messagingSenderId: "511362047688",
+            appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
+            measurementId: "G-9EJ2R3JPVD"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+const urlParams = new URLSearchParams(window.location.search);
+        const mode = urlParams.get('mode');
+        const actionCode = urlParams.get('oobCode');
+
+        function showError(message) {
+            document.getElementById('action-content').innerHTML = `
+                <i class="fa-solid fa-exclamation-triangle text-6xl text-red-500 mb-6"></i>
+                <h1 class="text-2xl md:text-3xl font-bold text-red-500 uppercase italic font-[Orbitron] mb-4">
+                    Błąd
+                </h1>
+                <p class="text-lg mb-4 text-zinc-300">${message}</p>
+                <a href="./login.html" class="inline-block bg-coyote text-black px-6 py-3 rounded-lg font-semibold hover:bg-white transition">
+                    Powrót do logowania
+                </a>
+            `;
+        }
+
+        function showSuccess(message, redirectUrl = './login.html', redirectText = 'Powrót do logowania') {
+            document.getElementById('action-content').innerHTML = `
+                <div class="checkmark"></div>
+                <h1 class="text-2xl md:text-3xl font-bold coyote-text uppercase italic font-[Orbitron] mb-4">
+                    SUKCES
+                </h1>
+                <p class="text-lg mb-8 text-zinc-300">${message}</p>
+                <a href="${redirectUrl}" class="inline-block bg-coyote text-black px-6 py-3 rounded-lg font-semibold hover:bg-white transition">
+                    ${redirectText}
+                </a>
+            `;
+        }
+
+        function showPasswordResetForm(email) {
+            document.getElementById('action-content').innerHTML = `
+                <h1 class="text-2xl md:text-3xl font-bold coyote-text uppercase italic font-[Orbitron] mb-4">
+                    RESET HASŁA
+                </h1>
+                <p class="text-lg mb-6 text-zinc-300">
+                    Wprowadź nowe hasło dla konta: <strong>${email}</strong>
+                </p>
+
+                <form id="password-reset-form" class="space-y-6">
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">NOWE HASŁO</label>
+                        <input type="password" id="new-password" placeholder="Wprowadź nowe hasło" required minlength="6">
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">POTWIERDŹ HASŁO</label>
+                        <input type="password" id="confirm-password" placeholder="Potwierdź nowe hasło" required minlength="6">
+                    </div>
+
+                    <div class="error-message" id="password-error"></div>
+
+                    <button type="submit" class="btn-action" id="reset-btn">
+                        <i class="fa-solid fa-key mr-2"></i>
+                        ZAPISZ NOWE HASŁO
+                    </button>
+                </form>
+            `;
+
+            // Obsługa formularza resetowania hasła
+            document.getElementById('password-reset-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const newPassword = document.getElementById('new-password').value;
+                const confirmPassword = document.getElementById('confirm-password').value;
+                const resetBtn = document.getElementById('reset-btn');
+                const errorEl = document.getElementById('password-error');
+
+                // Sprawdź czy hasła są identyczne
+                if (newPassword !== confirmPassword) {
+                    errorEl.textContent = 'Hasła nie są identyczne.';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+
+                if (newPassword.length < 6) {
+                    errorEl.textContent = 'Hasło musi mieć co najmniej 6 znaków.';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+
+                resetBtn.disabled = true;
+                resetBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Zapisywanie...';
+                errorEl.style.display = 'none';
+
+                try {
+                    await confirmPasswordReset(auth, actionCode, newPassword);
+                    showSuccess('Hasło zostało pomyślnie zmienione! Możesz się teraz zalogować.', './login.html', 'Przejdź do logowania');
+                } catch (error) {
+                    console.error('Password reset error:', error);
+                    let errorMessage = 'Wystąpił błąd podczas zmiany hasła.';
+                    if (error.code === 'auth/expired-action-code') {
+                        errorMessage = 'Link wygasł. Poproś o nowy link resetowania hasła.';
+                    } else if (error.code === 'auth/invalid-action-code') {
+                        errorMessage = 'Link jest nieprawidłowy.';
+                    } else if (error.code === 'auth/user-disabled') {
+                        errorMessage = 'Konto zostało zablokowane.';
+                    } else if (error.code === 'auth/user-not-found') {
+                        errorMessage = 'Nie znaleziono użytkownika.';
+                    }
+                    errorEl.textContent = errorMessage;
+                    errorEl.style.display = 'block';
+                    resetBtn.disabled = false;
+                    resetBtn.innerHTML = '<i class="fa-solid fa-key mr-2"></i>ZAPISZ NOWE HASŁO';
+                }
+            });
+        }
+
+        function startCountdown() {
+            let countdown = 5;
+            const countdownElement = document.createElement('p');
+            countdownElement.className = 'text-sm text-zinc-400 mt-4 cursor-pointer hover:text-coyote hover:underline transition-colors';
+            countdownElement.textContent = `Przekierowanie za ${countdown} sekund...`;
+            document.getElementById('action-content').appendChild(countdownElement);
+
+            const timer = setInterval(() => {
+                countdownElement.textContent = `Przekierowanie za ${countdown} sekund...`;
+                countdown--;
+
+                if (countdown < 0) {
+                    clearInterval(timer);
+                    window.location.href = '../index.html';
+                }
+            }, 1000);
+
+            countdownElement.addEventListener('click', () => {
+                clearInterval(timer);
+                window.location.href = '../index.html';
+            });
+        }
+
+        // Główna logika rozpoznawania akcji
+        if (!actionCode) {
+            showError('Brak kodu akcji. Sprawdź link.');
+            return;
+        }
+
+switch (mode) {
+  case 'resetPassword':
+                // Najpierw sprawdź czy kod jest poprawny
+                verifyPasswordResetCode(auth, actionCode)
+                    .then((email) => {
+                        showPasswordResetForm(email);
+                    })
+                    .catch((error) => {
+                        console.error('Verify password reset code error:', error);
+                        let errorMessage = 'Link wygasł lub jest nieprawidłowy.';
+                        if (error.code === 'auth/expired-action-code') {
+                            errorMessage = 'Link wygasł. Poproś o nowy link resetowania hasła.';
+                        } else if (error.code === 'auth/invalid-action-code') {
+                            errorMessage = 'Link jest nieprawidłowy.';
+                        }
+                        showError(errorMessage);
+                    });
+    break;
+
+  case 'verifyEmail':
+                // Weryfikacja emaila
+                applyActionCode(auth, actionCode)
+                    .then(() => {
+                        document.getElementById('action-content').innerHTML = `
+                            <div class="checkmark"></div>
+                            <h1 class="text-2xl md:text-3xl font-bold coyote-text uppercase italic font-[Orbitron] mb-4">
+                                WERYFIKACJA STRZELCA
+                            </h1>
+                            <p class="text-lg mb-8 text-zinc-300">
+                                Email został pomyślnie zweryfikowany! Przenoszę do Strefy Strzelca.
+                            </p>
+                        `;
+                        startCountdown();
+                    })
+                    .catch((error) => {
+                        console.error('Email verification error:', error);
+                        let errorMessage = 'Link wygasł lub jest nieprawidłowy.';
+                        if (error.code === 'auth/expired-action-code') {
+                            errorMessage = 'Link weryfikacyjny wygasł. Zarejestruj się ponownie.';
+                        } else if (error.code === 'auth/invalid-action-code') {
+                            errorMessage = 'Link weryfikacyjny jest nieprawidłowy.';
+                        } else if (error.code === 'auth/user-disabled') {
+                            errorMessage = 'Konto zostało zablokowane.';
+                        }
+                        showError(errorMessage);
+                    });
+    break;
+
+  default:
+                showError('Nieznana akcja. Sprawdź link.');
+                break;
+}
+    </script>
+</body>
+</html>

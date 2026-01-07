@@ -95,7 +95,7 @@
                             <span>Zapamiętaj mnie</span>
                         </label>
                         <div class="text-right">
-                            <span class="text-zinc-400">Zapomniałeś hasła? Skontaktuj się z administratorem</span>
+                            <button type="button" onclick="resetPassword()" class="text-coyote hover:underline">Zapomniałeś hasła?</button>
                         </div>
                     </div>
 
@@ -148,6 +148,46 @@
                 statusEl.style.display = 'none';
             }, 5000);
         }
+
+        // Funkcja resetowania hasła
+        window.resetPassword = async () => {
+            const email = document.getElementById('email').value.trim();
+
+            if (!email) {
+                showStatus('Wprowadź adres email, aby zresetować hasło.', true);
+                document.getElementById('email').focus();
+                return;
+            }
+
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showStatus('Wprowadź prawidłowy adres email.', true);
+                document.getElementById('email').focus();
+                return;
+            }
+
+            try {
+                const { sendPasswordResetEmail } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+                await sendPasswordResetEmail(auth, email, {
+                    url: `${window.location.origin}/konto.strzelca.pl/akcja.html?mode=resetPassword`,
+                    handleCodeInApp: true
+                });
+
+                showStatus('Link do resetowania hasła został wysłany na Twój adres email.');
+            } catch (error) {
+                console.error('Password reset error:', error);
+                let errorMessage = 'Wystąpił błąd podczas wysyłania linku resetowania hasła.';
+
+                if (error.code === 'auth/user-not-found') {
+                    errorMessage = 'Nie znaleziono użytkownika z tym adresem email.';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = 'Nieprawidłowy format adresu email.';
+                } else if (error.code === 'auth/too-many-requests') {
+                    errorMessage = 'Zbyt wiele prób. Spróbuj ponownie później.';
+                }
+
+                showStatus(errorMessage, true);
+            }
+        };
 
 
 
