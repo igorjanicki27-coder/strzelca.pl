@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profil - strzelca.pl</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root { --coyote: #C19A6B; }
+        body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e5e5e5; margin: 0; }
+        .coyote-text { color: var(--coyote); font-family: 'Orbitron'; }
+
+        .avatar-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 4px solid var(--coyote);
+            object-fit: cover;
+        }
+
+        .avatar-placeholder {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 4px solid var(--coyote);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            background: linear-gradient(135deg, var(--coyote), #8B6B4A);
+        }
+
+        .avatar-upload {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: var(--coyote);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .avatar-upload:hover {
+            transform: scale(1.1);
+        }
+
+        input, select, textarea {
+            background: #111 !important;
+            border: 1px solid #222 !important;
+            color: white !important;
+            padding: 12px 16px !important;
+            border-radius: 8px;
+            width: 100%;
+            outline: none;
+            transition: 0.3s;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--coyote) !important;
+            background: #161616 !important;
+        }
+
+        .btn-save {
+            background: var(--coyote);
+            color: black;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            transition: 0.3s;
+            cursor: pointer;
+        }
+        .btn-save:hover { transform: scale(1.05); box-shadow: 0 0 15px rgba(193, 154, 107, 0.3); }
+        .btn-save:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    </style>
+</head>
+<body>
+
+    <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative">
+        <a href="../index.html" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <div class="container mx-auto px-6 flex justify-center">
+            <div class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400">
+                PROFIL.<span class="coyote-text">STRZELCA</span>.PL
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-6 py-12 max-w-4xl">
+        <!-- Nagłówek profilu -->
+        <div class="bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800 shadow-2xl mb-8">
+            <div class="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8">
+                <!-- Avatar -->
+                <div class="avatar-container">
+                    <div id="avatar-display" class="avatar-placeholder">
+                        <i class="fa-solid fa-user text-white"></i>
+                    </div>
+                    <div class="avatar-upload" onclick="document.getElementById('avatar-input').click()">
+                        <i class="fa-solid fa-camera text-black text-sm"></i>
+                    </div>
+                    <input type="file" id="avatar-input" accept="image/*" style="display: none;">
+                </div>
+
+                <!-- Informacje podstawowe -->
+                <div class="flex-1 text-center md:text-left">
+                    <h1 id="display-name" class="text-3xl font-bold text-white mb-2">Ładowanie...</h1>
+                    <p id="user-email" class="text-zinc-400 mb-4"></p>
+                    <div class="flex flex-wrap justify-center md:justify-start gap-4 text-sm">
+                        <span id="member-since" class="bg-zinc-800 px-3 py-1 rounded-full"></span>
+                        <span id="verification-status" class="bg-green-800 px-3 py-1 rounded-full">Email zweryfikowany</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formularz edycji profilu -->
+        <div class="bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800 shadow-2xl">
+            <h2 class="text-2xl font-bold coyote-text mb-6">Edytuj profil</h2>
+
+            <form id="profile-form" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Nazwa profilu -->
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Nazwa profilu</label>
+                        <input type="text" id="edit-display-name" required minlength="3" maxlength="30">
+                    </div>
+
+                    <!-- Imię -->
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Imię Operatora</label>
+                        <input type="text" id="edit-first-name" required>
+                    </div>
+
+                    <!-- Nazwisko -->
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Nazwisko Operatora</label>
+                        <input type="text" id="edit-last-name" required>
+                    </div>
+
+                    <!-- Telefon -->
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Numer telefonu</label>
+                        <input type="tel" id="edit-phone" required>
+                    </div>
+                </div>
+
+                <!-- Adres dostawy -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-semibold text-white">Adres Operatora</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="text" id="edit-street" placeholder="Ulica">
+                        <input type="text" id="edit-building-number" placeholder="Numer budynku/lokalu">
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="text" id="edit-postal-code" placeholder="Kod pocztowy">
+                        <input type="text" id="edit-city" placeholder="Miasto">
+                    </div>
+                    <input type="text" id="edit-parcel-locker" placeholder="Paczkomat InPost (opcjonalnie)">
+                </div>
+
+                <!-- Preferencje -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-semibold text-white">Preferencje</h3>
+                    <div class="flex items-center space-x-3">
+                        <input type="checkbox" id="edit-newsletter">
+                        <label for="edit-newsletter" class="text-sm">Chcę otrzymywać newsletter</label>
+                    </div>
+                </div>
+
+                <!-- Przyciski -->
+                <div class="flex flex-col sm:flex-row gap-4 pt-6 border-t border-zinc-700">
+                    <button type="submit" class="btn-save flex-1">
+                        <i class="fa-solid fa-save mr-2"></i>
+                        Zapisz zmiany
+                    </button>
+                    <button type="button" onclick="changePassword()" class="bg-zinc-700 text-white px-6 py-3 rounded-lg hover:bg-zinc-600 transition">
+                        <i class="fa-solid fa-key mr-2"></i>
+                        Zmień hasło
+                    </button>
+                    <button type="button" onclick="logout()" class="bg-red-700 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition">
+                        <i class="fa-solid fa-sign-out-alt mr-2"></i>
+                        Wyloguj się
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Sekcja statystyk -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+            <div class="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800 text-center">
+                <div class="text-3xl font-bold coyote-text mb-2">0</div>
+                <div class="text-sm text-zinc-400 uppercase tracking-widest">Wystawionych ofert</div>
+            </div>
+            <div class="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800 text-center">
+                <div class="text-3xl font-bold coyote-text mb-2">0</div>
+                <div class="text-sm text-zinc-400 uppercase tracking-widest">Wiadomości</div>
+            </div>
+            <div class="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800 text-center">
+                <div class="text-3xl font-bold coyote-text mb-2">0</div>
+                <div class="text-sm text-zinc-400 uppercase tracking-widest">Ulubionych</div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-center py-10 border-t border-zinc-900 text-zinc-700 text-[10px] uppercase font-bold tracking-[0.4em]">
+        STRZELCA.PL | <a href="../index.html" class="hover:text-white transition">Powrót do strony głównej</a>
+    </footer>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
+            authDomain: "strzelca-pl.firebaseapp.com",
+            projectId: "strzelca-pl",
+            storageBucket: "strzelca-pl.firebasestorage.app",
+            messagingSenderId: "511362047688",
+            appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
+            measurementId: "G-9EJ2R3JPVD"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let currentUser = null;
+        let userProfile = null;
+
+        // Funkcje pomocnicze
+        function getDefaultAvatar(gender) {
+            if (gender === 'female') {
+                return '<i class="fa-solid fa-user text-white"></i>';
+            } else {
+                return '<i class="fa-solid fa-user text-white"></i>';
+            }
+        }
+
+        function formatDate(timestamp) {
+            if (!timestamp) return '';
+            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            return date.toLocaleDateString('pl-PL');
+        }
+
+        // Ładowanie danych profilu
+        async function loadProfile() {
+            if (!currentUser) {
+                window.location.href = './login.html';
+                return;
+            }
+
+            try {
+                const profileDoc = await getDoc(doc(db, "userProfiles", currentUser.uid));
+
+                if (profileDoc.exists()) {
+                    userProfile = profileDoc.data();
+
+                    // Wypełnij nagłówek
+                    document.getElementById('display-name').textContent = userProfile.displayName;
+                    document.getElementById('user-email').textContent = userProfile.email;
+                    document.getElementById('member-since').textContent = `Członek od ${formatDate(userProfile.createdAt)}`;
+
+                    // Ustaw avatar
+                    const avatarDisplay = document.getElementById('avatar-display');
+                    if (userProfile.avatar) {
+                        avatarDisplay.innerHTML = `<img src="${userProfile.avatar}" alt="Avatar" class="avatar">`;
+                    } else {
+                        avatarDisplay.innerHTML = getDefaultAvatar(userProfile.gender);
+                    }
+
+                    // Odszyfruj dane wrażliwe
+                    const decryptedProfile = {
+                        ...userProfile,
+                        phone: userProfile.phone ? atob(userProfile.phone) : '',
+                        parcelLocker: userProfile.parcelLocker ? atob(userProfile.parcelLocker) : '',
+                        address: {
+                            street: userProfile.address?.street ? atob(userProfile.address.street) : '',
+                            buildingNumber: userProfile.address?.buildingNumber ? atob(userProfile.address.buildingNumber) : '',
+                            postalCode: userProfile.address?.postalCode ? atob(userProfile.address.postalCode) : '',
+                            city: userProfile.address?.city ? atob(userProfile.address.city) : ''
+                        }
+                    };
+
+                    // Wypełnij formularz (odszyfrowanymi danymi)
+                    document.getElementById('edit-display-name').value = decryptedProfile.displayName || '';
+                    document.getElementById('edit-first-name').value = decryptedProfile.firstName || '';
+                    document.getElementById('edit-last-name').value = decryptedProfile.lastName || '';
+                    document.getElementById('edit-phone').value = decryptedProfile.phone || '';
+                    document.getElementById('edit-street').value = decryptedProfile.address?.street || '';
+                    document.getElementById('edit-building-number').value = decryptedProfile.address?.buildingNumber || '';
+                    document.getElementById('edit-postal-code').value = decryptedProfile.address?.postalCode || '';
+                    document.getElementById('edit-city').value = decryptedProfile.address?.city || '';
+                    document.getElementById('edit-parcel-locker').value = decryptedProfile.parcelLocker || '';
+                    document.getElementById('edit-newsletter').checked = decryptedProfile.newsletter || false;
+
+                } else {
+                    alert('Nie znaleziono danych profilu. Skontaktuj się z administratorem.');
+                    logout();
+                }
+            } catch (error) {
+                console.error('Error loading profile:', error);
+                alert('Błąd podczas ładowania profilu.');
+            }
+        }
+
+        // Zapisywanie zmian profilu
+        document.getElementById('profile-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!currentUser || !userProfile) return;
+
+            const saveBtn = e.target.querySelector('button[type="submit"]');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Zapisywanie...';
+
+            try {
+                // Zaszyfruj wrażliwe dane przed zapisaniem
+                const updatedProfile = {
+                    displayName: document.getElementById('edit-display-name').value.trim(),
+                    firstName: document.getElementById('edit-first-name').value.trim(),
+                    lastName: document.getElementById('edit-last-name').value.trim(),
+                    phone: btoa(document.getElementById('edit-phone').value.trim()),
+                    address: {
+                        street: btoa(document.getElementById('edit-street').value.trim()),
+                        buildingNumber: btoa(document.getElementById('edit-building-number').value.trim()),
+                        postalCode: btoa(document.getElementById('edit-postal-code').value.trim()),
+                        city: btoa(document.getElementById('edit-city').value.trim())
+                    },
+                    parcelLocker: btoa(document.getElementById('edit-parcel-locker').value.trim()),
+                    newsletter: document.getElementById('edit-newsletter').checked,
+                    // Aktualizuj mailing list jeśli zmieniła się zgoda na newsletter
+                    newsletterChanged: document.getElementById('edit-newsletter').checked !== userProfile.newsletter
+                };
+
+                await updateDoc(doc(db, "userProfiles", currentUser.uid), updatedProfile);
+
+                // Aktualizuj mailing list jeśli zmieniła się zgoda na newsletter
+                if (updatedProfile.newsletterChanged !== undefined) {
+                    if (updatedProfile.newsletter) {
+                        // Dodaj do mailing list
+                        await setDoc(doc(db, "mailingList", currentUser.email), {
+                            email: currentUser.email,
+                            subscribedAt: new Date(),
+                            active: true,
+                            source: 'profile_update'
+                        });
+                    } else {
+                        // Usuń z mailing list
+                        await deleteDoc(doc(db, "mailingList", currentUser.email));
+                    }
+                }
+
+                alert('Profil został zaktualizowany!');
+                userProfile = { ...userProfile, ...updatedProfile };
+                delete userProfile.newsletterChanged; // Usuń tymczasowe pole
+                loadProfile(); // Odśwież wyświetlane dane
+
+            } catch (error) {
+                console.error('Error updating profile:', error);
+                alert('Błąd podczas aktualizacji profilu.');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fa-solid fa-save mr-2"></i>Zapisz zmiany';
+            }
+        });
+
+        // Zmiana hasła
+        window.changePassword = async () => {
+            const newPassword = prompt('Wprowadź nowe hasło (minimum 8 znaków):');
+            if (!newPassword || newPassword.length < 8) {
+                alert('Hasło musi mieć co najmniej 8 znaków.');
+                return;
+            }
+
+            const confirmPassword = prompt('Potwierdź nowe hasło:');
+            if (newPassword !== confirmPassword) {
+                alert('Hasła nie są identyczne.');
+                return;
+            }
+
+            try {
+                await updatePassword(currentUser, newPassword);
+                alert('Hasło zostało zmienione!');
+            } catch (error) {
+                console.error('Error changing password:', error);
+
+                if (error.code === 'auth/requires-recent-login') {
+                    alert('Aby zmienić hasło, musisz się ponownie zalogować.');
+                    logout();
+                } else {
+                    alert('Błąd podczas zmiany hasła.');
+                }
+            }
+        };
+
+        // Wylogowanie
+        window.logout = async () => {
+            try {
+                await signOut(auth);
+                window.location.href = '../index.html';
+            } catch (error) {
+                console.error('Error signing out:', error);
+            }
+        };
+
+        // Obsługa zmiany avatara
+        document.getElementById('avatar-input').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Sprawdź rozmiar pliku (max 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                alert('Plik jest zbyt duży. Maksymalny rozmiar to 2MB.');
+                return;
+            }
+
+            // Sprawdź typ pliku
+            if (!file.type.startsWith('image/')) {
+                alert('Wybierz plik graficzny.');
+                return;
+            }
+
+            try {
+                // Tutaj można dodać kompresję i upload do Firebase Storage
+                // Na razie tylko pokazujemy podgląd
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('avatar-display').innerHTML =
+                        `<img src="${e.target.result}" alt="Avatar" class="avatar">`;
+                };
+                reader.readAsDataURL(file);
+
+                alert('Funkcja uploadu avatara zostanie zaimplementowana wkrótce.');
+
+            } catch (error) {
+                console.error('Error uploading avatar:', error);
+                alert('Błąd podczas uploadu avatara.');
+            }
+        });
+
+        // Sprawdź stan autoryzacji
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                loadProfile();
+            } else {
+                window.location.href = './login.html';
+            }
+        });
+    </script>
+</body>
+</html>

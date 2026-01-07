@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zarządzanie newsletterem - strzelca.pl</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root { --coyote: #C19A6B; }
+        body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e5e5e5; margin: 0; }
+        .coyote-text { color: var(--coyote); font-family: 'Orbitron'; }
+
+        .btn-newsletter {
+            background: var(--coyote);
+            color: black;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            transition: 0.3s;
+            cursor: pointer;
+        }
+        .btn-newsletter:hover { transform: scale(1.05); box-shadow: 0 0 15px rgba(193, 154, 107, 0.3); }
+    </style>
+</head>
+<body>
+
+    <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative">
+        <a href="../index.html" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <div class="container mx-auto px-6 flex justify-center">
+            <div class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400">
+                NEWSLETTER.<span class="coyote-text">STRZELCA</span>.PL
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-6 py-12 max-w-2xl">
+        <div class="bg-zinc-900/50 p-8 md:p-12 rounded-3xl border border-zinc-800 shadow-2xl">
+            <h1 class="text-3xl md:text-5xl font-black uppercase italic font-[Orbitron] text-center mb-8">
+                Zarządzanie <span class="coyote-text">Newsletterem</span>
+            </h1>
+
+            <div id="newsletter-form" class="space-y-6">
+                <div class="text-center mb-6">
+                    <p class="text-zinc-300 text-lg">
+                        <i class="fa-solid fa-envelope-open-text text-coyote mr-2"></i>
+                        Wpisz swój adres email, aby zarządzać subskrypcjami
+                    </p>
+                </div>
+
+                <div>
+                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Adres email</label>
+                    <input type="email" id="email-input" placeholder="twoj@email.com" required class="w-full">
+                </div>
+
+                <button type="button" onclick="checkSubscription()" class="btn-newsletter w-full">
+                    <i class="fa-solid fa-search mr-2"></i>
+                    Sprawdź status subskrypcji
+                </button>
+            </div>
+
+            <div id="subscription-status" class="hidden mt-8 p-6 rounded-lg bg-zinc-800/50">
+                <h3 class="text-xl font-bold text-white mb-4">Status Twojej subskrypcji</h3>
+                <div id="status-content"></div>
+            </div>
+
+            <div class="text-center mt-8 pt-6 border-t border-zinc-700">
+                <p class="text-zinc-400 text-sm">
+                    <i class="fa-solid fa-shield-alt text-coyote mr-1"></i>
+                    Twoje dane są bezpieczne i zgodne z RODO
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-center py-10 border-t border-zinc-900 text-zinc-700 text-[10px] uppercase font-bold tracking-[0.4em]">
+        STRZELCA.PL | <a href="../index.html" class="hover:text-white transition">Powrót do strony głównej</a>
+    </footer>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
+            authDomain: "strzelca-pl.firebaseapp.com",
+            projectId: "strzelca-pl",
+            storageBucket: "strzelca-pl.firebasestorage.app",
+            messagingSenderId: "511362047688",
+            appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
+            measurementId: "G-9EJ2R3JPVD"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.checkSubscription = async () => {
+            const emailInput = document.getElementById('email-input');
+            const email = emailInput.value.trim().toLowerCase();
+
+            if (!email) {
+                alert('Wpisz adres email');
+                return;
+            }
+
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                alert('Nieprawidłowy format adresu email');
+                return;
+            }
+
+            try {
+                const docRef = doc(db, "mailingList", email);
+                const docSnap = await getDoc(docRef);
+
+                const statusDiv = document.getElementById('subscription-status');
+                const statusContent = document.getElementById('status-content');
+
+                statusDiv.classList.remove('hidden');
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    statusContent.innerHTML = `
+                        <div class="text-green-400 mb-4">
+                            <i class="fa-solid fa-check-circle mr-2"></i>
+                            Jesteś zapisany do newslettera strzelca.pl
+                        </div>
+                        <div class="text-zinc-300 mb-4">
+                            <strong>Data zapisania:</strong> ${new Date(data.subscribedAt).toLocaleDateString('pl-PL')}<br>
+                            <strong>Status:</strong> ${data.active ? 'Aktywny' : 'Nieaktywny'}
+                        </div>
+                        <button onclick="unsubscribe('${email}')" class="btn-newsletter">
+                            <i class="fa-solid fa-times mr-2"></i>
+                            Wypisz się z newslettera
+                        </button>
+                    `;
+                } else {
+                    statusContent.innerHTML = `
+                        <div class="text-yellow-400 mb-4">
+                            <i class="fa-solid fa-exclamation-triangle mr-2"></i>
+                            Nie jesteś zapisany do newslettera
+                        </div>
+                        <div class="text-zinc-300 mb-4">
+                            Jeśli chcesz otrzymywać informacje o nowych ofertach i wydarzeniach, możesz zapisać się ponownie.
+                        </div>
+                        <button onclick="subscribe('${email}')" class="btn-newsletter">
+                            <i class="fa-solid fa-plus mr-2"></i>
+                            Zapisz się do newslettera
+                        </button>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error checking subscription:', error);
+                alert('Wystąpił błąd podczas sprawdzania subskrypcji');
+            }
+        };
+
+        window.subscribe = async (email) => {
+            try {
+                await setDoc(doc(db, "mailingList", email), {
+                    email: email,
+                    subscribedAt: new Date(),
+                    active: true,
+                    source: 'manual'
+                });
+
+                alert('Zostałeś zapisany do newslettera!');
+                checkSubscription();
+            } catch (error) {
+                console.error('Error subscribing:', error);
+                alert('Wystąpił błąd podczas zapisywania');
+            }
+        };
+
+        window.unsubscribe = async (email) => {
+            if (confirm('Czy na pewno chcesz wypisać się z newslettera?')) {
+                try {
+                    await deleteDoc(doc(db, "mailingList", email));
+                    alert('Zostałeś wypisany z newslettera');
+                    checkSubscription();
+                } catch (error) {
+                    console.error('Error unsubscribing:', error);
+                    alert('Wystąpił błąd podczas wypisywania');
+                }
+            }
+        };
+
+        // Sprawdź czy email został przekazany w URL (np. z linku w mailu)
+        const urlParams = new URLSearchParams(window.location.search);
+        const emailParam = urlParams.get('email');
+        if (emailParam) {
+            document.getElementById('email-input').value = emailParam;
+            checkSubscription();
+        }
+    </script>
+</body>
+</html>

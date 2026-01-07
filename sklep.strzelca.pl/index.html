@@ -91,11 +91,12 @@
     <footer class="text-center py-12 border-t border-zinc-900 text-zinc-700 text-[10px] uppercase font-bold tracking-[0.5em]" role="contentinfo">
         <a href="../index.html" class="hover:text-white transition">STRZELCA.PL</a> 
         <span class="mx-4 text-zinc-800">|</span> 
-        <a href="../kontakt.strzelca.pl/index.html" class="hover:text-white transition">KONTAKT</a>
+        <a href="../dokumenty.strzelca.pl/index.html" class="hover:text-white transition">DOKUMENTY - REGULAMINY, ZWROTY ITD.</a>
     </footer>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = { 
@@ -107,8 +108,23 @@
             appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd" 
         };
         
-        const app = initializeApp(firebaseConfig); 
+        const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // Funkcja do obsługi zamówienia
+        window.handleOrder = (productName) => {
+            onAuthStateChanged(auth, (user) => {
+                if (user && user.emailVerified) {
+                    // Użytkownik zalogowany - przekieruj z parametrami
+                    const orderUrl = `../kontakt.strzelca.pl/index.html?topic=Zamówienie&product=${encodeURIComponent(productName)}`;
+                    window.location.href = orderUrl;
+                } else {
+                    // Użytkownik niezalogowany - tylko przekieruj do kontakt
+                    window.location.href = '../kontakt.strzelca.pl/index.html';
+                }
+            });
+        };
 
         const fetchAll = async () => {
             const q = query(collection(db, "products"), orderBy("order", "asc"));
@@ -118,7 +134,6 @@
             
             snap.forEach(d => {
                 const p = d.data();
-                const orderUrl = `../kontakt.strzelca.pl/index.html?topic=Zamówienie&product=${encodeURIComponent(p.title)}`;
                 grid.innerHTML += `
                 <article class="card-dark flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50" role="article">
                     <div class="h-64 product-img-container"><img src="${p.img}" alt="${p.title}" loading="lazy"></div>
@@ -127,7 +142,7 @@
                         <p class="coyote-text font-black text-2xl mb-8" aria-label="Cena: ${p.price} złotych">${p.price} PLN</p>
                         <div class="mt-auto flex flex-col gap-3">
                             <button onclick="window.showDetails('${d.id}')" aria-label="Zobacz szczegóły produktu ${p.title}" class="w-full py-3 border border-zinc-800 text-[10px] uppercase font-bold hover:bg-zinc-800 transition rounded tracking-widest text-zinc-400">Szczegóły</button>
-                            <a href="${orderUrl}" aria-label="Zamów produkt ${p.title}" class="w-full py-4 bg-[#C19A6B] text-black text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center">Zamów</a>
+                            <button onclick="window.handleOrder('${p.title}')" aria-label="Zamów produkt ${p.title}" class="w-full py-4 bg-[#C19A6B] text-black text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Zamów</button>
                         </div>
                     </div>
                 </article>`;
@@ -137,7 +152,6 @@
         window.showDetails = async (id) => {
             const d = await getDoc(doc(db, "products", id));
             const p = d.data();
-            const orderUrl = `../kontakt.strzelca.pl/index.html?topic=Zamówienie&product=${encodeURIComponent(p.title)}`;
             document.getElementById('details-content').innerHTML = `
                 <h2 class="text-2xl font-black uppercase mb-4 font-[Orbitron] text-white">${p.title}</h2>
                 <div class="text-zinc-400 text-sm mb-8 custom-render details-scroll-area leading-relaxed">
@@ -145,7 +159,7 @@
                 </div>
                 <div class="flex justify-between items-center border-t border-zinc-800 pt-6">
                     <p class="text-3xl font-black coyote-text">${p.price} PLN</p>
-                    <a href="${orderUrl}" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg">Złóż zamówienie</a>
+                    <button onclick="window.handleOrder('${p.title}')" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition">Złóż zamówienie</button>
                 </div>`;
             document.getElementById('details-modal').classList.remove('hidden');
         };
