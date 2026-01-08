@@ -103,7 +103,7 @@
     <main class="container mx-auto px-6 py-12 max-w-2xl">
         <div class="bg-zinc-900/50 p-8 md:p-12 rounded-3xl border border-zinc-800 shadow-2xl">
             <h1 class="text-3xl md:text-5xl font-black uppercase italic font-[Orbitron] text-center mb-8">
-                Dołącz do <span class="coyote-text">Operatorów</span>
+                Dołącz do <span class="coyote-text">STRZELCÓW</span>
             </h1>
 
             <div class="relative my-6">
@@ -113,6 +113,10 @@
                 <div class="relative flex justify-center text-sm">
                     <span class="px-2 bg-zinc-900 text-zinc-400">lub</span>
                 </div>
+            </div>
+
+            <div class="text-right text-xs text-zinc-400 mb-4">
+                <span class="text-red-500">*</span> Pola oznaczone gwiazdką są obowiązkowe
             </div>
 
             <form id="registration-form" class="space-y-6">
@@ -133,21 +137,24 @@
 
                     <!-- Nazwa profilu -->
                     <div>
-                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest field-required">Nazwa Operatora (wyświetlana dla innych)</label>
-                        <input type="text" id="display-name" placeholder="np. Operator Janek" required minlength="12" maxlength="30">
-                        <div class="text-zinc-400 text-xs mb-2">Nazwa musi zaczynać się od "Operator "</div>
+                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest field-required">Nazwa STRZELCA (wyświetlana dla innych)</label>
+                        <div class="flex items-center gap-2">
+                            <span class="bg-zinc-700 text-zinc-400 px-3 py-3 rounded-lg text-sm font-mono">Strzelec</span>
+                            <input type="text" id="display-name" placeholder="Twój nick" required minlength="3" maxlength="12" pattern="[a-zA-Z0-9\-_.]+" class="flex-1">
+                        </div>
+                        <div class="text-zinc-400 text-xs mb-2">3-12 znaków, tylko litery, cyfry oraz znaki: -, _, . (bez spacji)</div>
                         <div class="error-message" id="display-name-error"></div>
                     </div>
 
                 <!-- Imię i nazwisko -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest field-required">Imię Operatora</label>
-                        <input type="text" id="first-name" placeholder="Jan" required>
+                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest field-required">Imię Strzelca</label>
+                        <input type="text" id="first-name" placeholder="Jan" required pattern="[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*" title="Tylko litery, zaczynając od dużej litery">
                     </div>
                     <div>
-                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest field-required">Nazwisko Operatora</label>
-                        <input type="text" id="last-name" placeholder="Kowalski" required>
+                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest field-required">Nazwisko Strzelca</label>
+                        <input type="text" id="last-name" placeholder="Kowalski" required pattern="[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*" title="Tylko litery, zaczynając od dużej litery">
                     </div>
                 </div>
 
@@ -174,8 +181,8 @@
 
                 <!-- Numer telefonu -->
                 <div>
-                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest field-required">Numer telefonu</label>
-                    <input type="tel" id="phone" placeholder="+48 123 456 789" required>
+                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Numer telefonu</label>
+                    <input type="tel" id="phone" placeholder="+48 123 456 789">
                 </div>
 
                 <!-- Paczkomat (opcjonalne) -->
@@ -186,7 +193,7 @@
 
                 <!-- Adres (opcjonalne) -->
                 <div class="space-y-4">
-                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Adres Operatora (opcjonalne)</label>
+                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Adres STRZELCA (opcjonalne)</label>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input type="text" id="street" placeholder="Ulica">
@@ -201,6 +208,14 @@
 
                 <!-- Zgody -->
                 <div class="space-y-4 pt-4 border-t border-zinc-700">
+                    <!-- Główny checkbox wszystkich zgód -->
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="all-consents">
+                        <label for="all-consents" class="text-sm font-semibold">
+                            Zaznacz wszystkie zgody STRZELCA
+                        </label>
+                    </div>
+
                     <!-- Wiek -->
                     <div class="checkbox-group">
                         <input type="checkbox" id="age-confirm" required>
@@ -209,41 +224,32 @@
                         </label>
                     </div>
 
-                    <!-- Regulamin -->
+                    <!-- Regulamin i RODO -->
                     <div class="checkbox-group">
-                        <input type="checkbox" id="terms-accept" required>
-                        <label for="terms-accept" class="text-sm">
-                            Akceptuję <a href="https://dokumenty.strzelca.pl#regulamin-platformy" target="_blank" class="text-coyote hover:underline">regulamin</a> platformy strzelca.pl <span class="text-red-500">*</span>
+                        <input type="checkbox" id="terms-privacy-accept" required>
+                        <label for="terms-privacy-accept" class="text-sm">
+                            Akceptuję <a href="https://dokumenty.strzelca.pl#regulamin-platformy" target="_blank" class="text-coyote hover:underline">regulamin</a> i wyrażam zgodę na przetwarzanie danych osobowych zgodnie z <a href="https://dokumenty.strzelca.pl#polityka-prywatnosci-platformy" target="_blank" class="text-coyote hover:underline">polityką prywatności</a> (RODO) <span class="text-red-500">*</span>
                         </label>
                     </div>
 
-                    <!-- RODO -->
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="privacy-accept" required>
-                        <label for="privacy-accept" class="text-sm">
-                            Wyrażam zgodę na przetwarzanie danych osobowych zgodnie z <a href="https://dokumenty.strzelca.pl#polityka-prywatnosci-platformy" target="_blank" class="text-coyote hover:underline">polityką prywatności</a> (RODO) <span class="text-red-500">*</span>
-                        </label>
-                    </div>
-
-                    <!-- Newsletter (wymagane zaznaczenie) -->
+                    <!-- Newsletter -->
                     <div class="checkbox-group">
                         <input type="checkbox" id="newsletter">
                         <label for="newsletter" class="text-sm">
-                            <strong>Chcę otrzymywać newsletter</strong> z informacjami o nowych ofertach, wydarzeniach i aktualnościach strzelca.pl
-                            <em>(można wypisać się w każdej chwili)</em>
+                            Chcę otrzymywać newsletter (rezygnacja możliwa w każdej chwili)
                         </label>
                     </div>
                 </div>
 
                 <button type="submit" class="btn-register" id="register-btn">
                     <i class="fa-solid fa-user-plus mr-2"></i>
-                    Utwórz konto Operatora
+                    Utwórz STRZELCA
                 </button>
 
                 <div class="text-center pt-4">
-                    <p class="text-zinc-400 text-sm">
-                        Jesteś już Operatorem? <a href="./login.html" class="text-coyote hover:underline">Zaloguj się na konto Strzelca</a>
-                    </p>
+                    <a href="./login.html" class="text-zinc-400 hover:text-coyote transition text-sm">
+                        Masz już konto STRZELCA? Zaloguj się.
+                    </a>
                 </div>
             </form>
         </div>
@@ -256,7 +262,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -273,6 +279,35 @@ import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10
         const db = getFirestore(app);
         const auth = getAuth(app);
 
+        // Lista zabronionych nazw
+        const forbiddenNames = [
+            'admin', 'administrator', 'mod', 'moderator', 'moderacja', 'moderowanie',
+            'support', 'pomoc', 'help', 'owner', 'wlasciciel', 'boss', 'szef',
+            'system', 'bot', 'robot', 'strzelec', 'strzelca', 'platform', 'site'
+        ];
+
+        // Funkcja sprawdzania dostępności nazwy strzelca
+        async function checkDisplayNameAvailability(displayName) {
+            try {
+                // Sprawdź czy nazwa nie jest zabroniona
+                if (forbiddenNames.includes(displayName.toLowerCase())) {
+                    return { available: false, reason: 'Ta nazwa jest zarezerwowana' };
+                }
+
+                // Sprawdź czy nazwa już istnieje w bazie danych
+                const q = query(collection(db, "userProfiles"), where("displayName", "==", `Strzelec ${displayName}`));
+                const querySnapshot = await getDocs(q);
+
+                if (!querySnapshot.empty) {
+                    return { available: false, reason: 'Ta nazwa jest już zajęta' };
+                }
+
+                return { available: true };
+            } catch (error) {
+                console.error('Error checking display name:', error);
+                return { available: false, reason: 'Błąd sprawdzania dostępności nazwy' };
+            }
+        }
 
         // Funkcje pomocnicze
         function showError(elementId, message) {
@@ -300,13 +335,18 @@ import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10
                 hideError('password-confirm-error');
             }
 
-            // Sprawdź nazwę profilu (musi zaczynać się od "Operator ")
+            // Sprawdź nazwę strzelca
             const displayName = document.getElementById('display-name').value.trim();
-            if (!displayName.startsWith('Operator ')) {
-                showError('display-name-error', 'Nazwa Operatora musi zaczynać się od "Operator "');
+            const fullDisplayName = `Strzelec ${displayName}`;
+
+            if (displayName.length < 3 || displayName.length > 12) {
+                showError('display-name-error', 'Nazwa strzelca musi mieć 3-12 znaków');
                 isValid = false;
-            } else if (displayName.length < 12) {
-                showError('display-name-error', 'Nazwa Operatora musi mieć co najmniej 12 znaków');
+            } else if (!/^[a-zA-Z0-9\-_.]+$/.test(displayName)) {
+                showError('display-name-error', 'Nazwa strzelca może zawierać tylko litery, cyfry oraz znaki: -, _, .');
+                isValid = false;
+            } else if (forbiddenNames.includes(displayName.toLowerCase())) {
+                showError('display-name-error', 'Ta nazwa jest zarezerwowana');
                 isValid = false;
             } else {
                 hideError('display-name-error');
@@ -348,7 +388,7 @@ import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10
             try {
                 const formData = {
                     gender: document.querySelector('input[name="gender"]:checked').value,
-                    displayName: document.getElementById('display-name').value.trim(),
+                    displayName: `Strzelec ${document.getElementById('display-name').value.trim()}`,
                     firstName: document.getElementById('first-name').value.trim(),
                     lastName: document.getElementById('last-name').value.trim(),
                     email: document.getElementById('email').value.trim().toLowerCase(),
@@ -361,8 +401,8 @@ import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10
                         city: document.getElementById('city').value.trim()
                     },
                     ageConfirmed: document.getElementById('age-confirm').checked,
-                    termsAccepted: document.getElementById('terms-accept').checked,
-                    privacyAccepted: document.getElementById('privacy-accept').checked,
+                    termsAccepted: document.getElementById('terms-privacy-accept').checked,
+                    privacyAccepted: document.getElementById('terms-privacy-accept').checked,
                     newsletter: document.getElementById('newsletter').checked,
                     createdAt: new Date(),
                     emailVerified: false,
@@ -452,6 +492,43 @@ Aby konto zostało aktywne - kliknij link weryfikacyjny w emailu, a następnie z
             } else {
                 hideError('password-confirm-error');
             }
+        });
+
+        // Walidacja live nazwy strzelca
+        let displayNameTimeout;
+        document.getElementById('display-name').addEventListener('input', async (e) => {
+            const displayName = e.target.value.trim();
+            clearTimeout(displayNameTimeout);
+
+            if (displayName.length < 3) {
+                hideError('display-name-error');
+                return;
+            }
+
+            displayNameTimeout = setTimeout(async () => {
+                const result = await checkDisplayNameAvailability(displayName);
+                if (!result.available) {
+                    showError('display-name-error', result.reason);
+                } else {
+                    hideError('display-name-error');
+                }
+            }, 500); // Opóźnienie 500ms żeby nie sprawdzać przy każdym znaku
+        });
+
+        // Obsługa głównego checkboxa zgód
+        document.getElementById('all-consents').addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            document.getElementById('age-confirm').checked = isChecked;
+            document.getElementById('terms-privacy-accept').checked = isChecked;
+            document.getElementById('newsletter').checked = isChecked;
+        });
+
+        // Aktualizacja głównego checkboxa gdy zmienia się którykolwiek z podrzędnych
+        ['age-confirm', 'terms-privacy-accept', 'newsletter'].forEach(id => {
+            document.getElementById(id).addEventListener('change', () => {
+                const allChecked = ['age-confirm', 'terms-privacy-accept', 'newsletter'].every(id => document.getElementById(id).checked);
+                document.getElementById('all-consents').checked = allChecked;
+            });
         });
     </script>
 </body>
