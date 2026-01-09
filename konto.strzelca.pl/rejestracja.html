@@ -48,35 +48,44 @@
 
         .radio-option input[type="radio"] {
             appearance: none;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #444;
+            width: 24px;
+            height: 24px;
+            border: 3px solid #666;
             border-radius: 50%;
-            background: #111;
+            background: #1a1a1a;
             cursor: pointer;
             transition: all 0.3s;
             position: relative;
+            margin-right: 8px;
         }
 
         .radio-option input[type="radio"]:checked {
             border-color: var(--coyote);
-            background: var(--coyote);
+            background: #1a1a1a;
+            box-shadow: 0 0 12px rgba(193, 154, 107, 0.4);
         }
 
         .radio-option input[type="radio"]:checked::after {
             content: '';
             position: absolute;
-            top: 3px;
-            left: 3px;
-            width: 8px;
-            height: 8px;
-            background: black;
+            top: 5px;
+            left: 5px;
+            width: 10px;
+            height: 10px;
+            background: var(--coyote);
             border-radius: 50%;
+            animation: radioCheck 0.2s ease-in-out;
         }
 
         .radio-option input[type="radio"]:hover {
             border-color: var(--coyote);
-            box-shadow: 0 0 8px rgba(193, 154, 107, 0.3);
+            box-shadow: 0 0 12px rgba(193, 154, 107, 0.3);
+        }
+
+        @keyframes radioCheck {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
         }
 
         .btn-register {
@@ -102,9 +111,36 @@
         }
 
         .checkbox-group input[type="checkbox"] {
+            appearance: none;
             width: 20px;
             height: 20px;
+            border: 2px solid #666;
+            background: #1a1a1a;
+            cursor: pointer;
+            position: relative;
             margin-top: 2px;
+            transition: all 0.3s;
+        }
+
+        .checkbox-group input[type="checkbox"]:checked {
+            background: var(--coyote);
+            border-color: var(--coyote);
+        }
+
+        .checkbox-group input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: black;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .checkbox-group input[type="checkbox"]:hover {
+            border-color: var(--coyote);
+            box-shadow: 0 0 8px rgba(193, 154, 107, 0.3);
         }
 
         .error-message {
@@ -179,6 +215,53 @@
         .tooltip-trigger:hover::after {
             color: var(--coyote);
         }
+
+        .strzelec-input-container {
+            display: flex;
+            align-items: center;
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 12px;
+            padding: 16px 20px;
+            transition: 0.3s;
+        }
+
+        .strzelec-input-container:focus-within {
+            border-color: var(--coyote);
+            background: #161616;
+        }
+
+        .strzelec-prefix {
+            color: var(--coyote);
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            user-select: none;
+            pointer-events: none;
+        }
+
+        .strzelec-input {
+            background: transparent;
+            border: none;
+            color: white;
+            outline: none;
+            flex: 1;
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .strzelec-input::placeholder {
+            color: #666;
+        }
+
+        .validation-success {
+            border-color: #10b981 !important;
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
+        }
+
+        .validation-error {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+        }
     </style>
 </head>
 <body>
@@ -233,12 +316,14 @@
                     <div>
                         <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest field-required">Nazwa STRZELCA (wyświetlana dla innych)</label>
                         <div class="tooltip-container">
-                            <input type="text" id="display-name" placeholder="Twój nick" required minlength="3" maxlength="12" pattern="[a-zA-Z0-9\-_.]+" class="tooltip-trigger">
+                            <div class="strzelec-input-container tooltip-trigger">
+                                <span class="strzelec-prefix">Strzelec </span>
+                                <input type="text" id="display-name" placeholder="Twój nick" required minlength="3" maxlength="12" pattern="[a-zA-Z0-9\-_.]+" class="strzelec-input">
+                            </div>
                             <div class="tooltip">
                                 Warunki: 3-12 znaków, litery, cyfry, znaki: "-", "_", "."
                             </div>
                         </div>
-                        <div class="text-zinc-400 text-xs mb-2">Twoja pełna nazwa będzie: <span class="coyote-text">Strzelec [Twój nick]</span>.</div>
                         <div class="error-message" id="display-name-error"></div>
                     </div>
 
@@ -246,11 +331,11 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest field-required">Imię Strzelca</label>
-                        <input type="text" id="first-name" placeholder="Jan" required pattern="[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*" title="Tylko litery, zaczynając od dużej litery">
+                        <input type="text" id="first-name" placeholder="Jan" required maxlength="25" pattern="[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*" title="Tylko litery, zaczynając od dużej litery">
                     </div>
                     <div>
                         <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest field-required">Nazwisko Strzelca</label>
-                        <input type="text" id="last-name" placeholder="Kowalski" required pattern="[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*" title="Tylko litery, zaczynając od dużej litery">
+                        <input type="text" id="last-name" placeholder="Kowalski" required maxlength="25" pattern="[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*" title="Tylko litery, zaczynając od dużej litery">
                     </div>
                 </div>
 
@@ -262,34 +347,34 @@
                 </div>
 
                 <!-- Hasło -->
-                <div>
-                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest field-required">Hasło</label>
-                    <div class="tooltip-container">
-                        <input type="password" id="password" placeholder="Minimum 8 znaków" required minlength="8" class="tooltip-trigger">
-                        <div class="tooltip">
-                            Zgodnie z wymaganiami ustawionymi na Firebase
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest field-required">Hasło</label>
+                        <div class="tooltip-container">
+                            <input type="password" id="password" placeholder="Minimum 8 znaków" required minlength="8" class="tooltip-trigger">
+                            <div class="tooltip">
+                                Zgodnie z wymaganiami ustawionymi na Firebase
+                            </div>
                         </div>
+                        <div class="error-message" id="password-error"></div>
                     </div>
-                    <div class="error-message" id="password-error"></div>
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest field-required">Powtórz hasło</label>
+                        <input type="password" id="password-confirm" placeholder="Powtórz hasło" required>
+                        <div class="error-message" id="password-confirm-error"></div>
+                    </div>
                 </div>
 
-                <!-- Powtórz hasło -->
-                <div>
-                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest field-required">Powtórz hasło</label>
-                    <input type="password" id="password-confirm" placeholder="Powtórz hasło" required>
-                    <div class="error-message" id="password-confirm-error"></div>
-                </div>
-
-                <!-- Numer telefonu -->
-                <div>
-                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Numer telefonu</label>
-                    <input type="tel" id="phone" placeholder="+48 123 456 789">
-                </div>
-
-                <!-- Paczkomat (opcjonalne) -->
-                <div>
-                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Paczkomat InPost (opcjonalne)</label>
-                    <input type="text" id="parcel-locker" placeholder="np. WRO42M">
+                <!-- Numer telefonu i paczkomat -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Numer telefonu</label>
+                        <input type="tel" id="phone" placeholder="+48 123 456 789">
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Paczkomat InPost (opcjonalne)</label>
+                        <input type="text" id="parcel-locker" placeholder="np. WRO42M">
+                    </div>
                 </div>
 
                 <!-- Adres (opcjonalne) -->
@@ -608,17 +693,20 @@ Aby konto zostało aktywne - kliknij link weryfikacyjny w emailu, a następnie z
             }
 
             if (displayName.length > 12) {
+                e.target.closest('.strzelec-input-container').classList.add('validation-error');
                 showError('display-name-error', 'Nazwa strzelca nie może mieć więcej niż 12 znaków');
                 return;
             }
 
             if (!/^[a-zA-Z0-9\-_.]+$/.test(displayName)) {
+                e.target.closest('.strzelec-input-container').classList.add('validation-error');
                 showError('display-name-error', 'Nazwa strzelca może zawierać tylko litery, cyfry oraz znaki: -, _, .');
                 return;
             }
 
             // Sprawdź czy nazwa nie jest zabroniona (lokalne sprawdzenie bez Firebase)
             if (forbiddenNames.includes(displayName.toLowerCase())) {
+                e.target.closest('.strzelec-input-container').classList.add('validation-error');
                 showError('display-name-error', 'Ta nazwa jest zarezerwowana');
                 return;
             }
@@ -627,13 +715,21 @@ Aby konto zostało aktywne - kliknij link weryfikacyjny w emailu, a następnie z
             displayNameTimeout = setTimeout(async () => {
                 try {
                     const result = await checkDisplayNameAvailability(displayName);
+                    const container = document.querySelector('.strzelec-input-container');
                     if (!result.available) {
+                        container.classList.add('validation-error');
+                        container.classList.remove('validation-success');
                         showError('display-name-error', result.reason);
                     } else {
+                        container.classList.add('validation-success');
+                        container.classList.remove('validation-error');
                         hideError('display-name-error');
                     }
                 } catch (error) {
                     console.error('Błąd podczas sprawdzania dostępności nazwy:', error);
+                    const container = document.querySelector('.strzelec-input-container');
+                    container.classList.add('validation-error');
+                    container.classList.remove('validation-success');
                     showError('display-name-error', 'Błąd sprawdzania dostępności nazwy');
                 }
             }, 800); // Zwiększone opóźnienie żeby uniknąć zbyt częstych zapytań
@@ -690,6 +786,72 @@ Aby konto zostało aktywne - kliknij link weryfikacyjny w emailu, a następnie z
                 }
             });
         }
+
+        // Walidacja pól formularza
+        function validateField(fieldId, validator) {
+            const field = document.getElementById(fieldId);
+            if (!field) return;
+
+            const container = field.closest('.strzelec-input-container') || field;
+            const errorElement = document.getElementById(fieldId + '-error');
+
+            field.addEventListener('input', () => {
+                const value = field.value.trim();
+                const result = validator(value);
+
+                container.classList.remove('validation-success', 'validation-error');
+
+                if (result.isValid) {
+                    container.classList.add('validation-success');
+                    if (errorElement) hideError(fieldId + '-error');
+                } else if (value.length > 0) {
+                    container.classList.add('validation-error');
+                    if (errorElement && result.message) showError(fieldId + '-error', result.message);
+                } else {
+                    if (errorElement) hideError(fieldId + '-error');
+                }
+            });
+
+            field.addEventListener('blur', () => {
+                const value = field.value.trim();
+                if (value.length === 0 && field.hasAttribute('required')) {
+                    container.classList.add('validation-error');
+                    if (errorElement) showError(fieldId + '-error', 'To pole jest wymagane');
+                }
+            });
+        }
+
+        // Walidatory dla poszczególnych pól
+        const validators = {
+            'first-name': (value) => ({
+                isValid: value.length >= 2 && value.length <= 25 && /^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*$/.test(value),
+                message: 'Imię musi mieć 2-25 znaków i zaczynać się od dużej litery'
+            }),
+            'last-name': (value) => ({
+                isValid: value.length >= 2 && value.length <= 25 && /^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*$/.test(value),
+                message: 'Nazwisko musi mieć 2-25 znaków i zaczynać się od dużej litery'
+            }),
+            'email': (value) => ({
+                isValid: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+                message: 'Nieprawidłowy format adresu email'
+            }),
+            'password': (value) => ({
+                isValid: value.length >= 8,
+                message: 'Hasło musi mieć co najmniej 8 znaków'
+            }),
+            'password-confirm': (value) => {
+                const password = document.getElementById('password').value;
+                return {
+                    isValid: value === password && value.length >= 8,
+                    message: value.length < 8 ? 'Hasło musi mieć co najmniej 8 znaków' : 'Hasła nie są identyczne'
+                };
+            }
+        };
+
+        // Inicjalizuj walidację dla wszystkich pól
+        Object.keys(validators).forEach(fieldId => {
+            validateField(fieldId, validators[fieldId]);
+        });
 
         // Inicjalizuj tooltips po załadowaniu strony
         initTooltips();

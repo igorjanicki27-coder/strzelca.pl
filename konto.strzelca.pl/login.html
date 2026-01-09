@@ -3,11 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="https://strzelca.pl/ikona.svg">
-    <link rel="apple-touch-icon" href="https://strzelca.pl/ikona.svg">
-
     <title>Logowanie - strzelca.pl [UPDATED]</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet">
@@ -80,7 +75,6 @@
     </style>
 </head>
 <body>
-<!-- testowa kropka -->
 
     <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative">
         <a href="https://strzelca.pl" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl">
@@ -110,7 +104,15 @@
                         <input type="password" id="password" placeholder="Twoje hasło" required>
                     </div>
 
-                    <div class="flex items-center justify-end py-2 mb-4">
+                    <div class="flex items-center justify-between py-2 mb-4">
+                        <div class="flex items-center gap-3">
+                            <input type="checkbox" id="remember" class="hidden">
+                            <div class="flex flex-col items-center cursor-pointer" id="remember-toggle">
+                                <span id="remember-text-1" class="text-[10px] uppercase tracking-[0.15em] font-medium text-zinc-400 block text-center transition-colors">Zapamiętaj</span>
+                                <span id="remember-text-2" class="text-[10px] uppercase tracking-[0.15em] font-medium text-zinc-400 block text-center w-full transition-colors">STRZELCA</span>
+                            </div>
+                        </div>
+
                         <button type="button" onclick="resetPassword()" class="flex flex-col items-center text-[10px] uppercase font-medium text-[#C19A6B] hover:text-white transition-colors tracking-[0.1em]">
                             <span class="block text-center">Zapomniałeś</span>
                             <span class="text-[10px] block text-center w-full">HASŁA?</span>
@@ -214,13 +216,14 @@
             e.preventDefault();
 
             const loginBtn = document.getElementById('login-btn');
+            const remember = document.getElementById('remember').checked;
 
             loginBtn.disabled = true;
             loginBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Logowanie...';
 
             try {
-                // Ustaw trwałość sesji na browserLocalPersistence dla wszystkich subdomen
-                await setPersistence(auth, browserLocalPersistence);
+                // Ustaw trwałość sesji
+                await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence);
 
                 // Zaloguj użytkownika
                 const userCredential = await signInWithEmailAndPassword(
@@ -239,17 +242,9 @@
 
                 showStatus('Zalogowano pomyślnie! Przekierowanie...');
 
-                // Sprawdź czy jest parametr redirect
-                const urlParams = new URLSearchParams(window.location.search);
-                const redirectUrl = urlParams.get('redirect');
-
-                // Przekieruj do strony głównej lub do wskazanego URL
+                // Przekieruj do strony głównej (globalny system się zajmie resztą)
                 setTimeout(() => {
-                    if (redirectUrl) {
-                        window.location.href = decodeURIComponent(redirectUrl);
-                    } else {
-                        window.location.href = 'https://strzelca.pl/index.html';
-                    }
+                    window.location.href = 'https://strzelca.pl/index.html';
                 }, 1000);
 
             } catch (error) {
@@ -276,6 +271,67 @@
             }
         });
 
+        // Dodanie event listener dla interakcji z "Zapamiętaj STRZELCA"
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleElement = document.getElementById('remember-toggle');
+            if (toggleElement) {
+                toggleElement.addEventListener('click', toggleRemember);
+                toggleElement.addEventListener('mouseenter', handleMouseEnter);
+                toggleElement.addEventListener('mouseleave', handleMouseLeave);
+            }
+        });
+
+        // Funkcje obsługi interakcji z "Zapamiętaj STRZELCA"
+        function handleMouseEnter() {
+            const text1 = document.getElementById('remember-text-1');
+            const text2 = document.getElementById('remember-text-2');
+
+            text1.classList.add('text-green-500');
+            text1.classList.remove('text-zinc-500');
+            text2.classList.add('text-green-500');
+            text2.classList.remove('text-zinc-500');
+        }
+
+        function handleMouseLeave() {
+            const checkbox = document.getElementById('remember');
+            const text1 = document.getElementById('remember-text-1');
+            const text2 = document.getElementById('remember-text-2');
+
+            // Wróć do szarego tylko jeśli checkbox nie jest zaznaczony
+            if (!checkbox.checked) {
+                text1.classList.add('text-zinc-400');
+                text1.classList.remove('text-green-500');
+                text2.classList.add('text-zinc-400');
+                text2.classList.remove('text-green-500');
+            }
+        }
+
+        function toggleRemember() {
+            console.log('toggleRemember called');
+            const checkbox = document.getElementById('remember');
+            const text1 = document.getElementById('remember-text-1');
+            const text2 = document.getElementById('remember-text-2');
+
+            if (!checkbox || !text1 || !text2) {
+                console.error('Elements not found');
+                return;
+            }
+
+            checkbox.checked = !checkbox.checked;
+            console.log('Checkbox checked:', checkbox.checked);
+
+            if (checkbox.checked) {
+                text1.classList.add('text-green-500');
+                text1.classList.remove('text-zinc-400');
+                text2.classList.add('text-green-500');
+                text2.classList.remove('text-zinc-400');
+            } else {
+                text1.classList.add('text-zinc-400');
+                text1.classList.remove('text-green-500');
+                text2.classList.add('text-zinc-400');
+                text2.classList.remove('text-green-500');
+            }
+        }
     </script>
 </body>
 </html>
