@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Logowanie - strzelca.pl</title>
+    <title>Logowanie - strzelca.pl [UPDATED]</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -25,6 +25,30 @@
         input:focus {
             border-color: var(--coyote) !important;
             background: #161616 !important;
+        }
+
+        input[type="checkbox"] {
+            width: auto !important;
+        }
+
+        /* Dodatkowe style dla lepszej widoczności zmian */
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .text-stacked {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+
+        input[type="checkbox"]:checked + i {
+            opacity: 1 !important;
+            transform: scale(1) !important;
         }
 
         .btn-login {
@@ -69,16 +93,7 @@
                 <span class="coyote-text">KONTO STRZELCA</span>
             </h1>
 
-            <div class="relative my-6">
-                    <div class="absolute inset-0 flex items-center">
-                        <div class="w-full border-t border-zinc-600"></div>
-                    </div>
-                    <div class="relative flex justify-center text-sm">
-                        <span class="px-2 bg-zinc-900 text-zinc-400">lub</span>
-                    </div>
-                </div>
-
-                <form id="login-form" class="space-y-6">
+            <form id="login-form" class="space-y-6">
                     <div>
                         <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Adres email</label>
                         <input type="email" id="email" placeholder="jan.kowalski@email.com" required>
@@ -89,14 +104,19 @@
                         <input type="password" id="password" placeholder="Twoje hasło" required>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4 text-sm">
-                        <label class="flex items-center">
-                            <input type="checkbox" id="remember" class="mr-2">
-                            <span>Zapamiętaj STRZELCA</span>
-                        </label>
-                        <div class="text-right">
-                            <button type="button" onclick="resetPassword()" class="text-coyote hover:underline">Zapomniałeś hasła?</button>
+                    <div class="flex items-center justify-between py-2 mb-4">
+                        <div class="flex items-center gap-3">
+                            <input type="checkbox" id="remember" class="hidden">
+                            <div class="flex flex-col items-center cursor-pointer" id="remember-toggle">
+                                <span id="remember-text-1" class="text-[10px] uppercase tracking-[0.15em] font-medium text-zinc-500 block text-center transition-colors">Zapamiętaj</span>
+                                <span id="remember-text-2" class="text-[10px] uppercase tracking-[0.15em] font-medium text-zinc-500 block text-center w-full transition-colors">STRZELCA</span>
+                            </div>
                         </div>
+
+                        <button type="button" onclick="resetPassword()" class="flex flex-col items-center text-[10px] uppercase font-medium text-[#C19A6B] hover:text-white transition-colors tracking-[0.1em]">
+                            <span class="block text-center">Zapomniałeś</span>
+                            <span class="text-[10px] block text-center w-full">HASŁA?</span>
+                        </button>
                     </div>
 
                     <button type="submit" class="btn-login" id="login-btn">
@@ -105,13 +125,12 @@
                     </button>
                 </form>
 
-                <div class="text-center pt-4 border-t border-zinc-700">
+                <div class="text-center pt-8">
                     <p class="text-zinc-400 text-sm">
-                        Nie posiadasz konta Strzelca?<br>
-                        <a href="./rejestracja.html" class="text-coyote hover:underline">Zarejestruj Strzelca</a>
+                        Nie posiadasz konta?<br>
+                        <a href="./rejestracja.html" class="text-coyote hover:underline">Zarejestruj STRZELCA</a>
                     </p>
                 </div>
-            </form>
 
             <div id="status-message" class="mt-6 p-4 rounded-lg text-center text-sm hidden"></div>
         </div>
@@ -251,6 +270,68 @@
                 loginBtn.innerHTML = '<i class="fa-solid fa-sign-in-alt mr-2"></i>Zaloguj się';
             }
         });
+
+        // Dodanie event listener dla interakcji z "Zapamiętaj STRZELCA"
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleElement = document.getElementById('remember-toggle');
+            if (toggleElement) {
+                toggleElement.addEventListener('click', toggleRemember);
+                toggleElement.addEventListener('mouseenter', handleMouseEnter);
+                toggleElement.addEventListener('mouseleave', handleMouseLeave);
+            }
+        });
+
+        // Funkcje obsługi interakcji z "Zapamiętaj STRZELCA"
+        function handleMouseEnter() {
+            const text1 = document.getElementById('remember-text-1');
+            const text2 = document.getElementById('remember-text-2');
+
+            text1.classList.add('text-green-500');
+            text1.classList.remove('text-zinc-500');
+            text2.classList.add('text-green-500');
+            text2.classList.remove('text-zinc-500');
+        }
+
+        function handleMouseLeave() {
+            const checkbox = document.getElementById('remember');
+            const text1 = document.getElementById('remember-text-1');
+            const text2 = document.getElementById('remember-text-2');
+
+            // Wróć do szarego tylko jeśli checkbox nie jest zaznaczony
+            if (!checkbox.checked) {
+                text1.classList.add('text-zinc-500');
+                text1.classList.remove('text-green-500');
+                text2.classList.add('text-zinc-500');
+                text2.classList.remove('text-green-500');
+            }
+        }
+
+        function toggleRemember() {
+            console.log('toggleRemember called');
+            const checkbox = document.getElementById('remember');
+            const text1 = document.getElementById('remember-text-1');
+            const text2 = document.getElementById('remember-text-2');
+
+            if (!checkbox || !text1 || !text2) {
+                console.error('Elements not found');
+                return;
+            }
+
+            checkbox.checked = !checkbox.checked;
+            console.log('Checkbox checked:', checkbox.checked);
+
+            if (checkbox.checked) {
+                text1.classList.add('text-green-500');
+                text1.classList.remove('text-zinc-500');
+                text2.classList.add('text-green-500');
+                text2.classList.remove('text-zinc-500');
+            } else {
+                text1.classList.add('text-zinc-500');
+                text1.classList.remove('text-green-500');
+                text2.classList.add('text-zinc-500');
+                text2.classList.remove('text-green-500');
+            }
+        }
     </script>
 </body>
 </html>
