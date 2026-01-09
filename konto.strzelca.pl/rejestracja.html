@@ -42,8 +42,36 @@
         }
 
         .radio-option input[type="radio"] {
+            appearance: none;
             width: 20px;
             height: 20px;
+            border: 2px solid #444;
+            border-radius: 50%;
+            background: #111;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .radio-option input[type="radio"]:checked {
+            border-color: var(--coyote);
+            background: var(--coyote);
+        }
+
+        .radio-option input[type="radio"]:checked::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 8px;
+            height: 8px;
+            background: black;
+            border-radius: 50%;
+        }
+
+        .radio-option input[type="radio"]:hover {
+            border-color: var(--coyote);
+            box-shadow: 0 0 8px rgba(193, 154, 107, 0.3);
         }
 
         .btn-register {
@@ -84,6 +112,67 @@
         .field-required::after {
             content: " *";
             color: #ef4444;
+        }
+
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #111;
+            color: #e5e5e5;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            font-size: 12px;
+            line-height: 1.4;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            margin-bottom: 8px;
+        }
+
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #111;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .tooltip-trigger {
+            cursor: help;
+            position: relative;
+        }
+
+        .tooltip-trigger::after {
+            content: 'ℹ';
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+            font-size: 14px;
+            transition: color 0.3s;
+        }
+
+        .tooltip-trigger:focus::after,
+        .tooltip-trigger:hover::after {
+            color: var(--coyote);
         }
     </style>
 </head>
@@ -138,11 +227,13 @@
                     <!-- Nazwa profilu -->
                     <div>
                         <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest field-required">Nazwa STRZELCA (wyświetlana dla innych)</label>
-                        <div class="flex items-center gap-2">
-                            <span class="bg-zinc-700 text-zinc-400 px-3 py-3 rounded-lg text-sm font-mono">Strzelec</span>
-                            <input type="text" id="display-name" placeholder="Twój nick" required minlength="3" maxlength="12" pattern="[a-zA-Z0-9\-_.]+" class="flex-1">
+                        <div class="tooltip-container">
+                            <input type="text" id="display-name" placeholder="Twój nick" required minlength="3" maxlength="12" pattern="[a-zA-Z0-9\-_.]+" class="tooltip-trigger">
+                            <div class="tooltip">
+                                Warunki: 3-12 znaków, litery, cyfry, znaki: "-", "_", "."
+                            </div>
                         </div>
-                        <div class="text-zinc-400 text-xs mb-2">3-12 znaków, tylko litery, cyfry oraz znaki: -, _, . (bez spacji)</div>
+                        <div class="text-zinc-400 text-xs mb-2">Twoja pełna nazwa będzie: <span class="coyote-text">Strzelec [Twój nick]</span>.</div>
                         <div class="error-message" id="display-name-error"></div>
                     </div>
 
@@ -168,7 +259,12 @@
                 <!-- Hasło -->
                 <div>
                     <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest field-required">Hasło</label>
-                    <input type="password" id="password" placeholder="Minimum 8 znaków" required minlength="8">
+                    <div class="tooltip-container">
+                        <input type="password" id="password" placeholder="Minimum 8 znaków" required minlength="8" class="tooltip-trigger">
+                        <div class="tooltip">
+                            Zgodnie z wymaganiami ustawionymi na Firebase
+                        </div>
+                    </div>
                     <div class="error-message" id="password-error"></div>
                 </div>
 
@@ -247,7 +343,7 @@
                 </button>
 
                 <div class="text-center pt-4">
-                    <a href="./login.html" class="text-zinc-400 hover:text-coyote transition text-sm">
+                    <a href="./login.html" class="text-zinc-400 hover:text-coyote hover:underline transition text-sm">
                         Masz już konto STRZELCA? Zaloguj się.
                     </a>
                 </div>
@@ -500,19 +596,42 @@ Aby konto zostało aktywne - kliknij link weryfikacyjny w emailu, a następnie z
             const displayName = e.target.value.trim();
             clearTimeout(displayNameTimeout);
 
+            // Najpierw sprawdź podstawowe wymagania
             if (displayName.length < 3) {
                 hideError('display-name-error');
                 return;
             }
 
+            if (displayName.length > 12) {
+                showError('display-name-error', 'Nazwa strzelca nie może mieć więcej niż 12 znaków');
+                return;
+            }
+
+            if (!/^[a-zA-Z0-9\-_.]+$/.test(displayName)) {
+                showError('display-name-error', 'Nazwa strzelca może zawierać tylko litery, cyfry oraz znaki: -, _, .');
+                return;
+            }
+
+            // Sprawdź czy nazwa nie jest zabroniona (lokalne sprawdzenie bez Firebase)
+            if (forbiddenNames.includes(displayName.toLowerCase())) {
+                showError('display-name-error', 'Ta nazwa jest zarezerwowana');
+                return;
+            }
+
+            // Dopiero potem sprawdź dostępność w bazie danych
             displayNameTimeout = setTimeout(async () => {
-                const result = await checkDisplayNameAvailability(displayName);
-                if (!result.available) {
-                    showError('display-name-error', result.reason);
-                } else {
-                    hideError('display-name-error');
+                try {
+                    const result = await checkDisplayNameAvailability(displayName);
+                    if (!result.available) {
+                        showError('display-name-error', result.reason);
+                    } else {
+                        hideError('display-name-error');
+                    }
+                } catch (error) {
+                    console.error('Błąd podczas sprawdzania dostępności nazwy:', error);
+                    showError('display-name-error', 'Błąd sprawdzania dostępności nazwy');
                 }
-            }, 500); // Opóźnienie 500ms żeby nie sprawdzać przy każdym znaku
+            }, 800); // Zwiększone opóźnienie żeby uniknąć zbyt częstych zapytań
         });
 
         // Obsługa głównego checkboxa zgód
@@ -530,6 +649,45 @@ Aby konto zostało aktywne - kliknij link weryfikacyjny w emailu, a następnie z
                 document.getElementById('all-consents').checked = allChecked;
             });
         });
+
+        // Obsługa tooltipów
+        function initTooltips() {
+            const tooltipTriggers = document.querySelectorAll('.tooltip-trigger');
+
+            tooltipTriggers.forEach(trigger => {
+                const tooltip = trigger.nextElementSibling;
+
+                // Pokaż tooltip przy kliknięciu
+                trigger.addEventListener('focus', () => {
+                    tooltip.classList.add('show');
+                });
+
+                // Ukryj tooltip przy utracie focus
+                trigger.addEventListener('blur', () => {
+                    tooltip.classList.remove('show');
+                });
+
+                // Pokaż tooltip przy kliknięciu (dla pól bez focus)
+                trigger.addEventListener('click', (e) => {
+                    if (!tooltip.classList.contains('show')) {
+                        tooltip.classList.add('show');
+                        e.stopPropagation();
+                    }
+                });
+            });
+
+            // Ukryj wszystkie tooltips przy kliknięciu gdziekolwiek indziej
+            document.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('tooltip-trigger')) {
+                    document.querySelectorAll('.tooltip.show').forEach(tooltip => {
+                        tooltip.classList.remove('show');
+                    });
+                }
+            });
+        }
+
+        // Inicjalizuj tooltips po załadowaniu strony
+        initTooltips();
     </script>
 </body>
 </html>
