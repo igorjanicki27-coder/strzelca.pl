@@ -96,7 +96,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = { 
@@ -112,6 +112,9 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
+        // Ustaw trwałość sesji na browserLocalPersistence dla wszystkich subdomen
+        await setPersistence(auth, browserLocalPersistence);
+
         // Funkcja do obsługi zamówienia
         window.handleOrder = (productName) => {
             onAuthStateChanged(auth, (user) => {
@@ -120,8 +123,9 @@
                     const orderUrl = `https://kontakt.strzelca.pl?topic=Zamówienie&product=${encodeURIComponent(productName)}`;
                     window.location.href = orderUrl;
                 } else {
-                    // Użytkownik niezalogowany - tylko przekieruj do kontakt
-                    window.location.href = 'https://kontakt.strzelca.pl';
+                    // Użytkownik niezalogowany - przekieruj do logowania z parametrem powrotu
+                    const returnUrl = encodeURIComponent(window.location.href + '?action=order&product=' + encodeURIComponent(productName));
+                    window.location.href = `https://konto.strzelca.pl/login.html?redirect=${returnUrl}`;
                 }
             });
         };
