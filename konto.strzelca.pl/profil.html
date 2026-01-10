@@ -89,6 +89,97 @@
         }
         .btn-save:hover { transform: scale(1.05); box-shadow: 0 0 15px rgba(193, 154, 107, 0.3); }
         .btn-save:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* Style dla opinii */
+        .star-rating {
+            display: flex;
+            gap: 4px;
+        }
+        .star {
+            color: #C19A6B;
+            font-size: 18px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .star:hover, .star.active {
+            color: #C19A6B;
+        }
+        .star.inactive {
+            color: #666;
+        }
+
+        .review-card {
+            background: rgba(39, 39, 42, 0.5);
+            border: 1px solid #374151;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .review-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .review-author {
+            font-weight: bold;
+            color: #C19A6B;
+        }
+        .review-date {
+            color: #9CA3AF;
+            font-size: 12px;
+        }
+        .review-rating {
+            display: flex;
+            gap: 2px;
+        }
+        .review-comment {
+            color: #E5E7EB;
+            margin-top: 8px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal-content {
+            background: #1a1a1a;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid #333;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            color: #9CA3AF;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        .rating-input {
+            display: flex;
+            gap: 8px;
+            margin: 16px 0;
+        }
     </style>
 </head>
 <body>
@@ -218,7 +309,85 @@
                 <div class="text-sm text-zinc-400 uppercase tracking-widest">Ulubionych</div>
             </div>
         </div>
+
+        <!-- Sekcja opinii użytkowników -->
+        <div id="reviews-section" class="mt-8">
+            <div class="bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800 shadow-2xl">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold coyote-text">Opinie użytkowników</h2>
+                    <button id="add-review-btn" class="bg-zinc-700 text-white px-4 py-2 rounded-lg hover:bg-zinc-600 transition">
+                        <i class="fa-solid fa-plus mr-2"></i>
+                        Dodaj opinię
+                    </button>
+                </div>
+
+                <!-- Średnia ocena -->
+                <div class="flex items-center space-x-4 mb-6">
+                    <div class="text-4xl font-bold coyote-text" id="average-rating">0.0</div>
+                    <div class="flex space-x-1" id="average-stars">
+                        <i class="fa-solid fa-star text-zinc-600"></i>
+                        <i class="fa-solid fa-star text-zinc-600"></i>
+                        <i class="fa-solid fa-star text-zinc-600"></i>
+                        <i class="fa-solid fa-star text-zinc-600"></i>
+                        <i class="fa-solid fa-star text-zinc-600"></i>
+                    </div>
+                    <div class="text-sm text-zinc-400" id="reviews-count">(0 opinii)</div>
+                </div>
+
+                <!-- Lista opinii -->
+                <div id="reviews-list" class="space-y-4">
+                    <!-- Opinie będą ładowane dynamicznie -->
+                </div>
+            </div>
+        </div>
     </main>
+
+    <!-- Modal dodawania opinii -->
+    <div id="add-review-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="text-xl font-bold coyote-text">Dodaj opinię</h3>
+                <button class="modal-close" onclick="closeReviewModal()">&times;</button>
+            </div>
+
+            <form id="review-form">
+                <div class="mb-4">
+                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Wybierz użytkownika do oceny</label>
+                    <select id="rated-user-select" required class="w-full">
+                        <option value="">Wybierz użytkownika...</option>
+                        <!-- Użytkownicy będą ładowani dynamicznie -->
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Ocena (0-5 gwiazdek)</label>
+                    <div class="rating-input">
+                        <i class="fa-solid fa-star star" data-rating="1"></i>
+                        <i class="fa-solid fa-star star" data-rating="2"></i>
+                        <i class="fa-solid fa-star star" data-rating="3"></i>
+                        <i class="fa-solid fa-star star" data-rating="4"></i>
+                        <i class="fa-solid fa-star star" data-rating="5"></i>
+                    </div>
+                    <input type="hidden" id="rating-value" value="0">
+                </div>
+
+                <div class="mb-6">
+                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Krótki opis opinii</label>
+                    <textarea id="review-comment" required minlength="10" maxlength="500" rows="4" placeholder="Napisz swoją opinię o tym użytkowniku..."></textarea>
+                </div>
+
+                <div class="flex gap-4">
+                    <button type="submit" class="btn-save flex-1">
+                        <i class="fa-solid fa-save mr-2"></i>
+                        Dodaj opinię
+                    </button>
+                    <button type="button" onclick="closeReviewModal()" class="bg-zinc-700 text-white px-6 py-3 rounded-lg hover:bg-zinc-600 transition">
+                        Anuluj
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <footer class="text-center py-10 border-t border-zinc-900 text-zinc-700 text-[10px] uppercase font-bold tracking-[0.4em]">
         <a href="https://strzelca.pl" class="hover:text-white transition">STRZELCA.PL</a> |
@@ -227,7 +396,19 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import {
+            getFirestore,
+            doc,
+            getDoc,
+            updateDoc,
+            collection,
+            query,
+            where,
+            getDocs,
+            addDoc,
+            orderBy,
+            limit
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -246,6 +427,26 @@
 
         let currentUser = null;
         let userProfile = null;
+
+        // Funkcja logowania aktywności
+        async function logActivity(type, userId, userName, details, timestamp = null) {
+            try {
+                const activityData = {
+                    type: type,
+                    userId: userId,
+                    userName: userName,
+                    details: details,
+                    timestamp: timestamp || new Date()
+                };
+
+                const { addDoc, collection } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+                await addDoc(collection(db, "activityLogs"), activityData);
+
+                console.log('Aktywność zalogowana:', activityData);
+            } catch (error) {
+                console.error('Błąd podczas logowania aktywności:', error);
+            }
+        }
 
         // Funkcje pomocnicze
         function getDefaultAvatar(gender) {
@@ -312,6 +513,9 @@
                     document.getElementById('edit-city').value = decryptedProfile.address?.city || '';
                     document.getElementById('edit-parcel-locker').value = decryptedProfile.parcelLocker || '';
                     document.getElementById('edit-newsletter').checked = decryptedProfile.newsletter || false;
+
+                    // Załaduj opinie użytkownika
+                    loadUserReviews();
 
                 } else {
                     alert('Nie znaleziono danych profilu. Skontaktuj się z administratorem.');
@@ -458,11 +662,250 @@
             }
         });
 
+        // ===== FUNKCJE DO OBSŁUGI OPINII =====
+
+        // Ładowanie opinii użytkownika
+        async function loadUserReviews() {
+            try {
+                const reviewsQuery = query(
+                    collection(db, "userReviews"),
+                    where("ratedId", "==", currentUser.uid),
+                    where("status", "==", "approved"),
+                    orderBy("timestamp", "desc")
+                );
+
+                const reviewsSnapshot = await getDocs(reviewsQuery);
+                const reviews = reviewsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                displayReviews(reviews);
+                updateAverageRating(reviews);
+
+            } catch (error) {
+                console.error('Błąd ładowania opinii:', error);
+            }
+        }
+
+        // Wyświetlanie opinii
+        function displayReviews(reviews) {
+            const reviewsList = document.getElementById('reviews-list');
+
+            if (reviews.length === 0) {
+                reviewsList.innerHTML = '<p class="text-zinc-400 text-center py-8">Brak opinii użytkowników.</p>';
+                return;
+            }
+
+            reviewsList.innerHTML = reviews.map(review => `
+                <div class="review-card">
+                    <div class="review-header">
+                        <span class="review-author">${review.raterName || 'Anonimowy użytkownik'}</span>
+                        <span class="review-date">${formatDate(review.timestamp)}</span>
+                    </div>
+                    <div class="review-rating">
+                        ${generateStars(review.rating)}
+                    </div>
+                    <div class="review-comment">${review.comment}</div>
+                </div>
+            `).join('');
+        }
+
+        // Generowanie gwiazdek dla opinii
+        function generateStars(rating) {
+            let stars = '';
+            for (let i = 1; i <= 5; i++) {
+                stars += `<i class="fa-solid fa-star ${i <= rating ? 'text-yellow-400' : 'text-zinc-600'}"></i>`;
+            }
+            return stars;
+        }
+
+        // Aktualizacja średniej oceny
+        function updateAverageRating(reviews) {
+            const averageRating = document.getElementById('average-rating');
+            const averageStars = document.getElementById('average-stars');
+            const reviewsCount = document.getElementById('reviews-count');
+
+            if (reviews.length === 0) {
+                averageRating.textContent = '0.0';
+                reviewsCount.textContent = '(0 opinii)';
+                return;
+            }
+
+            const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
+            const avg = (sum / reviews.length).toFixed(1);
+
+            averageRating.textContent = avg;
+            reviewsCount.textContent = `(${reviews.length} opinii)`;
+
+            // Aktualizuj wizualne gwiazdki
+            const starElements = averageStars.querySelectorAll('.fa-star');
+            const fullStars = Math.floor(avg);
+
+            starElements.forEach((star, index) => {
+                if (index < fullStars) {
+                    star.className = 'fa-solid fa-star text-yellow-400';
+                } else if (index === fullStars && avg % 1 >= 0.5) {
+                    star.className = 'fa-solid fa-star-half-alt text-yellow-400';
+                } else {
+                    star.className = 'fa-solid fa-star text-zinc-600';
+                }
+            });
+        }
+
+        // Ładowanie listy użytkowników do wyboru
+        async function loadUsersList() {
+            try {
+                const usersQuery = query(collection(db, "userProfiles"));
+                const usersSnapshot = await getDocs(usersQuery);
+
+                const select = document.getElementById('rated-user-select');
+                const currentOptions = '<option value="">Wybierz użytkownika...</option>';
+
+                const users = usersSnapshot.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() }))
+                    .filter(user => user.id !== currentUser.uid && user.role !== 'admin') // Wyklucz siebie i adminów
+                    .map(user => `<option value="${user.id}">${user.displayName} (${user.email})</option>`)
+                    .join('');
+
+                select.innerHTML = currentOptions + users;
+
+            } catch (error) {
+                console.error('Błąd ładowania użytkowników:', error);
+            }
+        }
+
+        // Obsługa gwiazdek w formularzu
+        function initializeStarRating() {
+            const stars = document.querySelectorAll('.rating-input .star');
+            const ratingInput = document.getElementById('rating-value');
+
+            stars.forEach(star => {
+                star.addEventListener('click', () => {
+                    const rating = parseInt(star.dataset.rating);
+                    ratingInput.value = rating;
+
+                    stars.forEach((s, index) => {
+                        if (index < rating) {
+                            s.classList.add('active');
+                            s.classList.remove('inactive');
+                        } else {
+                            s.classList.remove('active');
+                            s.classList.add('inactive');
+                        }
+                    });
+                });
+            });
+        }
+
+        // Otwórz modal dodawania opinii
+        function openReviewModal() {
+            document.getElementById('add-review-modal').classList.add('show');
+            loadUsersList();
+            resetReviewForm();
+        }
+
+        // Zamknij modal
+        function closeReviewModal() {
+            document.getElementById('add-review-modal').classList.remove('show');
+            resetReviewForm();
+        }
+
+        // Reset formularza opinii
+        function resetReviewForm() {
+            document.getElementById('review-form').reset();
+            document.getElementById('rating-value').value = '0';
+            document.querySelectorAll('.rating-input .star').forEach(star => {
+                star.classList.remove('active', 'inactive');
+            });
+        }
+
+        // Dodawanie nowej opinii
+        async function submitReview(event) {
+            event.preventDefault();
+
+            const ratedUserId = document.getElementById('rated-user-select').value;
+            const rating = parseInt(document.getElementById('rating-value').value);
+            const comment = document.getElementById('review-comment').value.trim();
+
+            if (!ratedUserId) {
+                alert('Wybierz użytkownika do oceny.');
+                return;
+            }
+
+            if (rating === 0) {
+                alert('Wybierz ocenę (co najmniej 1 gwiazdka).');
+                return;
+            }
+
+            if (comment.length < 10) {
+                alert('Opis opinii musi mieć co najmniej 10 znaków.');
+                return;
+            }
+
+            try {
+                // Pobierz dane ocenianego użytkownika
+                const ratedUserDoc = await getDoc(doc(db, "userProfiles", ratedUserId));
+                const ratedUser = ratedUserDoc.data();
+
+                // Dodaj opinię do bazy danych
+                await addDoc(collection(db, "userReviews"), {
+                    raterId: currentUser.uid,
+                    raterName: userProfile.displayName,
+                    ratedId: ratedUserId,
+                    ratedName: ratedUser.displayName,
+                    rating: rating,
+                    comment: comment,
+                    timestamp: new Date(),
+                    status: 'approved' // W wersji podstawowej wszystkie opinie są automatycznie zatwierdzane
+                });
+
+                // Zaloguj aktywność dodania opinii
+                await logActivity(
+                    'USER-REVIEW',
+                    currentUser.uid,
+                    userProfile.displayName,
+                    `Ocena użytkownika ${ratedUser.displayName}: ${rating} gwiazdek - ${comment.substring(0, 100)}${comment.length > 100 ? '...' : ''}`
+                );
+
+                alert('Opinia została dodana pomyślnie!');
+                closeReviewModal();
+
+                // Odśwież opinie jeśli jesteśmy na profilu ocenianego użytkownika
+                if (ratedUserId === currentUser.uid) {
+                    loadUserReviews();
+                }
+
+            } catch (error) {
+                console.error('Błąd dodawania opinii:', error);
+                alert('Wystąpił błąd podczas dodawania opinii. Spróbuj ponownie.');
+            }
+        }
+
+        // Inicjalizacja obsługi zdarzeń
+        function initializeReviewEvents() {
+            // Przycisk dodawania opinii
+            document.getElementById('add-review-btn').addEventListener('click', openReviewModal);
+
+            // Formularz opinii
+            document.getElementById('review-form').addEventListener('submit', submitReview);
+
+            // Inicjalizacja gwiazdek
+            initializeStarRating();
+
+            // Zamykanie modalu przy kliknięciu poza nim
+            document.getElementById('add-review-modal').addEventListener('click', (e) => {
+                if (e.target.id === 'add-review-modal') {
+                    closeReviewModal();
+                }
+            });
+        }
+
+        // ===== KONIEC FUNKCJI OPINII =====
+
         // Sprawdź stan autoryzacji
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
                 loadProfile();
+                initializeReviewEvents();
             } else {
                 window.location.href = './login.html';
             }

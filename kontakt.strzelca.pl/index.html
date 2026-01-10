@@ -58,7 +58,7 @@
       .hero-bg {
         height: 40vh;
         background:
-          linear-gradient(rgba(10, 10, 10, 0.8), #0a0a0a),
+          linear-gradient(rgba(10, 10, 10, 0.1) 0%, rgba(10, 10, 10, 0.4) 50%, #0a0a0a 100%),
           url("https://strzelca.pl/tlo.png");
         background-size: cover;
         background-position: center;
@@ -390,6 +390,26 @@
           });
       }
 
+      // Funkcja logowania aktywności
+      async function logActivity(type, userId, userName, details, timestamp = null) {
+          try {
+              const activityData = {
+                  type: type,
+                  userId: userId,
+                  userName: userName,
+                  details: details,
+                  timestamp: timestamp || new Date()
+              };
+
+              const { addDoc, collection } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+              await addDoc(collection(db, "activityLogs"), activityData);
+
+              console.log('Aktywność zalogowana:', activityData);
+          } catch (error) {
+              console.error('Błąd podczas logowania aktywności:', error);
+          }
+      }
+
       // Funkcje pomocnicze
       window.copyEmail = async () => {
           const email = 'kontakt@strzelca.pl';
@@ -447,14 +467,14 @@
               let rateLimitQuery;
               if (currentUser) {
                   rateLimitQuery = query(
-                      collection(db, "chatMessages"),
+                      collection(db, "contactForms"),
                       where("senderId", "==", currentUser.uid),
                       orderBy("timestamp", "desc"),
                       limit(1)
                   );
               } else {
                   rateLimitQuery = query(
-                      collection(db, "chatMessages"),
+                      collection(db, "contactForms"),
                       where("senderType", "==", "guest"),
                       orderBy("timestamp", "desc"),
                       limit(1)
@@ -474,75 +494,23 @@
                   }
               }
 
-              // Znajdź lub utwórz konwersację z administratorem
-              let conversationId;
-
-              if (currentUser) {
-                  // Dla zalogowanych użytkowników - znajdź istniejącą konwersację z adminem
-                  const conversationQuery = query(
-                      collection(db, "conversations"),
-                      where("participants", "array-contains", currentUser.uid),
-                      where("type", "==", "support_chat")
-                  );
-                  const conversationSnap = await getDocs(conversationQuery);
-
-                  if (!conversationSnap.empty) {
-                      conversationId = conversationSnap.docs[0].id;
-                  } else {
-                      // Utwórz nową konwersację
-                      const newConversation = {
-                          participants: [currentUser.uid, 'admin'],
-                          type: 'support_chat',
-                          adminName: 'Pomoc Strzelca',
-                          createdAt: Date.now(),
-                          lastMessage: formData.content.substring(0, 100),
-                          lastMessageTime: formData.timestamp,
-                          unreadCount: { [currentUser.uid]: 0, admin: 1 }
-                      };
-                      const conversationRef = doc(collection(db, "conversations"));
-                      await setDoc(conversationRef, newConversation);
-                      conversationId = conversationRef.id;
-                  }
-              } else {
-                  // Dla gości - utwórz nową konwersację gościa z identyfikatorem sesji
-                  const sessionId = 'guest_' + Date.now();
-                  const newConversation = {
-                      participants: [sessionId, 'admin'],
-                      type: 'guest_support',
-                      adminName: 'Pomoc Strzelca',
-                      guestSessionId: sessionId,
-                      createdAt: Date.now(),
-                      lastMessage: formData.content.substring(0, 100),
-                      lastMessageTime: formData.timestamp,
-                      unreadCount: { [sessionId]: 0, admin: 1 }
-                  };
-                  const conversationRef = doc(collection(db, "conversations"));
-                  await setDoc(conversationRef, newConversation);
-                  conversationId = conversationRef.id;
-              }
-
-              // Dodaj wiadomość do konwersacji
-              await setDoc(doc(collection(db, "chatMessages")), {
+              // Dodaj formularz kontaktowy do kolekcji contactForms
+              await setDoc(doc(collection(db, "contactForms")), {
                   ...formData,
-                  conversationId: conversationId,
+                  status: 'in_progress',
                   recipientId: 'admin',
                   recipientType: 'admin',
                   recipientName: 'Pomoc Strzelca'
               });
 
-              // Zaktualizuj informacje o ostatniej wiadomości w konwersacji
-              const conversationRef = doc(db, "conversations", conversationId);
-              const conversationSnap = await getDoc(conversationRef);
-              const conversationData = conversationSnap.data();
-
-              await updateDoc(conversationRef, {
-                  lastMessage: formData.content.substring(0, 100),
-                  lastMessageTime: formData.timestamp,
-                  unreadCount: {
-                      ...conversationData.unreadCount,
-                      admin: (conversationData.unreadCount?.admin || 0) + 1
-                  }
-              });
+              // Zaloguj aktywność wysłania wiadomości
+              await logActivity(
+                  'NEW-MESSAGE',
+                  currentUser.uid,
+                  currentUser.displayName || currentUser.email.split('@')[0] || 'Użytkownik',
+                  `Temat: ${formData.topic} - ${formData.content.substring(0, 100)}${formData.content.length > 100 ? '...' : ''}`,
+                  new Date(formData.timestamp)
+              );
 
               alert('Wiadomość została wysłana! Otrzymasz powiadomienie email o odpowiedzi od naszego zespołu.');
               document.getElementById('chat-form').reset();
