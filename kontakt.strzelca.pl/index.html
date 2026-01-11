@@ -494,14 +494,24 @@
                   }
               }
 
-              // Dodaj formularz kontaktowy do kolekcji contactForms
-              await setDoc(doc(collection(db, "contactForms")), {
-                  ...formData,
-                  status: 'in_progress',
-                  recipientId: 'admin',
-                  recipientType: 'admin',
-                  recipientName: 'Pomoc Strzelca'
+              // Wyślij wiadomość do API zamiast Firestore
+              const apiResponse = await fetch('https://strzelca.pl/api/messages', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                      ...formData,
+                      status: 'in_progress',
+                      recipientId: 'admin',
+                      recipientType: 'admin',
+                      recipientName: 'Pomoc Strzelca'
+                  })
               });
+
+              if (!apiResponse.ok) {
+                  throw new Error('Failed to send message to API');
+              }
 
               // Zaloguj aktywność wysłania wiadomości
               await logActivity(

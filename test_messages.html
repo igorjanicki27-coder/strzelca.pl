@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Messages API</title>
+</head>
+<body>
+    <h1>Test Messages API</h1>
+    <div id="result"></div>
+    
+    <script>
+        async function testAPI() {
+            try {
+                console.log('Testing API...');
+                const response = await fetch('/api/messages?recipientId=admin&limit=5');
+                const data = await response.json();
+                
+                document.getElementById('result').innerHTML = `
+                    <h2>Success: ${data.success}</h2>
+                    <p>Total: ${data.data?.total}</p>
+                    <p>Messages: ${data.data?.messages?.length}</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+                
+                console.log('API Response:', data);
+            } catch (error) {
+                document.getElementById('result').innerHTML = `<h2>Error: ${error.message}</h2>`;
+                console.error('Error:', error);
+            }
+        }
+        
+        // Test po załadowaniu strony
+        window.onload = testAPI;
+    </script>
+</body>
+</html>

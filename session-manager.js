@@ -39,6 +39,18 @@ class SessionManager {
 
     async checkAuthState() {
         try {
+            // Najpierw sprawdź czy jest zalogowany lokalny administrator
+            const localAdmin = this.checkLocalAdminSession();
+            if (localAdmin) {
+                // Lokalny administrator jest zalogowany
+                this.userId = localAdmin.uid;
+                this.userEmail = localAdmin.email;
+                this.loadSessionSettings();
+                this.startSessionCheck();
+                this.reportActivity('admin_login'); // Zgłoś logowanie administratora
+                return;
+            }
+
             // Import Firebase Auth jeśli nie jest jeszcze załadowany
             if (typeof firebase === 'undefined') {
                 await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
@@ -96,6 +108,36 @@ class SessionManager {
 
         // Zainicjalizuj Auth
         auth = firebase.auth();
+    }
+
+    checkLocalAdminSession() {
+        // Sprawdź czy istnieje sesja lokalnego administratora w sessionStorage lub localStorage
+        const adminSession = sessionStorage.getItem('admin_session') || localStorage.getItem('admin_session');
+        if (adminSession) {
+            try {
+                const sessionData = JSON.parse(adminSession);
+                const now = Date.now();
+                const expiresAt = sessionData.expiresAt || (sessionData.loginTime + 2 * 60 * 60 * 1000); // domyślnie 2h
+
+                if (now < expiresAt) {
+                    return {
+                        uid: sessionData.uid || 'local-admin',
+                        email: sessionData.email || sessionData.login,
+                        displayName: sessionData.displayName || `${sessionData.login}@Administrator`,
+                        isLocalAdmin: true
+                    };
+                } else {
+                    // Sesja wygasła, usuń ją
+                    sessionStorage.removeItem('admin_session');
+                    localStorage.removeItem('admin_session');
+                }
+            } catch (error) {
+                console.warn('Błąd parsowania sesji administratora:', error);
+                sessionStorage.removeItem('admin_session');
+                localStorage.removeItem('admin_session');
+            }
+        }
+        return null;
     }
 
     loadSessionSettings() {
@@ -208,8 +250,15 @@ class SessionManager {
             // Wyczyść ustawienia sesji
             localStorage.removeItem('strzelca_remember_me');
 
+            // Wyczyść sesję lokalnego administratora
+            sessionStorage.removeItem('admin_session');
+            localStorage.removeItem('admin_session');
+
             // Przekieruj do strony logowania
-            if (window.location.pathname.includes('/konto.strzelca.pl/') &&
+            if (window.location.pathname.includes('/admin/')) {
+                // Dla administratora - przeładuj stronę (powrót do logowania)
+                window.location.reload();
+            } else if (window.location.pathname.includes('/konto.strzelca.pl/') &&
                 !window.location.pathname.includes('login.html')) {
                 window.location.href = 'login.html';
             } else {
@@ -277,9 +326,6 @@ function setSessionSettings(rememberMe) {
         sessionManager.setSessionSettings(rememberMe);
     }
 }
-
-// Eksport dla modułów ES6
-export { SessionManager, initSessionManager, setSessionSettings };
 
 // Automatyczna inicjalizacja dla stron bez ES6 modules
 if (typeof window !== 'undefined') {

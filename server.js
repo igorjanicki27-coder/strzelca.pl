@@ -10,6 +10,10 @@ const cors = require('cors');
 const https = require('https');
 const { checkAllServices, checkService } = require('./api/status');
 const gaStats = require('./api/ga-stats');
+const DatabaseManager = require('./database');
+
+// Inicjalizuj bazę danych
+const db = new DatabaseManager();
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -108,50 +112,27 @@ app.post('/api/log-event', (req, res) => {
 });
 
 // Active users endpoint - rozszerzony
-app.post('/api/user-activity', (req, res) => {
+app.post('/api/user-activity', async (req, res) => {
   try {
     const activityData = {
       userId: req.body.userId || req.body.sessionId || 'anonymous',
       userEmail: req.body.userEmail || null,
-      timestamp: new Date().toISOString(),
+      timestamp: req.body.timestamp || new Date().toISOString(),
       action: req.body.action || 'page_view',
       path: req.body.path || '/',
-      userAgent: req.get('User-Agent'),
-      ip: req.ip,
-      sessionType: req.body.sessionType || 'standard', // standard, remember_me, admin
-      lastActivity: new Date().toISOString()
+      userAgent: req.body.userAgent || req.get('User-Agent'),
+      ip: req.body.ip || req.ip,
+      sessionType: req.body.sessionType || 'standard'
     };
 
-    const fs = require('fs');
-    const activityFile = './user-activity.json';
+    await db.logUserActivity(activityData);
 
-    let activities = [];
-    if (fs.existsSync(activityFile)) {
-      activities = JSON.parse(fs.readFileSync(activityFile, 'utf8'));
-    }
-
-    // Remove old activities (older than 30 minutes)
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-    activities = activities.filter(a => new Date(a.timestamp) > thirtyMinutesAgo);
-
-    // Update or add activity for this user
-    const existingIndex = activities.findIndex(a => a.userId === activityData.userId);
-    if (existingIndex >= 0) {
-      // Update existing activity, preserve some data
-      activities[existingIndex] = {
-        ...activities[existingIndex],
-        ...activityData,
-        lastActivity: new Date().toISOString()
-      };
-    } else {
-      activities.push(activityData);
-    }
-
-    fs.writeFileSync(activityFile, JSON.stringify(activities, null, 2));
+    // Pobierz statystyki dla odpowiedzi
+    const stats = await db.getUserActivityStats();
 
     res.json({
       success: true,
-      activeUsers: activities.length,
+      activeUsers: stats.total,
       sessionExtended: true
     });
   } catch (error) {
@@ -161,30 +142,10 @@ app.post('/api/user-activity', (req, res) => {
 });
 
 // Get active users count
-app.get('/api/active-users', (req, res) => {
+app.get('/api/active-users', async (req, res) => {
   try {
-    const fs = require('fs');
-    const activityFile = './user-activity.json';
-
-    if (!fs.existsSync(activityFile)) {
-      return res.json({ loggedIn: 0, guests: 0, total: 0 });
-    }
-
-    let activities = JSON.parse(fs.readFileSync(activityFile, 'utf8'));
-
-    // Remove old activities (older than 30 minutes)
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-    activities = activities.filter(a => new Date(a.timestamp) > thirtyMinutesAgo);
-
-    // Count logged in vs guests
-    const loggedIn = activities.filter(a => a.userId !== 'anonymous' && !a.userId.startsWith('guest')).length;
-    const guests = activities.filter(a => a.userId === 'anonymous' || a.userId.startsWith('guest')).length;
-
-    res.json({
-      loggedIn: loggedIn,
-      guests: guests,
-      total: activities.length
-    });
+    const stats = await db.getUserActivityStats();
+    res.json(stats);
   } catch (error) {
     console.error('Error getting active users:', error);
     res.json({ loggedIn: 0, guests: 0, total: 0 });
@@ -192,43 +153,26 @@ app.get('/api/active-users', (req, res) => {
 });
 
 // Get detailed active sessions (for admin panel)
-app.get('/api/active-sessions', (req, res) => {
+app.get('/api/active-sessions', async (req, res) => {
   try {
-    const fs = require('fs');
-    const activityFile = './user-activity.json';
+    const sessions = await db.getUserActivitySessions();
 
-    if (!fs.existsSync(activityFile)) {
-      return res.json({ sessions: [], total: 0 });
-    }
-
-    let activities = JSON.parse(fs.readFileSync(activityFile, 'utf8'));
-
-    // Remove old activities (older than 30 minutes)
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-    activities = activities.filter(a => new Date(a.timestamp) > thirtyMinutesAgo);
-
-    // Format sessions for admin view
-    const sessions = activities.map(activity => ({
-      userId: activity.userId,
-      userEmail: activity.userEmail,
-      lastActivity: activity.lastActivity || activity.timestamp,
-      action: activity.action,
-      path: activity.path,
-      sessionType: activity.sessionType || 'standard',
-      ip: activity.ip,
-      userAgent: activity.userAgent,
+    // Dodaj dodatkowe pola dla kompatybilności
+    const enhancedSessions = sessions.map(session => ({
+      ...session,
       isActive: true,
-      timeSinceLastActivity: Math.floor((Date.now() - new Date(activity.lastActivity || activity.timestamp)) / 1000)
+      timeSinceLastActivity: Math.floor((Date.now() - new Date(session.lastActivity)) / 1000),
+      ip: session.ipAddress // dla kompatybilności z istniejącym kodem
     }));
 
     // Sort by last activity (most recent first)
-    sessions.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+    enhancedSessions.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
 
     res.json({
-      sessions: sessions,
-      total: sessions.length,
-      loggedIn: sessions.filter(s => s.userId !== 'anonymous' && !s.userId.startsWith('guest')).length,
-      guests: sessions.filter(s => s.userId === 'anonymous' || s.userId.startsWith('guest')).length
+      sessions: enhancedSessions,
+      total: enhancedSessions.length,
+      loggedIn: enhancedSessions.filter(s => s.userId !== 'anonymous' && !s.userId.startsWith('guest')).length,
+      guests: enhancedSessions.filter(s => s.userId === 'anonymous' || s.userId.startsWith('guest')).length
     });
   } catch (error) {
     console.error('Error getting active sessions:', error);
@@ -237,41 +181,21 @@ app.get('/api/active-sessions', (req, res) => {
 });
 
 // Get session details for specific user
-app.get('/api/session-details/:userId', (req, res) => {
+app.get('/api/session-details/:userId', async (req, res) => {
   try {
-    const fs = require('fs');
-    const activityFile = './user-activity.json';
     const userId = req.params.userId;
+    const session = await db.getUserSession(userId);
 
-    if (!fs.existsSync(activityFile)) {
-      return res.json({ session: null, message: 'No session data available' });
-    }
-
-    let activities = JSON.parse(fs.readFileSync(activityFile, 'utf8'));
-
-    // Find session for this user
-    const userSession = activities.find(a => a.userId === userId);
-
-    if (!userSession) {
+    if (!session) {
       return res.json({ session: null, message: 'User session not found' });
     }
 
-    // Check if session is still active (within 30 minutes)
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-    const isActive = new Date(userSession.timestamp) > thirtyMinutesAgo;
-
+    // Dodaj dodatkowe pola dla kompatybilności
     const sessionDetails = {
-      userId: userSession.userId,
-      userEmail: userSession.userEmail,
-      lastActivity: userSession.lastActivity || userSession.timestamp,
-      action: userSession.action,
-      path: userSession.path,
-      sessionType: userSession.sessionType || 'standard',
-      ip: userSession.ip,
-      userAgent: userSession.userAgent,
-      isActive: isActive,
-      timeSinceLastActivity: Math.floor((Date.now() - new Date(userSession.lastActivity || userSession.timestamp)) / 1000),
-      sessionDuration: Math.floor((new Date(userSession.lastActivity || userSession.timestamp) - new Date(userSession.timestamp)) / 1000)
+      ...session,
+      ip: session.ipAddress, // dla kompatybilności z istniejącym kodem
+      timeSinceLastActivity: Math.floor((Date.now() - new Date(session.lastActivity)) / 1000),
+      sessionDuration: Math.floor((new Date(session.lastActivity) - new Date(session.timestamp)) / 1000)
     };
 
     res.json({ session: sessionDetails });
@@ -305,33 +229,44 @@ app.get('/api/system-events', (req, res) => {
 });
 
 // Events log endpoints
-app.get('/api/events-log', (req, res) => {
+app.get('/api/events-log', async (req, res) => {
   try {
-    const fs = require('fs');
-    const eventsLogFile = './logi_zdarzen.json';
+    const options = {
+      limit: parseInt(req.query.limit) || 100,
+      offset: parseInt(req.query.offset) || 0,
+      type: req.query.type,
+      site: req.query.site,
+      severity: req.query.severity,
+      resolved: req.query.resolved === 'true' ? true : req.query.resolved === 'false' ? false : undefined,
+      dateFrom: req.query.dateFrom,
+      dateTo: req.query.dateTo
+    };
 
-    if (!fs.existsSync(eventsLogFile)) {
-      return res.json([]);
-    }
-
-    const eventsLog = JSON.parse(fs.readFileSync(eventsLogFile, 'utf8'));
-    res.json(eventsLog);
+    const events = await db.getSystemEvents(options);
+    res.json(events);
   } catch (error) {
     console.error('Error getting events log:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-app.post('/api/events-log', (req, res) => {
+app.post('/api/events-log', async (req, res) => {
   try {
-    const fs = require('fs');
-    const eventsLogFile = './logi_zdarzen.json';
-    const eventsLog = req.body;
 
-    // Zapisz do pliku
-    fs.writeFileSync(eventsLogFile, JSON.stringify(eventsLog, null, 2));
-
-    res.json({ success: true });
+    // Sprawdź czy to pojedyncze zdarzenie czy cała lista
+    if (Array.isArray(req.body)) {
+      // Jeśli przesłano tablicę zdarzeń, dodaj każde pojedynczo
+      const results = [];
+      for (const event of req.body) {
+        const loggedEvent = await db.logSystemEvent(event);
+        results.push(loggedEvent);
+      }
+      res.json({ success: true, logged: results.length });
+    } else {
+      // Pojedyncze zdarzenie
+      const loggedEvent = await db.logSystemEvent(req.body);
+      res.json({ success: true, event: loggedEvent });
+    }
   } catch (error) {
     console.error('Error saving events log:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -398,6 +333,24 @@ app.get('/health', (req, res) => {
     uptime: process.uptime()
   });
 });
+
+// Messages API - obsługiwane przez api/messages.js
+const messagesAPI = require('./api/messages');
+
+// Rejestracja endpointów API wiadomości
+app.get('/api/messages', messagesAPI.get);
+app.post('/api/messages', messagesAPI.post);
+app.put('/api/messages/:id/status', messagesAPI.updateStatus);
+app.put('/api/messages/:id/read', messagesAPI.markRead);
+app.get('/api/messages/stats', messagesAPI.getStats);
+
+// Admin API - obsługiwane przez api/admin.js
+const adminAPI = require('./api/admin');
+
+// Rejestracja endpointów API administratorów
+app.post('/api/admin/verify', adminAPI.verify);
+app.get('/api/admin/list', adminAPI.list);
+app.post('/api/admin/create', adminAPI.create);
 
 // Serve static files from root directory
 app.use(express.static('.'));
