@@ -37,11 +37,10 @@
         background-position: center top;
         background-attachment: fixed;
         background-repeat: no-repeat;
-        height: 100vh; /* Stała wysokość zamiast min-height */
+        min-height: 100vh; /* Minimalna wysokość zamiast stałej */
         /* Safari viewport height fix */
-        height: -webkit-fill-available;
-        height: 100dvh; /* Dynamic viewport height for modern browsers */
-        overflow: hidden; /* Blokuj scroll na poziomie html */
+        min-height: -webkit-fill-available;
+        min-height: 100dvh; /* Dynamic viewport height for modern browsers */
       }
 
       * {
@@ -57,11 +56,10 @@
         margin: 0;
         padding: 0;
         width: 100%;
-        height: 100vh; /* Stała wysokość zamiast min-height */
+        min-height: 100vh; /* Minimalna wysokość zamiast stałej */
         /* Safari viewport height fix */
-        height: -webkit-fill-available;
-        height: 100dvh; /* Dynamic viewport height for modern browsers */
-        overflow: hidden; /* Blokuj scroll na poziomie body */
+        min-height: -webkit-fill-available;
+        min-height: 100dvh; /* Dynamic viewport height for modern browsers */
       }
 
       /* Sekcja logowania zajmuje całą wysokość, żeby nie było czarnego paska */
@@ -670,7 +668,7 @@
           <div id="tab-status" class="tab-content">
 
             <!-- Sekcja System Serwera -->
-          <div class="admin-card mb-8">
+          <div class="admin-card mb-8 mt-6">
               <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold coyote-text">Monitoring usług</h2>
                 <button
@@ -752,7 +750,7 @@
             </div>
 
             <div
-                class="grid grid-cols-1 md:grid-cols-2 gap-3"
+                class="grid grid-cols-1 lg:grid-cols-2 gap-3"
               id="sites-status"
             >
               <!-- Status stron będzie ładowany dynamicznie -->
@@ -765,6 +763,28 @@
               >
               </div>
             </div>
+
+            <!-- Sekcja Zdarzenia -->
+            <div class="admin-card mb-8">
+              <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold coyote-text">Zdarzenia</h2>
+                <button
+                  onclick="loadEventsLog()"
+                  id="refresh-events-btn"
+                  class="btn-admin text-sm px-3 py-1"
+                >
+                  <i class="fa-solid fa-refresh mr-1"></i>
+                  Odśwież
+                </button>
+              </div>
+
+              <div id="events-log-container">
+                <!-- Tabela zdarzeń będzie ładowana dynamicznie -->
+                <div class="text-center text-zinc-400 py-4">
+                  <i class="fa-solid fa-spinner fa-spin mr-2"></i>Ładowanie logów...
+                </div>
+              </div>
+            </div>
           </div>
 
         <!-- Dashboard -->
@@ -775,8 +795,7 @@
 
               <!-- Główny kontener z podziałem na sekcje -->
               <div
-                class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6"
-                style="height: 280px"
+                class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6 mb-6 min-h-[280px]"
               >
                 <!-- Lewa część: Aktywność użytkowników (50% szer, 70% wys) -->
                 <div
@@ -856,12 +875,12 @@
             </div>
 
               <!-- Dolna część: Odwiedziny (100% szer, 30% wys) -->
-              <div class="bg-zinc-800/50 rounded-lg p-4" style="height: 120px">
+              <div class="bg-zinc-800/50 rounded-lg p-4 min-h-[120px]">
                 <h3 class="text-lg font-semibold text-white mb-4 text-center">
                   Odwiedziny
                 </h3>
                 <div
-                  class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 h-full"
+                  class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 h-full"
                 >
               <div class="text-center">
                 <div
@@ -911,33 +930,6 @@
             </div>
           </div>
 
-              <!-- Sekcja zdarzeń -->
-              <div class="mt-6">
-                <div class="flex justify-between items-center mb-4">
-                  <h3 class="text-lg font-bold coyote-text">Najnowsze zdarzenia</h3>
-              <div class="flex space-x-2">
-                <button
-                  id="dashboard-refresh-btn"
-                  onclick="refreshDashboardWithLoading()"
-                      class="btn-admin text-xs px-3 py-1"
-                >
-                  <i class="fa-solid fa-sync-alt mr-1"></i>
-                  Odśwież
-                </button>
-              </div>
-            </div>
-
-            <div id="recent-events" class="space-y-3">
-              <!-- Najnowsze zdarzenia będą ładowane dynamicznie -->
-            </div>
-
-            <div class="mt-4 text-sm text-zinc-400 text-center">
-              <span
-                >Ostatnia aktualizacja:
-                <span id="last-events-update">Teraz</span></span
-              >
-            </div>
-          </div>
             </div>
         </div>
 
@@ -1127,35 +1119,82 @@
 
           <!-- Wiadomości (Czat WhatsApp-style) -->
         <div id="tab-messages" class="tab-content">
-          <h1 class="text-3xl font-bold coyote-text mb-8">
-              Czat z Użytkownikami
-          </h1>
+          <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold coyote-text">
+                Wiadomości
+            </h1>
+            <button onclick="refreshConversations()" class="btn-admin text-sm px-3 py-2" id="refresh-conversations-btn">
+              <i class="fa-solid fa-sync-alt mr-1"></i>
+              Odśwież
+            </button>
+          </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[700px]">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-0 h-[calc(100vh-200px)] min-h-[500px]">
               <!-- Lista konwersacji -->
-          <div class="admin-card">
-                <div class="flex justify-between items-center mb-4">
-                  <h3 class="text-lg font-bold">Konwersacje</h3>
-                  <span id="conversations-count" class="text-sm text-zinc-400"
+              <div class="admin-card lg:col-span-1 lg:rounded-r-none lg:border-r-0 flex flex-col">
+                <div class="flex justify-between items-center mb-3 pb-2 border-b border-zinc-700/50">
+                  <h3 class="text-base font-bold">Konwersacje</h3>
+                  <span id="conversations-count" class="text-xs text-zinc-400"
                     >0</span
                   >
-            </div>
+                </div>
 
-                <div class="mb-4">
-                  <input
-                    type="text"
-                    id="conversations-search"
-                    placeholder="Szukaj konwersacji..."
-                    class="w-full text-sm"
-                  />
-        </div>
+                <!-- Kompaktowe filtry -->
+                <div class="mb-3">
+                  <!-- Główny pasek wyszukiwania -->
+                  <div class="relative">
+                    <input
+                      type="text"
+                      id="conversations-search"
+                      placeholder="Szukaj konwersacji..."
+                      class="w-full text-sm pl-10 pr-16"
+                      onkeyup="filterConversations()"
+                    />
+                    <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400 text-sm"></i>
 
-              <div
-                id="conversations-list"
-                  class="space-y-2 overflow-y-auto max-h-[580px]"
-              >
-                <!-- Lista konwersacji będzie ładowana dynamicznie -->
-              </div>
+                    <!-- Przycisk czyszczenia -->
+                    <button
+                      onclick="clearSearch()"
+                      class="absolute right-8 top-1/2 transform -translate-y-1/2 text-zinc-400 hover:text-white text-sm opacity-0 transition-opacity"
+                      id="clear-search-btn"
+                      title="Wyczyść wyszukiwanie"
+                    >
+                      <i class="fa-solid fa-times"></i>
+                    </button>
+
+                    <button
+                      onclick="toggleAdvancedFilters()"
+                      class="absolute right-2 top-1/2 transform -translate-y-1/2 text-zinc-400 hover:text-white text-sm"
+                      title="Więcej filtrów"
+                    >
+                      <i class="fa-solid fa-sliders-h"></i>
+                    </button>
+                  </div>
+
+                  <!-- Ukryte zaawansowane filtry -->
+                  <div id="advanced-filters" class="hidden space-y-2 bg-zinc-800/50 p-2 rounded-lg mt-2">
+                    <div class="grid grid-cols-2 gap-2">
+                      <select id="conversations-status-filter" class="w-full text-xs" onchange="filterConversations()">
+                        <option value="all">Wszystkie</option>
+                        <option value="unread">Nieprzeczytane</option>
+                        <option value="read">Przeczytane</option>
+                      </select>
+
+                      <select id="conversations-sort-filter" class="w-full text-xs" onchange="filterConversations()">
+                        <option value="unread-first" selected>Nieprzeczytane pierwsze</option>
+                        <option value="date-desc">Najnowsze</option>
+                        <option value="date-asc">Najstarsze</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  id="conversations-list"
+                  class="space-y-1 overflow-y-auto flex-1"
+                >
+                  <!-- Lista konwersacji będzie ładowana dynamicznie -->
+                </div>
 
                 <div
                   id="conversations-empty"
@@ -1163,11 +1202,11 @@
                 >
                   <i class="fa-solid fa-comments text-3xl mb-3 text-zinc-600"></i>
                   <p class="text-sm">Brak konwersacji</p>
+                </div>
               </div>
-            </div>
 
-            <!-- Okno czatu -->
-              <div class="admin-card lg:col-span-3 flex flex-col">
+              <!-- Okno czatu -->
+              <div class="admin-card lg:col-span-2 lg:rounded-l-none flex flex-col">
                 <div
                   id="chat-header"
                   class="border-b border-zinc-700 pb-4 mb-4 flex justify-between items-center"
@@ -1235,49 +1274,6 @@
             </div>
           </div>
 
-            <!-- Statystyki czatu -->
-            <div class="admin-card mt-6">
-              <h3 class="text-xl font-bold mb-6">Statystyki Czatu</h3>
-
-              <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div class="text-center">
-                  <div
-                    class="text-2xl font-bold coyote-text"
-                    id="total-conversations"
-                  >
-                    0
-                  </div>
-                  <div class="text-sm text-zinc-400">Razem konwersacji</div>
-                </div>
-                <div class="text-center">
-                  <div
-                    class="text-2xl font-bold text-green-400"
-                    id="active-conversations"
-                  >
-                    0
-                  </div>
-                  <div class="text-sm text-zinc-400">Aktywne</div>
-                </div>
-                <div class="text-center">
-                  <div
-                    class="text-2xl font-bold text-blue-400"
-                    id="messages-today"
-                  >
-                    0
-                  </div>
-                  <div class="text-sm text-zinc-400">Wiadomości dziś</div>
-                </div>
-                <div class="text-center">
-                  <div
-                    class="text-2xl font-bold text-yellow-400"
-                    id="unread-messages"
-                  >
-                    0
-                  </div>
-                  <div class="text-sm text-zinc-400">Nieuzytane</div>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- Wydarzenia -->
@@ -2555,6 +2551,11 @@
         });
         document.getElementById(`tab-${tabName}`).classList.add("active");
 
+        // Dodatkowe akcje dla konkretnych zakładek
+        if (tabName === "status") {
+          loadEventsLog();
+        }
+
         currentTab = tabName;
 
         // Ładowanie danych dla wybranej zakładki
@@ -2573,6 +2574,7 @@
             break;
           case "messages":
             loadMessages();
+            startConversationsAutoRefresh();
             break;
           case "chats":
             loadConversations();
@@ -2604,6 +2606,11 @@
           case "settings":
             loadSettings();
             break;
+        }
+
+        // Zatrzymaj automatyczne odświeżanie konwersacji jeśli nie jesteśmy w zakładce messages
+        if (tabName !== "messages") {
+          stopConversationsAutoRefresh();
         }
       }
 
@@ -4035,9 +4042,247 @@
         }
       }
 
+      // Zmienne dla automatycznego odświeżania czatów
+      let conversationsAutoRefreshInterval;
+      let isTypingInMessage = false; // Flaga czy użytkownik aktualnie pisze wiadomość
+
       async function loadConversations() {
-        document.getElementById("conversations-list").innerHTML =
-          '<div class="text-center text-zinc-500 py-8">Ładowanie konwersacji...</div>';
+        try {
+          document.getElementById("conversations-list").innerHTML =
+            '<div class="text-center text-zinc-500 py-8">Ładowanie konwersacji...</div>';
+
+          // Załaduj wszystkie dane konwersacji
+          await loadAllConversationsData();
+
+          // Zastosuj domyślne filtry (nieprzeczytane pierwsze)
+          await loadConversationsWithFilters('all', 'unread-first', '', '', '');
+
+        } catch (error) {
+          console.error("Error loading conversations:", error);
+          document.getElementById("conversations-list").innerHTML =
+            '<div class="text-center text-red-400 py-8">Błąd ładowania konwersacji</div>';
+        }
+      }
+
+      function renderConversations(conversations) {
+        if (conversations.length === 0) {
+          document.getElementById("conversations-list").innerHTML = `
+            <div id="conversations-empty" class="text-center py-8 text-zinc-400">
+              <i class="fa-solid fa-comments text-3xl mb-3 text-zinc-600"></i>
+              <p class="text-sm">Brak konwersacji</p>
+            </div>
+          `;
+          return;
+        }
+
+        const conversationsHtml = conversations.map((conversation) => {
+          const lastMessage = conversation.lastMessage;
+          const timeAgo = getTimeAgo(lastMessage.timestamp);
+          const hasUnread = conversation.unreadCount > 0;
+
+          return `
+            <div class="conversation-item p-2 border-b border-zinc-700/50 hover:bg-zinc-800/70 cursor-pointer transition-colors ${hasUnread ? 'bg-zinc-800/30' : ''}"
+                 onclick="selectConversation('${conversation.participants.join(',')}')">
+              <div class="flex justify-between items-center">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between">
+                    <h4 class="text-sm font-medium text-white truncate">
+                      ${conversation.participants.filter(p => p !== 'admin').join(', ')}
+                    </h4>
+                    <span class="text-xs text-zinc-500 ml-2 flex-shrink-0">${timeAgo}</span>
+                  </div>
+                  <p class="text-xs text-zinc-400 truncate mt-0.5">
+                    ${lastMessage.senderId === 'admin' ? 'Ty:' : ''} ${lastMessage.content || 'Załącznik'}
+                  </p>
+                </div>
+                ${hasUnread ? `<span class="bg-coyote text-black text-xs px-1.5 py-0.5 rounded-full ml-2 flex-shrink-0">${conversation.unreadCount}</span>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        document.getElementById("conversations-list").innerHTML = conversationsHtml;
+      }
+
+      // Funkcja filtrowania konwersacji w czasie rzeczywistym
+      window.filterConversations = () => {
+        const statusFilter = document.getElementById("conversations-status-filter").value;
+        const sortFilter = document.getElementById("conversations-sort-filter").value;
+        const searchText = document.getElementById("conversations-search").value.toLowerCase().trim();
+
+        // Pokaż/ukryj przycisk czyszczenia
+        const clearBtn = document.getElementById("clear-search-btn");
+        if (searchText.length > 0) {
+          clearBtn.classList.remove("opacity-0");
+          clearBtn.classList.add("opacity-100");
+        } else {
+          clearBtn.classList.add("opacity-0");
+          clearBtn.classList.remove("opacity-100");
+        }
+
+        // Pobierz wszystkie konwersacje i zastosuj filtry
+        loadConversationsWithFilters(statusFilter, sortFilter, '', '', searchText);
+      };
+
+      // Funkcja czyszczenia wyszukiwania
+      window.clearSearch = () => {
+        const searchInput = document.getElementById("conversations-search");
+        searchInput.value = "";
+        searchInput.focus();
+        filterConversations();
+      };
+
+      // Funkcja przełączania zaawansowanych filtrów
+      window.toggleAdvancedFilters = () => {
+        const advancedFilters = document.getElementById("advanced-filters");
+        advancedFilters.classList.toggle("hidden");
+      };
+
+      // Funkcja ładowania konwersacji z filtrami
+      async function loadConversationsWithFilters(statusFilter, sortFilter, dateFrom, dateTo, searchText) {
+        try {
+          // Jeśli nie ma załadowanych danych, załaduj najpierw
+          if (!window.allConversationsData) {
+            await loadAllConversationsData();
+          }
+
+          let conversationsArray = [...window.allConversationsData];
+
+          // Zastosuj filtry statusu
+          if (statusFilter !== 'all') {
+            conversationsArray = conversationsArray.filter(conv => {
+              if (statusFilter === 'unread') return conv.unreadCount > 0;
+              if (statusFilter === 'read') return conv.unreadCount === 0;
+              return true;
+            });
+          }
+
+          // Filtr wyszukiwania
+          if (searchText) {
+            conversationsArray = conversationsArray.filter(conv => {
+              const userNames = conv.participants.filter(p => p !== 'admin').join(' ').toLowerCase();
+              const lastMessageContent = (conv.lastMessage.content || '').toLowerCase();
+
+              return userNames.includes(searchText) || lastMessageContent.includes(searchText);
+            });
+          }
+
+          // Zastosuj sortowanie
+          conversationsArray.sort((a, b) => {
+            switch (sortFilter) {
+              case 'unread-first':
+                if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
+                if (a.unreadCount === 0 && b.unreadCount > 0) return 1;
+                return b.lastMessage.timestamp - a.lastMessage.timestamp;
+
+              case 'date-desc':
+                return b.lastMessage.timestamp - a.lastMessage.timestamp;
+
+              case 'date-asc':
+                return a.lastMessage.timestamp - b.lastMessage.timestamp;
+
+              default:
+                return 0;
+            }
+          });
+
+          renderConversations(conversationsArray);
+
+        } catch (error) {
+          console.error("Error filtering conversations:", error);
+          showNotification("Błąd filtrowania konwersacji", "error");
+        }
+      }
+
+      // Funkcja ładowania wszystkich danych konwersacji
+      async function loadAllConversationsData() {
+        const messagesQuery = query(
+          collection(db, "privateMessages"),
+          orderBy("timestamp", "desc")
+        );
+
+        const snapshot = await getDocs(messagesQuery);
+        const messages = [];
+
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          messages.push({
+            id: doc.id,
+            ...data,
+            timestamp: data.timestamp?.toDate() || new Date(),
+          });
+        });
+
+        // Grupuj wiadomości po konwersacjach
+        const conversations = {};
+        messages.forEach((message) => {
+          const participants = [message.senderId, message.receiverId].sort();
+          const conversationKey = participants.join('_');
+
+          if (!conversations[conversationKey]) {
+            conversations[conversationKey] = {
+              participants: participants,
+              lastMessage: message,
+              unreadCount: 0,
+              messages: []
+            };
+          }
+
+          conversations[conversationKey].messages.push(message);
+
+          if (message.receiverId === 'admin' && !message.read) {
+            conversations[conversationKey].unreadCount++;
+          }
+        });
+
+        window.allConversationsData = Object.values(conversations);
+      }
+
+      // Funkcja odświeżania konwersacji
+      window.refreshConversations = async () => {
+        const refreshBtn = document.getElementById("refresh-conversations-btn");
+
+        // Dodaj efekt ładowania
+        refreshBtn.classList.add("loading-spinner");
+        refreshBtn.disabled = true;
+
+        try {
+          await loadConversations();
+          showNotification("Konwersacje zostały odświeżone", "success");
+        } catch (error) {
+          console.error("Error refreshing conversations:", error);
+          showNotification("Błąd odświeżania konwersacji", "error");
+        } finally {
+          refreshBtn.classList.remove("loading-spinner");
+          refreshBtn.disabled = false;
+        }
+      };
+
+      // Funkcja rozpoczynająca automatyczne odświeżanie
+      function startConversationsAutoRefresh() {
+        if (conversationsAutoRefreshInterval) {
+          clearInterval(conversationsAutoRefreshInterval);
+        }
+
+        conversationsAutoRefreshInterval = setInterval(async () => {
+          // Nie odświeżaj jeśli użytkownik pisze wiadomość
+          if (!isTypingInMessage) {
+            try {
+              await loadConversations();
+              console.log("Konwersacje automatycznie odświeżone:", new Date().toLocaleTimeString());
+            } catch (error) {
+              console.error("Error auto-refreshing conversations:", error);
+            }
+          }
+        }, 60000); // 60 sekund = 1 minuta
+      }
+
+      // Funkcja zatrzymująca automatyczne odświeżanie
+      function stopConversationsAutoRefresh() {
+        if (conversationsAutoRefreshInterval) {
+          clearInterval(conversationsAutoRefreshInterval);
+          conversationsAutoRefreshInterval = null;
+        }
       }
 
       async function loadEvents() {
@@ -4137,7 +4382,226 @@
         }
       }
 
-      // Sprawdzanie statusu wszystkich stron
+      // Funkcje zdarzeń i logów (globalne)
+      // Funkcja pomocnicza do budowania URL API
+      function getApiUrl(endpoint) {
+        if (window.location.protocol === 'file:') {
+          // Lokalne testowanie - użyj localhost
+          return `http://localhost:3002${endpoint}`;
+        } else {
+          // Produkcja - użyj względnego URL (API na tym samym serwerze)
+          return endpoint;
+        }
+      }
+
+      // Globalna funkcja powiadomień
+      window.showNotification = function(message, type = "success") {
+        console.log(`${type}: ${message}`);
+        // Można rozszerzyć o wizualne powiadomienia
+      }
+
+      async function logEvent(eventType, site, details) {
+        const eventData = {
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          timestamp: new Date().toISOString(),
+          type: eventType,
+          site: site,
+          details: details
+        };
+
+        try {
+          // Pobierz istniejące logi
+          const response = await fetch(getApiUrl('/api/events-log'), {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+
+          let eventsLog = [];
+          if (response.ok) {
+            eventsLog = await response.json();
+          }
+
+          // Dodaj nowe zdarzenie
+          eventsLog.push(eventData);
+
+          // Zapisz z powrotem (max 1000 zdarzeń)
+          if (eventsLog.length > 1000) {
+            eventsLog = eventsLog.slice(-1000);
+          }
+
+          await fetch(getApiUrl('/api/events-log'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(eventsLog)
+          });
+
+        } catch (error) {
+          console.error('Błąd podczas logowania zdarzenia:', error);
+        }
+      }
+
+      async function loadEventsLog() {
+        const container = document.getElementById('events-log-container');
+        const refreshBtn = document.getElementById('refresh-events-btn');
+
+        // Pokaż stan ładowania
+        if (refreshBtn) {
+          refreshBtn.disabled = true;
+          refreshBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Ładowanie...';
+        }
+
+        try {
+          const response = await fetch(getApiUrl('/api/events-log'));
+          if (!response.ok) {
+            container.innerHTML = '<div class="text-center text-zinc-400 py-4">Brak danych logów</div>';
+            return;
+          }
+
+          const eventsLog = await response.json();
+
+          if (eventsLog.length === 0) {
+            container.innerHTML = '<div class="text-center text-zinc-400 py-4">Brak zdarzeń w logach</div>';
+            return;
+          }
+
+          // Sortuj po czasie (najnowsze na górze)
+          eventsLog.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+          const eventsHtml = eventsLog.map(event => {
+            const eventDate = new Date(event.timestamp);
+            const formattedDate = eventDate.toLocaleString('pl-PL');
+
+            let eventIcon, eventColor, eventTitle;
+
+            switch(event.type) {
+              case 'site_offline':
+                eventIcon = 'fa-times-circle';
+                eventColor = 'text-red-400';
+                eventTitle = 'Strona offline';
+                break;
+              case 'site_slow':
+                eventIcon = 'fa-exclamation-triangle';
+                eventColor = 'text-orange-400';
+                eventTitle = 'Strona spowolniona';
+                break;
+              default:
+                eventIcon = 'fa-info-circle';
+                eventColor = 'text-blue-400';
+                eventTitle = 'Inne zdarzenie';
+            }
+
+            return `
+              <div class="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg mb-2 animate-fade-in">
+                <div class="flex items-center space-x-3">
+                  <span class="${eventColor}"><i class="fa-solid ${eventIcon}"></i></span>
+                  <div>
+                    <div class="text-sm font-medium">${eventTitle} - ${event.site}</div>
+                    <div class="text-xs text-zinc-500">${formattedDate}</div>
+                    ${event.details ? `<div class="text-xs text-zinc-400 mt-1">${event.details}</div>` : ''}
+                  </div>
+                </div>
+                <button
+                  onclick="deleteEvent('${event.id}', this)"
+                  class="text-zinc-400 hover:text-red-400 p-1 transition-colors duration-200"
+                  title="Usuń zdarzenie"
+                  id="delete-btn-${event.id}"
+                >
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            `;
+          }).join('');
+
+          container.innerHTML = eventsHtml;
+          showNotification("Logi zdarzeń zostały odświeżone", "success");
+
+        } catch (error) {
+          console.error('Błąd podczas ładowania logów:', error);
+          container.innerHTML = '<div class="text-center text-red-400 py-4">Błąd ładowania logów</div>';
+          showNotification("Błąd ładowania logów zdarzeń", "error");
+        } finally {
+          // Przywróć przycisk do normalnego stanu
+          if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '<i class="fa-solid fa-refresh mr-1"></i>Odśwież';
+          }
+        }
+      }
+
+      async function deleteEvent(eventId, buttonElement) {
+        // Pokaż stan ładowania na przycisku
+        if (buttonElement) {
+          buttonElement.disabled = true;
+          buttonElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+          buttonElement.classList.add('opacity-50');
+        }
+
+        try {
+          const response = await fetch(getApiUrl('/api/events-log'));
+          if (!response.ok) {
+            showNotification("Błąd pobierania danych", "error");
+            return;
+          }
+
+          let eventsLog = await response.json();
+          const originalLength = eventsLog.length;
+          eventsLog = eventsLog.filter(event => event.id !== eventId);
+
+          if (eventsLog.length === originalLength) {
+            showNotification("Zdarzenie nie zostało znalezione", "error");
+            return;
+          }
+
+          const saveResponse = await fetch(getApiUrl('/api/events-log'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(eventsLog)
+          });
+
+          if (!saveResponse.ok) {
+            showNotification("Błąd zapisywania zmian", "error");
+            return;
+          }
+
+          // Animacja usunięcia elementu
+          const eventElement = buttonElement.closest('.flex.items-center.justify-between');
+          if (eventElement) {
+            eventElement.style.transition = 'all 0.3s ease';
+            eventElement.style.opacity = '0';
+            eventElement.style.transform = 'translateX(-20px)';
+            setTimeout(() => {
+              // Odśwież tabelę
+              loadEventsLog();
+            }, 300);
+          } else {
+            // Jeśli nie ma elementu, odśwież od razu
+            loadEventsLog();
+          }
+
+          showNotification("Zdarzenie zostało usunięte", "success");
+
+        } catch (error) {
+          console.error('Błąd podczas usuwania zdarzenia:', error);
+          showNotification("Błąd podczas usuwania zdarzenia", "error");
+        } finally {
+          // Przywróć przycisk do normalnego stanu
+          if (buttonElement) {
+            setTimeout(() => {
+              buttonElement.disabled = false;
+              buttonElement.innerHTML = '<i class="fa-solid fa-trash"></i>';
+              buttonElement.classList.remove('opacity-50');
+            }, 300);
+          }
+        }
+      }
+
+        // Sprawdzanie statusu wszystkich stron
       async function checkSitesStatus() {
         const statusContainer = document.getElementById("sites-status");
         statusContainer.innerHTML =
@@ -4149,21 +4613,42 @@
         );
         const results = await Promise.allSettled(promises);
 
-        // Zapisz wyniki
+        // Zapisz wyniki i loguj zdarzenia
         SITES_TO_CHECK.forEach((site, index) => {
           const result = results[index];
+          const previousStatus = sitesStatus[site];
+
           if (result.status === "fulfilled") {
-            sitesStatus[site] = result.value;
+            const currentStatus = result.value;
+            sitesStatus[site] = currentStatus;
+
+            // Sprawdź czy strona wyszła z offline
+            if (previousStatus && !previousStatus.online && currentStatus.online) {
+              logEvent('site_online', site, `Strona wróciła do działania (${currentStatus.responseTime}ms)`);
+            }
+
+            // Sprawdź czy strona jest spowolniona (>501ms)
+            if (currentStatus.online && currentStatus.responseTime > 501) {
+              logEvent('site_slow', site, `Czas odpowiedzi: ${currentStatus.responseTime}ms`);
+            }
+
           } else {
-            sitesStatus[site] = {
+            const errorStatus = {
               online: false,
               lastCheck: new Date(),
               error: result.reason.message,
             };
+            sitesStatus[site] = errorStatus;
+
+            // Loguj tylko jeśli poprzednio była online (pierwsze wykrycie offline)
+            if (!previousStatus || previousStatus.online) {
+              logEvent('site_offline', site, `Błąd: ${result.reason.message}`);
+            }
           }
         });
 
           renderSitesStatus();
+          loadEventsLog();
           lastStatusCheck = new Date();
         document.getElementById("last-status-check").textContent =
           lastStatusCheck.toLocaleString("pl-PL");
@@ -4175,21 +4660,36 @@
             const status = sitesStatus[site];
           if (!status) return "";
 
-          const statusClass = status.online ? "text-green-400" : "text-red-400";
-          const statusIcon = status.online
-            ? "fa-check-circle"
-            : "fa-times-circle";
-          const statusText = status.online ? "Online" : "Offline";
-          const details = status.online
-            ? `${status.responseTime}ms`
-            : status.lastCheck.toLocaleString("pl-PL");
+          let statusClass, statusIcon, details, detailsClass;
+
+          if (status.online) {
+            statusClass = "text-green-400";
+            statusIcon = "fa-circle";
+            const responseTime = status.responseTime;
+
+            // Kolor czasu odpowiedzi w zależności od wartości
+            if (responseTime <= 200) {
+              detailsClass = "text-green-400";
+            } else if (responseTime <= 500) {
+              detailsClass = "text-orange-400";
+            } else {
+              detailsClass = "text-red-400";
+            }
+
+            details = `${responseTime}ms`;
+          } else {
+            statusClass = "text-red-400";
+            statusIcon = "fa-circle";
+            details = status.lastCheck.toLocaleString("pl-PL");
+            detailsClass = "text-zinc-500";
+          }
 
             return `
-              <div class="flex justify-between items-center p-3 bg-zinc-800 rounded-lg animate-fade-in">
-                <span class="text-sm">${site}</span>
-                <div class="flex items-center space-x-2">
-                  <span class="${statusClass}"><i class="fa-solid ${statusIcon}"></i> ${statusText}</span>
-                  <span class="text-xs text-zinc-500 w-16 text-right">${details}</span>
+              <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-zinc-800 rounded-lg animate-fade-in gap-2 sm:gap-0">
+                <span class="text-sm font-medium">${site}</span>
+                <div class="flex items-center justify-end space-x-2">
+                  <span class="${statusClass} text-xs"><i class="fa-solid ${statusIcon}"></i></span>
+                  <span class="text-xs ${detailsClass}">${details}</span>
                 </div>
               </div>
             `;
@@ -4197,6 +4697,7 @@
 
           statusContainer.innerHTML = statusHtml;
         }
+
 
         // Funkcje aktywności
         async function loadActivityStats() {
@@ -4482,6 +4983,13 @@
         window.checkSitesStatus = checkSitesStatus;
         window.checkMainServicesStatus = checkMainServicesStatus;
         window.refreshEvents = loadRecentEvents;
+        window.loadEventsLog = loadEventsLog;
+        window.deleteEvent = deleteEvent;
+
+        // Inicjalizacja - załaduj logi zdarzeń jeśli jesteśmy w zakładce status
+        if (document.querySelector('#tab-status.active')) {
+          setTimeout(() => loadEventsLog(), 100);
+        }
         window.openEventsPanel = () => {
           // TODO: Implement full events panel with filtering
         alert("Panel wszystkich zdarzeń będzie dostępny wkrótce");
@@ -5225,6 +5733,21 @@
               text2.classList.add("text-zinc-400");
               text2.classList.remove("text-green-500");
             }
+          });
+        }
+
+        // Event listener dla pola wiadomości - wykrywanie pisania
+        const messageInput = document.getElementById("message-input");
+        if (messageInput) {
+          messageInput.addEventListener("input", function() {
+            isTypingInMessage = this.value.length > 0;
+          });
+
+          messageInput.addEventListener("blur", function() {
+            // Po krótkim opóźnieniu oznacz jako niepisanie (żeby dać czas na wysłanie)
+            setTimeout(() => {
+              isTypingInMessage = false;
+            }, 1000);
           });
         }
       });

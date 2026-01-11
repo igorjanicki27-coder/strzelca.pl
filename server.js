@@ -304,6 +304,40 @@ app.get('/api/system-events', (req, res) => {
   }
 });
 
+// Events log endpoints
+app.get('/api/events-log', (req, res) => {
+  try {
+    const fs = require('fs');
+    const eventsLogFile = './logi_zdarzen.json';
+
+    if (!fs.existsSync(eventsLogFile)) {
+      return res.json([]);
+    }
+
+    const eventsLog = JSON.parse(fs.readFileSync(eventsLogFile, 'utf8'));
+    res.json(eventsLog);
+  } catch (error) {
+    console.error('Error getting events log:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/events-log', (req, res) => {
+  try {
+    const fs = require('fs');
+    const eventsLogFile = './logi_zdarzen.json';
+    const eventsLog = req.body;
+
+    // Zapisz do pliku
+    fs.writeFileSync(eventsLogFile, JSON.stringify(eventsLog, null, 2));
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving events log:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Statistics endpoint
 app.get('/api/stats', (req, res) => {
   try {
