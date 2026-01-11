@@ -192,3 +192,4 @@ Dokument w kolekcji "activityLogs":
 Przykład:
 await logActivity('BAZAR-LISTING-CREATED', user.uid, user.displayName, 'Wystawiono karabin XYZ za 1500 PLN');
 */
+

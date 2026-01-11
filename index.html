@@ -49,9 +49,9 @@
         min-height: 100vh;
         width: 100%;
         background:
-          linear-gradient(rgba(10, 10, 10, 0.6), #0a0a0a), url("./tlo.png");
+          linear-gradient(rgba(10,10,10,0.1) 0%, rgba(10,10,10,0.4) 50%, #0a0a0a 100%), url("./tlo.png");
         background-size: cover;
-        background-position: center;
+        background-position: top center;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -370,29 +370,6 @@
         </div>
       </main>
 
-      <!-- Sekcja monitoringu serwerów -->
-      <div class="container mx-auto px-6 py-12">
-        <div class="max-w-7xl mx-auto">
-          <div class="text-center mb-8">
-            <h2 class="text-2xl md:text-3xl font-black uppercase italic font-[Orbitron] tracking-tighter mb-4">
-              MONITORING SERWERÓW<span class="coyote-text">.PL</span>
-            </h2>
-            <p class="text-zinc-400 text-sm max-w-2xl mx-auto">
-              System monitoruje dostępność wszystkich subdomen w czasie rzeczywistym.
-              Używa bezpiecznej metody sprawdzania bez błędów CORS.
-            </p>
-          </div>
-
-          <div id="server-monitoring" class="text-center">
-            <div class="bg-zinc-900/95 backdrop-blur-md border border-zinc-700 rounded-2xl p-8">
-              <div class="animate-pulse">
-                <div class="text-zinc-400 mb-4">Ładowanie statusów serwerów...</div>
-                <div class="w-8 h-8 border-2 border-coyote border-t-transparent rounded-full animate-spin mx-auto"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <footer
         class="w-full py-10 text-center text-zinc-800 text-[10px] uppercase font-bold tracking-[0.4em]"
@@ -460,96 +437,6 @@
       let conversationsList = [];
       let currentConversationId = null;
 
-      // --- MONITORING SERWERÓW SUBDOMEN ---
-      const subdomains = [
-        'sklep.strzelca.pl',
-        'bazar.strzelca.pl',
-        'szkolenia.strzelca.pl',
-        'wydarzenia.strzelca.pl',
-        'blog.strzelca.pl',
-        'pomoc.strzelca.pl',
-        'dokumenty.strzelca.pl',
-        'kontakt.strzelca.pl',
-        'konto.strzelca.pl'
-      ];
-
-      let serverStatuses = {};
-
-      // Funkcja monitorowania serwera bez CORS (opcja darmowa)
-      async function checkServerStatus(url) {
-        try {
-          // Używamy fetch z mode: 'no-cors' - pozwala sprawdzić czy serwer odpowiada
-          // ale nie podaje dokładnego kodu błędu (np. 404 czy 500)
-          const response = await fetch(`https://${url}`, {
-            mode: 'no-cors',
-            method: 'HEAD', // HEAD jest lżejszy niż GET
-            cache: 'no-cache'
-          });
-
-          // W trybie no-cors, response.ok zawsze będzie false
-          // ale jeśli nie było błędu sieciowego, to znaczy że serwer odpowiada
-          return { status: 'online', message: 'Serwer odpowiada' };
-
-        } catch (error) {
-          // Jeśli jest błąd, serwer prawdopodobnie nie działa
-          return { status: 'offline', message: 'Serwer niedostępny' };
-        }
-      }
-
-      // Funkcja monitorowania wszystkich subdomen
-      async function monitorServers() {
-        console.log('Rozpoczynam monitoring serwerów...');
-
-        const statusPromises = subdomains.map(async (subdomain) => {
-          const status = await checkServerStatus(subdomain);
-          serverStatuses[subdomain] = status;
-          console.log(`${subdomain}: ${status.status} - ${status.message}`);
-          return { subdomain, ...status };
-        });
-
-        const results = await Promise.all(statusPromises);
-
-        // Aktualizuj interfejs monitoringu jeśli istnieje
-        updateMonitoringUI(results);
-
-        return results;
-      }
-
-      // Funkcja aktualizacji interfejsu monitoringu
-      function updateMonitoringUI(results) {
-        const monitoringContainer = document.getElementById('server-monitoring');
-        if (!monitoringContainer) return;
-
-        monitoringContainer.innerHTML = `
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            ${results.map(result => `
-              <div class="bg-zinc-900/95 backdrop-blur-md border rounded-2xl p-4 ${
-                result.status === 'online' ? 'border-green-500/50' : 'border-red-500/50'
-              }">
-                <div class="flex items-center justify-between mb-2">
-                  <span class="text-sm font-medium text-zinc-300">${result.subdomain}</span>
-                  <div class="flex items-center">
-                    <div class="w-2 h-2 rounded-full ${
-                      result.status === 'online' ? 'bg-green-500' : 'bg-red-500'
-                    } mr-2"></div>
-                    <span class="text-xs ${
-                      result.status === 'online' ? 'text-green-400' : 'text-red-400'
-                    }">
-                      ${result.status === 'online' ? 'ONLINE' : 'OFFLINE'}
-                    </span>
-                  </div>
-                </div>
-                <div class="text-xs text-zinc-400">${result.message}</div>
-              </div>
-            `).join('')}
-          </div>
-          <div class="mt-4 text-center">
-            <button onclick="monitorServers()" class="bg-coyote text-black px-4 py-2 rounded-lg font-semibold hover:bg-opacity-80 transition">
-              Odśwież status
-            </button>
-          </div>
-        `;
-      }
 
       // --- MONITOROWANIE STANU ZALOGOWANIA ---
       console.log("Firebase Auth initialized, checking current user...");
@@ -598,15 +485,6 @@
         }
       };
 
-      // Funkcja monitorowania serwerów (globalna)
-      window.monitorServers = monitorServers;
-
-      // Uruchom monitoring po załadowaniu strony
-      document.addEventListener('DOMContentLoaded', () => {
-        monitorServers();
-        // Odświeżaj status co 5 minut
-        setInterval(monitorServers, 5 * 60 * 1000);
-      });
 
     </script>
   </body>
