@@ -272,10 +272,7 @@
             >
             <select id="chat-topic" required class="py-9 px-10 text-base h-14">
               <option value="" disabled selected>Wybierz temat...</option>
-              <option value="Zamówienie">Zamówienie</option>
-              <option value="Pytanie o produkt">Pytanie o produkt</option>
-              <option value="Współpraca">Współpraca</option>
-              <option value="Inne">Inne</option>
+              <!-- Opcje będą ładowane dynamicznie z API -->
             </select>
           </div>
 
@@ -427,6 +424,55 @@
       };
 
 
+      // Funkcja ładowania kategorii wiadomości
+      async function loadMessageCategories() {
+          try {
+              const response = await fetch('https://strzelca.pl/api/message-categories');
+              const data = await response.json();
+
+              if (data.success && data.data.length > 0) {
+                  const select = document.getElementById('chat-topic');
+                  const currentValue = select.value;
+
+                  // Wyczyść istniejące opcje oprócz pierwszej
+                  while (select.options.length > 1) {
+                      select.remove(1);
+                  }
+
+                  // Dodaj kategorie z API
+                  data.data.forEach(category => {
+                      const option = document.createElement('option');
+                      option.value = category.id;
+                      option.textContent = category.name;
+                      select.appendChild(option);
+                  });
+
+                  // Przywróć poprzednią wartość jeśli istnieje
+                  if (currentValue && currentValue !== '') {
+                      select.value = currentValue;
+                  }
+              }
+          } catch (error) {
+              console.error('Błąd ładowania kategorii:', error);
+              // Fallback - dodaj domyślne opcje jeśli API nie działa
+              const select = document.getElementById('chat-topic');
+              if (select.options.length <= 1) {
+                  const defaultOptions = [
+                      { value: '1', text: 'Zamówienia' },
+                      { value: '2', text: 'Oferty' },
+                      { value: '3', text: 'Inne' }
+                  ];
+
+                  defaultOptions.forEach(optionData => {
+                      const option = document.createElement('option');
+                      option.value = optionData.value;
+                      option.textContent = optionData.text;
+                      select.appendChild(option);
+                  });
+              }
+          }
+      }
+
       // --- OBSŁUGA FORMULARZA CZATU ---
       document.getElementById('chat-form').addEventListener('submit', async (e) => {
           e.preventDefault();
@@ -447,7 +493,7 @@
           const formData = {
               senderName: currentUser ? currentUser.displayName : 'Gość',
               senderEmail: currentUser ? currentUser.email : 'guest@strzelca.pl',
-              topic: document.getElementById('chat-topic').value,
+              category_id: parseInt(document.getElementById('chat-topic').value),
               content: document.getElementById('chat-message').value,
               timestamp: Date.now(),
               senderId: currentUser ? currentUser.uid : null,
@@ -457,7 +503,7 @@
           };
 
           // Sprawdzenie czy wszystkie pola są wypełnione
-          if (!formData.topic || !formData.content.trim()) {
+          if (!formData.category_id || isNaN(formData.category_id) || !formData.content.trim()) {
               alert('Proszę wybrać temat i wpisać wiadomość.');
               return;
           }
@@ -536,7 +582,7 @@
           const topicSelect = document.getElementById('chat-topic');
           const regulaminInfo = document.getElementById('regulamin-info');
 
-          if (topicSelect.value === 'Zamówienie') {
+          if (topicSelect.value === '1') { // ID kategorii "Zamówienia"
               regulaminInfo.classList.remove('hidden');
           } else {
               regulaminInfo.classList.add('hidden');
@@ -551,7 +597,7 @@
 
           if (topic && topic.toUpperCase() === 'ZAMOWIENIE') {
               const select = document.getElementById('chat-topic');
-              select.value = 'Zamówienie';
+              select.value = '1'; // ID kategorii "Zamówienia"
 
               if (product) {
                   const msgField = document.getElementById('chat-message');
@@ -565,6 +611,9 @@
 
       // Sprawdź stan logowania przy ładowaniu strony
       checkLoginStatus();
+
+      // Załaduj kategorie wiadomości
+      loadMessageCategories();
 
       // Obsługuj parametry URL
       handleUrlParams();

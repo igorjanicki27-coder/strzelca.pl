@@ -278,8 +278,17 @@
             }
         };
 
-        onAuthStateChanged(auth, (user) => {
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
+                // Sprawdź czy sesja jest ważna wg SessionManager
+                if (typeof window.sessionManager !== 'undefined' && window.sessionManager) {
+                    if (!window.sessionManager.isSessionValid()) {
+                        console.log('Session expired according to SessionManager, signing out from Firebase');
+                        await signOut(auth);
+                        return;
+                    }
+                }
+
                 document.getElementById('login-section').classList.add('hidden');
                 document.getElementById('admin-panel').classList.remove('hidden');
                 window.switchTab('charity');
@@ -292,8 +301,14 @@
             }
         });
 
-        window.handleLogout = () => {
-            if(confirm("Czy na pewno wylogować?")) signOut(auth);
+        window.handleLogout = async () => {
+            if(confirm("Czy na pewno wylogować?")) {
+                await signOut(auth);
+                // Zatrzymaj sprawdzanie sesji przez SessionManager
+                if (typeof window.sessionManager !== 'undefined' && window.sessionManager) {
+                    window.sessionManager.stopSessionCheck();
+                }
+            }
         };
 
         // Funkcja panelu użytkownika

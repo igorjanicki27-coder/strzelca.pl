@@ -632,7 +632,6 @@
           <div class="flex items-center space-x-3">
             <div class="hidden sm:flex items-center space-x-2 text-sm">
               <span id="admin-display-name-compact" class="text-white font-medium"></span>
-              <span id="admin-session-time-compact" class="text-zinc-400 text-xs"></span>
             </div>
             <div class="w-8 h-8 rounded-full bg-gradient-to-br from-coyote/20 to-zinc-600/40 flex items-center justify-center border border-zinc-500/20">
               <i class="fa-solid fa-user-shield text-coyote text-sm"></i>
@@ -2662,6 +2661,7 @@
       let pendingTasksListener = null;
       let activityLogsListener = null;
       let conversationsAutoRefreshInterval = null;
+      let userFilterColors = {}; // Kolory filtrów zdefiniowane przez użytkownika
 
       // Dźwięk powiadomienia dla nowych wiadomości
       const notificationSound = new Audio('/message.mp3');
@@ -2863,84 +2863,14 @@
       // Funkcja do aktualizacji kompaktowego wyświetlania nazwy admina
       function updateCompactAdminDisplay(user) {
         const compactName = document.getElementById("admin-display-name-compact");
-        const compactTime = document.getElementById("admin-session-time-compact");
 
         if (compactName && user) {
           const displayName = user.displayName || user.email || "Administrator";
           compactName.textContent = displayName;
         }
-
-        // Aktualizuj czas pozostały do wygaśnięcia sesji
-        updateSessionTimeDisplay();
       }
 
-      // Funkcja przedłużająca sesję przy interakcjach użytkownika
-      function extendAdminSession() {
-        const adminSession = localStorage.getItem('admin_session');
-        if (adminSession) {
-          try {
-            const sessionData = JSON.parse(adminSession);
-            // Przedłuż sesję o kolejne 2 godziny
-            sessionData.expiresAt = Date.now() + (2 * 60 * 60 * 1000);
-            localStorage.setItem('admin_session', JSON.stringify(sessionData));
 
-            console.log('🔄 Admin session extended by 2 hours');
-            updateSessionTimeDisplay(); // Odśwież wyświetlanie czasu
-          } catch (error) {
-            console.warn('Error extending admin session:', error);
-          }
-        }
-      }
-
-      // Funkcja do aktualizacji wyświetlania pozostałego czasu sesji
-      function updateSessionTimeDisplay() {
-        const timeElement = document.getElementById("admin-session-time-compact");
-        if (!timeElement) return;
-
-        const remainingTime = getAdminSessionRemainingTime();
-        if (remainingTime > 0) {
-          const hours = Math.floor(remainingTime / (1000 * 60 * 60));
-          const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
-
-          let timeString;
-          if (hours > 0) {
-            timeString = `${hours}h ${minutes}min`;
-          } else {
-            timeString = `${minutes}min`;
-          }
-
-          timeElement.textContent = timeString;
-          timeElement.className = "text-zinc-400 text-xs";
-
-          // Zmiana koloru przy kończącej się sesji
-          if (remainingTime < 15 * 60 * 1000) { // mniej niż 15 minut
-            timeElement.className = "text-yellow-400 text-xs animate-pulse";
-          }
-          if (remainingTime < 5 * 60 * 1000) { // mniej niż 5 minut
-            timeElement.className = "text-red-400 text-xs animate-pulse";
-          }
-        } else {
-          timeElement.textContent = "Wygasła";
-          timeElement.className = "text-red-400 text-xs";
-        }
-      }
-
-      // Funkcja do obliczania pozostałego czasu sesji administratora
-      function getAdminSessionRemainingTime() {
-        try {
-          const adminSession = sessionStorage.getItem('admin_session') || localStorage.getItem('admin_session');
-          if (adminSession) {
-            const sessionData = JSON.parse(adminSession);
-            const now = Date.now();
-            const expiresAt = sessionData.expiresAt || (sessionData.loginTime + 2 * 60 * 60 * 1000); // domyślnie 2h
-
-            return Math.max(0, expiresAt - now);
-          }
-        } catch (error) {
-          console.warn('Błąd podczas obliczania czasu sesji administratora:', error);
-        }
-        return 0;
-      }
 
 
       // Inicjalizacja nawigacji
@@ -3009,9 +2939,6 @@
             });
 
             showStatus("Logowanie administratora (Firebase) pomyślne.");
-
-            // Uruchom odliczanie sesji natychmiast po zalogowaniu
-            updateSessionUI();
           } catch (error) {
             console.error("Login error:", error);
 
@@ -3071,82 +2998,6 @@
       };
 
 
-      // =============================================================================
-      // SESSION UI MANAGEMENT
-      // =============================================================================
-
-      // Funkcja aktualizująca wyświetlanie czasu sesji
-      function updateSessionUI() {
-        const timeElement = document.getElementById("admin-session-time-compact");
-        if (!timeElement) return;
-
-        // Najpierw sprawdź expiresAt w localStorage
-        let expiresAtStr = localStorage.getItem('session_expires_at');
-        if (!expiresAtStr) {
-          // Jeśli nie istnieje, ale użytkownik Firebase jest zalogowany, zainicjalizuj nową sesję
-          if (currentUser) {
-            const rememberMe = localStorage.getItem('strzelca_remember_me') === 'true';
-            const sessionDuration = rememberMe ? 7 * 24 * 60 * 60 * 1000 : 2 * 60 * 60 * 1000; // 1 tydzień lub 2 godziny
-            const newExpiresAt = Date.now() + sessionDuration;
-            localStorage.setItem('session_expires_at', newExpiresAt.toString());
-            expiresAtStr = newExpiresAt.toString();
-            console.log(`Initialized new session expiresAt: ${new Date(newExpiresAt).toLocaleString()}`);
-          } else {
-            // Brak użytkownika i expiresAt - pokaż "Brak danych"
-            timeElement.textContent = "Brak danych";
-            timeElement.style.color = "#ef4444"; // red
-            return;
-          }
-        }
-
-        const expiresAt = parseInt(expiresAtStr);
-        const now = Date.now();
-        const remainingMs = expiresAt - now;
-
-        // Jeśli czas wygasł
-        if (remainingMs <= 0) {
-          timeElement.textContent = "Wygasła";
-          timeElement.style.color = "#ef4444"; // red
-          // Automatycznie wyloguj
-          if (typeof window.logoutAdmin === 'function') {
-            window.logoutAdmin();
-          }
-          return;
-        }
-
-        // Formatuj czas pozostały
-        const remainingSec = Math.floor(remainingMs / 1000);
-        const hours = Math.floor(remainingSec / 3600);
-        const minutes = Math.floor((remainingSec % 3600) / 60);
-
-        let timeText = "";
-        if (hours > 0) {
-          timeText = `${hours}h ${minutes}min`;
-        } else {
-          timeText = `${minutes}min`;
-        }
-
-        timeElement.textContent = timeText;
-
-        // Kolor w zależności od pozostałego czasu
-        if (remainingSec < 300) { // mniej niż 5 minut
-          timeElement.style.color = "#ef4444"; // red
-        } else if (remainingSec < 1800) { // mniej niż 30 minut
-          timeElement.style.color = "#f59e0b"; // orange
-        } else {
-          timeElement.style.color = "#10b981"; // green
-        }
-      }
-
-      // Funkcja uruchamiająca aktualizację UI sesji
-      function startSessionTimeUpdater() {
-        if (window.sessionInterval) {
-          clearInterval(window.sessionInterval);
-          window.sessionInterval = null;
-        } // Zatrzymaj jeśli już działa
-        window.sessionInterval = setInterval(updateSessionUI, 10000); // Co 10 sekund
-        updateSessionUI(); // Natychmiastowa aktualizacja
-      }
 
       onAuthStateChanged(auth, async (user) => {
         if (user) {
@@ -3158,10 +3009,13 @@
               const userData = userDoc.data();
               if (userData.role === "admin") {
                 currentUser = user;
-                updateAdminDisplay(user);
 
-                // Uruchom aktualizację UI sesji
-                startSessionTimeUpdater();
+                // Załaduj kolory filtrów z bazy danych użytkownika
+                if (userData.filterColors) {
+                  userFilterColors = userData.filterColors;
+                }
+
+                updateAdminDisplay(user);
 
                 document.getElementById("login-section").classList.add("hidden");
                 document.getElementById("admin-panel").classList.remove("hidden");
@@ -7504,10 +7358,12 @@
             categories.forEach(cat => {
               const isActive = currentFilters.category === cat.name.toLowerCase().replace(/\s+/g, '');
               const categoryIcon = cat.icon || 'fa-circle';
+              // Użyj koloru zdefiniowanego przez użytkownika, lub domyślnego z bazy danych
+              const categoryColor = userFilterColors[cat.name.toLowerCase().replace(/\s+/g, '')] || cat.color || '#6B7280';
               categoryButtons += `
                 <button onclick="filterMessages('${cat.name.toLowerCase().replace(/\s+/g, '')}')"
                         class="px-3 py-2 rounded-lg transition-all duration-200 font-medium liquid-glass-button flex items-center gap-2"
-                        style="color: ${cat.color}; ${isActive ? `background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid ${cat.color}60;` : `background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.1);`}">
+                        style="color: ${categoryColor}; ${isActive ? `background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid ${categoryColor}60;` : `background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.1);`}">
                   <i class="fa-solid ${categoryIcon} text-xs"></i>
                   ${cat.name}
                 </button>

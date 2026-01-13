@@ -150,6 +150,42 @@ const messagesAPI = {
     }
   },
 
+  // PUT /api/messages/:id/category - aktualizuje kategorię wiadomości
+  async updateCategory(req, res) {
+    try {
+      const db = await initDatabase();
+      const { id } = req.params;
+      const { categoryId } = req.body;
+
+      if (!categoryId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Category ID is required'
+        });
+      }
+
+      const success = await db.updateMessageCategory(id, categoryId);
+
+      if (success) {
+        res.json({
+          success: true,
+          message: 'Message category updated successfully'
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          error: 'Message not found'
+        });
+      }
+    } catch (error) {
+      console.error('Error updating message category:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  },
+
   // GET /api/messages/stats - pobiera statystyki wiadomości
   async getStats(req, res) {
     try {
@@ -162,6 +198,96 @@ const messagesAPI = {
       });
     } catch (error) {
       console.error('Error getting message stats:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  },
+
+  // GET /api/message-categories - pobiera wszystkie kategorie
+  async getCategories(req, res) {
+    try {
+      const db = await initDatabase();
+      const categories = await db.getCategories();
+
+      res.json({
+        success: true,
+        data: categories
+      });
+    } catch (error) {
+      console.error('Error getting categories:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  },
+
+  // POST /api/message-categories - dodaje nową kategorię
+  async addCategory(req, res) {
+    try {
+      const db = await initDatabase();
+      const categoryData = req.body;
+
+      if (!categoryData.name) {
+        return res.status(400).json({
+          success: false,
+          error: 'Category name is required'
+        });
+      }
+
+      const categoryId = await db.addCategory(categoryData);
+
+      res.json({
+        success: true,
+        data: { id: categoryId, ...categoryData }
+      });
+    } catch (error) {
+      console.error('Error adding category:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  },
+
+  // PUT /api/message-categories/:id - aktualizuje kategorię
+  async updateCategory(req, res) {
+    try {
+      const db = await initDatabase();
+      const { id } = req.params;
+      const categoryData = req.body;
+
+      await db.updateCategory(id, categoryData);
+
+      res.json({
+        success: true,
+        message: 'Category updated successfully'
+      });
+    } catch (error) {
+      console.error('Error updating category:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  },
+
+  // DELETE /api/message-categories/:id - usuwa kategorię
+  async deleteCategory(req, res) {
+    try {
+      const db = await initDatabase();
+      const { id } = req.params;
+
+      await db.deleteCategory(id);
+
+      res.json({
+        success: true,
+        message: 'Category deleted successfully'
+      });
+    } catch (error) {
+      console.error('Error deleting category:', error);
       res.status(500).json({
         success: false,
         error: 'Internal server error'
