@@ -1,5 +1,5 @@
 // =============================================================================
-// SYSTEM SPRAWDZANIA STATUSU USŁUG - strzelca.pl
+// SYSTEM SPRAWDZANIA STATUSU USŁUG - strzelca.pl (Vercel Serverless)
 // =============================================================================
 // Ten plik zawiera funkcje do sprawdzania statusu różnych usług
 // =============================================================================
@@ -142,7 +142,31 @@ async function checkAllServices() {
   }
 }
 
-module.exports = {
-  checkAllServices,
-  checkService
+// Serverless function handler
+module.exports = async (req, res) => {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  try {
+    if (req.method === 'GET') {
+      const result = await checkAllServices();
+      res.json({
+        success: true,
+        data: result
+      });
+    } else {
+      res.status(405).json({ success: false, error: 'Method not allowed' });
+    }
+  } catch (error) {
+    console.error('Status API error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
 };

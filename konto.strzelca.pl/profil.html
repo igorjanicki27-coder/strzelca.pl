@@ -181,6 +181,15 @@
             margin: 16px 0;
         }
     </style>
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-9EJ2R3JPVD"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-9EJ2R3JPVD');
+    </script>
 </head>
 <body>
 
@@ -411,7 +420,7 @@
             orderBy,
             limit
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        import { getAuth, onAuthStateChanged, signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
@@ -428,7 +437,7 @@
         const auth = getAuth(app);
 
         // Ustaw trwałość sesji na LOCAL dla wszystkich stron wymagających logowania
-        await auth.setPersistence(auth.Auth.Persistence.LOCAL);
+        await setPersistence(auth, browserLocalPersistence);
 
         let currentUser = null;
         let userProfile = null;
@@ -470,7 +479,7 @@
             }
         }
 
-        // Funkcja logowania aktywności
+        // Funkcja logowania aktywności (zachowana dla kompatybilności wstecznej)
         async function logActivity(type, userId, userName, details, timestamp = null) {
             try {
                 const activityData = {
@@ -487,6 +496,56 @@
                 console.log('Aktywność zalogowana:', activityData);
             } catch (error) {
                 console.error('Błąd podczas logowania aktywności:', error);
+            }
+        }
+
+        // Nowa funkcja logowania zdarzeń użytkowników
+        async function logUserEvent(type, userId, userName, action, targetId = null, targetType = null, metadata = {}) {
+            try {
+                const eventData = {
+                    type: type,
+                    userId: userId,
+                    userName: userName,
+                    action: action,
+                    targetId: targetId,
+                    targetType: targetType,
+                    details: action,
+                    metadata: metadata,
+                    timestamp: new Date().toISOString()
+                };
+
+                // Najpierw spróbuj przez API
+                try {
+                    const response = await fetch('/api/user-events', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(eventData)
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        console.log('User event logged via API:', result.data);
+                        return;
+                    }
+                } catch (apiError) {
+                    console.warn('API logging failed, falling back to Firebase:', apiError.message);
+                }
+
+                // Fallback do Firebase (zachowana kompatybilność wsteczna)
+                const { addDoc, collection } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+                await addDoc(collection(db, "activityLogs"), {
+                    type: type,
+                    userId: userId,
+                    userName: userName,
+                    details: action,
+                    timestamp: new Date()
+                });
+
+                console.log('User event logged via Firebase fallback:', eventData);
+            } catch (error) {
+                console.error('Błąd podczas logowania zdarzenia użytkownika:', error);
             }
         }
 
@@ -901,12 +960,19 @@
                     status: 'approved' // W wersji podstawowej wszystkie opinie są automatycznie zatwierdzane
                 });
 
-                // Zaloguj aktywność dodania opinii
-                await logActivity(
+                // Zaloguj zdarzenie użytkownika
+                await logUserEvent(
                     'USER-REVIEW',
                     currentUser.uid,
                     userProfile.displayName,
-                    `Ocena użytkownika ${ratedUser.displayName}: ${rating} gwiazdek - ${comment.substring(0, 100)}${comment.length > 100 ? '...' : ''}`
+                    `Ocena użytkownika ${ratedUser.displayName}: ${rating} gwiazdek`,
+                    ratedUser.uid,
+                    'user',
+                    {
+                        rating: rating,
+                        comment: comment.substring(0, 100) + (comment.length > 100 ? '...' : ''),
+                        targetUserName: ratedUser.displayName
+                    }
                 );
 
                 alert('Opinia została dodana pomyślnie!');

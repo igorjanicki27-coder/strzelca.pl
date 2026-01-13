@@ -57,11 +57,7 @@ async function getAnalyticsData(timeRange) {
           endDate: endDateStr,
         },
       ],
-      dimensions: [
-        {
-          name: 'date',
-        },
-      ],
+      dimensions: [],
       metrics: [
         {
           name: 'sessions',
@@ -70,7 +66,7 @@ async function getAnalyticsData(timeRange) {
           name: 'totalUsers',
         },
         {
-          name: 'pageviews',
+          name: 'screenPageViews',
         },
         {
           name: 'averageSessionDuration',

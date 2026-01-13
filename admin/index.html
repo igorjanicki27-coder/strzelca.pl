@@ -550,6 +550,15 @@
         transform: translateX(2px);
       }
     </style>
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-9EJ2R3JPVD"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-9EJ2R3JPVD');
+    </script>
   </head>
   <body>
     <script>
@@ -824,6 +833,35 @@
               </div>
             </div>
 
+            <!-- Sekcja Zdarzenia -->
+            <div class="admin-card mb-8">
+              <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold coyote-text">Zdarzenia</h2>
+                <div class="flex space-x-2">
+                <button
+                  onclick="loadEventsLog()"
+                  class="text-zinc-400 hover:text-coyote transition-colors p-2"
+                  id="refresh-events-btn"
+                >
+                  <i class="fa-solid fa-sync-alt text-lg" id="refresh-events-icon"></i>
+                </button>
+                  <button
+                    onclick="clearAllEvents()"
+                    class="btn-danger text-sm px-3 py-1"
+                  >
+                    <i class="fa-solid fa-trash mr-1"></i>
+                    Usuń wszystkie
+                </button>
+                </div>
+              </div>
+
+              <div id="events-log-container">
+                <!-- Tabela zdarzeń będzie ładowana dynamicznie -->
+                <div class="text-center text-zinc-400 py-4">
+                  <i class="fa-solid fa-spinner fa-spin mr-2"></i>Ładowanie logów...
+                </div>
+              </div>
+            </div>
           </div>
 
         <!-- Dashboard -->
@@ -969,6 +1007,25 @@
             </div>
           </div>
 
+            <!-- Dziennik Aktywności -->
+            <div class="admin-card mt-8" style="background: linear-gradient(135deg, rgba(193, 154, 107, 0.1), rgba(193, 154, 107, 0.05)); backdrop-filter: blur(20px); border: 1px solid rgba(193, 154, 107, 0.2);">
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">Dziennik Aktywności</h3>
+                <button onclick="refreshActivityLogs()" class="text-zinc-400 hover:text-coyote transition-colors p-2" id="refresh-activity-btn">
+                  <i class="fa-solid fa-sync-alt text-lg" id="refresh-activity-icon"></i>
+                </button>
+              </div>
+
+              <div id="admin-activity-log" class="space-y-4">
+                <!-- Logi aktywności będą ładowane dynamicznie -->
+                <div class="text-center text-zinc-500 py-8">
+                  <i class="fa-solid fa-spinner fa-spin text-2xl mb-4 text-zinc-600"></i>
+                  <h4 class="text-lg font-semibold mb-2">Ładowanie dziennika...</h4>
+                  <p class="text-sm">Proszę czekać</p>
+                </div>
+              </div>
+            </div>
+
             </div>
         </div>
 
@@ -1068,9 +1125,8 @@
             <h1 class="text-3xl font-bold coyote-text">
               Zarządzanie Produktami
             </h1>
-            <button onclick="refreshProducts()" class="btn-admin">
-              <i class="fa-solid fa-sync-alt mr-2"></i>
-              Odśwież
+            <button onclick="refreshProducts()" class="text-zinc-400 hover:text-coyote transition-colors p-2" id="refresh-products-btn">
+              <i class="fa-solid fa-sync-alt text-lg" id="refresh-products-icon"></i>
             </button>
           </div>
 
@@ -1168,11 +1224,8 @@
               </div>
             </div>
 
-            <!-- Settings & Refresh (Right Side) -->
+            <!-- Refresh (Right Side) -->
             <div class="flex items-center gap-3">
-              <button onclick="switchTab('kontakt')" class="text-zinc-400 hover:text-coyote transition-colors p-2" title="Zarządzanie kategoriami">
-                <i class="fa-solid fa-cog text-lg"></i>
-              </button>
               <button onclick="refreshMessages()" class="text-zinc-400 hover:text-coyote transition-colors p-2" id="refresh-messages-btn">
                 <i class="fa-solid fa-sync-alt text-lg" id="refresh-icon"></i>
               </button>
@@ -1188,7 +1241,7 @@
                   type="text"
                   id="messages-search"
                   placeholder="Szukaj po nazwie użytkownika lub treści wiadomości..."
-                  class="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-3 pr-10 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-coyote transition-all"
+                  class="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-3 pr-10 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-coyote transition-all h-12"
                 >
                 <button
                   onclick="clearMessagesSearch()"
@@ -1198,6 +1251,18 @@
                 >
                   <i class="fa-solid fa-times text-sm"></i>
                 </button>
+              </div>
+
+              <!-- Filtry (po prawej stronie) -->
+              <div class="flex-[0_0_auto]">
+                <select id="messages-filter" class="bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-coyote transition-all min-w-[140px] h-12">
+                  <option value="all">Wszystkie</option>
+                  <option value="unread">Nieprzeczytane</option>
+                  <option value="read">Przeczytane</option>
+                  <option value="in_progress">Niezakończone</option>
+                  <option value="completed">Zakończone</option>
+                  <!-- Opcje kategorii będą dodawane dynamicznie -->
+                </select>
               </div>
             </div>
           </div>
@@ -1657,9 +1722,8 @@
                 Zarządzaj ofertami na bazarze. Zatwierdzaj nowe oferty i moderuj
                 istniejące.
               </p>
-              <button onclick="refreshBazar()" class="btn-admin">
-                <i class="fa-solid fa-sync-alt mr-2"></i>
-                Odśwież
+              <button onclick="refreshBazar()" class="text-zinc-400 hover:text-coyote transition-colors p-2" id="refresh-bazar-btn">
+                <i class="fa-solid fa-sync-alt text-lg" id="refresh-bazar-icon"></i>
               </button>
             </div>
 
@@ -1942,27 +2006,6 @@
             </div>
           </div>
         </div>
-
-
-            <!-- Dziennik Aktywności -->
-            <div class="admin-card mt-8" style="background: linear-gradient(135deg, rgba(193, 154, 107, 0.1), rgba(193, 154, 107, 0.05)); backdrop-filter: blur(20px); border: 1px solid rgba(193, 154, 107, 0.2);">
-              <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-bold">Dziennik Aktywności</h3>
-                <button onclick="refreshActivityLogs()" class="btn-admin px-4 py-2" id="refresh-activity-btn">
-                  <i class="fa-solid fa-refresh mr-2"></i>
-                  <span id="refresh-activity-text">Odśwież</span>
-                </button>
-              </div>
-
-              <div id="admin-activity-log" class="space-y-4">
-                <!-- Logi aktywności będą ładowane dynamicznie -->
-                <div class="text-center text-zinc-500 py-8">
-                  <i class="fa-solid fa-spinner fa-spin text-2xl mb-4 text-zinc-600"></i>
-                  <h4 class="text-lg font-semibold mb-2">Ładowanie dziennika...</h4>
-                  <p class="text-sm">Proszę czekać</p>
-                </div>
-              </div>
-            </div>
 
           </div>
         </div>
@@ -2585,6 +2628,7 @@
         limit,
         addDoc,
         onSnapshot,
+        writeBatch,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
       const firebaseConfig = {
@@ -2615,7 +2659,6 @@
       let currentConversationId = null;
       let pendingTasksListener = null;
       let activityLogsListener = null;
-      let conversationsAutoRefreshInterval = null;
       let userFilterColors = {}; // Kolory filtrów zdefiniowane przez użytkownika
 
       // Dźwięk powiadomienia dla nowych wiadomości
@@ -2822,9 +2865,6 @@
             // Daj czas na update DOM
             setTimeout(() => loadMessages(), 100);
             break;
-          case "chats":
-            loadConversations();
-            break;
           case "events":
             loadEvents();
             break;
@@ -2855,9 +2895,9 @@
             break;
         }
 
-        // Zatrzymaj automatyczne odświeżanie konwersacji jeśli nie jesteśmy w zakładce messages
+        // Zatrzymaj automatyczne odświeżanie wiadomości jeśli nie jesteśmy w zakładce messages
         if (tabName !== "messages") {
-          stopConversationsAutoRefresh();
+          stopAutoRefresh();
         }
 
         document.getElementById("main-content").scrollTop = 0;
@@ -3022,12 +3062,29 @@
       onAuthStateChanged(auth, async (user) => {
         if (user) {
 
-          // Sprawdź rolę administratora w Firestore
+          // Najpierw sprawdź czy to SuperAdmin (bez sprawdzania Firestore)
+          const superAdminUID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
+          if (user.uid === superAdminUID) {
+            console.log('SuperAdmin login detected:', user.uid);
+            currentUser = user;
+            userFilterColors = {}; // SuperAdmin może nie mieć filtrów
+            updateAdminDisplay(user);
+            document.getElementById("login-section").classList.add("hidden");
+            document.getElementById("admin-panel").classList.remove("hidden");
+            switchTab("dashboard");
+            return;
+          }
+
+          // Dla zwykłych użytkowników sprawdź rolę w Firestore
           try {
+            console.log('Checking admin role in Firestore for user:', user.uid);
             const userDoc = await getDoc(doc(db, "userProfiles", user.uid));
             if (userDoc.exists()) {
               const userData = userDoc.data();
+              console.log('User data from Firestore:', userData);
+
               if (userData.role === "admin") {
+                console.log('Admin role confirmed for user:', user.uid);
                 currentUser = user;
 
                 // Załaduj kolory filtrów z bazy danych użytkownika
@@ -3043,15 +3100,23 @@
                 // Załaduj dashboard
                 switchTab("dashboard");
                 return;
+              } else {
+                console.warn('User has role:', userData.role, 'but expected admin');
               }
+            } else {
+              console.warn('User profile not found in Firestore for UID:', user.uid);
             }
           } catch (error) {
-            console.error("Error checking admin role:", error);
+            console.error("Error checking admin role in Firestore:", error);
+            // Nie wylogowuj natychmiast - może to być tymczasowy błąd
+            showStatus('<strong style="color: #ffa500; font-weight: bold;">Sprawdzanie uprawnień... Spróbuj odświeżyć stronę.</strong>', true);
+            return;
           }
 
-          // Jeśli użytkownik nie ma roli admin lub wystąpił błąd
+          // Jeśli użytkownik nie ma roli admin
+          console.warn('User does not have admin role, signing out:', user.uid);
           await signOut(auth);
-          showStatus("Utracono uprawnienia administratora.", true);
+          showStatus('<strong style="color: #dc2626; font-weight: bold;">Brak uprawnień administratora.</strong>', true);
           if (window.sessionInterval) {
             clearInterval(window.sessionInterval);
             window.sessionInterval = null;
@@ -3069,29 +3134,15 @@
 
       // =============================================================================
       // GLOBAL ACTIVITY EVENT LISTENERS (Sliding Expiration)
-      // =============================================================================
-      // Te listenery zapewniają, że sesja jest przedłużana przy aktywności administratora
-      const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'click'];
-
-      function handleUserActivity() {
-        // Wywołaj extendSession() aby przedłużyć sesję przy każdej aktywności
-        if (typeof window.sessionManager !== 'undefined' && window.sessionManager) {
-          window.sessionManager.extendSession();
-        }
-      }
-
-      // Dodaj listenery dla wszystkich zdarzeń aktywności
-      activityEvents.forEach(eventType => {
-        document.addEventListener(eventType, handleUserActivity, { passive: true });
-      });
 
       // Funkcja odświeżania dashboardu z animacją ładowania
       async function refreshDashboardWithLoading() {
         const refreshBtn = document.getElementById("dashboard-refresh-btn");
 
-        // Dodaj klasę loading do przycisku
-        refreshBtn.classList.add("loading-spinner");
-        refreshBtn.disabled = true;
+        if (refreshBtn) {
+          refreshBtn.disabled = true;
+          refreshBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i><span id="refresh-text">Ładowanie...</span>';
+        }
 
         try {
           // Pokaż loading overlay dla całego dashboardu
@@ -3112,9 +3163,10 @@
           // Ukryj loading overlay
           hideDashboardLoadingStates();
 
-          // Usuń klasę loading z przycisku
-          refreshBtn.classList.remove("loading-spinner");
-          refreshBtn.disabled = false;
+          if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '<i class="fa-solid fa-sync-alt text-lg" id="dashboard-refresh-icon"></i>';
+          }
         }
       }
 
@@ -3124,48 +3176,19 @@
 
       // Funkcja odświeżania dziennika aktywności z animacją przycisku
       window.refreshActivityLogs = async () => {
-        const btn = document.getElementById('refresh-activity-btn');
-        const icon = btn.querySelector('i');
-        const text = document.getElementById('refresh-activity-text');
-
-        console.log('refreshActivityLogs called');
-
-        // Zapisz oryginalne klasy
-        const originalIconHTML = icon.outerHTML;
-        const originalText = text.textContent;
-
-        // Pokaż animację ładowania z płynnym przejściem
-        btn.disabled = true;
-        btn.style.opacity = '0.7';
-
-        // Zmień tylko ikonę na spinner z animacją
-        icon.className = 'fa-solid fa-spinner fa-spin mr-2';
-        icon.style.transition = 'transform 0.3s ease';
-        text.textContent = 'Ładowanie...';
-        text.style.transition = 'opacity 0.3s ease';
+        const refreshBtn = document.getElementById("refresh-activity-btn");
+        if (refreshBtn) {
+          refreshBtn.disabled = true;
+          refreshBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i><span id="refresh-text">Ładowanie...</span>';
+        }
 
         try {
-          console.log('Calling loadDashboardActivityLogs from refresh button');
-          // Minimalny czas animacji 800ms żeby była widoczna
-          const startTime = Date.now();
           await loadDashboardActivityLogs();
-          const elapsed = Date.now() - startTime;
-          if (elapsed < 800) {
-            await new Promise(resolve => setTimeout(resolve, 800 - elapsed));
-          }
-          console.log('loadDashboardActivityLogs completed successfully');
-        } catch (error) {
-          console.error('Error in refreshActivityLogs:', error);
         } finally {
-          // Płynne przywrócenie oryginalnego stanu
-          btn.disabled = false;
-          btn.style.opacity = '1';
-
-          // Przywróć oryginalną ikonę
-          icon.outerHTML = originalIconHTML;
-          text.textContent = originalText;
-
-          console.log('Refresh button animation reset');
+          if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '<i class="fa-solid fa-sync-alt text-lg" id="refresh-activity-icon"></i>';
+          }
         }
       };
 
@@ -3222,18 +3245,21 @@
         console.log('Loading activity logs...');
 
         try {
-          // Timeout na 5 sekund dla API
-          const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('API timeout')), 5000);
+          // Pobierz activity logs bezpośrednio z Firestore
+          const activityLogsRef = collection(db, 'activityLogs');
+          const q = query(activityLogsRef, orderBy('timestamp', 'desc'), limit(10));
+          const querySnapshot = await getDocs(q);
+
+          const logs = [];
+          querySnapshot.forEach((doc) => {
+            logs.push({
+              id: doc.id,
+              ...doc.data(),
+              timestamp: doc.data().timestamp?.toDate?.()?.toISOString() || doc.data().timestamp
+            });
           });
 
-          const apiPromise = fetch('/api/admin/activity-logs?limit=10');
-          const response = await Promise.race([apiPromise, timeoutPromise]);
-
-          if (response.ok) {
-            const data = await response.json();
-            const logs = data.logs || [];
-            console.log('Loaded logs from API:', logs.length);
+          console.log('Loaded logs from Firestore:', logs.length);
 
             if (logs.length === 0) {
               container.innerHTML = `
@@ -3954,14 +3980,21 @@
         `;
 
         try {
-          const response = await fetch('/api/quick-replies');
-          const data = await response.json();
+          // Pobierz quick replies bezpośrednio z Firestore
+          const quickRepliesRef = collection(db, 'quickReplies');
+          const q = query(quickRepliesRef, orderBy('createdAt', 'desc'));
+          const querySnapshot = await getDocs(q);
 
-          if (data.success) {
-            displayQuickReplies(data.data);
-          } else {
-            throw new Error(data.error || 'Failed to load quick replies');
-          }
+          const quickReplies = [];
+          querySnapshot.forEach((doc) => {
+            quickReplies.push({
+              id: doc.id,
+              ...doc.data(),
+              createdAt: doc.data().createdAt?.toDate?.()?.getTime() || doc.data().createdAt
+            });
+          });
+
+          displayQuickReplies(quickReplies);
         } catch (error) {
           console.error('Error loading quick replies:', error);
           container.innerHTML = `
@@ -4060,16 +4093,15 @@
       // Funkcja ładowania szablonu do edycji
       async function loadQuickReplyForEdit(replyId) {
         try {
-          const response = await fetch('/api/quick-replies');
-          const data = await response.json();
+          // Pobierz konkretny quick reply z Firestore
+          const replyRef = doc(db, 'quickReplies', replyId);
+          const replyDoc = await getDoc(replyRef);
 
-          if (data.success) {
-            const reply = data.data.find(r => r.id === replyId);
-            if (reply) {
-              document.getElementById('quick-reply-id').value = reply.id;
-              document.getElementById('quick-reply-title').value = reply.title;
-              document.getElementById('quick-reply-content').value = reply.content;
-            }
+          if (replyDoc.exists()) {
+            const reply = { id: replyDoc.id, ...replyDoc.data() };
+            document.getElementById('quick-reply-id').value = reply.id;
+            document.getElementById('quick-reply-title').value = reply.title;
+            document.getElementById('quick-reply-content').value = reply.content;
           }
         } catch (error) {
           console.error('Error loading quick reply for edit:', error);
@@ -4089,13 +4121,9 @@
         }
 
         try {
-          const response = await fetch(`/api/quick-replies/${replyId}`, {
-            method: 'DELETE'
-          });
-
-          const data = await response.json();
-
-          if (data.success) {
+          // Usuń quick reply bezpośrednio z Firestore
+          const replyRef = doc(db, 'quickReplies', replyId);
+          await deleteDoc(replyRef);
             showNotification('Szablon został usunięty', 'success');
             loadQuickReplies();
           } else {
@@ -4136,14 +4164,20 @@
         const container = document.getElementById('quick-replies-dropdown-list');
 
         try {
-          const response = await fetch('/api/quick-replies');
-          const data = await response.json();
+          // Pobierz quick replies bezpośrednio z Firestore
+          const quickRepliesRef = collection(db, 'quickReplies');
+          const q = query(quickRepliesRef, orderBy('createdAt', 'desc'));
+          const querySnapshot = await getDocs(q);
 
-          if (data.success) {
-            displayQuickRepliesInDropdown(data.data);
-          } else {
-            throw new Error(data.error || 'Failed to load quick replies');
-          }
+          const quickReplies = [];
+          querySnapshot.forEach((doc) => {
+            quickReplies.push({
+              id: doc.id,
+              ...doc.data()
+            });
+          });
+
+          displayQuickRepliesInDropdown(quickReplies);
         } catch (error) {
           console.error('Error loading quick replies for dropdown:', error);
           container.innerHTML = `
@@ -4224,14 +4258,20 @@
         if (!container) return;
 
         try {
-          const response = await fetch('/api/message-categories');
-          const data = await response.json();
+          // Pobierz kategorie bezpośrednio z Firestore
+          const categoriesRef = collection(db, 'messageCategories');
+          const q = query(categoriesRef, orderBy('name'));
+          const querySnapshot = await getDocs(q);
 
-          if (data.success) {
-            displayCategories(data.data);
-          } else {
-            throw new Error(data.error || 'Failed to load categories');
-          }
+          const categories = [];
+          querySnapshot.forEach((doc) => {
+            categories.push({
+              id: doc.id,
+              ...doc.data()
+            });
+          });
+
+          displayCategories(categories);
         } catch (error) {
           console.error('Error loading categories:', error);
           container.innerHTML = `
@@ -4334,7 +4374,7 @@
       // Funkcja ładowania kategorii do edycji
       async function loadCategoryForEdit(categoryId) {
         try {
-          const response = await fetch('/api/message-categories');
+          const response = await fetch('/api/messages/categories');
           const data = await response.json();
 
           if (data.success) {
@@ -4383,14 +4423,14 @@
           let response;
           if (categoryId) {
             // Aktualizacja istniejącej kategorii
-            response = await fetch(`/api/message-categories/${categoryId}`, {
+            response = await fetch(`/api/messages/categories/${categoryId}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(categoryData)
             });
           } else {
             // Dodanie nowej kategorii
-            response = await fetch('/api/message-categories', {
+            response = await fetch('/api/messages/categories', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(categoryData)
@@ -4424,7 +4464,7 @@
         }
 
         try {
-          const response = await fetch(`/api/message-categories/${categoryId}`, {
+          const response = await fetch(`/api/messages/categories/${categoryId}`, {
             method: 'DELETE'
           });
 
@@ -4775,7 +4815,7 @@
 
           // Sprawdź czy jesteśmy na serwerze
           if (window.location.protocol === 'file:') {
-            throw new Error('Strona otwarta lokalnie! Uruchom serwer: node server.js i otwórz http://localhost:3002/admin/index.html');
+            throw new Error('Strona otwarta lokalnie! Uruchom serwer: node server.js i otwórz http://localhost:3000/admin/index.html');
           }
 
           // Pobierz wiadomości skierowane do administratora z API
@@ -5093,35 +5133,6 @@
         }
       }
 
-      // Funkcja do filtrowania konwersacji
-      function filterConversations() {
-        const searchTerm = document.getElementById('chat-search').value.toLowerCase().trim();
-        const conversationItems = document.querySelectorAll('.conversation-item');
-
-        let visibleCount = 0;
-
-        conversationItems.forEach(item => {
-          const userName = item.dataset.userName.toLowerCase();
-          const userEmail = item.dataset.userEmail.toLowerCase();
-          const messageText = item.textContent.toLowerCase();
-
-          const isVisible = !searchTerm ||
-            userName.includes(searchTerm) ||
-            userEmail.includes(searchTerm) ||
-            messageText.includes(searchTerm);
-
-          item.style.display = isVisible ? 'block' : 'none';
-
-          if (isVisible) visibleCount++;
-        });
-
-        // Zaktualizuj licznik widocznych konwersacji
-        const countElement = document.getElementById('conversations-count');
-        if (countElement) {
-          const originalText = countElement.textContent.replace(/^\d+/, visibleCount);
-          countElement.textContent = originalText;
-        }
-      }
 
       // Dodaj obsługę zdarzeń po załadowaniu strony
       document.addEventListener('DOMContentLoaded', function() {
@@ -5169,17 +5180,9 @@
 
       async function completeMessage(messageId) {
         try {
-          const response = await fetch(`/api/messages/${messageId}/status`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ status: 'completed' })
-          });
-
-          if (!response.ok) {
-            throw new Error('Failed to update message status');
-          }
+          // Zaktualizuj status wiadomości bezpośrednio w Firestore
+          const messageRef = doc(db, 'messages', messageId);
+          await updateDoc(messageRef, { status: 'completed' });
 
           showNotification("Sprawa została zakończona", "success");
           // Ponownie załaduj wiadomości aby odświeżyć widok
@@ -5193,12 +5196,9 @@
       // Funkcja oznaczająca wiadomość jako przeczytaną
       async function markMessageAsRead(messageId) {
         try {
-          await fetch(`/api/messages/${messageId}/read`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            }
-          });
+          // Oznacz wiadomość jako przeczytaną bezpośrednio w Firestore
+          const messageRef = doc(db, 'messages', messageId);
+          await updateDoc(messageRef, { isRead: true });
         } catch (error) {
           console.error("Error marking message as read:", error);
         }
@@ -5207,95 +5207,32 @@
       // Funkcja aktualizująca statystyki wiadomości w nagłówku
       async function updateMessageStats() {
         try {
-          const response = await fetch('/api/messages/stats');
-          if (response.ok) {
-            const stats = await response.json();
-            const unreadCountEl = document.getElementById("unread-count");
-            if (unreadCountEl) unreadCountEl.textContent = stats.unread;
+          // Pobierz statystyki bezpośrednio z Firestore
+          const messagesRef = collection(db, 'messages');
+          const q = query(messagesRef, where('recipientId', '==', 'admin'));
+          const querySnapshot = await getDocs(q);
 
-            const totalCountEl = document.getElementById("total-count");
-            if (totalCountEl) totalCountEl.textContent = stats.total;
-          }
+          let total = 0;
+          let unread = 0;
+
+          querySnapshot.forEach((doc) => {
+            const message = doc.data();
+            total++;
+            if (!message.isRead) unread++;
+          });
+
+          const unreadCountEl = document.getElementById("unread-count");
+          if (unreadCountEl) unreadCountEl.textContent = unread;
+
+          const totalCountEl = document.getElementById("total-count");
+          if (totalCountEl) totalCountEl.textContent = total;
         } catch (error) {
           console.error("Error updating message stats:", error);
         }
       }
 
 
-      function renderConversations(conversations) {
-        if (conversations.length === 0) {
-          document.getElementById("conversations-list").innerHTML = `
-            <div id="conversations-empty" class="text-center py-8 text-zinc-400">
-              <i class="fa-solid fa-comments text-3xl mb-3 text-zinc-600"></i>
-              <p class="text-sm">Brak konwersacji</p>
-            </div>
-          `;
-          return;
-        }
 
-        const conversationsHtml = conversations.map((conversation) => {
-          const lastMessage = conversation.lastMessage;
-          const timeAgo = getTimeAgo(lastMessage.timestamp);
-          const hasUnread = conversation.unreadCount > 0;
-          const conversationKey = conversation.participants.join('_');
-
-          return `
-            <div class="conversation-item p-2 border-b border-zinc-700/50 hover:bg-zinc-800/70 cursor-pointer transition-colors relative group ${hasUnread ? 'bg-zinc-800/30' : ''}"
-                 onclick="selectConversation('${conversation.participants.join(',')}')">
-              <!-- Przycisk usunięcia -->
-              <button onclick="deleteConversation('${conversationKey}'); event.stopPropagation();"
-                      class="absolute top-2 right-2 text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity text-sm p-1"
-                      title="Usuń konwersację">
-                <i class="fa-solid fa-trash"></i>
-              </button>
-
-              <div class="flex justify-between items-center pr-8">
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center justify-between">
-                    <h4 class="text-sm font-medium text-white truncate">
-                      ${conversation.participants.filter(p => p !== 'admin').join(', ')}
-                    </h4>
-                    <span class="text-xs text-zinc-500 ml-2 flex-shrink-0">${timeAgo}</span>
-                  </div>
-                  <p class="text-xs text-zinc-400 truncate mt-0.5">
-                    ${lastMessage.senderId === 'admin' ? 'Ty:' : ''} ${lastMessage.content || 'Załącznik'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('');
-
-        document.getElementById("conversations-list").innerHTML = conversationsHtml;
-      }
-
-      // Funkcja filtrowania konwersacji w czasie rzeczywistym
-      window.filterConversations = () => {
-        const statusFilter = document.getElementById("conversations-status-filter").value;
-        const sortFilter = document.getElementById("conversations-sort-filter").value;
-        const searchText = document.getElementById("conversations-search").value.toLowerCase().trim();
-
-        // Pokaż/ukryj przycisk czyszczenia
-        const clearBtn = document.getElementById("clear-search-btn");
-        if (searchText.length > 0) {
-          clearBtn.classList.remove("opacity-0");
-          clearBtn.classList.add("opacity-100");
-        } else {
-          clearBtn.classList.add("opacity-0");
-          clearBtn.classList.remove("opacity-100");
-        }
-
-        // Pobierz wszystkie konwersacje i zastosuj filtry
-        loadConversationsWithFilters(statusFilter, sortFilter, '', '', searchText);
-      };
-
-      // Funkcja czyszczenia wyszukiwania
-      window.clearSearch = () => {
-        const searchInput = document.getElementById("conversations-search");
-        searchInput.value = "";
-        searchInput.focus();
-        filterConversations();
-      };
 
       // Funkcja przełączania zaawansowanych filtrów
       window.toggleAdvancedFilters = () => {
@@ -5337,152 +5274,9 @@
         }
       };
 
-      // Funkcja ładowania konwersacji z filtrami
-      async function loadConversationsWithFilters(statusFilter, sortFilter, dateFrom, dateTo, searchText) {
-        try {
-          // Jeśli nie ma załadowanych danych, załaduj najpierw
-          if (!window.allConversationsData) {
-            await loadAllConversationsData();
-          }
 
-          let conversationsArray = [...window.allConversationsData];
 
-          // Zastosuj filtry statusu
-          if (statusFilter !== 'all') {
-            conversationsArray = conversationsArray.filter(conv => {
-              if (statusFilter === 'unread') return conv.unreadCount > 0;
-              if (statusFilter === 'read') return conv.unreadCount === 0;
-              return true;
-            });
-          }
 
-          // Filtr wyszukiwania
-          if (searchText) {
-            conversationsArray = conversationsArray.filter(conv => {
-              const userNames = conv.participants.filter(p => p !== 'admin').join(' ').toLowerCase();
-              const lastMessageContent = (conv.lastMessage.content || '').toLowerCase();
-
-              return userNames.includes(searchText) || lastMessageContent.includes(searchText);
-            });
-          }
-
-          // Zastosuj sortowanie
-          conversationsArray.sort((a, b) => {
-            switch (sortFilter) {
-              case 'unread-first':
-                if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
-                if (a.unreadCount === 0 && b.unreadCount > 0) return 1;
-                return b.lastMessage.timestamp - a.lastMessage.timestamp;
-
-              case 'date-desc':
-                return b.lastMessage.timestamp - a.lastMessage.timestamp;
-
-              case 'date-asc':
-                return a.lastMessage.timestamp - b.lastMessage.timestamp;
-
-              default:
-                return 0;
-            }
-          });
-
-          renderConversations(conversationsArray);
-
-        } catch (error) {
-          console.error("Error filtering conversations:", error);
-          showNotification("Błąd filtrowania konwersacji", "error");
-        }
-      }
-
-      // Funkcja ładowania wszystkich danych konwersacji
-      async function loadAllConversationsData() {
-        const messagesQuery = query(
-          collection(db, "privateMessages"),
-          orderBy("timestamp", "desc")
-        );
-
-        const snapshot = await getDocs(messagesQuery);
-        const messages = [];
-
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          messages.push({
-            id: doc.id,
-            ...data,
-            timestamp: data.timestamp?.toDate() || new Date(),
-          });
-        });
-
-        // Grupuj wiadomości po konwersacjach
-        const conversations = {};
-        messages.forEach((message) => {
-          const participants = [message.senderId, message.receiverId].sort();
-          const conversationKey = participants.join('_');
-
-          if (!conversations[conversationKey]) {
-            conversations[conversationKey] = {
-              participants: participants,
-              lastMessage: message,
-              unreadCount: 0,
-              messages: []
-            };
-          }
-
-          conversations[conversationKey].messages.push(message);
-
-          if (message.receiverId === 'admin' && !message.read) {
-            conversations[conversationKey].unreadCount++;
-          }
-        });
-
-        window.allConversationsData = Object.values(conversations);
-      }
-
-      // Funkcja odświeżania konwersacji
-      window.refreshConversations = async () => {
-        const refreshBtn = document.getElementById("refresh-conversations-btn");
-
-        // Dodaj efekt ładowania
-        refreshBtn.classList.add("loading-spinner");
-        refreshBtn.disabled = true;
-
-        try {
-          await loadConversations();
-          showNotification("Konwersacje zostały odświeżone", "success");
-        } catch (error) {
-          console.error("Error refreshing conversations:", error);
-          showNotification("Błąd odświeżania konwersacji", "error");
-        } finally {
-          refreshBtn.classList.remove("loading-spinner");
-          refreshBtn.disabled = false;
-        }
-      };
-
-      // Funkcja rozpoczynająca automatyczne odświeżanie
-      function startConversationsAutoRefresh() {
-        if (conversationsAutoRefreshInterval) {
-          clearInterval(conversationsAutoRefreshInterval);
-        }
-
-        conversationsAutoRefreshInterval = setInterval(async () => {
-          // Nie odświeżaj jeśli użytkownik pisze wiadomość
-          if (!isTypingInMessage) {
-            try {
-              await loadConversations();
-              console.log("Konwersacje automatycznie odświeżone:", new Date().toLocaleTimeString());
-            } catch (error) {
-              console.error("Error auto-refreshing conversations:", error);
-            }
-          }
-        }, 60000); // 60 sekund = 1 minuta
-      }
-
-      // Funkcja zatrzymująca automatyczne odświeżanie
-      function stopConversationsAutoRefresh() {
-        if (conversationsAutoRefreshInterval) {
-          clearInterval(conversationsAutoRefreshInterval);
-          conversationsAutoRefreshInterval = null;
-        }
-      }
 
       async function loadEvents() {
         document.getElementById("events-list").innerHTML =
@@ -5505,8 +5299,38 @@
         }
       }
 
-        window.refreshProducts = () => {
-          loadProducts();
+        window.refreshProducts = async () => {
+          const refreshBtn = document.getElementById("refresh-products-btn");
+          if (refreshBtn) {
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i><span id="refresh-text">Ładowanie...</span>';
+          }
+
+          try {
+            await loadProducts();
+          } finally {
+            if (refreshBtn) {
+              refreshBtn.disabled = false;
+              refreshBtn.innerHTML = '<i class="fa-solid fa-sync-alt text-lg" id="refresh-products-icon"></i>';
+            }
+          }
+        };
+
+        window.refreshBazar = async () => {
+          const refreshBtn = document.getElementById("refresh-bazar-btn");
+          if (refreshBtn) {
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i><span id="refresh-text">Ładowanie...</span>';
+          }
+
+          try {
+            await loadBazar();
+          } finally {
+            if (refreshBtn) {
+              refreshBtn.disabled = false;
+              refreshBtn.innerHTML = '<i class="fa-solid fa-sync-alt text-lg" id="refresh-bazar-icon"></i>';
+            }
+          }
         };
 
         // Funkcje dashboard
@@ -5584,16 +5408,7 @@
       }
 
       // Funkcje zdarzeń i logów (globalne)
-      // Funkcja pomocnicza do budowania URL API
-      function getApiUrl(endpoint) {
-        if (window.location.protocol === 'file:') {
-          // Lokalne testowanie - użyj localhost
-          return `http://localhost:3002${endpoint}`;
-        } else {
-          // Produkcja - użyj względnego URL (API na tym samym serwerze)
-          return endpoint;
-        }
-      }
+      // Funkcja pomocnicza do sprawdzania dostępności Firestore
 
       // Globalna funkcja powiadomień
       window.showNotification = function(message, type = "success") {
@@ -5602,136 +5417,145 @@
       }
 
         // Funkcja pomocnicza do sprawdzenia ostatniego zdarzenia dla usługi
-        async function getLastEventForService(site, eventType) {
+        async function getLastEventForService(service, eventType) {
           try {
-            // Sprawdź najpierw w API
-            const response = await fetch(getApiUrl('/api/events-log'));
-            if (response.ok) {
-              const eventsLog = await response.json();
-              // Znajdź ostatnie zdarzenie dla tej usługi i typu
-              for (let i = eventsLog.length - 1; i >= 0; i--) {
-                if (eventsLog[i].site === site && eventsLog[i].type === eventType) {
-                  return eventsLog[i];
-                }
+            // Pobierz zdarzenia systemowe bezpośrednio z Firestore
+            const eventsRef = collection(db, 'system_events');
+            const q = query(
+              eventsRef,
+              where('service', '==', service),
+              where('type', '==', eventType),
+              orderBy('timestamp', 'desc'),
+              limit(1)
+            );
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+              const doc = querySnapshot.docs[0];
+              return {
+                id: doc.id,
+                ...doc.data(),
+                timestamp: doc.data().timestamp?.toDate?.()?.toISOString() || doc.data().timestamp
+              };
+            }
               }
             }
           } catch (apiError) {
-            // Sprawdź w localStorage
+            // Sprawdź w localStorage fallback
             try {
-              const localEventsKey = 'admin_events_log';
+              const localEventsKey = 'admin_system_events_fallback';
               const localEvents = JSON.parse(localStorage.getItem(localEventsKey) || '[]');
               for (let i = localEvents.length - 1; i >= 0; i--) {
-                if (localEvents[i].site === site && localEvents[i].type === eventType) {
-                  return localEvents[i];
+                const event = localEvents[i];
+                if (event.service === service && event.type === eventType) {
+                  return event;
                 }
               }
             } catch (localStorageError) {
-              console.error('Błąd sprawdzania localStorage:', localStorageError);
+              console.error('Błąd sprawdzania localStorage fallback:', localStorageError);
             }
           }
           return null; // Nie znaleziono takiego zdarzenia
       }
 
-        async function logEvent(eventType, site, details) {
-          // Sprawdź czy już istnieje ostatnie zdarzenie tego typu dla tej usługi
-          const lastEvent = await getLastEventForService(site, eventType);
-          if (lastEvent) {
-            // Jeśli zdarzenie już istnieje, nie twórz duplikatu
-            console.log(`Zdarzenie ${eventType} dla ${site} już istnieje, pomijam`);
-            return;
-          }
-
+        async function logSystemEvent(eventType, site, service, details, severity = 'info') {
           const eventData = {
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-            timestamp: new Date().toISOString(),
             type: eventType,
             site: site,
-            details: details
+            service: service,
+            details: details,
+            severity: severity,
+            timestamp: new Date().toISOString()
           };
 
-          // Najpierw spróbuj przez API
           try {
-          const response = await fetch(getApiUrl('/api/events-log'), {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json'
-              }
+            // Dodaj zdarzenie systemowe bezpośrednio do Firestore
+            const eventsRef = collection(db, 'system_events');
+            await addDoc(eventsRef, eventData);
             });
 
-            let eventsLog = [];
             if (response.ok) {
-              eventsLog = await response.json();
+              const result = await response.json();
+              console.log('System event logged:', result.data);
+            } else {
+              console.warn('Failed to log system event:', response.status);
+              // Fallback do localStorage
+              fallbackLogSystemEvent(eventData);
             }
-
-            // Dodaj nowe zdarzenie
-            eventsLog.push(eventData);
-
-            // Zapisz z powrotem (max 1000 zdarzeń)
-            if (eventsLog.length > 1000) {
-              eventsLog = eventsLog.slice(-1000);
-            }
-
-          await fetch(getApiUrl('/api/events-log'), {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(eventsLog)
-            });
-
-          } catch (apiError) {
-            // API niedostępne - użyj localStorage jako fallback
-            console.warn('API niedostępne, używam localStorage dla logów:', apiError.message);
-
-            try {
-              const localEventsKey = 'admin_events_log';
-              let localEvents = JSON.parse(localStorage.getItem(localEventsKey) || '[]');
-
-              // Dodaj nowe zdarzenie
-              localEvents.push(eventData);
-
-              // Zachowaj tylko ostatnie 100 zdarzeń lokalnie
-              if (localEvents.length > 100) {
-                localEvents = localEvents.slice(-100);
-              }
-
-              localStorage.setItem(localEventsKey, JSON.stringify(localEvents));
-              console.log('Zdarzenie zapisane w localStorage:', eventData);
-            } catch (localStorageError) {
-              console.error('Błąd localStorage:', localStorageError);
-            }
+          } catch (error) {
+            console.warn('Error logging system event, using fallback:', error.message);
+            fallbackLogSystemEvent(eventData);
           }
+        }
+
+        function fallbackLogSystemEvent(eventData) {
+          try {
+            const localEventsKey = 'admin_system_events_fallback';
+            let localEvents = JSON.parse(localStorage.getItem(localEventsKey) || '[]');
+
+            eventData.id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+            localEvents.push(eventData);
+
+            // Zachowaj tylko ostatnie 50 zdarzeń lokalnie
+            if (localEvents.length > 50) {
+              localEvents = localEvents.slice(-50);
+            }
+
+            localStorage.setItem(localEventsKey, JSON.stringify(localEvents));
+            console.log('System event saved to localStorage fallback:', eventData);
+          } catch (localStorageError) {
+            console.error('Error saving to localStorage fallback:', localStorageError);
+          }
+        }
+
+        // Backward compatibility - stary logEvent przekierowuje do nowego
+        async function logEvent(eventType, site, details) {
+          let service = null;
+          let severity = 'info';
+
+          // Mapuj stare typy na nowe
+          if (eventType.includes('service_')) {
+            service = site;
+            site = null;
+          }
+
+          await logSystemEvent(eventType, site, service, details, severity);
         }
 
         async function loadEventsLog() {
           const container = document.getElementById('events-log-container');
-        const refreshBtn = document.getElementById('refresh-events-btn');
+          const refreshBtn = document.getElementById('refresh-events-btn');
 
-        // Pokaż stan ładowania
-        if (refreshBtn) {
-          refreshBtn.disabled = true;
-          refreshBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Ładowanie...';
-        }
+          if (refreshBtn) {
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i><span id="refresh-text">Ładowanie...</span>';
+          }
 
-        try {
-          const response = await fetch(getApiUrl('/api/events-log'));
-            let eventsLog = [];
+          try {
+            // Pobierz zdarzenia systemowe bezpośrednio z Firestore
+            const eventsRef = collection(db, 'system_events');
+            const q = query(eventsRef, orderBy('timestamp', 'desc'), limit(100));
+            const querySnapshot = await getDocs(q);
 
-            if (response.ok) {
-              eventsLog = await response.json();
-            } else {
-              // API niedostępne - pobierz z localStorage
-              console.warn('API niedostępne, pobieram logi z localStorage');
-              const localEventsKey = 'admin_events_log';
-              const localEvents = JSON.parse(localStorage.getItem(localEventsKey) || '[]');
-              eventsLog = localEvents;
+            const eventsLog = [];
+            querySnapshot.forEach((doc) => {
+              eventsLog.push({
+                id: doc.id,
+                ...doc.data(),
+                timestamp: doc.data().timestamp?.toDate?.()?.toISOString() || doc.data().timestamp
+              });
+            });
 
               // Dodaj informację że to dane lokalne
               if (eventsLog.length > 0) {
                 container.innerHTML = '<div class="text-center text-orange-400 py-2 text-sm mb-2"><i class="fa-solid fa-exclamation-triangle mr-1"></i>Wyświetlane dane lokalne (API niedostępne)</div>';
               } else {
                 container.innerHTML = '<div class="text-center text-orange-400 py-4"><i class="fa-solid fa-exclamation-triangle mr-2"></i>API niedostępne - sprawdź konfigurację serwera</div>';
-              return;
+                if (refreshBtn) {
+                  refreshBtn.disabled = false;
+                  refreshBtn.innerHTML = '<i class="fa-solid fa-sync-alt text-lg" id="refresh-events-icon"></i>';
+                }
+                return;
               }
             }
 
@@ -5808,10 +5632,9 @@
             container.innerHTML = '<div class="text-center text-red-400 py-4">Błąd ładowania logów</div>';
           showNotification("Błąd ładowania logów zdarzeń", "error");
         } finally {
-          // Przywróć przycisk do normalnego stanu
           if (refreshBtn) {
             refreshBtn.disabled = false;
-            refreshBtn.innerHTML = '<i class="fa-solid fa-refresh mr-1"></i>Odśwież';
+            refreshBtn.innerHTML = '<i class="fa-solid fa-sync-alt text-lg" id="refresh-events-icon"></i>';
           }
         }
       }
@@ -5825,23 +5648,9 @@
         }
 
         try {
-            // Najpierw spróbuj przez API
-          const response = await fetch(getApiUrl('/api/events-log'));
-            let eventsLog = [];
-
-            if (response.ok) {
-              // API działa - usuń przez API
-              eventsLog = await response.json();
-          const originalLength = eventsLog.length;
-            eventsLog = eventsLog.filter(event => event.id !== eventId);
-
-          if (eventsLog.length === originalLength) {
-            showNotification("Zdarzenie nie zostało znalezione", "error");
-            return;
-          }
-
-          const saveResponse = await fetch(getApiUrl('/api/events-log'), {
-              method: 'POST',
+          // Usuń zdarzenie systemowe bezpośrednio z Firestore
+          const eventRef = doc(db, 'system_events', eventId);
+          await deleteDoc(eventRef);
               headers: {
                 'Content-Type': 'application/json'
               },
@@ -5923,7 +5732,7 @@
 
             // Loguj tylko zmiany stanu: offline -> online
             if (previousStatus && !previousStatus.online && currentStatus.online) {
-              logEvent('site_online', site, 'Strona wróciła do działania');
+              logSystemEvent('site_online', site, null, 'Strona wróciła do działania', 'success');
             }
 
           } else {
@@ -5936,7 +5745,7 @@
 
             // Loguj tylko zmiany stanu: online -> offline
             if (!previousStatus || previousStatus.online) {
-              logEvent('site_offline', site, `Strona stała się niedostępna: ${result.reason.message}`);
+              logSystemEvent('site_offline', site, null, `Strona stała się niedostępna: ${result.reason.message}`, 'error');
             }
           }
         });
@@ -6276,7 +6085,7 @@
               // Sprawdź czy już istnieje zdarzenie service_online (jeśli nie, utwórz)
               const lastOnlineEvent = await getLastEventForService('Baza danych', 'service_online');
               if (!lastOnlineEvent) {
-                logEvent('service_online', 'Baza danych', 'Baza danych Firestore przywrócona');
+                logSystemEvent('service_online', null, 'Baza danych', 'Baza danych Firestore przywrócona', 'success');
               }
 
               firestoreIcon.className = "fa-solid fa-check-circle text-lg text-green-400";
@@ -6289,7 +6098,7 @@
               // Sprawdź czy już istnieje zdarzenie service_offline (jeśli nie, utwórz)
               const lastOfflineEvent = await getLastEventForService('Baza danych', 'service_offline');
               if (!lastOfflineEvent) {
-                logEvent('service_offline', 'Baza danych', 'Baza danych Firestore niedostępna: ' + error.message);
+                logSystemEvent('service_offline', null, 'Baza danych', 'Baza danych Firestore niedostępna: ' + error.message, 'error');
               }
 
               firestoreIcon.className = "fa-solid fa-times-circle text-lg text-red-400";
@@ -6308,7 +6117,7 @@
                   // Sprawdź czy już istnieje zdarzenie service_online
                   const lastOnlineEvent = await getLastEventForService('Logowanie', 'service_online');
                   if (!lastOnlineEvent) {
-                    logEvent('service_online', 'Logowanie', 'System logowania przywrócony');
+                    logSystemEvent('service_online', null, 'Logowanie', 'System logowania przywrócony', 'success');
                   }
 
                   authIcon.className = "fa-solid fa-check-circle text-lg text-green-400";
@@ -6321,7 +6130,7 @@
                   // Sprawdź czy już istnieje zdarzenie service_offline
                   const lastOfflineEvent = await getLastEventForService('Logowanie', 'service_offline');
                   if (!lastOfflineEvent) {
-                    logEvent('service_offline', 'Logowanie', 'Brak zalogowanych użytkowników w systemie');
+                    logSystemEvent('service_offline', null, 'Logowanie', 'Brak zalogowanych użytkowników w systemie', 'warning');
                   }
 
                   authIcon.className = "fa-solid fa-times-circle text-lg text-orange-400";
@@ -6336,7 +6145,7 @@
               // Sprawdź czy już istnieje zdarzenie service_offline
               const lastOfflineEvent = await getLastEventForService('Logowanie', 'service_offline');
               if (!lastOfflineEvent) {
-                logEvent('service_offline', 'Logowanie', 'Błąd systemu logowania: ' + error.message);
+                logSystemEvent('service_offline', null, 'Logowanie', 'Błąd systemu logowania: ' + error.message, 'error');
               }
 
               authIcon.className = "fa-solid fa-times-circle text-lg text-red-400";
@@ -6358,7 +6167,7 @@
                 // Sprawdź czy już istnieje zdarzenie service_online
                 const lastOnlineEvent = await getLastEventForService('Domena', 'service_online');
                 if (!lastOnlineEvent) {
-                  logEvent('service_online', 'Domena', 'Domena główna przywrócona');
+                  logSystemEvent('service_online', null, 'Domena', 'Domena główna przywrócona', 'success');
                 }
 
                 domainIcon.className = "fa-solid fa-check-circle text-lg text-green-400";
@@ -6370,7 +6179,7 @@
                 // Sprawdź czy już istnieje zdarzenie service_offline
                 const lastOfflineEvent = await getLastEventForService('Domena', 'service_offline');
                 if (!lastOfflineEvent) {
-                  logEvent('service_offline', 'Domena', 'Domena główna niedostępna (HTTP ' + response.status + ')');
+                  logSystemEvent('service_offline', null, 'Domena', 'Domena główna niedostępna (HTTP ' + response.status + ')', 'error');
                 }
 
                 domainIcon.className = "fa-solid fa-times-circle text-lg text-red-400";
@@ -6385,7 +6194,7 @@
               // Sprawdź czy już istnieje zdarzenie service_offline
               const lastOfflineEvent = await getLastEventForService('Domena', 'service_offline');
               if (!lastOfflineEvent) {
-                logEvent('service_offline', 'Domena', 'Błąd dostępu do domeny głównej: ' + error.message);
+                logSystemEvent('service_offline', null, 'Domena', 'Błąd dostępu do domeny głównej: ' + error.message, 'error');
               }
 
               domainIcon.className = "fa-solid fa-times-circle text-lg text-red-400";
@@ -6423,27 +6232,26 @@
           }
 
           try {
-            // Spróbuj wyczyścić przez API
-            const apiResponse = await fetch(getApiUrl('/api/events-log'), {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify([])
-            });
+            // Pobierz wszystkie zdarzenia systemowe i usuń je
+            const eventsRef = collection(db, 'system_events');
+            const querySnapshot = await getDocs(eventsRef);
 
-            if (apiResponse.ok) {
-              // Wyczyść też localStorage
-              localStorage.removeItem('admin_events_log');
-              showNotification("Wszystkie zdarzenia zostały usunięte", "success");
-            } else {
-              throw new Error('API error');
+            if (querySnapshot.empty) {
+              showNotification("Brak zdarzeń do usunięcia", "info");
+              return;
             }
-          } catch (apiError) {
-            // API niedostępne - wyczyść tylko localStorage
-            console.warn('API niedostępne, usuwam tylko lokalne dane');
-            localStorage.removeItem('admin_events_log');
-            showNotification("Lokalne zdarzenia zostały usunięte", "success");
+
+            // Usuń wszystkie dokumenty wsadowo
+            const batch = writeBatch(db);
+            querySnapshot.docs.forEach((document) => {
+              batch.delete(document.ref);
+            });
+            await batch.commit();
+
+            showNotification(`Usunięto ${querySnapshot.docs.length} zdarzeń`, "success");
+          } catch (error) {
+            console.error('Error clearing events:', error);
+            showNotification("Błąd podczas usuwania zdarzeń", "error");
           }
 
           // Odśwież tabelę
@@ -6460,10 +6268,12 @@
         // Sprawdź dostępność API przy starcie
         async function checkApiAvailability() {
           try {
-            const response = await fetch(getApiUrl('/api/status'), { timeout: 5000 });
-            return response.ok;
+            // Sprawdź dostępność Firestore
+            const testRef = collection(db, 'system_events');
+            await getDocs(query(testRef, limit(1)));
+            return true;
           } catch (error) {
-            console.warn('API niedostępne:', error.message);
+            console.warn('Firestore niedostępne:', error.message);
             return false;
           }
         }
@@ -6599,18 +6409,25 @@
       // Funkcje liczników formularzy i niezakończonych spraw
       async function loadContactFormsCount() {
         try {
-          const response = await fetch('/api/admin/stats/contact-forms-today');
-          if (response.ok) {
-            const data = await response.json();
-            const todayContactsEl = document.getElementById("new-forms-today");
-            if (!todayContactsEl) return;
-            todayContactsEl.textContent = data.count || 0;
-          } else {
-            console.warn("API request failed:", response.status);
-            const todayContactsEl = document.getElementById("new-forms-today");
-            if (!todayContactsEl) return;
-            todayContactsEl.textContent = "0";
-          }
+          // Pobierz liczbę formularzy kontaktowych z dzisiaj bezpośrednio z Firestore
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+
+          const messagesRef = collection(db, 'messages');
+          const q = query(
+            messagesRef,
+            where('recipientId', '==', 'admin'),
+            where('timestamp', '>=', today),
+            where('timestamp', '<', tomorrow)
+          );
+          const querySnapshot = await getDocs(q);
+
+          const count = querySnapshot.size;
+          const todayContactsEl = document.getElementById("new-forms-today");
+          if (!todayContactsEl) return;
+          todayContactsEl.textContent = count;
         } catch (error) {
           console.error("Error loading contact forms count:", error);
           const todayContactsEl = document.getElementById("new-forms-today");
@@ -6621,16 +6438,23 @@
 
       async function loadPendingTasksCount() {
         try {
-          const response = await fetch('/api/admin/stats/pending-tasks');
-          if (response.ok) {
-            const data = await response.json();
-            const pendingTasksEl = document.getElementById("pending-issues");
-            if (!pendingTasksEl) return;
-            pendingTasksEl.textContent = data.count || 0;
-          } else {
-            console.warn("API request failed:", response.status);
-            const pendingTasksEl = document.getElementById("pending-issues");
-            if (!pendingTasksEl) return;
+          // Pobierz liczbę oczekujących zadań bezpośrednio z Firestore
+          const messagesRef = collection(db, 'messages');
+          const q = query(
+            messagesRef,
+            where('recipientId', '==', 'admin'),
+            where('status', '==', 'in_progress')
+          );
+          const querySnapshot = await getDocs(q);
+
+          const count = querySnapshot.size;
+          const pendingTasksEl = document.getElementById("pending-issues");
+          if (!pendingTasksEl) return;
+          pendingTasksEl.textContent = count;
+        } catch (error) {
+          console.error("Error loading pending tasks count:", error);
+          const pendingTasksEl = document.getElementById("pending-issues");
+          if (!pendingTasksEl) return;
             pendingTasksEl.textContent = "0";
           }
         } catch (error) {
@@ -7033,26 +6857,17 @@
             let response;
 
             if (replyId) {
-              // Aktualizacja istniejącego szablonu
-              response = await fetch(`/api/quick-replies/${replyId}`, {
-                method: 'PUT',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(replyData)
-              });
+              // Aktualizacja istniejącego szablonu w Firestore
+              const replyRef = doc(db, 'quickReplies', replyId);
+              await updateDoc(replyRef, replyData);
             } else {
-              // Tworzenie nowego szablonu
-              response = await fetch('/api/quick-replies', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(replyData)
+              // Tworzenie nowego szablonu w Firestore
+              const quickRepliesRef = collection(db, 'quickReplies');
+              await addDoc(quickRepliesRef, {
+                ...replyData,
+                createdAt: new Date()
               });
             }
-
-            const data = await response.json();
 
             if (data.success) {
               showNotification(replyId ? 'Szablon został zaktualizowany' : 'Szablon został utworzony', 'success');
@@ -7355,22 +7170,45 @@
       // Funkcja ładowania statusu wiadomości
       async function loadMessagesStatus() {
         try {
-          const response = await fetch('/api/messages/stats');
-          const data = await response.json();
+          // Pobierz wszystkie wiadomości admina z Firestore
+          const messagesRef = collection(db, 'messages');
+          const q = query(messagesRef, where('recipientId', '==', 'admin'));
+          const querySnapshot = await getDocs(q);
 
-          if (data.success) {
-            const stats = data.data;
+          // Oblicz statystyki
+          let total = 0;
+          let unread = 0;
+          let pending = 0;
+          let inProgress = 0;
+          let completed = 0;
 
-            // Logika dźwięku powiadomienia dla nowych wiadomości
-            const newUnreadCount = stats.unread || 0;
-            if (lastUnreadCount !== null && newUnreadCount > lastUnreadCount) {
-              // Odtwórz dźwięk tylko dla nowych wiadomości przychodzących
-              notificationSound.play().catch(e => console.log("Sound play deferred until user interaction"));
-            }
-            lastUnreadCount = newUnreadCount;
+          querySnapshot.forEach((doc) => {
+            const message = doc.data();
+            total++;
 
-            updateMessagesStatusDisplay(stats);
+            if (!message.isRead) unread++;
+            if (message.status === 'pending') pending++;
+            if (message.status === 'in_progress') inProgress++;
+            if (message.status === 'completed') completed++;
+          });
+
+          const stats = {
+            total: total,
+            unread: unread,
+            pending: pending,
+            in_progress: inProgress,
+            completed: completed
+          };
+
+          // Logika dźwięku powiadomienia dla nowych wiadomości
+          const newUnreadCount = stats.unread || 0;
+          if (lastUnreadCount !== null && newUnreadCount > lastUnreadCount) {
+            // Odtwórz dźwięk tylko dla nowych wiadomości przychodzących
+            notificationSound.play().catch(e => console.log("Sound play deferred until user interaction"));
           }
+          lastUnreadCount = newUnreadCount;
+
+          updateMessagesStatusDisplay(stats);
         } catch (error) {
           console.error('Error loading messages status:', error);
         }
@@ -7395,7 +7233,7 @@
 
         try {
           // Fetch categories from database
-          const categoriesResponse = await fetch('/api/message-categories');
+          const categoriesResponse = await fetch('/api/messages/categories');
           const categoriesData = await categoriesResponse.json();
 
           if (categoriesData.success) {
@@ -7451,57 +7289,63 @@
         `;
 
         try {
-          // Przygotuj parametry zapytania
-          let queryParams = new URLSearchParams({
-            recipientId: 'admin',
-            limit: '100'
-          });
+          // Buduj query Firestore z filtrami
+          let messagesQuery = collection(db, 'messages');
+
+          // Zawsze filtruj po recipientId = 'admin'
+          messagesQuery = query(messagesQuery, where('recipientId', '==', 'admin'));
 
           // Dodaj filtry
-          if (currentFilters.search) {
-            queryParams.append('search', currentFilters.search);
-          }
-
           if (currentFilters.category === 'unread') {
-            queryParams.append('isRead', 'false');
+            messagesQuery = query(messagesQuery, where('isRead', '==', false));
           } else if (currentFilters.category === 'read') {
-            queryParams.append('isRead', 'true');
+            messagesQuery = query(messagesQuery, where('isRead', '==', true));
           } else if (currentFilters.category === 'completed') {
-            queryParams.append('status', 'completed');
+            messagesQuery = query(messagesQuery, where('status', '==', 'completed'));
           } else if (currentFilters.category === 'in_progress') {
-            queryParams.append('status', 'in_progress');
+            messagesQuery = query(messagesQuery, where('status', '==', 'in_progress'));
           } else if (currentFilters.category && !['unread', 'read', 'completed', 'in_progress', 'all'].includes(currentFilters.category)) {
             // To jest filtr kategorii - znajdź ID kategorii po nazwie
             try {
               console.log('Filtering by category:', currentFilters.category);
-              const categoriesResponse = await fetch('/api/message-categories');
-              const categoriesData = await categoriesResponse.json();
-              console.log('Categories data:', categoriesData);
-              if (categoriesData.success) {
-                const category = categoriesData.data.find(cat =>
-                  cat.name.toLowerCase().replace(/\s+/g, '') === currentFilters.category
-                );
-                console.log('Found category:', category);
-                if (category) {
-                  queryParams.append('categoryId', category.id);
-                  console.log('Added categoryId to query:', category.id);
-                } else {
-                  console.warn('Category not found for:', currentFilters.category);
+              const categoriesRef = collection(db, 'messageCategories');
+              const categoriesQuery = query(categoriesRef);
+              const categoriesSnapshot = await getDocs(categoriesQuery);
+
+              let categoryId = null;
+              categoriesSnapshot.forEach((doc) => {
+                const category = doc.data();
+                if (category.name.toLowerCase().replace(/\s+/g, '') === currentFilters.category) {
+                  categoryId = doc.id;
                 }
+              });
+
+              if (categoryId) {
+                messagesQuery = query(messagesQuery, where('categoryId', '==', categoryId));
+                console.log('Added categoryId to query:', categoryId);
+              } else {
+                console.warn('Category not found for:', currentFilters.category);
               }
             } catch (error) {
               console.error('Error loading categories for filtering:', error);
             }
           }
 
-          const response = await fetch(`/api/messages?${queryParams}`);
-          const data = await response.json();
+          // Sortuj po timestamp malejąco (najnowsze najpierw)
+          messagesQuery = query(messagesQuery, orderBy('timestamp', 'desc'), limit(100));
 
-          if (data.success) {
-            displayMessages(data.data.messages);
-          } else {
-            throw new Error(data.error || 'Failed to load messages');
-          }
+          const querySnapshot = await getDocs(messagesQuery);
+          const messages = [];
+
+          querySnapshot.forEach((doc) => {
+            messages.push({
+              id: doc.id,
+              ...doc.data(),
+              timestamp: doc.data().timestamp?.toDate?.()?.getTime() || doc.data().timestamp
+            });
+          });
+
+          displayMessages(messages);
 
         } catch (error) {
           console.error('Error loading messages with filters:', error);
@@ -7675,13 +7519,27 @@
         categorySelect.innerHTML = '<option value="">Ładowanie...</option>';
 
         try {
-          const response = await fetch('/api/message-categories');
+          const response = await fetch('/api/messages/categories');
           const data = await response.json();
 
           if (data.success) {
             categorySelect.innerHTML = data.data.map(cat =>
               `<option value="${cat.id}">${cat.name}</option>`
             ).join('');
+
+            // Ustaw aktualną kategorię rozmowy
+            try {
+              const conversationResponse = await fetch(`/api/messages?senderId=${userId}&recipientId=admin&limit=1`);
+              const conversationData = await conversationResponse.json();
+              if (conversationData.success && conversationData.data.messages.length > 0) {
+                const latestMessage = conversationData.data.messages[0];
+                if (latestMessage.category_id) {
+                  categorySelect.value = latestMessage.category_id;
+                }
+              }
+            } catch (error) {
+              console.error('Error setting current category:', error);
+            }
           }
         } catch (error) {
           console.error('Error loading categories for chat:', error);
@@ -7689,33 +7547,6 @@
         }
 
         // Obsługa klawisza Enter jest już dodana globalnie w init()
-
-        // Dodaj obsługę zmiany kategorii
-        if (categorySelect) {
-          categorySelect.addEventListener('change', async function() {
-            const selectedCategoryId = this.value;
-            if (!selectedCategoryId) return;
-
-            try {
-              // Znajdź najnowszą wiadomość w konwersacji i zaktualizuj jej kategorię
-              const response = await fetch(`/api/messages?senderId=${userId}&recipientId=admin&limit=1`);
-              const data = await response.json();
-
-              if (data.success && data.data.messages.length > 0) {
-                const latestMessage = data.data.messages[0];
-                await fetch(`/api/messages/${latestMessage.id}/category`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ categoryId: selectedCategoryId })
-                });
-                showNotification("Kategoria została zaktualizowana", "success");
-              }
-            } catch (error) {
-              console.error('Error updating category:', error);
-              showNotification("Błąd podczas aktualizacji kategorii", "error");
-            }
-          });
-        }
 
         // Załaduj wiadomości konwersacji
         await loadConversationMessages(userId);
@@ -8098,7 +7929,7 @@
         try {
           // Pobierz kategorie jeśli nie są jeszcze załadowane
           if (!window.cachedCategories) {
-            const categoriesResponse = await fetch('/api/message-categories');
+            const categoriesResponse = await fetch('/api/messages/categories');
             const categoriesData = await categoriesResponse.json();
             if (categoriesData.success) {
               window.cachedCategories = categoriesData.data.filter(cat => cat.is_active);
@@ -8217,6 +8048,7 @@
       window.closeChatModal = closeChatModal;
       window.clearMessagesSearch = clearMessagesSearch;
       window.updateCategoryButtonsHighlight = updateCategoryButtonsHighlight;
+      window.refreshMessages = refreshMessages;
 
       // Funkcja czyszczenia filtrów
       function clearFilters() {
@@ -8332,7 +8164,7 @@
         container.innerHTML = '<div class="text-center text-zinc-500 py-8"><i class="fa-solid fa-spinner fa-spin"></i> Ładowanie...</div>';
 
         try {
-          const response = await fetch('/api/message-categories');
+          const response = await fetch('/api/messages/categories');
           const data = await response.json();
 
           if (data.success) {
@@ -8377,7 +8209,7 @@
         if (!confirm('Czy na pewno chcesz usunąć tę kategorię?')) return;
 
         try {
-          const response = await fetch(`/api/message-categories/${id}`, {
+          const response = await fetch(`/api/messages/categories/${id}`, {
             method: 'DELETE'
           });
 
@@ -8492,26 +8324,84 @@
         }
       });
 
-      // =============================================================================
-      // SLIDING EXPIRATION - RESET SESSION TIMER ON USER ACTIVITY
-      // =============================================================================
-      let lastSessionReset = 0;
-      const sessionResetThrottleMs = 30000; // 30 sekund
+      // Inicjalizacja event listenera dla zmiany kategorii czatu
+      document.addEventListener('DOMContentLoaded', function() {
+        const categorySelect = document.getElementById('chat-category-select');
+        if (categorySelect && !categorySelect.hasCategoryListener) {
+          categorySelect.hasCategoryListener = true;
+          categorySelect.addEventListener('change', async function() {
+            const selectedCategoryId = this.value;
+            if (!selectedCategoryId) {
+              console.log('No category selected, skipping update');
+              return;
+            }
 
-      const resetSession = () => {
-        const now = Date.now();
-        if (now - lastSessionReset >= sessionResetThrottleMs) {
-          if (window.sessionManager && currentUser) {
-            window.sessionManager.extendSession(); // Resetuje timer sesji
-            lastSessionReset = now;
-          }
+            if (!currentConversationUser || !currentConversationUser.id) {
+              console.error('No current conversation user available');
+              showNotification("Błąd: Brak aktywnej rozmowy", "error");
+              return;
+            }
+
+            try {
+              // Zaktualizuj kategorię rozmowy bezpośrednio w Firestore
+              const conversationRef = doc(db, 'conversations', currentConversationUser.id);
+              await updateDoc(conversationRef, {
+                categoryId: selectedCategoryId,
+                updatedAt: new Date()
+              });
+
+              console.log('Kategoria zmieniona pomyślnie w Firestore');
+                console.log('Kategoria zmieniona pomyślnie w DB');
+                // Zaktualizuj wartość selecta żeby pokazywał nową kategorię
+                this.value = selectedCategoryId;
+
+                showNotification("Kategoria rozmowy została zaktualizowana", "success");
+
+                // Odśwież dane po krótkim opóźnieniu, żeby dać czas na zapisanie zmian
+                setTimeout(() => {
+                  loadMessagesWithFilters();
+                  updateCategoryButtonsHighlight();
+                  // Odśwież kolory w modalu czatu jeśli potrzebne
+                  updateChatModalCategoryColors(selectedCategoryId);
+                }, 500);
+              } else {
+                throw new Error('Failed to update conversation category');
+              }
+            } catch (error) {
+              console.error('Error updating category:', error);
+              showNotification("Błąd podczas aktualizacji kategorii", "error");
+            }
+          });
         }
-      };
-
-      // Dodaj listenery dla wszystkich zdarzeń aktywności
-      ['mousedown', 'mousemove', 'keypress', 'scroll', 'click', 'touchstart'].forEach(event => {
-        document.addEventListener(event, resetSession, { passive: true });
       });
+
+      // Funkcja do aktualizacji kolorów w modalu czatu
+      function updateChatModalCategoryColors(categoryId) {
+        if (!categoryId) return;
+
+        // Znajdź kategorię po ID żeby uzyskać kolor
+        try {
+          const categoriesResponse = fetch('/api/messages/categories');
+          categoriesResponse.then(response => response.json()).then(data => {
+            if (data.success) {
+              const category = data.data.find(cat => cat.id == categoryId);
+              if (category) {
+                const categoryColor = userFilterColors[category.name.toLowerCase().replace(/\s+/g, '')] || category.color || '#6B7280';
+
+                // Zaktualizuj style w modalu czatu jeśli potrzebne
+                const chatModal = document.getElementById('chat-modal');
+                if (chatModal) {
+                  // Możesz dodać specjalne style dla aktywnej kategorii w modalu
+                  console.log('Category color updated in chat modal:', categoryColor);
+                }
+              }
+            }
+          });
+        } catch (error) {
+          console.error('Error updating chat modal colors:', error);
+        }
+      }
+
     </script>
 
     <!-- Global loading overlay -->
