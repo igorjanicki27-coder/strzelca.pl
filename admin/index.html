@@ -2644,10 +2644,14 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
 
-      // Ustaw persistence na local (administrator jest pamiętany między sesjami)
-      setPersistence(auth, browserLocalPersistence).catch(error => {
-        console.error("Error setting persistence:", error);
-      });
+      // Ustaw persistence na local jako pierwszą operację asynchroniczną (administrator jest pamiętany między sesjami)
+      (async () => {
+        try {
+          await setPersistence(auth, browserLocalPersistence);
+        } catch (error) {
+          console.error("Error setting persistence:", error);
+        }
+      })();
 
       // Inicjalizuj Firestore z ustawieniem dla Safari
       const db = initializeFirestore(app, {
@@ -5563,35 +5567,27 @@
           }
 
           try {
-            // Pobierz zdarzenia systemowe bezpośrednio z Firestore
-            const eventsRef = collection(db, 'system_events');
+            // Pobierz activity logs bezpośrednio z Firestore
+            const eventsRef = collection(db, 'activityLogs');
             const q = query(eventsRef, orderBy('timestamp', 'desc'), limit(100));
             const querySnapshot = await getDocs(q);
 
             const eventsLog = [];
             querySnapshot.forEach((doc) => {
+              const data = doc.data();
               eventsLog.push({
                 id: doc.id,
-                ...doc.data(),
-                timestamp: doc.data().timestamp?.toDate?.()?.toISOString() || doc.data().timestamp
+                ...data,
+                timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : (data.timestamp || new Date())
               });
             });
 
-              // Dodaj informację że to dane lokalne
-              if (eventsLog.length > 0) {
-                container.innerHTML = '<div class="text-center text-orange-400 py-2 text-sm mb-2"><i class="fa-solid fa-exclamation-triangle mr-1"></i>Wyświetlane dane lokalne (API niedostępne)</div>';
-              } else {
-                container.innerHTML = '<div class="text-center text-orange-400 py-4"><i class="fa-solid fa-exclamation-triangle mr-2"></i>API niedostępne - sprawdź konfigurację serwera</div>';
-                if (refreshBtn) {
-                  refreshBtn.disabled = false;
-                  refreshBtn.innerHTML = '<i class="fa-solid fa-sync-alt text-lg" id="refresh-events-icon"></i>';
-                }
-                return;
-              }
-            }
-
             if (eventsLog.length === 0) {
               container.innerHTML = '<div class="text-center text-zinc-400 py-4">Brak zdarzeń w logach</div>';
+              if (refreshBtn) {
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = '<i class="fa-solid fa-sync-alt text-lg" id="refresh-events-icon"></i>';
+              }
               return;
             }
 
@@ -5603,44 +5599,18 @@
             const eventsHtml = eventsLog.map(event => {
               const eventDate = new Date(event.timestamp);
               const formattedDate = eventDate.toLocaleString('pl-PL');
-
-              let eventIcon, eventColor, eventTitle;
-
-              switch(event.type) {
-                case 'site_offline':
-                  eventIcon = 'fa-times-circle';
-                  eventColor = 'text-red-400';
-                  eventTitle = 'Strona offline';
-                  break;
-                case 'site_online':
-                  eventIcon = 'fa-check-circle';
-                  eventColor = 'text-green-400';
-                  eventTitle = 'Strona online';
-                  break;
-                case 'service_offline':
-                  eventIcon = 'fa-exclamation-triangle';
-                  eventColor = 'text-orange-400';
-                  eventTitle = 'Usługa offline';
-                  break;
-                case 'service_online':
-                  eventIcon = 'fa-check-circle';
-                  eventColor = 'text-green-400';
-                  eventTitle = 'Usługa online';
-                  break;
-                default:
-                  eventIcon = 'fa-info-circle';
-                  eventColor = 'text-blue-400';
-                  eventTitle = 'Inne zdarzenie';
-              }
+              const eventAction = event.action || 'Aktywność';
+              const eventDetails = event.details || {};
+              const eventUser = event.userId || event.adminId || 'System';
 
               return `
               <div class="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg mb-2 animate-fade-in">
                   <div class="flex items-center space-x-3">
-                    <span class="${eventColor}"><i class="fa-solid ${eventIcon}"></i></span>
+                    <span class="text-blue-400"><i class="fa-solid fa-info-circle"></i></span>
                     <div>
-                      <div class="text-sm font-medium">${eventTitle} - ${event.site}</div>
+                      <div class="text-sm font-medium">${eventAction} - ${eventUser}</div>
                       <div class="text-xs text-zinc-500">${formattedDate}</div>
-                      ${event.details ? `<div class="text-xs text-zinc-400 mt-1">${event.details}</div>` : ''}
+                      ${eventDetails && typeof eventDetails === 'object' ? `<div class="text-xs text-zinc-400 mt-1">${JSON.stringify(eventDetails)}</div>` : (eventDetails ? `<div class="text-xs text-zinc-400 mt-1">${eventDetails}</div>` : '')}
                     </div>
                   </div>
                   <button
@@ -5679,34 +5649,9 @@
         }
 
         try {
-          // Usuń zdarzenie systemowe bezpośrednio z Firestore
-          const eventRef = doc(db, 'system_events', eventId);
+          // Usuń zdarzenie bezpośrednio z Firestore
+          const eventRef = doc(db, 'activityLogs', eventId);
           await deleteDoc(eventRef);
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(eventsLog)
-            });
-
-          if (!saveResponse.ok) {
-            showNotification("Błąd zapisywania zmian", "error");
-            return;
-              }
-            } else {
-              // API niedostępne - usuń z localStorage
-              console.warn('API niedostępne, usuwam z localStorage');
-              const localEventsKey = 'admin_events_log';
-              let localEvents = JSON.parse(localStorage.getItem(localEventsKey) || '[]');
-              const originalLength = localEvents.length;
-              localEvents = localEvents.filter(event => event.id !== eventId);
-
-              if (localEvents.length === originalLength) {
-                showNotification("Zdarzenie nie zostało znalezione", "error");
-                return;
-              }
-
-              localStorage.setItem(localEventsKey, JSON.stringify(localEvents));
-          }
 
           // Animacja usunięcia elementu
           const eventElement = buttonElement.closest('.flex.items-center.justify-between');
