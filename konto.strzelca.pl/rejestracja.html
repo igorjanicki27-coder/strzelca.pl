@@ -623,7 +623,6 @@
     </footer>
 
     <!-- Session Manager -->
-    <script src="../session-manager.js"></script>
 
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -656,6 +655,22 @@
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       const auth = getAuth(app);
+
+      // Ustaw trwałość sesji na LOCAL dla wszystkich stron wymagających logowania
+      await auth.setPersistence(auth.Auth.Persistence.LOCAL);
+
+      // Listener stanu autoryzacji - jeśli użytkownik już jest zalogowany, przekieruj do profilu
+      const { onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+      onAuthStateChanged(auth, (user) => {
+          if (user) {
+              // Użytkownik już jest zalogowany - przekieruj do profilu
+              console.log('Użytkownik już zalogowany, przekierowanie do profil.html');
+              window.location.href = 'profil.html';
+          } else {
+              // Użytkownik niezalogowany - pozwól mu się zarejestrować
+              console.log('Użytkownik niezalogowany, można się zarejestrować');
+          }
+      });
 
       // Lista zabronionych nazw
       const forbiddenNames = [

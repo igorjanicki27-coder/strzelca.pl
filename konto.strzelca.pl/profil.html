@@ -395,7 +395,6 @@
     </footer>
 
     <!-- Session Manager -->
-    <script src="../session-manager.js"></script>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -428,8 +427,48 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
+        // Ustaw trwałość sesji na LOCAL dla wszystkich stron wymagających logowania
+        await auth.setPersistence(auth.Auth.Persistence.LOCAL);
+
         let currentUser = null;
         let userProfile = null;
+
+        // Listener stanu autoryzacji z logiką przekierowań
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // Użytkownik jest zalogowany - pozwól mu zostać na stronie
+                currentUser = user;
+                console.log('Użytkownik zalogowany:', user.email);
+
+                // Pobierz dane użytkownika z bazy dla kolorów przycisków
+                await loadUserProfile(user.uid);
+
+                // Załaduj profil użytkownika
+                await loadProfile();
+            } else {
+                // Użytkownik nie jest zalogowany - przekieruj do strony logowania
+                console.log('Użytkownik niezalogowany, przekierowanie do login.html');
+                window.location.href = 'login.html';
+            }
+        });
+
+        // Funkcja pobierania danych użytkownika z bazy
+        async function loadUserProfile(uid) {
+            try {
+                const profileDoc = await getDoc(doc(db, "userProfiles", uid));
+                if (profileDoc.exists()) {
+                    userProfile = profileDoc.data();
+                    console.log('Dane użytkownika załadowane:', userProfile);
+
+                    // Tutaj można ustawić kolory przycisków na podstawie danych użytkownika
+                    // Na razie pozostawiam to do implementacji gdy zrozumiem strukturę
+                } else {
+                    console.log('Profil użytkownika nie istnieje');
+                }
+            } catch (error) {
+                console.error('Błąd podczas ładowania profilu użytkownika:', error);
+            }
+        }
 
         // Funkcja logowania aktywności
         async function logActivity(type, userId, userName, details, timestamp = null) {
@@ -624,6 +663,8 @@
         window.logout = async () => {
             try {
                 await signOut(auth);
+                // Wyczyść ewentualne dane w localStorage (preferencje kolorów itp.)
+                localStorage.clear();
                 window.location.href = 'https://strzelca.pl/index.html';
             } catch (error) {
                 console.error('Error signing out:', error);

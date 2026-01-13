@@ -71,28 +71,30 @@ class DatabaseManager {
       `CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(senderId)`,
       `CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(senderId, recipientId)`,
 
-      // Tabela aktywności użytkowników (rozszerzona)
-      `CREATE TABLE IF NOT EXISTS user_activity (
+
+
+      // Tabela kategorii wiadomości
+      `CREATE TABLE IF NOT EXISTS message_categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        userId TEXT,
-        userEmail TEXT,
-        timestamp INTEGER NOT NULL,
-        action TEXT NOT NULL,
-        path TEXT,
-        userAgent TEXT,
-        ipAddress TEXT,
-        sessionType TEXT DEFAULT 'standard',
-        lastActivity INTEGER,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        name TEXT NOT NULL UNIQUE,
+        color TEXT DEFAULT '#6B7280',
+        icon TEXT DEFAULT 'fa-circle',
+        is_active BOOLEAN DEFAULT 1,
+        sort_order INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
 
-      // Tabela sesji (opcjonalnie)
-      `CREATE TABLE IF NOT EXISTS user_sessions (
-        id TEXT PRIMARY KEY,
-        userId TEXT NOT NULL,
-        data TEXT,
-        expires_at INTEGER,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      // Dodanie kolumny category_id do tabeli messages
+      `ALTER TABLE messages ADD COLUMN category_id INTEGER REFERENCES message_categories(id) DEFAULT 1`,
+
+      // Tabela szybkich odpowiedzi
+      `CREATE TABLE IF NOT EXISTS quick_replies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
 
       // Tabela logów zdarzeń systemowych
@@ -114,30 +116,23 @@ class DatabaseManager {
       `CREATE INDEX IF NOT EXISTS idx_system_events_site ON system_events(site)`,
       `CREATE INDEX IF NOT EXISTS idx_system_events_severity ON system_events(severity)`,
 
-      // Tabela administratorów (lokalnych)
-      `CREATE TABLE IF NOT EXISTS administrators (
-        id TEXT PRIMARY KEY,
-        username TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        password_salt TEXT NOT NULL,
-        login_salt TEXT NOT NULL,
-        login_hash TEXT NOT NULL,
-        role TEXT DEFAULT 'admin',
-        is_active BOOLEAN DEFAULT 1,
-        last_login INTEGER,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )`,
 
-      // Dodatkowe indeksy dla user_activity
-      `CREATE INDEX IF NOT EXISTS idx_activity_user_timestamp ON user_activity(userId, timestamp DESC)`,
-      `CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON user_activity(timestamp DESC)`,
       `CREATE INDEX IF NOT EXISTS idx_activity_action ON user_activity(action)`
     ];
 
     for (const sql of tables) {
-      await this.run(sql);
+      try {
+        await this.run(sql);
+      } catch (error) {
+        // Ignoruj błędy ALTER TABLE jeśli kolumna już istnieje
+        if (!sql.includes('ALTER TABLE') || !error.message.includes('duplicate column')) {
+          throw error;
+        }
+      }
     }
+
+    // Dodaj domyślne kategorie jeśli nie istnieją
+    await this.initializeDefaultCategories();
 
     console.log('Database tables created successfully');
   }
@@ -181,133 +176,18 @@ class DatabaseManager {
     });
   }
 
-  // Dodanie nowej wiadomości
-  async addMessage(messageData) {
-    const message = {
-      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: Date.now(),
-      isRead: false,
-      status: 'in_progress',
-      hash: this.generateHash(messageData.content),
-      ...messageData
-    };
-
-    const sql = `
-      INSERT INTO messages (
-        id, senderId, senderName, senderEmail, senderType,
-        recipientId, recipientType, topic, content, timestamp,
-        isRead, status, hash, conversationType
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
-    const params = [
-      message.id,
-      message.senderId,
-      message.senderName,
-      message.senderEmail,
-      message.senderType || 'user',
-      message.recipientId,
-      message.recipientType || 'admin',
-      message.topic,
-      message.content,
-      message.timestamp,
-      message.isRead ? 1 : 0,
-      message.status,
-      message.hash,
-      message.conversationType || 'support_chat'
-    ];
-
-    await this.run(sql, params);
-    return message;
-  }
-
-  // Pobieranie wiadomości z filtrami
-  async getMessages(options = {}) {
-    const {
-      limit = 50,
-      offset = 0,
-      search = '',
-      dateFrom,
-      dateTo,
-      status,
-      isRead,
-      recipientId,
-      senderId
-    } = options;
-
-    let sql = `
-      SELECT * FROM messages
-      WHERE 1=1
-    `;
-    const params = [];
-
-    // Filtry
-    if (recipientId) {
-      sql += ' AND recipientId = ?';
-      params.push(recipientId);
-    }
-
-    if (senderId) {
-      sql += ' AND senderId = ?';
-      params.push(senderId);
-    }
-
-    if (status) {
-      sql += ' AND status = ?';
-      params.push(status);
-    }
-
-    if (typeof isRead === 'boolean') {
-      sql += ' AND isRead = ?';
-      params.push(isRead ? 1 : 0);
-    }
-
-    if (dateFrom) {
-      sql += ' AND timestamp >= ?';
-      params.push(new Date(dateFrom).getTime());
-    }
-
-    if (dateTo) {
-      sql += ' AND timestamp <= ?';
-      params.push(new Date(dateTo).getTime() + (24 * 60 * 60 * 1000));
-    }
-
-    if (search) {
-      const searchTerm = `%${search.toLowerCase()}%`;
-      sql += ` AND (
-        LOWER(content) LIKE ? OR
-        LOWER(topic) LIKE ? OR
-        LOWER(senderName) LIKE ? OR
-        LOWER(senderEmail) LIKE ?
-      )`;
-      params.push(searchTerm, searchTerm, searchTerm, searchTerm);
-    }
-
-    // Sortowanie i paginacja
-    sql += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
-
-    const messages = await this.all(sql, params);
-
-    // Pobierz całkowitą liczbę dla paginacji
-    const countSql = sql.replace('SELECT *', 'SELECT COUNT(*) as total').replace(' ORDER BY timestamp DESC LIMIT ? OFFSET ?', '');
-    const countParams = params.slice(0, -2); // Usuń limit i offset
-    const countResult = await this.get(countSql, countParams);
-
-    return {
-      messages: messages.map(msg => ({
-        ...msg,
-        isRead: Boolean(msg.isRead)
-      })),
-      total: countResult.total,
-      hasMore: offset + limit < countResult.total
-    };
-  }
 
   // Aktualizacja statusu wiadomości
   async updateMessageStatus(messageId, status) {
     const sql = 'UPDATE messages SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
     const result = await this.run(sql, [status, messageId]);
+    return result.changes > 0;
+  }
+
+  // Aktualizacja kategorii wiadomości
+  async updateMessageCategory(messageId, categoryId) {
+    const sql = 'UPDATE messages SET category_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
+    const result = await this.run(sql, [categoryId, messageId]);
     return result.changes > 0;
   }
 
@@ -329,165 +209,7 @@ class DatabaseManager {
     return Math.abs(hash).toString(16);
   }
 
-  // Pobieranie statystyk
-  async getStats() {
-    const sql = `
-      SELECT
-        COUNT(*) as total,
-        SUM(CASE WHEN isRead = 1 THEN 1 ELSE 0 END) as read,
-        SUM(CASE WHEN isRead = 0 THEN 1 ELSE 0 END) as unread,
-        SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as inProgress,
-        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
-      FROM messages
-      WHERE recipientId = 'admin'
-    `;
 
-    const result = await this.get(sql);
-    return {
-      total: result.total || 0,
-      unread: result.unread || 0,
-      read: result.read || 0,
-      inProgress: result.inProgress || 0,
-      completed: result.completed || 0
-    };
-  }
-
-  // Metody obsługi aktywności użytkowników
-  async logUserActivity(activityData) {
-    const activity = {
-      userId: activityData.userId || 'anonymous',
-      userEmail: activityData.userEmail || null,
-      timestamp: activityData.timestamp ? new Date(activityData.timestamp).getTime() : Date.now(),
-      action: activityData.action || 'page_view',
-      path: activityData.path || '/',
-      userAgent: activityData.userAgent || null,
-      ipAddress: activityData.ip || activityData.ipAddress || null,
-      sessionType: activityData.sessionType || 'standard',
-      lastActivity: Date.now(),
-      ...activityData
-    };
-
-    const sql = `
-      INSERT OR REPLACE INTO user_activity
-      (userId, userEmail, timestamp, action, path, userAgent, ipAddress, sessionType, lastActivity)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
-    const params = [
-      activity.userId,
-      activity.userEmail,
-      activity.timestamp,
-      activity.action,
-      activity.path,
-      activity.userAgent,
-      activity.ipAddress,
-      activity.sessionType,
-      activity.lastActivity
-    ];
-
-    await this.run(sql, params);
-    return activity;
-  }
-
-  async getUserActivityStats() {
-    const sql = `
-      SELECT
-        COUNT(*) as total,
-        COUNT(DISTINCT CASE WHEN userId != 'anonymous' AND userId NOT LIKE 'guest%' THEN userId END) as loggedIn,
-        COUNT(DISTINCT CASE WHEN userId = 'anonymous' OR userId LIKE 'guest%' THEN userId END) as guests
-      FROM user_activity
-      WHERE timestamp > ?
-    `;
-
-    // Ostatnie 30 minut
-    const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
-    const result = await this.get(sql, [thirtyMinutesAgo]);
-
-    return {
-      loggedIn: result.loggedIn || 0,
-      guests: result.guests || 0,
-      total: result.total || 0
-    };
-  }
-
-  async getUserActivitySessions(options = {}) {
-    const {
-      limit = 50,
-      offset = 0,
-      userId,
-      action,
-      dateFrom,
-      dateTo
-    } = options;
-
-    let sql = `
-      SELECT * FROM user_activity
-      WHERE timestamp > ?
-    `;
-    const params = [Date.now() - (30 * 60 * 1000)]; // Ostatnie 30 minut
-
-    // Filtry
-    if (userId) {
-      sql += ' AND userId = ?';
-      params.push(userId);
-    }
-
-    if (action) {
-      sql += ' AND action = ?';
-      params.push(action);
-    }
-
-    if (dateFrom) {
-      sql += ' AND timestamp >= ?';
-      params.push(new Date(dateFrom).getTime());
-    }
-
-    if (dateTo) {
-      sql += ' AND timestamp <= ?';
-      params.push(new Date(dateTo).getTime());
-    }
-
-    sql += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
-
-    const activities = await this.all(sql, params);
-
-    return activities.map(activity => ({
-      ...activity,
-      timestamp: new Date(activity.timestamp).toISOString(),
-      lastActivity: new Date(activity.lastActivity).toISOString()
-    }));
-  }
-
-  async getUserSession(userId) {
-    const sql = `
-      SELECT * FROM user_activity
-      WHERE userId = ? AND timestamp > ?
-      ORDER BY timestamp DESC
-      LIMIT 1
-    `;
-
-    const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
-    const session = await this.get(sql, [userId, thirtyMinutesAgo]);
-
-    if (session) {
-      return {
-        ...session,
-        timestamp: new Date(session.timestamp).toISOString(),
-        lastActivity: new Date(session.lastActivity).toISOString(),
-        isActive: true
-      };
-    }
-
-    return null;
-  }
-
-  async cleanupOldActivities(daysOld = 30) {
-    const cutoffTime = Date.now() - (daysOld * 24 * 60 * 60 * 1000);
-    const sql = 'DELETE FROM user_activity WHERE timestamp < ?';
-    const result = await this.run(sql, [cutoffTime]);
-    return result.changes;
-  }
 
   // Metody obsługi logów zdarzeń systemowych
   async logSystemEvent(eventData) {
@@ -620,147 +342,284 @@ class DatabaseManager {
   }
 
   // Metody obsługi administratorów
-  async createAdministrator(adminData) {
-    const admin = {
-      id: adminData.id || `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      username: adminData.username,
-      password_hash: adminData.password_hash,
-      password_salt: adminData.password_salt,
-      login_salt: adminData.login_salt,
-      login_hash: adminData.login_hash,
-      role: adminData.role || 'admin',
-      is_active: adminData.is_active !== undefined ? adminData.is_active : true,
-      last_login: null,
-      ...adminData
+
+  // Inicjalizacja domyślnych kategorii
+  async initializeDefaultCategories() {
+    const defaultCategories = [
+      { name: 'Zamówienia', color: '#3B82F6', icon: 'fa-shopping-cart', sort_order: 1 },
+      { name: 'Oferty', color: '#10B981', icon: 'fa-tag', sort_order: 2 },
+      { name: 'Inne', color: '#6B7280', icon: 'fa-circle', sort_order: 3 }
+    ];
+
+    for (const category of defaultCategories) {
+      await this.run(`
+        INSERT OR IGNORE INTO message_categories (name, color, icon, sort_order)
+        VALUES (?, ?, ?, ?)
+      `, [category.name, category.color, category.icon, category.sort_order]);
+    }
+  }
+
+  // Funkcje zarządzania kategoriami
+  async getCategories() {
+    return await this.all(`
+      SELECT * FROM message_categories
+      WHERE is_active = 1
+      ORDER BY sort_order ASC, name ASC
+    `);
+  }
+
+  async addCategory(categoryData) {
+    const result = await this.run(`
+      INSERT INTO message_categories (name, color, icon, sort_order)
+      VALUES (?, ?, ?, ?)
+    `, [categoryData.name, categoryData.color, categoryData.icon, categoryData.sort_order || 0]);
+
+    return result.id;
+  }
+
+  async updateCategory(id, categoryData) {
+    await this.run(`
+      UPDATE message_categories
+      SET name = ?, color = ?, icon = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, [categoryData.name, categoryData.color, categoryData.icon, categoryData.sort_order || 0, id]);
+  }
+
+  async deleteCategory(id) {
+    // Sprawdź czy kategoria jest używana
+    const usage = await this.get(`
+      SELECT COUNT(*) as count FROM messages WHERE category_id = ?
+    `, [id]);
+
+    if (usage.count > 0) {
+      // Przenieś wiadomości do kategorii "Inne"
+      const otherCategory = await this.get(`SELECT id FROM message_categories WHERE name = 'Inne'`);
+      if (otherCategory) {
+        await this.run(`UPDATE messages SET category_id = ? WHERE category_id = ?`, [otherCategory.id, id]);
+      }
+    }
+
+    await this.run(`UPDATE message_categories SET is_active = 0 WHERE id = ?`, [id]);
+  }
+
+  // Zaktualizowana funkcja dodawania wiadomości z kategorią
+  async addMessage(messageData) {
+    const message = {
+      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: Date.now(),
+      isRead: false,
+      status: 'in_progress',
+      hash: this.generateHash(messageData.content),
+      category_id: messageData.category_id || 1, // Domyślnie "Inne"
+      ...messageData
     };
 
     const sql = `
-      INSERT INTO administrators
-      (id, username, password_hash, password_salt, login_salt, login_hash, role, is_active, last_login)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO messages (
+        id, senderId, senderName, senderEmail, senderType,
+        recipientId, recipientType, topic, content, timestamp,
+        isRead, status, hash, conversationType, category_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
-      admin.id,
-      admin.username,
-      admin.password_hash,
-      admin.password_salt,
-      admin.login_salt,
-      admin.login_hash,
-      admin.role,
-      admin.is_active ? 1 : 0,
-      admin.last_login
+      message.id,
+      message.senderId,
+      message.senderName,
+      message.senderEmail,
+      message.senderType || 'user',
+      message.recipientId,
+      message.recipientType || 'admin',
+      message.topic,
+      message.content,
+      message.timestamp,
+      message.isRead ? 1 : 0,
+      message.status,
+      message.hash,
+      message.conversationType || 'support_chat',
+      message.category_id
     ];
 
     await this.run(sql, params);
-    return admin;
+    return message;
   }
 
-  async getAdministratorByUsername(username) {
-    const sql = 'SELECT * FROM administrators WHERE username = ? AND is_active = 1';
-    const admin = await this.get(sql, [username]);
+  // Zaktualizowana funkcja pobierania wiadomości z kategoriami
+  async getMessages(options = {}) {
+    const {
+      limit = 50,
+      offset = 0,
+      search = '',
+      dateFrom,
+      dateTo,
+      status,
+      isRead,
+      recipientId,
+      categoryId
+    } = options;
 
-    if (admin) {
-      return {
-        ...admin,
-        is_active: Boolean(admin.is_active)
-      };
+    let sql = `
+      SELECT m.*,
+             COALESCE(c.name, 'Inne') as category_name,
+             COALESCE(c.color, '#6B7280') as category_color,
+             COALESCE(c.icon, 'fa-circle') as category_icon
+      FROM messages m
+      LEFT JOIN message_categories c ON m.category_id = c.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    // Filtry
+    if (recipientId) {
+      sql += ' AND m.recipientId = ?';
+      params.push(recipientId);
     }
 
-    return null;
+    if (categoryId) {
+      sql += ' AND m.category_id = ?';
+      params.push(categoryId);
+    }
+
+    if (status) {
+      sql += ' AND m.status = ?';
+      params.push(status);
+    }
+
+    if (typeof isRead === 'boolean') {
+      sql += ' AND m.isRead = ?';
+      params.push(isRead ? 1 : 0);
+    }
+
+    if (dateFrom) {
+      sql += ' AND m.timestamp >= ?';
+      params.push(new Date(dateFrom).getTime());
+    }
+
+    if (dateTo) {
+      sql += ' AND m.timestamp <= ?';
+      params.push(new Date(dateTo).getTime() + (24 * 60 * 60 * 1000));
+    }
+
+    if (search) {
+      const searchTerm = `%${search.toLowerCase()}%`;
+      sql += ` AND (
+        LOWER(m.content) LIKE ? OR
+        LOWER(m.topic) LIKE ? OR
+        LOWER(m.senderName) LIKE ? OR
+        LOWER(m.senderEmail) LIKE ?
+      )`;
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+
+    // Sortowanie i paginacja
+    sql += ' ORDER BY m.timestamp DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    const messages = await this.all(sql, params);
+
+    // Pobierz całkowitą liczbę dla paginacji
+    const countSql = sql.replace('SELECT m.*', 'SELECT COUNT(*) as total').replace(' ORDER BY m.timestamp DESC LIMIT ? OFFSET ?', '');
+    const countParams = params.slice(0, -2); // Usuń limit i offset
+    const countResult = await this.get(countSql, countParams);
+
+    return {
+      messages: messages.map(msg => ({
+        ...msg,
+        isRead: Boolean(msg.isRead)
+      })),
+      total: countResult.total,
+      hasMore: offset + limit < countResult.total
+    };
   }
 
-  async verifyAdministratorCredentials(username, password_hash, login_hash) {
-    const sql = 'SELECT * FROM administrators WHERE username = ? AND is_active = 1';
-    const admin = await this.get(sql, [username]);
+  // Funkcja pobierania statystyk z kategoriami
+  async getStats() {
+    const sql = `
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN isRead = 1 THEN 1 ELSE 0 END) as read,
+        SUM(CASE WHEN isRead = 0 THEN 1 ELSE 0 END) as unread,
+        SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as inProgress,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
+      FROM messages
+      WHERE recipientId = 'admin'
+    `;
 
-    if (!admin) {
-      return null;
-    }
+    const result = await this.get(sql);
 
-    // Sprawdź czy hashe się zgadzają
-    if (admin.password_hash === password_hash && admin.login_hash === login_hash) {
-      // Aktualizuj czas ostatniego logowania
-      const updateSql = 'UPDATE administrators SET last_login = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
-      await this.run(updateSql, [Date.now(), admin.id]);
+    // Pobierz statystyki per kategoria
+    const categoryStats = await this.all(`
+      SELECT
+        COALESCE(c.name, 'Inne') as category_name,
+        COUNT(m.id) as total,
+        SUM(CASE WHEN m.isRead = 0 THEN 1 ELSE 0 END) as unread
+      FROM messages m
+      LEFT JOIN message_categories c ON m.category_id = c.id
+      WHERE m.recipientId = 'admin' AND m.status = 'in_progress'
+      GROUP BY m.category_id
+      ORDER BY c.sort_order ASC
+    `);
 
-      return {
-        ...admin,
-        is_active: Boolean(admin.is_active)
-      };
-    }
-
-    return null;
+    return {
+      total: result.total || 0,
+      unread: result.unread || 0,
+      read: result.read || 0,
+      inProgress: result.inProgress || 0,
+      completed: result.completed || 0,
+      categories: categoryStats
+    };
   }
 
-  async getAllAdministrators() {
-    const sql = 'SELECT id, username, role, is_active, last_login, created_at, updated_at FROM administrators ORDER BY created_at DESC';
-    const admins = await this.all(sql);
-
-    return admins.map(admin => ({
-      ...admin,
-      is_active: Boolean(admin.is_active),
-      last_login: admin.last_login ? new Date(admin.last_login).toISOString() : null,
-      created_at: new Date(admin.created_at).toISOString(),
-      updated_at: new Date(admin.updated_at).toISOString()
+  // Metody obsługi szybkich odpowiedzi
+  async getQuickReplies() {
+    const sql = 'SELECT * FROM quick_replies ORDER BY updated_at DESC';
+    const replies = await this.all(sql);
+    return replies.map(reply => ({
+      ...reply,
+      created_at: new Date(reply.created_at).toISOString(),
+      updated_at: new Date(reply.updated_at).toISOString()
     }));
   }
 
-  async updateAdministrator(id, updates) {
-    const fields = [];
-    const params = [];
-
-    if (updates.username !== undefined) {
-      fields.push('username = ?');
-      params.push(updates.username);
+  async addQuickReply(replyData) {
+    if (!replyData.title || !replyData.content) {
+      throw new Error('Title and content are required');
     }
-
-    if (updates.password_hash !== undefined) {
-      fields.push('password_hash = ?');
-      params.push(updates.password_hash);
-    }
-
-    if (updates.password_salt !== undefined) {
-      fields.push('password_salt = ?');
-      params.push(updates.password_salt);
-    }
-
-    if (updates.login_salt !== undefined) {
-      fields.push('login_salt = ?');
-      params.push(updates.login_salt);
-    }
-
-    if (updates.login_hash !== undefined) {
-      fields.push('login_hash = ?');
-      params.push(updates.login_hash);
-    }
-
-    if (updates.role !== undefined) {
-      fields.push('role = ?');
-      params.push(updates.role);
-    }
-
-    if (updates.is_active !== undefined) {
-      fields.push('is_active = ?');
-      params.push(updates.is_active ? 1 : 0);
-    }
-
-    if (fields.length === 0) return false;
 
     const sql = `
-      UPDATE administrators
-      SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
+      INSERT INTO quick_replies (title, content)
+      VALUES (?, ?)
     `;
-    params.push(id);
 
-    const result = await this.run(sql, params);
-    return result.changes > 0;
+    const result = await this.run(sql, [replyData.title.trim(), replyData.content.trim()]);
+    return { id: result.id, ...replyData };
   }
 
-  async deleteAdministrator(id) {
-    const sql = 'DELETE FROM administrators WHERE id = ?';
+  async updateQuickReply(id, replyData) {
+    if (!replyData.title || !replyData.content) {
+      throw new Error('Title and content are required');
+    }
+
+    const sql = `
+      UPDATE quick_replies
+      SET title = ?, content = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `;
+
+    const result = await this.run(sql, [replyData.title.trim(), replyData.content.trim(), id]);
+    if (result.changes === 0) {
+      throw new Error('Quick reply not found');
+    }
+
+    return { id, ...replyData };
+  }
+
+  async deleteQuickReply(id) {
+    const sql = 'DELETE FROM quick_replies WHERE id = ?';
     const result = await this.run(sql, [id]);
+    if (result.changes === 0) {
+      throw new Error('Quick reply not found');
+    }
     return result.changes > 0;
   }
 

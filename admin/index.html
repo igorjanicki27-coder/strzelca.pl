@@ -60,6 +60,7 @@
         /* Safari viewport height fix */
         min-height: -webkit-fill-available;
         min-height: 100dvh; /* Dynamic viewport height for modern browsers */
+        overflow-x: hidden; /* Zapobiega "pływaniu" strony na boki w Safari */
       }
 
       /* Sekcja logowania zajmuje całą wysokość, żeby nie było czarnego paska */
@@ -221,6 +222,34 @@
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      /* Liquid Glass Effect */
+      .liquid-glass {
+        background: rgba(193, 154, 107, 0.05);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border: 1px solid rgba(193, 154, 107, 0.2);
+        border-radius: 12px;
+        transition: 0.3s;
+      }
+      .liquid-glass:hover {
+        border-color: rgba(193, 154, 107, 0.4);
+        background: rgba(193, 154, 107, 0.08);
+      }
+
+      /* Glowing Border Effect */
+      .glowing-border {
+        animation: glow 2s ease-in-out infinite alternate;
+      }
+
+      @keyframes glow {
+        from {
+          box-shadow: 0 0 5px rgba(193, 154, 107, 0.5);
+        }
+        to {
+          box-shadow: 0 0 20px rgba(193, 154, 107, 0.8);
+        }
       }
 
       /* Style dla zakładek w poziomie */
@@ -559,22 +588,11 @@
             />
           </div>
 
-          <div class="flex items-center justify-center mb-6">
-            <input type="checkbox" id="admin-remember" class="hidden" />
-            <div
-              class="flex flex-col items-center cursor-pointer hover:scale-105 transition-transform duration-200"
-              id="admin-remember-toggle"
-            >
-              <span
-                id="admin-remember-text-1"
-                class="text-[10px] uppercase tracking-[0.15em] font-medium text-zinc-400 block text-center transition-colors"
-                >Zapamiętaj</span
-              >
-              <span
-                id="admin-remember-text-2"
-                class="text-[10px] uppercase tracking-[0.15em] font-medium text-zinc-400 block text-center w-full transition-colors"
-              ></span>
-            </div>
+          <div class="flex items-center justify-center">
+            <input type="checkbox" id="admin-remember-me" class="hidden peer" />
+            <label for="admin-remember-me" class="cursor-pointer text-sm text-zinc-400 peer-checked:text-green-500 transition-colors">
+              Zapamiętaj mnie
+            </label>
           </div>
 
           <button type="submit" class="btn-admin w-full" id="admin-login-btn">
@@ -1163,159 +1181,191 @@
 
           <!-- Czat -->
         <div id="tab-messages" class="tab-content">
-          <div class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-bold coyote-text">
-              Czat
-            </h1>
-            <div class="flex space-x-3">
-              <button onclick="startNewChat()" class="btn-admin">
-                <i class="fa-solid fa-plus mr-2"></i>
-                Nowy czat
+          <!-- Single-Line Header -->
+          <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-4">
+              <h2 id="messages-header" class="text-xl font-bold text-white">Wiadomości: <span id="unread-count" class="text-red-600">0</span> | <span id="total-count" class="text-zinc-300">0</span></h2>
+              <!-- Dynamic Category Buttons -->
+              <div id="category-buttons" class="flex items-center gap-2">
+                <!-- Category buttons will be loaded dynamically -->
+              </div>
+            </div>
+
+            <!-- Settings & Refresh (Right Side) -->
+            <div class="flex items-center gap-3">
+              <button onclick="switchTab('kontakt')" class="text-zinc-400 hover:text-coyote transition-colors p-2" title="Zarządzanie kategoriami">
+                <i class="fa-solid fa-cog text-lg"></i>
               </button>
-              <button onclick="loadMessages()" class="btn-admin" id="refresh-messages-btn">
-                <i class="fa-solid fa-sync-alt mr-2"></i>
-                <span id="refresh-text">Odśwież</span>
+              <button onclick="refreshMessages()" class="text-zinc-400 hover:text-coyote transition-colors p-2" id="refresh-messages-btn">
+                <i class="fa-solid fa-sync-alt text-lg" id="refresh-icon"></i>
               </button>
-              <button onclick="console.log('Test loadMessages'); loadMessages()" class="btn-secondary text-sm px-3 py-2">
-                🔧 Test
-            </button>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-250px)] min-h-[500px]">
-                <!-- Lista konwersacji -->
-            <div class="lg:col-span-1">
-              <div class="admin-card h-full overflow-hidden">
-                <div class="p-4 border-b border-zinc-700">
-                  <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold">Konwersacje</h3>
-                    <span id="conversations-count" class="text-sm text-zinc-400">0</span>
-            </div>
-                  <div class="flex space-x-2 mb-3">
-                      <input
-                        type="text"
-                      id="chat-search"
-                    placeholder="Szukaj konwersacji..."
-                      class="flex-1 bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-white placeholder-zinc-400 text-sm focus:outline-none focus:ring-2 focus:ring-coyote"
-                    >
-                    <button onclick="filterConversations()" class="btn-admin text-sm px-3 py-2">
-                      <i class="fa-solid fa-search"></i>
-                    </button>
+          <!-- Pasek wyszukiwania i filtrów -->
+          <div class="liquid-glass p-6 mb-6">
+            <div class="flex items-center gap-3">
+              <!-- Wyszukiwarka (rozciągnięta do ~80% szerokości) -->
+              <div class="flex-[0_0_80%] relative">
+                <input
+                  type="text"
+                  id="messages-search"
+                  placeholder="Szukaj po nazwie użytkownika lub treści wiadomości..."
+                  class="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-3 pr-10 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-coyote transition-all"
+                >
+                <button
+                  onclick="clearMessagesSearch()"
+                  id="clear-search-btn"
+                  class="absolute right-3 top-1/2 transform -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors opacity-0"
+                  style="background: none; border: none;"
+                >
+                  <i class="fa-solid fa-times text-sm"></i>
+                </button>
               </div>
-                </div>
-                <div class="overflow-y-auto h-[calc(100%-120px)]">
-                  <div id="conversations-list" class="space-y-1">
-                    <!-- Konwersacje będą ładowane dynamicznie -->
-                    <div class="text-center text-zinc-500 py-8">
-                      <i class="fa-solid fa-spinner fa-spin text-xl mb-3 text-zinc-600"></i>
-                      <p class="text-sm">Ładowanie czatów...</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
 
-            <!-- Okno czatu -->
-            <div class="lg:col-span-2">
-              <div id="chat-window" class="admin-card h-full flex flex-col">
-                <!-- Nagłówek czatu -->
-                <div id="chat-header" class="p-4 border-b border-zinc-700 hidden">
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                      <div class="w-10 h-10 bg-coyote rounded-full flex items-center justify-center">
-                        <i class="fa-solid fa-user text-black text-sm"></i>
-                      </div>
-                  <div>
-                        <h4 id="chat-user-name-header" class="font-semibold text-white"></h4>
-                        <p id="chat-user-status" class="text-sm text-zinc-400">Aktywny</p>
-                      </div>
-              </div>
-                  <div class="flex space-x-2">
-                      <button onclick="closeCurrentChat()" class="text-zinc-400 hover:text-white transition-colors p-2">
-                        <i class="fa-solid fa-times"></i>
-                      </button>
+              <!-- Ikona filtra (po prawej stronie) -->
+              <button onclick="toggleFilterDropdown()" class="text-zinc-400 hover:text-coyote transition-colors p-2 relative">
+                <i class="fa-solid fa-filter text-lg"></i>
+                <!-- Dropdown filtrów -->
+                <div id="filter-dropdown" class="absolute right-0 top-full mt-2 bg-zinc-800 border border-zinc-600 rounded-lg shadow-lg hidden z-10 min-w-[200px]">
+                  <div class="p-2">
+                    <select id="messages-filter" class="w-full bg-zinc-700 border border-zinc-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-coyote">
+                      <option value="all">Wszystkie</option>
+                      <option value="unread">Nieprzeczytane</option>
+                      <option value="completed">Zakończone</option>
+                      <!-- Opcje kategorii będą dodawane dynamicznie -->
+                    </select>
                   </div>
                 </div>
-                  </div>
+              </button>
+            </div>
+          </div>
 
-                <!-- Wiadomości -->
-                <div id="chat-messages-container" class="flex-1 overflow-y-auto p-4 space-y-4 hidden">
+          <!-- Lista wiadomości -->
+          <div class="liquid-glass overflow-hidden">
+            <div class="p-6">
+              <div id="messages-container" class="space-y-4">
                 <!-- Wiadomości będą ładowane dynamicznie -->
-                  <div class="text-center text-zinc-500 py-12">
-                    <i class="fa-solid fa-comments text-4xl mb-4 text-zinc-600"></i>
-                    <h3 class="text-lg font-semibold mb-2">Wybierz konwersację</h3>
-                    <p class="text-sm">Kliknij na czat z listy, aby rozpocząć rozmowę</p>
+                <div class="text-center text-zinc-500 py-12">
+                  <i class="fa-solid fa-spinner fa-spin text-3xl mb-4 text-zinc-600"></i>
+                  <h3 class="text-lg font-semibold mb-2">Ładowanie wiadomości...</h3>
+                  <p class="text-sm">Proszę czekać</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal ustawień kategorii -->
+          <div id="categories-modal" class="fixed inset-0 bg-black/80 hidden z-50">
+            <div class="flex items-center justify-center min-h-screen p-4">
+              <div class="bg-zinc-900 rounded-xl shadow-2xl w-full max-w-2xl h-[80vh] flex flex-col">
+                <div class="p-6 border-b border-zinc-700">
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-white">Ustawienia kategorii</h3>
+                    <button onclick="closeCategoriesModal()" class="text-zinc-400 hover:text-white">
+                      <i class="fa-solid fa-times text-xl"></i>
+                    </button>
                   </div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-6">
+                  <div class="space-y-4" id="categories-list">
+                    <!-- Kategorie będą ładowane dynamicznie -->
+                  </div>
+
+                  <button onclick="addNewCategory()" class="btn-admin w-full mt-6">
+                    <i class="fa-solid fa-plus mr-2"></i>
+                    Dodaj kategorię
+                </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal szybkich odpowiedzi -->
+          <div id="quick-replies-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999] hidden">
+            <div class="bg-zinc-900 rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
+              <div class="p-4 border-b border-zinc-700">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-lg font-bold text-white">Szybkie odpowiedzi</h3>
+                  <button onclick="closeQuickRepliesModal()" class="text-zinc-400 hover:text-white">
+                    <i class="fa-solid fa-times text-xl"></i>
+                  </button>
+                </div>
               </div>
 
-                <!-- Pole do pisania -->
-                <div id="chat-input-container" class="p-4 border-t border-zinc-700 hidden">
-                  <div class="flex space-x-3">
-                    <textarea
-                      id="chat-reply-input"
-                  placeholder="Wpisz wiadomość..."
-                      class="flex-1 bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-coyote resize-none"
-                      rows="2"
-                    ></textarea>
-                      <button
-                      onclick="sendChatReply()"
-                      id="send-message-btn"
-                      class="btn-admin px-4 py-2 h-auto self-end disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                  <i class="fa-solid fa-paper-plane"></i>
-                      </button>
-                    </div>
-                  <p class="text-xs text-zinc-500 mt-2">Naciśnij Enter, aby wysłać • Shift+Enter dla nowej linii</p>
-                      </div>
-                    </div>
-                  </div>
-                  </div>
+              <div class="flex-1 overflow-y-auto p-4" id="quick-replies-list">
+                <!-- Szablony będą ładowane dynamicznie -->
+              </div>
+            </div>
+          </div>
 
           <!-- Modal czatu -->
-          <div id="chat-modal" class="fixed inset-0 bg-black/80 hidden z-50">
-            <div class="flex items-center justify-center min-h-screen p-4">
-              <div class="bg-zinc-900 rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col">
-                <!-- Nagłówek czatu -->
-                <div class="flex items-center justify-between p-4 border-b border-zinc-700">
-                  <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-coyote rounded-full flex items-center justify-center">
-                      <i class="fa-solid fa-user text-black text-sm"></i>
-                  </div>
-                  <div>
-                      <h3 id="chat-user-name" class="font-semibold text-white"></h3>
-                      <p id="chat-user-email" class="text-sm text-zinc-400"></p>
-                </div>
-                  </div>
-                  <button onclick="closeChatModal()" class="text-zinc-400 hover:text-white transition-colors">
-                    <i class="fa-solid fa-times text-xl"></i>
-                    </button>
+          <div id="chat-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden">
+            <div class="liquid-glass shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col">
+              <!-- Nagłówek czatu -->
+              <div class="flex items-center justify-between p-4 border-b border-zinc-700">
+                <!-- Back Arrow -->
+                <button onclick="closeChatModal()" class="text-zinc-400 hover:text-coyote transition-colors p-2">
+                  <i class="fa-solid fa-arrow-left text-lg"></i>
+                </button>
+
+                <!-- User Name (clickable to switch to Users tab) -->
+                <div class="flex-1 text-center">
+                  <h4 id="chat-user-name" class="font-semibold text-white ${currentConversationUser?.name && !currentConversationUser.name.includes('@') ? 'cursor-pointer hover:text-coyote transition-colors' : ''}"
+                      ${currentConversationUser?.name && !currentConversationUser.name.includes('@') ? `onclick="viewUserDetails(currentConversationUser?.id)"` : ''}></h4>
+                  <p id="chat-user-email" class="text-sm text-zinc-400"></p>
                 </div>
 
-                <!-- Wiadomości -->
-                <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4">
+                <!-- Complete Button -->
+                <div class="flex flex-col items-end space-y-2">
+                  <button id="complete-start-btn" onclick="toggleConversationStatus()" class="btn-admin text-sm px-4 py-2 h-10 flex items-center">
+                    <i class="fa-solid fa-check mr-2 text-green-400"></i>
+                    Zakończ
+                  </button>
+                  <!-- Category Dropdown -->
+                  <select id="chat-category-select" class="bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-coyote relative z-[100]">
+                    <!-- Opcje będą ładowane dynamicznie -->
+                  </select>
+                </div>
+              </div>
+
+              <!-- Wiadomości -->
+              <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4">
                 <!-- Wiadomości będą ładowane dynamicznie -->
               </div>
 
-                <!-- Pole do odpowiedzi -->
-                <div class="p-4 border-t border-zinc-700">
-                  <div class="flex space-x-3">
-                    <textarea
-                      id="chat-reply-input"
-                      placeholder="Wpisz swoją odpowiedź..."
-                      class="flex-1 bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-coyote resize-none"
-                      rows="3"
-                    ></textarea>
+              <!-- Pole do odpowiedzi -->
+              <div class="p-4 border-t border-zinc-700">
+                <div class="flex space-x-3">
+                  <textarea
+                    id="chat-reply-input"
+                    placeholder="Wpisz swoją odpowiedź..."
+                    class="flex-1 bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-coyote resize-none"
+                    rows="3"
+                  ></textarea>
+                  <div class="flex flex-col space-y-2">
                     <button
                       onclick="sendChatReply()"
-                      class="btn-admin px-6 py-2 h-auto self-end"
+                      class="w-12 h-12 bg-zinc-800 border border-zinc-600 rounded-lg flex items-center justify-center text-zinc-400 hover:text-green-400 hover:border-green-400 transition-colors"
+                      title="Wyślij wiadomość"
+                      style="color: #22c55e;"
                     >
-                      <i class="fa-solid fa-paper-plane mr-2"></i>
-                      Wyślij
+                      <i class="fa-solid fa-paper-plane text-lg"></i>
+                    </button>
+                    <button
+                      onclick="openQuickRepliesMenu()"
+                      class="w-12 h-12 bg-zinc-800 border border-zinc-600 rounded-lg flex items-center justify-center text-zinc-400 hover:text-coyote hover:border-coyote transition-colors"
+                      title="Szybkie odpowiedzi"
+                      style="color: var(--coyote);"
+                    >
+                      <i class="fa-solid fa-bolt text-lg"></i>
                     </button>
                   </div>
+                </div>
+                <p class="text-xs text-zinc-500 mt-2">Naciśnij Enter, aby wysłać • Shift+Enter dla nowej linii</p>
               </div>
             </div>
-          </div>
           </div>
         </div>
 
@@ -1863,12 +1913,12 @@
               Zarządzanie Formularzem Kontaktowym
           </h1>
 
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div class="grid grid-cols-1 gap-8">
               <!-- Ustawienia formularza -->
             <div class="admin-card">
                 <h3 class="text-xl font-bold mb-6">Ustawienia Formularza</h3>
 
-                <div class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <label class="flex items-center space-x-3 cursor-pointer">
                 <input
@@ -1910,76 +1960,48 @@
                 </div>
             </div>
 
-              <!-- Zarządzanie tematami -->
-            <div class="admin-card">
-                <h3 class="text-xl font-bold mb-6">Tematy Rozmów</h3>
+              <!-- Zarządzanie kategoriami i tematami -->
+            <div class="admin-card" style="background: linear-gradient(135deg, rgba(193, 154, 107, 0.1), rgba(193, 154, 107, 0.05)); backdrop-filter: blur(20px); border: 1px solid rgba(193, 154, 107, 0.2);">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold coyote-text">Zarządzanie Kategoriami i Tematami</h3>
+                    <button onclick="openCategoryModal()" class="btn-admin px-4 py-2">
+                        <i class="fa-solid fa-plus mr-2"></i>
+                        Dodaj kategorię
+                    </button>
+                </div>
 
-                <div class="space-y-4">
-                  <div class="flex space-x-2">
-                <input
-                  type="text"
-                      id="new-contact-topic"
-                      placeholder="Nowy temat rozmowy..."
-                  class="flex-1"
-                />
-                    <button onclick="addContactTopic()" class="btn-admin px-4">
-                  <i class="fa-solid fa-plus"></i>
-                </button>
-              </div>
-
-                  <div
-                    id="contact-topics-list"
-                    class="space-y-2 max-h-[300px] overflow-y-auto"
-                  >
-                    <!-- Tematy będą ładowane dynamicznie -->
-              </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="categories-list">
+                    <!-- Kategorie będą ładowane dynamicznie -->
+                    <div class="text-center text-zinc-500 py-8 col-span-full">
+                        <i class="fa-solid fa-spinner fa-spin text-2xl mb-4 text-zinc-600"></i>
+                        <h4 class="text-lg font-semibold mb-2">Ładowanie kategorii...</h4>
+                        <p class="text-sm">Proszę czekać</p>
+                    </div>
+                </div>
             </div>
           </div>
         </div>
 
-            <!-- Statystyki wiadomości -->
-            <div class="admin-card mt-8">
-              <h3 class="text-xl font-bold mb-6">Statystyki Wiadomości</h3>
 
-              <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div class="text-center">
-                  <div
-                    class="text-2xl font-bold coyote-text"
-                    id="contact-total-messages"
-                  >
-                    0
-                  </div>
-                  <div class="text-sm text-zinc-400">Razem wiadomości</div>
+            <!-- Dziennik Aktywności -->
+            <div class="admin-card mt-8" style="background: linear-gradient(135deg, rgba(193, 154, 107, 0.1), rgba(193, 154, 107, 0.05)); backdrop-filter: blur(20px); border: 1px solid rgba(193, 154, 107, 0.2);">
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">Dziennik Aktywności</h3>
+                <button onclick="loadDashboardActivityLogs()" class="btn-admin px-4 py-2">
+                  <i class="fa-solid fa-refresh mr-2"></i>
+                  Odśwież
+                </button>
+              </div>
+
+              <div id="admin-activity-log" class="space-y-4">
+                <!-- Logi aktywności będą ładowane dynamicznie -->
+                <div class="text-center text-zinc-500 py-8">
+                  <i class="fa-solid fa-spinner fa-spin text-2xl mb-4 text-zinc-600"></i>
+                  <h4 class="text-lg font-semibold mb-2">Ładowanie dziennika...</h4>
+                  <p class="text-sm">Proszę czekać</p>
                 </div>
-                <div class="text-center">
-                  <div
-                    class="text-2xl font-bold text-green-400"
-                    id="contact-unread-messages"
-                  >
-                    0
-                  </div>
-                  <div class="text-sm text-zinc-400">Nieuzytane</div>
-                </div>
-                <div class="text-center">
-                  <div
-                    class="text-2xl font-bold text-blue-400"
-                    id="contact-this-week"
-                  >
-                    0
-                  </div>
-                  <div class="text-sm text-zinc-400">W tym tygodniu</div>
-                </div>
-                <div class="text-center">
-                  <div
-                    class="text-2xl font-bold text-yellow-400"
-                    id="contact-pending-replies"
-                  >
-                    0
-                  </div>
-                  <div class="text-sm text-zinc-400">Oczekujące na odpowiedź</div>
-                </div>
-      </div>
-    </div>
+              </div>
+            </div>
 
             <!-- Przyciski akcji -->
             <div class="mt-8 flex justify-center">
@@ -2006,6 +2028,13 @@
             >
               <i class="fa-solid fa-edit mr-1"></i>
               Edytuj
+            </button>
+            <button
+              onclick="openChatFromUserDetails()"
+              class="btn-admin text-sm px-3 py-1"
+            >
+              <i class="fa-solid fa-comments mr-1"></i>
+              PRZEJDŹ DO CZATU
             </button>
           <button
             onclick="closeUserDetails()"
@@ -2398,8 +2427,183 @@
       </div>
     </div>
 
-    <!-- Session Manager -->
-    <script src="../session-manager.js"></script>
+    <!-- Modal szybkich odpowiedzi -->
+    <div
+      id="quick-reply-modal"
+      class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl"
+    >
+      <div class="admin-card max-w-2xl w-full">
+        <div class="flex justify-between items-center mb-6">
+          <h2 id="quick-reply-modal-title" class="text-2xl font-bold coyote-text">Nowy szablon odpowiedzi</h2>
+          <button
+            onclick="closeQuickReplyModal()"
+            class="text-zinc-400 hover:text-white"
+          >
+            <i class="fa-solid fa-times text-xl"></i>
+          </button>
+        </div>
+
+        <form id="quick-reply-form" class="space-y-6">
+          <input type="hidden" id="quick-reply-id" />
+
+          <div>
+            <label class="block text-sm font-medium mb-2">Tytuł szablonu *</label>
+            <input
+              type="text"
+              id="quick-reply-title"
+              placeholder="np. Przywitanie, Pytanie o szczegóły..."
+              class="w-full"
+              required
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-2">Treść odpowiedzi *</label>
+            <textarea
+              id="quick-reply-content"
+              placeholder="Wpisz treść odpowiedzi..."
+              class="w-full"
+              rows="6"
+              required
+            ></textarea>
+            <p class="text-xs text-zinc-500 mt-1">
+              Ta treść zostanie użyta jako szablon odpowiedzi w zakładce Wiadomości
+            </p>
+          </div>
+
+          <div class="flex justify-end space-x-4 pt-6 border-t border-zinc-700">
+            <button
+              type="button"
+              onclick="closeQuickReplyModal()"
+              class="px-6 py-2 border border-zinc-600 rounded-lg hover:bg-zinc-700 transition"
+            >
+              Anuluj
+            </button>
+            <button type="submit" class="btn-admin">
+              <i class="fa-solid fa-save mr-2"></i>
+              <span id="quick-reply-submit-text">Zapisz szablon</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Dropdown szybkich odpowiedzi -->
+    <div
+      id="quick-replies-dropdown"
+      class="fixed z-[99999] hidden bg-zinc-800 border border-zinc-600 rounded-lg shadow-lg max-w-sm max-h-80 overflow-y-auto"
+    >
+      <div class="p-2">
+        <div class="text-xs text-zinc-400 px-2 py-1 border-b border-zinc-700 mb-2">
+          Szybkie odpowiedzi
+        </div>
+        <div id="quick-replies-dropdown-list" class="space-y-1">
+          <!-- Szablony będą ładowane dynamicznie -->
+          <div class="text-center text-zinc-500 py-4">
+            <i class="fa-solid fa-spinner fa-spin text-sm mb-2"></i>
+            <div class="text-xs">Ładowanie...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal zarządzania kategoriami -->
+    <div
+      id="category-modal"
+      class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl"
+    >
+      <div class="admin-card max-w-lg w-full">
+        <div class="flex justify-between items-center mb-6">
+          <h2 id="category-modal-title" class="text-2xl font-bold coyote-text">Nowa kategoria</h2>
+          <button
+            onclick="closeCategoryModal()"
+            class="text-zinc-400 hover:text-white"
+          >
+            <i class="fa-solid fa-times text-xl"></i>
+          </button>
+        </div>
+
+        <form id="category-form" class="space-y-6">
+          <input type="hidden" id="category-id" />
+
+          <div>
+            <label class="block text-sm font-medium mb-2">Nazwa kategorii *</label>
+            <input
+              type="text"
+              id="category-name"
+              placeholder="np. Zamówienia, Oferty, Inne..."
+              class="w-full"
+              required
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-2">Kolor</label>
+            <div class="flex space-x-2">
+              <input
+                type="color"
+                id="category-color"
+                value="#3B82F6"
+                class="w-16 h-10 rounded border border-zinc-600"
+              />
+              <input
+                type="text"
+                id="category-color-text"
+                placeholder="#3B82F6"
+                class="flex-1"
+                readonly
+              />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-2">Ikona (FontAwesome)</label>
+            <div class="grid grid-cols-8 gap-2" id="icon-picker">
+              <button type="button" class="icon-option p-2 border border-zinc-600 rounded hover:border-coyote transition" data-icon="fa-shopping-cart">
+                <i class="fa-solid fa-shopping-cart"></i>
+              </button>
+              <button type="button" class="icon-option p-2 border border-zinc-600 rounded hover:border-coyote transition" data-icon="fa-tag">
+                <i class="fa-solid fa-tag"></i>
+              </button>
+              <button type="button" class="icon-option p-2 border border-zinc-600 rounded hover:border-coyote transition" data-icon="fa-circle">
+                <i class="fa-solid fa-circle"></i>
+              </button>
+              <button type="button" class="icon-option p-2 border border-zinc-600 rounded hover:border-coyote transition" data-icon="fa-question">
+                <i class="fa-solid fa-question"></i>
+              </button>
+              <button type="button" class="icon-option p-2 border border-zinc-600 rounded hover:border-coyote transition" data-icon="fa-info">
+                <i class="fa-solid fa-info"></i>
+              </button>
+              <button type="button" class="icon-option p-2 border border-zinc-600 rounded hover:border-coyote transition" data-icon="fa-envelope">
+                <i class="fa-solid fa-envelope"></i>
+              </button>
+              <button type="button" class="icon-option p-2 border border-zinc-600 rounded hover:border-coyote transition" data-icon="fa-phone">
+                <i class="fa-solid fa-phone"></i>
+              </button>
+              <button type="button" class="icon-option p-2 border border-zinc-600 rounded hover:border-coyote transition" data-icon="fa-cog">
+                <i class="fa-solid fa-cog"></i>
+              </button>
+            </div>
+            <input type="hidden" id="category-icon" value="fa-circle" />
+          </div>
+
+          <div class="flex justify-end space-x-4 pt-6 border-t border-zinc-700">
+            <button
+              type="button"
+              onclick="closeCategoryModal()"
+              class="px-6 py-2 border border-zinc-600 rounded-lg hover:bg-zinc-700 transition"
+            >
+              Anuluj
+            </button>
+            <button type="submit" class="btn-admin">
+              <i class="fa-solid fa-save mr-2"></i>
+              Zapisz kategorię
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
 
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -2408,6 +2612,9 @@
         signInWithEmailAndPassword,
         signOut,
         onAuthStateChanged,
+        setPersistence,
+        browserSessionPersistence,
+        browserLocalPersistence,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
       import {
         getFirestore,
@@ -2438,6 +2645,12 @@
 
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
+
+      // Ustaw persistence na podstawie zapisanych ustawień Remember Me
+      const savedRememberMe = localStorage.getItem('strzelca_remember_me') === 'true';
+      const initialPersistence = savedRememberMe ? browserLocalPersistence : browserSessionPersistence;
+      await setPersistence(auth, initialPersistence);
+
       const db = getFirestore(app);
 
       let currentUser = null;
@@ -2450,66 +2663,23 @@
       let activityLogsListener = null;
       let conversationsAutoRefreshInterval = null;
 
-      // Local admin credentials are now stored securely in the database
-      // Authentication is handled via /api/admin/verify endpoint
+      // Dźwięk powiadomienia dla nowych wiadomości
+      const notificationSound = new Audio('/message.mp3');
+      let lastUnreadCount = null;
 
-      // Bezpieczna funkcja hashowania używająca PBKDF2-SHA256 (Web Crypto API)
-      async function hashPassword(password, salt, iterations = 100000) {
-          const encoder = new TextEncoder();
-        const passwordBuffer = encoder.encode(password);
-        const saltBuffer = encoder.encode(salt);
-        const keyLength = 32; // 256 bits
 
-        const key = await crypto.subtle.importKey(
-          'raw',
-          passwordBuffer,
-          { name: 'PBKDF2' },
-          false,
-          ['deriveBits']
-        );
 
-        const derivedBits = await crypto.subtle.deriveBits(
-          {
-            name: 'PBKDF2',
-            salt: saltBuffer,
-            iterations: iterations,
-            hash: 'SHA-256'
-          },
-          key,
-          keyLength * 8
-        );
-
-        const hashArray = Array.from(new Uint8Array(derivedBits));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      }
-
-      // Sprawdzanie lokalnego logowania administratora poprzez API
-      async function checkLocalAdmin(login, password) {
+      // Funkcja sprawdzania roli administratora
+      async function checkAdminRole(user) {
         try {
-          const response = await fetch('/api/admin/verify', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              username: login,
-              password: password
-            })
-          });
-
-          const result = await response.json();
-
-          if (result.success) {
-            return result.admin;
-          } else {
-            console.log('Admin verification failed:', result.error);
-            return false;
-          }
+          // Sprawdź czy UID użytkownika odpowiada admin UID z Firestore Rules
+          const adminUID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
+          return user.uid === adminUID;
         } catch (error) {
-          console.error('Error verifying admin credentials:', error);
+          console.error("Error checking admin role:", error);
           return false;
         }
-        }
+      }
 
       // Funkcja logowania aktywności
       async function logActivity(
@@ -2530,9 +2700,15 @@
             userAgent: navigator.userAgent,
           };
 
-          await addDoc(collection(db, "userActivity"), activityData);
+          await addDoc(collection(db, "activityLogs"), activityData);
         } catch (error) {
-          console.error("Error logging activity:", error);
+          // Dla błędów permission-denied, zapis do userActivity wymaga specyficznych reguł Firestore
+          if (error.code === 'permission-denied') {
+            console.warn("Permission denied when logging activity to Firestore - check Firestore security rules");
+            // Nie przerywamy wykonania innych skryptów
+          } else {
+            console.error("Error logging activity:", error);
+          }
           // Nie pokazujemy błędu użytkownikowi, żeby nie przeszkadzać w normalnej pracy
         }
       }
@@ -2542,6 +2718,13 @@
         const statusEl = document.getElementById("login-status");
         statusEl.innerHTML = message;
         statusEl.className = `mt-6 p-4 rounded-lg text-center text-sm ${isError ? "bg-red-900/50 text-red-300 border border-red-700" : "bg-green-900/50 text-green-300 border border-green-700"}`;
+        if (isError) {
+          statusEl.style.color = "#dc2626"; // Specific red color for errors
+          statusEl.style.fontWeight = "bold"; // Make error messages bold
+        } else {
+          statusEl.style.color = ""; // Reset to default
+          statusEl.style.fontWeight = ""; // Reset font weight
+        }
         statusEl.style.display = "block";
 
         setTimeout(() => {
@@ -2554,20 +2737,6 @@
         console.log(`${type}: ${message}`);
       }
 
-      // Sprawdzanie roli administratora
-      async function checkAdminRole(user) {
-        try {
-          const userDoc = await getDoc(doc(db, "userProfiles", user.uid));
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            return userData.role === "admin";
-          }
-          return false;
-        } catch (error) {
-          console.error("Error checking admin role:", error);
-          return false;
-        }
-      }
 
       // Aktualizacja wyświetlania nazwy administratora
       function updateAdminDisplay(user) {
@@ -2577,6 +2746,12 @@
 
       // Nawigacja między zakładkami
       function switchTab(tabName) {
+        window.scrollTo(0,0);
+        document.getElementById("main-content").scrollTop = 0;
+
+        const mainContent = document.getElementById("main-content");
+        if (mainContent) mainContent.scrollTo({top: 0, behavior: "instant"});
+
         document.querySelectorAll(".nav-item").forEach((item) => {
           item.classList.remove("active");
         });
@@ -2652,7 +2827,8 @@
             // Brak specjalnej funkcji ładowania dla tej zakładki
             break;
           case "kontakt":
-            // Brak specjalnej funkcji ładowania dla tej zakładki
+            loadQuickReplies();
+            loadCategories();
             break;
           case "settings":
             loadSettings();
@@ -2663,6 +2839,8 @@
         if (tabName !== "messages") {
           stopConversationsAutoRefresh();
         }
+
+        document.getElementById("main-content").scrollTop = 0;
       }
 
 
@@ -2781,79 +2959,20 @@
 
           const login = document.getElementById("admin-email").value.trim();
           const password = document.getElementById("admin-password").value;
-          const rememberMe = document.getElementById("admin-remember").checked;
 
           if (!login || !password) {
             showStatus("Wprowadź login i hasło administratora.", true);
             return;
           }
 
+          // Walidacja formatu email
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(login)) {
+            showStatus("Wprowadź prawidłowy adres email.", true);
+            return;
+          }
+
           try {
-            // Najpierw sprawdź lokalne konto administratora
-            const adminData = await checkLocalAdmin(login, password);
-            if (adminData) {
-              try {
-              // Utwórz fikcyjnego użytkownika dla lokalnego admina
-              currentUser = {
-                uid: `local-admin-${adminData.id}`,
-                email: login,
-                displayName: `${login}@Administrator`,
-                isLocalAdmin: true,
-                originalLogin: login, // Zachowaj oryginalny login dla wyświetlania
-                adminRole: adminData.role,
-                adminId: adminData.id
-              };
-
-                // Zaloguj udane logowanie administratora
-                await logActivity("system", "ADMIN_LOGIN_SUCCESS", {
-                  login: login,
-                  method: "local_admin",
-                  ip: "unknown", // Można dodać wykrywanie IP jeśli potrzebne
-                  userAgent: navigator.userAgent,
-                });
-
-              showStatus("Logowanie lokalnego administratora pomyślne.");
-              updateAdminDisplay(currentUser);
-              startSessionTimeUpdater();
-              document.getElementById("login-section").classList.add("hidden");
-              document.getElementById("admin-panel").classList.remove("hidden");
-
-                // Zawsze zapisz sesję w sessionStorage (dla session manager)
-                  const sessionData = {
-                  uid: "local-admin",
-                  email: login,
-                  login: login,
-                  displayName: `${login}@Administrator`,
-                  loginTime: Date.now(),
-                    userAgent: navigator.userAgent,
-                    isLocalAdmin: true,
-                  expiresAt: Date.now() + (rememberMe ? 7 * 24 * 60 * 60 * 1000 : 2 * 60 * 60 * 1000), // 7 dni lub 2 godziny
-                };
-
-                // Dla lokalnych administratorów zawsze zapisuj w localStorage
-                // (sessionStorage jest czyszczony po odświeżeniu strony)
-                localStorage.setItem("admin_session", JSON.stringify(sessionData));
-
-                // Dodatkowo zapisz w sessionStorage jeśli rememberMe (zachowaj kompatybilność)
-                if (rememberMe) {
-                  sessionStorage.setItem("admin_session", JSON.stringify(sessionData));
-              }
-
-              switchTab("dashboard");
-
-                // Sprawdź status usług od razu po zalogowaniu
-                setTimeout(() => {
-                  checkMainServicesStatus();
-                }, 1000);
-
-                return;
-              } catch (adminSetupError) {
-                console.error('Admin setup error:', adminSetupError);
-                alert('Błąd podczas konfiguracji panelu admin: ' + adminSetupError.message);
-                showStatus("Błąd podczas konfiguracji panelu administratora.", true);
-              return;
-              }
-            }
             const userCredential = await signInWithEmailAndPassword(
               auth,
               login,
@@ -2874,7 +2993,7 @@
                 userAgent: navigator.userAgent,
               });
               showStatus(
-                "Brak uprawnień administratora. Tylko administratorzy mają dostęp do panelu.",
+                "Błędne dane. nieupoważnionym wstęp wzbroniony",
                 true,
               );
               return;
@@ -2890,10 +3009,13 @@
             });
 
             showStatus("Logowanie administratora (Firebase) pomyślne.");
+
+            // Uruchom odliczanie sesji natychmiast po zalogowaniu
+            updateSessionUI();
           } catch (error) {
             console.error("Login error:", error);
 
-            let errorMessage = "Błędne dane logowania<br>NIEUPOWAŻNIONYM WSTĘP WZBRONIONY.";
+            let errorMessage = "<span style='color: #dc2626; font-weight: bold;'>Błędne dane. Nieupoważnionym wstęp wzbroniony.</span>";
             let errorReason = "unknown_error";
 
             if (error.code === "auth/user-not-found") {
@@ -2925,20 +3047,18 @@
       // Wylogowanie administratora
       window.logoutAdmin = async () => {
         try {
-          // Wyloguj z Firebase jeśli to użytkownik Firebase
-          if (currentUser && !currentUser.isLocalAdmin) {
-            await signOut(auth);
-          }
+          await signOut(auth);
 
-          // Wyczyść dane lokalnego administratora
           currentUser = null;
 
-          // Zatrzymaj aktualizację czasu sesji
-          stopSessionTimeUpdater();
+          // Zatrzymaj aktualizację UI sesji
+          if (window.sessionInterval) {
+            clearInterval(window.sessionInterval);
+            window.sessionInterval = null;
+          }
 
-          // Wyczyść sesję administratora
-          sessionStorage.removeItem('admin_session');
-          localStorage.removeItem('admin_session');
+          // Wyczyść wszystkie dane sesji z localStorage
+          localStorage.clear();
 
           showNotification("Administrator wylogowany.");
 
@@ -2950,46 +3070,145 @@
         }
       };
 
-      // Timer do aktualizacji czasu sesji co minutę
-      let sessionTimeUpdater = null;
-      function startSessionTimeUpdater() {
-        if (sessionTimeUpdater) clearInterval(sessionTimeUpdater);
-        sessionTimeUpdater = setInterval(updateSessionTimeDisplay, 60000); // co minutę
-        updateSessionTimeDisplay(); // aktualizacja natychmiastowa
-      }
 
-      function stopSessionTimeUpdater() {
-        if (sessionTimeUpdater) {
-          clearInterval(sessionTimeUpdater);
-          sessionTimeUpdater = null;
+      // =============================================================================
+      // SESSION UI MANAGEMENT
+      // =============================================================================
+
+      // Funkcja aktualizująca wyświetlanie czasu sesji
+      function updateSessionUI() {
+        const timeElement = document.getElementById("admin-session-time-compact");
+        if (!timeElement) return;
+
+        // Najpierw sprawdź expiresAt w localStorage
+        let expiresAtStr = localStorage.getItem('session_expires_at');
+        if (!expiresAtStr) {
+          // Jeśli nie istnieje, ale użytkownik Firebase jest zalogowany, zainicjalizuj nową sesję
+          if (currentUser) {
+            const rememberMe = localStorage.getItem('strzelca_remember_me') === 'true';
+            const sessionDuration = rememberMe ? 7 * 24 * 60 * 60 * 1000 : 2 * 60 * 60 * 1000; // 1 tydzień lub 2 godziny
+            const newExpiresAt = Date.now() + sessionDuration;
+            localStorage.setItem('session_expires_at', newExpiresAt.toString());
+            expiresAtStr = newExpiresAt.toString();
+            console.log(`Initialized new session expiresAt: ${new Date(newExpiresAt).toLocaleString()}`);
+          } else {
+            // Brak użytkownika i expiresAt - pokaż "Brak danych"
+            timeElement.textContent = "Brak danych";
+            timeElement.style.color = "#ef4444"; // red
+            return;
+          }
+        }
+
+        const expiresAt = parseInt(expiresAtStr);
+        const now = Date.now();
+        const remainingMs = expiresAt - now;
+
+        // Jeśli czas wygasł
+        if (remainingMs <= 0) {
+          timeElement.textContent = "Wygasła";
+          timeElement.style.color = "#ef4444"; // red
+          // Automatycznie wyloguj
+          if (typeof window.logoutAdmin === 'function') {
+            window.logoutAdmin();
+          }
+          return;
+        }
+
+        // Formatuj czas pozostały
+        const remainingSec = Math.floor(remainingMs / 1000);
+        const hours = Math.floor(remainingSec / 3600);
+        const minutes = Math.floor((remainingSec % 3600) / 60);
+
+        let timeText = "";
+        if (hours > 0) {
+          timeText = `${hours}h ${minutes}min`;
+        } else {
+          timeText = `${minutes}min`;
+        }
+
+        timeElement.textContent = timeText;
+
+        // Kolor w zależności od pozostałego czasu
+        if (remainingSec < 300) { // mniej niż 5 minut
+          timeElement.style.color = "#ef4444"; // red
+        } else if (remainingSec < 1800) { // mniej niż 30 minut
+          timeElement.style.color = "#f59e0b"; // orange
+        } else {
+          timeElement.style.color = "#10b981"; // green
         }
       }
 
-      // Monitorowanie stanu autoryzacji
+      // Funkcja uruchamiająca aktualizację UI sesji
+      function startSessionTimeUpdater() {
+        if (window.sessionInterval) {
+          clearInterval(window.sessionInterval);
+          window.sessionInterval = null;
+        } // Zatrzymaj jeśli już działa
+        window.sessionInterval = setInterval(updateSessionUI, 10000); // Co 10 sekund
+        updateSessionUI(); // Natychmiastowa aktualizacja
+      }
+
       onAuthStateChanged(auth, async (user) => {
         if (user) {
-          // Sprawdź ponownie rolę administratora (na wypadek zmian)
-          const isAdmin = await checkAdminRole(user);
-          if (!isAdmin) {
-            await signOut(auth);
-            showStatus("Utracono uprawnienia administratora.", true);
-            return;
+
+          // Sprawdź rolę administratora w Firestore
+          try {
+            const userDoc = await getDoc(doc(db, "userProfiles", user.uid));
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              if (userData.role === "admin") {
+                currentUser = user;
+                updateAdminDisplay(user);
+
+                // Uruchom aktualizację UI sesji
+                startSessionTimeUpdater();
+
+                document.getElementById("login-section").classList.add("hidden");
+                document.getElementById("admin-panel").classList.remove("hidden");
+
+                // Załaduj dashboard
+                switchTab("dashboard");
+                return;
+              }
+            }
+          } catch (error) {
+            console.error("Error checking admin role:", error);
           }
 
-          currentUser = user;
-          updateAdminDisplay(user);
-          startSessionTimeUpdater();
-
-          document.getElementById("login-section").classList.add("hidden");
-          document.getElementById("admin-panel").classList.remove("hidden");
-
-          // Załaduj dashboard
-          switchTab("dashboard");
+          // Jeśli użytkownik nie ma roli admin lub wystąpił błąd
+          await signOut(auth);
+          showStatus("Utracono uprawnienia administratora.", true);
+          if (window.sessionInterval) {
+            clearInterval(window.sessionInterval);
+            window.sessionInterval = null;
+          } // Zatrzymaj UI updater
         } else {
           currentUser = null;
           document.getElementById("login-section").classList.remove("hidden");
           document.getElementById("admin-panel").classList.add("hidden");
+          if (window.sessionInterval) {
+            clearInterval(window.sessionInterval);
+            window.sessionInterval = null;
+          } // Zatrzymaj UI updater przy wylogowaniu
         }
+      });
+
+      // =============================================================================
+      // GLOBAL ACTIVITY EVENT LISTENERS (Sliding Expiration)
+      // =============================================================================
+      // Te listenery zapewniają, że sesja jest przedłużana przy aktywności administratora
+      const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'click'];
+
+      function handleUserActivity() {
+        // Wywołaj extendSession() aby przedłużyć sesję przy każdej aktywności
+        if (typeof window.sessionManager !== 'undefined' && window.sessionManager) {
+          window.sessionManager.extendSession();
+        }
+      }
+
+      // Dodaj listenery dla wszystkich zdarzeń aktywności
+      activityEvents.forEach(eventType => {
+        document.addEventListener(eventType, handleUserActivity, { passive: true });
       });
 
       // Funkcja odświeżania dashboardu z animacją ładowania
@@ -3027,16 +3246,32 @@
 
       // Udostępnij funkcję globalnie
       window.refreshDashboardWithLoading = refreshDashboardWithLoading;
+      window.loadDashboardActivityLogs = loadDashboardActivityLogs;
 
       // Funkcje ładowania danych
       async function loadDashboardStats() {
+        // Sprawdź czy użytkownik jest uwierzytelniony i ma rolę admin
+        if (!currentUser) {
+          console.warn("Brak uwierzytelnionego użytkownika - pomijanie ładowania statystyk");
+          return;
+        }
+
         try {
+          const isAdmin = await checkAdminRole(currentUser);
+          if (!isAdmin) {
+            console.warn("Użytkownik nie ma roli admin - pomijanie ładowania statystyk");
+            return;
+          }
+
           // Ładowanie statusu stron
           await checkSitesStatus();
 
           // Ładowanie statystyk aktywności
           await loadActivityStats();
           await loadContactFormsCount();
+
+          // Ładowanie dziennika aktywności dla dashboardu
+          await loadDashboardActivityLogs();
 
           // Ładowanie statystyk Google Analytics
           await fetchGAStatistics();
@@ -3053,6 +3288,118 @@
         } catch (error) {
           console.error("Error loading dashboard stats:", error);
           showNotification("Błąd ładowania danych dashboard.", "error");
+        }
+      }
+
+      // Funkcja ładowania dziennika aktywności dla dashboardu
+      async function loadDashboardActivityLogs() {
+        const container = document.getElementById('admin-activity-log');
+        if (!container) return;
+
+        try {
+          const response = await fetch('/api/admin/activity-logs?limit=10');
+          if (response.ok) {
+            const data = await response.json();
+            const logs = data.logs || [];
+
+            if (logs.length === 0) {
+              container.innerHTML = `
+                <div class="text-center text-zinc-500 py-8">
+                  <i class="fa-solid fa-list text-2xl mb-4 text-zinc-600"></i>
+                  <h4 class="text-lg font-semibold mb-2">Brak aktywności</h4>
+                  <p class="text-sm">Dziennik aktywności jest pusty</p>
+                </div>
+              `;
+              return;
+            }
+
+            const logsHtml = logs
+              .map((log) => {
+                const timestamp = log.timestamp ? new Date(log.timestamp.toDate ? log.timestamp.toDate() : log.timestamp) : new Date();
+                const timeAgo = getTimeAgo ? getTimeAgo(timestamp) : timestamp.toLocaleString("pl-PL");
+                const activityLog = renderActivityLog ? renderActivityLog(log) : { description: log.action || 'Aktywność', content: log.details || '' };
+
+                return `
+                  <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="showEventDetails ? showEventDetails('${log.id}') : null">
+                    <div class="flex justify-between items-start mb-2">
+                      <div class="font-semibold text-white">${log.user || "System"}</div>
+                      <div class="text-xs text-zinc-500">${timeAgo}</div>
+                    </div>
+                    <div class="text-sm text-zinc-300">${activityLog.description}</div>
+                    <div class="text-xs text-zinc-500 mt-1">${activityLog.content}</div>
+                  </div>
+                `;
+              })
+              .join("");
+
+            container.innerHTML = logsHtml;
+          } else {
+            container.innerHTML = `
+              <div class="text-center text-red-400 py-8">
+                <i class="fa-solid fa-exclamation-triangle text-2xl mb-4"></i>
+                <h4 class="text-lg font-semibold mb-2">Błąd ładowania</h4>
+                <p class="text-sm">Nie udało się załadować dziennika aktywności</p>
+              </div>
+            `;
+          }
+        } catch (apiError) {
+          console.warn('API fetch failed, trying direct Firestore fallback:', apiError);
+
+          // Fallback: Pobierz dane bezpośrednio z Firestore
+          try {
+            const activityLogsQuery = query(
+              collection(db, "activityLogs"),
+              orderBy("timestamp", "desc"),
+              limit(10)
+            );
+            const snapshot = await getDocs(activityLogsQuery);
+            const logs = snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data(),
+              timestamp: doc.data().timestamp
+            }));
+
+            if (logs.length === 0) {
+              container.innerHTML = `
+                <div class="text-center text-zinc-500 py-8">
+                  <i class="fa-solid fa-list text-2xl mb-4 text-zinc-600"></i>
+                  <h4 class="text-lg font-semibold mb-2">Brak aktywności</h4>
+                  <p class="text-sm">Dziennik aktywności jest pusty</p>
+                </div>
+              `;
+              return;
+            }
+
+            const logsHtml = logs
+              .map((log) => {
+                const timestamp = log.timestamp ? new Date(log.timestamp.toDate ? log.timestamp.toDate() : log.timestamp) : new Date();
+                const timeAgo = getTimeAgo ? getTimeAgo(timestamp) : timestamp.toLocaleString("pl-PL");
+                const activityLog = renderActivityLog ? renderActivityLog(log) : { description: log.action || 'Aktywność', content: log.details || '' };
+
+                return `
+                  <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="showEventDetails ? showEventDetails('${log.id}') : null">
+                    <div class="flex justify-between items-start mb-2">
+                      <div class="font-semibold text-white">${log.user || "System"}</div>
+                      <div class="text-xs text-zinc-500">${timeAgo}</div>
+                    </div>
+                    <div class="text-sm text-zinc-300">${activityLog.description}</div>
+                    <div class="text-xs text-zinc-500 mt-1">${activityLog.content}</div>
+                  </div>
+                `;
+              })
+              .join("");
+
+            container.innerHTML = logsHtml;
+          } catch (firestoreError) {
+            console.error('Both API and Firestore fallback failed:', apiError, firestoreError);
+            container.innerHTML = `
+              <div class="text-center text-red-400 py-8">
+                <i class="fa-solid fa-exclamation-triangle text-2xl mb-4"></i>
+                <h4 class="text-lg font-semibold mb-2">Błąd ładowania</h4>
+                <p class="text-sm">Nie udało się załadować danych z API ani Firestore</p>
+              </div>
+            `;
+          }
         }
       }
 
@@ -3076,24 +3423,6 @@
             ...doc.data(),
           }));
 
-          // Dodaj administratora lokalnego jeśli jest zalogowany
-          if (currentUser && currentUser.isLocalAdmin) {
-            // Sprawdź czy lokalny admin już nie jest na liście
-            const localAdminExists = usersList.find(
-              (user) => user.id === currentUser.uid,
-            );
-            if (!localAdminExists) {
-              usersList.unshift({
-                id: currentUser.uid,
-                displayName: currentUser.displayName,
-                email: currentUser.email,
-                role: "admin",
-                status: "active",
-                createdAt: new Date(),
-                isLocalAdmin: true,
-              });
-            }
-          }
 
           renderUsersList();
         } catch (error) {
@@ -3160,22 +3489,16 @@
 
             const decryptedUser = {
               ...user,
-              phone: user.isLocalAdmin
-                ? user.phone || ""
-                : user.phone
-                  ? atob(user.phone)
-                  : "",
+              phone: user.phone
+                ? atob(user.phone)
+                : "",
               address: {
-                street: user.isLocalAdmin
-                  ? user.address?.street || ""
-                  : user.address?.street
-                    ? atob(user.address.street)
-                    : "",
-                city: user.isLocalAdmin
-                  ? user.address?.city || ""
-                  : user.address?.city
-                    ? atob(user.address.city)
-                    : "",
+                street: user.address?.street
+                  ? atob(user.address.street)
+                  : "",
+                city: user.address?.city
+                  ? atob(user.address.city)
+                  : "",
               },
             };
 
@@ -3227,62 +3550,33 @@
         try {
           let user;
 
-          // Sprawdź czy to administrator lokalny
-          if (
-            currentUser &&
-            currentUser.isLocalAdmin &&
-            userId === currentUser.uid
-          ) {
-            user = {
-              id: userId,
-              displayName: currentUser.displayName,
-              email: currentUser.email,
-              role: "admin",
-              status: "active",
-              createdAt: new Date(),
-              isLocalAdmin: true,
-            };
-          } else {
           const userDoc = await getDoc(doc(db, "userProfiles", userId));
           if (!userDoc.exists()) return;
-            user = { id: userId, ...userDoc.data() };
-          }
+          user = { id: userId, ...userDoc.data() };
 
           currentEditingUser = user;
 
           const decryptedUser = {
             ...user,
-            phone: user.isLocalAdmin
-              ? user.phone || ""
-              : user.phone
-                ? atob(user.phone)
-                : "",
-            parcelLocker: user.isLocalAdmin
-              ? user.parcelLocker || ""
-              : user.parcelLocker
-                ? atob(user.parcelLocker)
-                : "",
+            phone: user.phone
+              ? atob(user.phone)
+              : "",
+            parcelLocker: user.parcelLocker
+              ? atob(user.parcelLocker)
+              : "",
             address: {
-              street: user.isLocalAdmin
-                ? user.address?.street || ""
-                : user.address?.street
-                  ? atob(user.address.street)
-                  : "",
-              buildingNumber: user.isLocalAdmin
-                ? user.address?.buildingNumber || ""
-                : user.address?.buildingNumber
-                  ? atob(user.address.buildingNumber)
-                  : "",
-              postalCode: user.isLocalAdmin
-                ? user.address?.postalCode || ""
-                : user.address?.postalCode
-                  ? atob(user.address.postalCode)
-                  : "",
-              city: user.isLocalAdmin
-                ? user.address?.city || ""
-                : user.address?.city
-                  ? atob(user.address.city)
-                  : "",
+              street: user.address?.street
+                ? atob(user.address.street)
+                : "",
+              buildingNumber: user.address?.buildingNumber
+                ? atob(user.address.buildingNumber)
+                : "",
+              postalCode: user.address?.postalCode
+                ? atob(user.address.postalCode)
+                : "",
+              city: user.address?.city
+                ? atob(user.address.city)
+                : "",
             },
           };
 
@@ -3334,6 +3628,13 @@
         document.getElementById("user-details-modal").classList.add("hidden");
       };
 
+      window.openChatFromUserDetails = () => {
+        if (!currentEditingUser) return;
+        switchTab('messages');
+        openMessageChat(currentEditingUser.id, currentEditingUser.displayName, currentEditingUser.email);
+        closeUserDetails();
+      };
+
       window.switchUserTab = (tabName) => {
         document.querySelectorAll(".user-tab-btn").forEach((btn) => {
           btn.classList.remove("active", "bg-coyote", "text-black");
@@ -3353,51 +3654,35 @@
       async function loadUserDetails() {
         if (!currentEditingUser) return;
 
-        // Ukryj przycisk edycji dla administratora lokalnego
+        // Przycisk edycji zawsze widoczny
         const editButton = document.querySelector(
           '[onclick="editUserDetails()"]',
         );
         if (editButton) {
-          if (currentEditingUser.isLocalAdmin) {
-            editButton.style.display = "none";
-          } else {
-            editButton.style.display = "inline-block";
-          }
+          editButton.style.display = "inline-block";
         }
 
         const decryptedUser = {
           ...currentEditingUser,
-          phone: currentEditingUser.isLocalAdmin
-            ? currentEditingUser.phone || ""
-            : currentEditingUser.phone
-              ? atob(currentEditingUser.phone)
-              : "",
-          parcelLocker: currentEditingUser.isLocalAdmin
-            ? currentEditingUser.parcelLocker || ""
-            : currentEditingUser.parcelLocker
-              ? atob(currentEditingUser.parcelLocker)
-              : "",
+          phone: currentEditingUser.phone
+            ? atob(currentEditingUser.phone)
+            : "",
+          parcelLocker: currentEditingUser.parcelLocker
+            ? atob(currentEditingUser.parcelLocker)
+            : "",
           address: {
-            street: currentEditingUser.isLocalAdmin
-              ? currentEditingUser.address?.street || ""
-              : currentEditingUser.address?.street
-                ? atob(currentEditingUser.address.street)
-                : "",
-            buildingNumber: currentEditingUser.isLocalAdmin
-              ? currentEditingUser.address?.buildingNumber || ""
-              : currentEditingUser.address?.buildingNumber
-                ? atob(currentEditingUser.address.buildingNumber)
-                : "",
-            postalCode: currentEditingUser.isLocalAdmin
-              ? currentEditingUser.address?.postalCode || ""
-              : currentEditingUser.address?.postalCode
-                ? atob(currentEditingUser.address.postalCode)
-                : "",
-            city: currentEditingUser.isLocalAdmin
-              ? currentEditingUser.address?.city || ""
-              : currentEditingUser.address?.city
-                ? atob(currentEditingUser.address.city)
-                : "",
+            street: currentEditingUser.address?.street
+              ? atob(currentEditingUser.address.street)
+              : "",
+            buildingNumber: currentEditingUser.address?.buildingNumber
+              ? atob(currentEditingUser.address.buildingNumber)
+              : "",
+            postalCode: currentEditingUser.address?.postalCode
+              ? atob(currentEditingUser.address.postalCode)
+              : "",
+            city: currentEditingUser.address?.city
+              ? atob(currentEditingUser.address.city)
+              : "",
           },
         };
 
@@ -3496,7 +3781,7 @@
 
           // Pobierz aktywność użytkownika
           const q = query(
-            collection(db, "userActivity"),
+            collection(db, "activityLogs"),
             where("userId", "==", currentEditingUser.id),
             orderBy("timestamp", "desc"),
             limit(50),
@@ -3510,7 +3795,7 @@
 
           // Pobierz także aktywność gdzie użytkownik jest celem (np. został zablokowany przez admina)
           const targetQuery = query(
-            collection(db, "userActivity"),
+            collection(db, "activityLogs"),
             where("targetUserId", "==", currentEditingUser.id),
             orderBy("timestamp", "desc"),
             limit(50),
@@ -3664,48 +3949,27 @@
       function showUserEditModal() {
         if (!currentEditingUser) return;
 
-        // Sprawdź czy to administrator lokalny
-        if (currentEditingUser.isLocalAdmin) {
-          showNotification(
-            "Nie można edytować administratora lokalnego.",
-            "error",
-          );
-          return;
-        }
-
         const decryptedUser = {
           ...currentEditingUser,
-          phone: currentEditingUser.isLocalAdmin
-            ? currentEditingUser.phone || ""
-            : currentEditingUser.phone
-              ? atob(currentEditingUser.phone)
-              : "",
-          parcelLocker: currentEditingUser.isLocalAdmin
-            ? currentEditingUser.parcelLocker || ""
-            : currentEditingUser.parcelLocker
-              ? atob(currentEditingUser.parcelLocker)
-              : "",
+          phone: currentEditingUser.phone
+            ? atob(currentEditingUser.phone)
+            : "",
+          parcelLocker: currentEditingUser.parcelLocker
+            ? atob(currentEditingUser.parcelLocker)
+            : "",
           address: {
-            street: currentEditingUser.isLocalAdmin
-              ? currentEditingUser.address?.street || ""
-              : currentEditingUser.address?.street
-                ? atob(currentEditingUser.address.street)
-                : "",
-            buildingNumber: currentEditingUser.isLocalAdmin
-              ? currentEditingUser.address?.buildingNumber || ""
-              : currentEditingUser.address?.buildingNumber
-                ? atob(currentEditingUser.address.buildingNumber)
-                : "",
-            postalCode: currentEditingUser.isLocalAdmin
-              ? currentEditingUser.address?.postalCode || ""
-              : currentEditingUser.address?.postalCode
-                ? atob(currentEditingUser.address.postalCode)
-                : "",
-            city: currentEditingUser.isLocalAdmin
-              ? currentEditingUser.address?.city || ""
-              : currentEditingUser.address?.city
-                ? atob(currentEditingUser.address.city)
-                : "",
+            street: currentEditingUser.address?.street
+              ? atob(currentEditingUser.address.street)
+              : "",
+            buildingNumber: currentEditingUser.address?.buildingNumber
+              ? atob(currentEditingUser.address.buildingNumber)
+              : "",
+            postalCode: currentEditingUser.address?.postalCode
+              ? atob(currentEditingUser.address.postalCode)
+              : "",
+            city: currentEditingUser.address?.city
+              ? atob(currentEditingUser.address.city)
+              : "",
           },
         };
 
@@ -3747,30 +4011,541 @@
       // Zmienna globalna dla blokowanego użytkownika
       let currentBlockingUser = null;
 
+      // ==================== FUNKCJE ZARZĄDZANIA SZYBKIMI ODPOWIEDZIAMI ====================
+
+      // Zmienna globalna dla edytowanego szablonu
+      let currentEditingQuickReply = null;
+
+      // Funkcja ładowania listy szablonów odpowiedzi
+      async function loadQuickReplies() {
+        const container = document.getElementById('quick-replies-list');
+        if (!container) return;
+
+        container.innerHTML = `
+          <div class="text-center text-zinc-500 py-8">
+            <i class="fa-solid fa-spinner fa-spin text-2xl mb-4 text-zinc-600"></i>
+            <h4 class="text-lg font-semibold mb-2">Ładowanie szablonów...</h4>
+            <p class="text-sm">Proszę czekać</p>
+          </div>
+        `;
+
+        try {
+          const response = await fetch('/api/quick-replies');
+          const data = await response.json();
+
+          if (data.success) {
+            displayQuickReplies(data.data);
+          } else {
+            throw new Error(data.error || 'Failed to load quick replies');
+          }
+        } catch (error) {
+          console.error('Error loading quick replies:', error);
+          container.innerHTML = `
+            <div class="text-center text-red-400 py-8">
+              <i class="fa-solid fa-exclamation-triangle text-2xl mb-4"></i>
+              <h4 class="text-lg font-semibold mb-2">Błąd ładowania szablonów</h4>
+              <p class="text-sm">Spróbuj odświeżyć stronę</p>
+            </div>
+          `;
+        }
+      }
+
+      // Funkcja wyświetlania listy szablonów
+      function displayQuickReplies(replies) {
+        const container = document.getElementById('quick-replies-list');
+        if (!container) return;
+
+        if (replies.length === 0) {
+          container.innerHTML = `
+            <div class="text-center text-zinc-500 py-12">
+              <i class="fa-solid fa-inbox text-3xl mb-4 text-zinc-600"></i>
+              <h4 class="text-lg font-semibold mb-2">Brak szablonów odpowiedzi</h4>
+              <p class="text-sm mb-4">Nie masz jeszcze żadnych szablonów szybkich odpowiedzi</p>
+              <button onclick="openQuickReplyModal()" class="btn-admin">
+                <i class="fa-solid fa-plus mr-2"></i>
+                Utwórz pierwszy szablon
+              </button>
+            </div>
+          `;
+          return;
+        }
+
+        const repliesHtml = replies.map(reply => `
+          <div class="bg-zinc-800 border border-zinc-700 rounded-lg p-4 hover:bg-zinc-750 transition">
+            <div class="flex justify-between items-start mb-3">
+              <h4 class="font-semibold text-white">${reply.title}</h4>
+              <div class="flex space-x-2">
+                <button
+                  onclick="editQuickReply(${reply.id})"
+                  class="text-blue-400 hover:text-blue-300 transition"
+                  title="Edytuj"
+                >
+                  <i class="fa-solid fa-edit"></i>
+                </button>
+                <button
+                  onclick="deleteQuickReply(${reply.id})"
+                  class="text-red-400 hover:text-red-300 transition"
+                  title="Usuń"
+                >
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+            <div class="text-zinc-300 text-sm leading-relaxed">
+              ${reply.content.length > 150 ? reply.content.substring(0, 150) + '...' : reply.content}
+            </div>
+            <div class="text-xs text-zinc-500 mt-2">
+              Zaktualizowano: ${new Date(reply.updated_at).toLocaleDateString('pl-PL')}
+            </div>
+          </div>
+        `).join('');
+
+        container.innerHTML = repliesHtml;
+      }
+
+      // Funkcja otwierania modala szybkich odpowiedzi
+      window.openQuickReplyModal = (replyId = null) => {
+        currentEditingQuickReply = replyId;
+        const modal = document.getElementById('quick-reply-modal');
+        const title = document.getElementById('quick-reply-modal-title');
+        const form = document.getElementById('quick-reply-form');
+        const submitText = document.getElementById('quick-reply-submit-text');
+
+        if (replyId) {
+          title.textContent = 'Edycja szablonu odpowiedzi';
+          submitText.textContent = 'Aktualizuj szablon';
+          // Załaduj dane szablonu do edycji
+          loadQuickReplyForEdit(replyId);
+        } else {
+          title.textContent = 'Nowy szablon odpowiedzi';
+          submitText.textContent = 'Zapisz szablon';
+          form.reset();
+          document.getElementById('quick-reply-id').value = '';
+        }
+
+        modal.classList.remove('hidden');
+      };
+
+      // Funkcja zamykania modala szybkich odpowiedzi
+      window.closeQuickReplyModal = () => {
+        document.getElementById('quick-reply-modal').classList.add('hidden');
+        document.getElementById('quick-reply-form').reset();
+        currentEditingQuickReply = null;
+      };
+
+      // Funkcja ładowania szablonu do edycji
+      async function loadQuickReplyForEdit(replyId) {
+        try {
+          const response = await fetch('/api/quick-replies');
+          const data = await response.json();
+
+          if (data.success) {
+            const reply = data.data.find(r => r.id === replyId);
+            if (reply) {
+              document.getElementById('quick-reply-id').value = reply.id;
+              document.getElementById('quick-reply-title').value = reply.title;
+              document.getElementById('quick-reply-content').value = reply.content;
+            }
+          }
+        } catch (error) {
+          console.error('Error loading quick reply for edit:', error);
+          showNotification('Błąd podczas ładowania szablonu', 'error');
+        }
+      }
+
+      // Funkcja edycji szablonu
+      window.editQuickReply = (replyId) => {
+        openQuickReplyModal(replyId);
+      };
+
+      // Funkcja usuwania szablonu
+      window.deleteQuickReply = async (replyId) => {
+        if (!confirm('Czy na pewno chcesz usunąć ten szablon odpowiedzi?')) {
+          return;
+        }
+
+        try {
+          const response = await fetch(`/api/quick-replies/${replyId}`, {
+            method: 'DELETE'
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            showNotification('Szablon został usunięty', 'success');
+            loadQuickReplies();
+          } else {
+            throw new Error(data.error || 'Failed to delete quick reply');
+          }
+        } catch (error) {
+          console.error('Error deleting quick reply:', error);
+          showNotification('Błąd podczas usuwania szablonu', 'error');
+        }
+      };
+
+      // Funkcja otwierania dropdown menu szybkich odpowiedzi
+      window.openQuickRepliesMenu = async () => {
+        const dropdown = document.getElementById('quick-replies-dropdown');
+        const boltBtn = document.querySelector('[onclick="openQuickRepliesMenu()"]');
+
+        // Pozycjonowanie dropdown obok przycisku
+        const rect = boltBtn.getBoundingClientRect();
+        dropdown.style.left = `${rect.left - 200}px`; // Przesuń w lewo o szerokość dropdown
+        dropdown.style.top = `${rect.top - 320}px`; // Przesuń w górę
+
+        // Załaduj szablony jeśli dropdown jest ukryty
+        if (dropdown.classList.contains('hidden')) {
+          await loadQuickRepliesForDropdown();
+        }
+
+        // Przełącz widoczność
+        dropdown.classList.toggle('hidden');
+
+        // Zamknij dropdown przy kliknięciu poza nim
+        setTimeout(() => {
+          document.addEventListener('click', closeQuickRepliesMenuOnClickOutside);
+        }, 10);
+      };
+
+      // Funkcja ładowania szablonów do dropdown
+      async function loadQuickRepliesForDropdown() {
+        const container = document.getElementById('quick-replies-dropdown-list');
+
+        try {
+          const response = await fetch('/api/quick-replies');
+          const data = await response.json();
+
+          if (data.success) {
+            displayQuickRepliesInDropdown(data.data);
+          } else {
+            throw new Error(data.error || 'Failed to load quick replies');
+          }
+        } catch (error) {
+          console.error('Error loading quick replies for dropdown:', error);
+          container.innerHTML = `
+            <div class="text-center text-red-400 py-4">
+              <i class="fa-solid fa-exclamation-triangle text-sm mb-2"></i>
+              <div class="text-xs">Błąd ładowania</div>
+            </div>
+          `;
+        }
+      }
+
+      // Funkcja wyświetlania szablonów w dropdown
+      function displayQuickRepliesInDropdown(replies) {
+        const container = document.getElementById('quick-replies-dropdown-list');
+
+        if (replies.length === 0) {
+          container.innerHTML = `
+            <div class="text-center text-zinc-500 py-4">
+              <div class="text-xs">Brak szablonów</div>
+              <button onclick="closeQuickRepliesMenuAndOpenModal()" class="text-xs text-blue-400 hover:text-blue-300 mt-1">
+                Utwórz szablon
+              </button>
+            </div>
+          `;
+          return;
+        }
+
+        const repliesHtml = replies.map(reply => `
+          <button
+            onclick="useQuickReply('${reply.content.replace(/'/g, "\\'").replace(/\n/g, '\\n')}')"
+            class="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-700 rounded transition"
+            title="${reply.title}"
+          >
+            <div class="font-medium text-white truncate">${reply.title}</div>
+            <div class="text-xs text-zinc-400 truncate">
+              ${reply.content.length > 50 ? reply.content.substring(0, 50) + '...' : reply.content}
+            </div>
+          </button>
+        `).join('');
+
+        container.innerHTML = repliesHtml;
+      }
+
+      // Funkcja używania szybkiej odpowiedzi
+      window.useQuickReply = (content) => {
+        const textarea = document.getElementById('chat-reply-input');
+        textarea.value = content.replace(/\\n/g, '\n');
+        textarea.focus();
+
+        // Zamknij dropdown
+        document.getElementById('quick-replies-dropdown').classList.add('hidden');
+        document.removeEventListener('click', closeQuickRepliesMenuOnClickOutside);
+      };
+
+      // Funkcja zamykania dropdown przy kliknięciu poza nim
+      function closeQuickRepliesMenuOnClickOutside(e) {
+        const dropdown = document.getElementById('quick-replies-dropdown');
+        const boltBtn = document.querySelector('[onclick="openQuickRepliesMenu()"]');
+
+        if (!dropdown.contains(e.target) && !boltBtn.contains(e.target)) {
+          dropdown.classList.add('hidden');
+          document.removeEventListener('click', closeQuickRepliesMenuOnClickOutside);
+        }
+      }
+
+      // Funkcja zamykania dropdown i otwierania modala
+      window.closeQuickRepliesMenuAndOpenModal = () => {
+        document.getElementById('quick-replies-dropdown').classList.add('hidden');
+        document.removeEventListener('click', closeQuickRepliesMenuOnClickOutside);
+        openQuickReplyModal();
+      };
+
+      // =================== ZARZĄDZANIE KATEGORIAMI ===================
+
+      // Funkcja ładowania kategorii
+      async function loadCategories() {
+        const container = document.getElementById('categories-list');
+        if (!container) return;
+
+        try {
+          const response = await fetch('/api/message-categories');
+          const data = await response.json();
+
+          if (data.success) {
+            displayCategories(data.data);
+          } else {
+            throw new Error(data.error || 'Failed to load categories');
+          }
+        } catch (error) {
+          console.error('Error loading categories:', error);
+          container.innerHTML = `
+            <div class="text-center text-red-400 py-8 col-span-full">
+              <i class="fa-solid fa-exclamation-triangle text-2xl mb-4"></i>
+              <h4 class="text-lg font-semibold mb-2">Błąd ładowania kategorii</h4>
+              <p class="text-sm">Spróbuj odświeżyć stronę</p>
+            </div>
+          `;
+        }
+      }
+
+      // Funkcja wyświetlania kategorii
+      function displayCategories(categories) {
+        const container = document.getElementById('categories-list');
+        if (!container) return;
+
+        if (categories.length === 0) {
+          container.innerHTML = `
+            <div class="text-center text-zinc-500 py-12 col-span-full">
+              <i class="fa-solid fa-folder-open text-3xl mb-4 text-zinc-600"></i>
+              <h4 class="text-lg font-semibold mb-2">Brak kategorii</h4>
+              <p class="text-sm mb-4">Nie masz jeszcze żadnych kategorii wiadomości</p>
+              <button onclick="openCategoryModal()" class="btn-admin">
+                <i class="fa-solid fa-plus mr-2"></i>
+                Utwórz pierwszą kategorię
+              </button>
+            </div>
+          `;
+          return;
+        }
+
+        const categoriesHtml = categories.map(category => `
+          <div class="bg-zinc-800 border border-zinc-700 rounded-lg p-4 hover:bg-zinc-750 transition group">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background-color: ${category.color}20; border: 2px solid ${category.color};">
+                  <i class="fa-solid ${category.icon} text-sm" style="color: ${category.color};"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold text-white">${category.name}</h4>
+                  <div class="text-xs text-zinc-400">ID: ${category.id}</div>
+                </div>
+              </div>
+              <div class="flex space-x-2 opacity-0 group-hover:opacity-100 transition">
+                <button
+                  onclick="editCategory(${category.id})"
+                  class="text-blue-400 hover:text-blue-300 transition"
+                  title="Edytuj kategorię"
+                >
+                  <i class="fa-solid fa-edit"></i>
+                </button>
+                <button
+                  onclick="deleteCategory(${category.id}, '${category.name}')"
+                  class="text-red-400 hover:text-red-300 transition"
+                  title="Usuń kategorię"
+                >
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+            <div class="text-xs text-zinc-500">
+              Kolejność: ${category.sort_order}
+            </div>
+          </div>
+        `).join('');
+
+        container.innerHTML = categoriesHtml;
+      }
+
+      // Funkcja otwierania modala kategorii
+      window.openCategoryModal = (categoryId = null) => {
+        const modal = document.getElementById('category-modal');
+        const title = document.getElementById('category-modal-title');
+        const form = document.getElementById('category-form');
+
+        if (categoryId) {
+          title.textContent = 'Edycja kategorii';
+          loadCategoryForEdit(categoryId);
+        } else {
+          title.textContent = 'Nowa kategoria';
+          form.reset();
+          document.getElementById('category-id').value = '';
+          // Ustaw domyślne wartości
+          document.getElementById('category-color').value = '#3B82F6';
+          document.getElementById('category-color-text').value = '#3B82F6';
+          document.getElementById('category-icon').value = 'fa-circle';
+          updateIconSelection('fa-circle');
+        }
+
+        modal.classList.remove('hidden');
+      };
+
+      // Funkcja zamykania modala kategorii
+      window.closeCategoryModal = () => {
+        document.getElementById('category-modal').classList.add('hidden');
+        document.getElementById('category-form').reset();
+      };
+
+      // Funkcja ładowania kategorii do edycji
+      async function loadCategoryForEdit(categoryId) {
+        try {
+          const response = await fetch('/api/message-categories');
+          const data = await response.json();
+
+          if (data.success) {
+            const category = data.data.find(c => c.id === categoryId);
+            if (category) {
+              document.getElementById('category-id').value = category.id;
+              document.getElementById('category-name').value = category.name;
+              document.getElementById('category-color').value = category.color;
+              document.getElementById('category-color-text').value = category.color;
+              document.getElementById('category-icon').value = category.icon;
+              updateIconSelection(category.icon);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading category for edit:', error);
+          showNotification('Błąd ładowania kategorii do edycji', 'error');
+        }
+      }
+
+      // Funkcja aktualizacji wyboru ikony
+      function updateIconSelection(selectedIcon) {
+        document.querySelectorAll('.icon-option').forEach(btn => {
+          btn.classList.remove('border-coyote', 'bg-coyote', 'bg-opacity-20');
+          btn.classList.add('border-zinc-600');
+          if (btn.dataset.icon === selectedIcon) {
+            btn.classList.add('border-coyote', 'bg-coyote', 'bg-opacity-20');
+          }
+        });
+      }
+
+      // Funkcja zapisywania kategorii
+      window.saveCategory = async (formData) => {
+        try {
+          const categoryId = document.getElementById('category-id').value;
+          const categoryData = {
+            name: document.getElementById('category-name').value.trim(),
+            color: document.getElementById('category-color').value,
+            icon: document.getElementById('category-icon').value
+          };
+
+          if (!categoryData.name) {
+            showNotification('Nazwa kategorii jest wymagana', 'error');
+            return;
+          }
+
+          let response;
+          if (categoryId) {
+            // Aktualizacja istniejącej kategorii
+            response = await fetch(`/api/message-categories/${categoryId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(categoryData)
+            });
+          } else {
+            // Dodanie nowej kategorii
+            response = await fetch('/api/message-categories', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(categoryData)
+            });
+          }
+
+          const data = await response.json();
+
+          if (data.success) {
+            showNotification(categoryId ? 'Kategoria została zaktualizowana' : 'Kategoria została dodana', 'success');
+            closeCategoryModal();
+            loadCategories();
+          } else {
+            throw new Error(data.error || 'Failed to save category');
+          }
+        } catch (error) {
+          console.error('Error saving category:', error);
+          showNotification('Błąd zapisywania kategorii', 'error');
+        }
+      };
+
+      // Funkcja edycji kategorii
+      window.editCategory = (categoryId) => {
+        openCategoryModal(categoryId);
+      };
+
+      // Funkcja usuwania kategorii
+      window.deleteCategory = async (categoryId, categoryName) => {
+        if (!confirm(`Czy na pewno chcesz usunąć kategorię "${categoryName}"?\n\nWiadomości z tej kategorii zostaną przeniesione do kategorii "Inne".`)) {
+          return;
+        }
+
+        try {
+          const response = await fetch(`/api/message-categories/${categoryId}`, {
+            method: 'DELETE'
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            showNotification('Kategoria została usunięta', 'success');
+            loadCategories();
+          } else {
+            throw new Error(data.error || 'Failed to delete category');
+          }
+        } catch (error) {
+          console.error('Error deleting category:', error);
+          showNotification('Błąd usuwania kategorii', 'error');
+        }
+      };
+
+      // Funkcja zapisywania ustawień kontaktu
+      window.saveContactSettings = async () => {
+        try {
+          const settings = {
+            formEnabled: document.getElementById('contact-form-enabled').checked,
+            recipientEmail: document.getElementById('contact-recipient-email').value.trim(),
+            notificationSubject: document.getElementById('contact-notification-subject').value.trim()
+          };
+
+          // Tutaj można dodać API call do zapisywania ustawień
+          // Na razie tylko symulacja
+          showNotification('Ustawienia kontaktu zostały zapisane', 'success');
+        } catch (error) {
+          console.error('Error saving contact settings:', error);
+          showNotification('Błąd zapisywania ustawień', 'error');
+        }
+      };
+
+      // =================== KONIEC ZARZĄDZANIA KATEGORIAMI ===================
+
       // Funkcje zarządzania użytkownikami
       window.toggleUserBlock = async (userId) => {
         try {
           let user;
 
-          // Sprawdź czy to administrator lokalny
-          if (
-            currentUser &&
-            currentUser.isLocalAdmin &&
-            userId === currentUser.uid
-          ) {
-            user = {
-              id: userId,
-              displayName: currentUser.displayName,
-              email: currentUser.email,
-              role: "admin",
-              status: "active",
-              isLocalAdmin: true,
-            };
-          } else {
           const userDoc = await getDoc(doc(db, "userProfiles", userId));
           if (!userDoc.exists()) return;
-            user = { id: userId, ...userDoc.data() };
-          }
+          user = { id: userId, ...userDoc.data() };
 
           currentBlockingUser = user;
 
@@ -3896,19 +4671,6 @@
       };
 
       window.resetUserPassword = async (userId, email) => {
-        // Sprawdź czy to administrator lokalny
-        if (
-          currentUser &&
-          currentUser.isLocalAdmin &&
-          userId === currentUser.uid
-        ) {
-          showNotification(
-            "Nie można resetować hasła administratora lokalnego.",
-            "error",
-          );
-          return;
-        }
-
         if (!confirm(`Czy wysłać link resetowania hasła na adres: ${email}?`))
           return;
 
@@ -3934,19 +4696,6 @@
       };
 
       window.changeUserRole = async (userId, currentRole) => {
-        // Sprawdź czy to administrator lokalny
-        if (
-          currentUser &&
-          currentUser.isLocalAdmin &&
-          userId === currentUser.uid
-        ) {
-          showNotification(
-            "Nie można zmienić roli administratora lokalnego.",
-            "error",
-          );
-          return;
-        }
-
         let newRole;
         let confirmMessage;
 
@@ -3990,41 +4739,13 @@
       let currentDeletingUser = null;
 
       window.deleteUser = async (userId) => {
-        // Sprawdź czy to administrator lokalny
-        if (
-          currentUser &&
-          currentUser.isLocalAdmin &&
-          userId === currentUser.uid
-        ) {
-          showNotification(
-            "Nie można usunąć administratora lokalnego.",
-            "error",
-          );
-          return;
-        }
 
         try {
           let user;
 
-          // Sprawdź czy to administrator lokalny
-          if (
-            currentUser &&
-            currentUser.isLocalAdmin &&
-            userId === currentUser.uid
-          ) {
-            user = {
-              id: userId,
-              displayName: currentUser.displayName,
-              email: currentUser.email,
-              role: "admin",
-              status: "active",
-              isLocalAdmin: true,
-            };
-          } else {
-            const userDoc = await getDoc(doc(db, "userProfiles", userId));
-            if (!userDoc.exists()) return;
-            user = { id: userId, ...userDoc.data() };
-          }
+          const userDoc = await getDoc(doc(db, "userProfiles", userId));
+          if (!userDoc.exists()) return;
+          user = { id: userId, ...userDoc.data() };
 
           currentDeletingUser = user;
 
@@ -4095,7 +4816,13 @@
       };
 
       // Placeholder funkcje - będą zaimplementowane w kolejnych krokach
-      // Udostępnij funkcje globalnie dla onclick - definiuj przed funkcjami
+      // Zmienne globalne dla nowego systemu wiadomości
+      let currentConversationUser = null;
+      let messagesAutoRefresh = null;
+      let currentFilters = { search: '', category: 'all', status: 'all' };
+      let availableCategories = [];
+
+      // Udostępnij funkcje globalnie dla onclick
       window.loadMessages = async function() {
         console.log('🔄 loadMessages called from window');
         // Znajdź właściwą funkcję
@@ -4111,25 +4838,23 @@
       };
 
       async function loadMessages() {
-        console.log('🔄 loadMessages called');
+        console.log('🔄 loadMessages called - redirecting to new interface');
 
-        // Zapisz referencję do oryginalnej funkcji dla window.loadMessages
-        window.loadMessages._originalFunction = loadMessages;
+        // Jeśli jesteśmy w nowej zakładce messages, użyj nowych funkcji
+        if (document.getElementById('messages-container')) {
+          await loadMessagesWithFilters();
+          await loadMessagesStatus();
+          return;
+        }
 
+        // Fallback dla starego interfejsu (jeśli istnieje)
         const refreshBtn = document.getElementById("refresh-messages-btn");
-        const refreshText = document.getElementById("refresh-text");
-
-        console.log('🔄 Refresh button found:', !!refreshBtn);
-
-        // Dodaj animację ładowania
         if (refreshBtn) {
           refreshBtn.disabled = true;
           refreshBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i><span id="refresh-text">Ładowanie...</span>';
         }
 
         try {
-          console.log('📡 Fetching messages from API...');
-
           const conversationsList = document.getElementById("conversations-list");
           if (!conversationsList) {
             console.error('❌ conversations-list element not found!');
@@ -4161,7 +4886,8 @@
           if (messages.length === 0) {
             document.getElementById("conversations-list").innerHTML =
               '<div class="text-center text-zinc-500 py-8"><i class="fa-solid fa-inbox text-4xl mb-4 text-zinc-600"></i><p class="text-sm">Brak konwersacji</p></div>';
-            document.getElementById("conversations-count").textContent = '0';
+            const convCountEl = document.getElementById("conversations-count");
+            if (convCountEl) convCountEl.textContent = '0';
           } else {
             // Grupuj wiadomości w konwersacje
             const conversations = {};
@@ -4230,7 +4956,6 @@
                       </p>
                       <div class="flex items-center justify-between">
                         <span class="text-xs text-zinc-500">${conversation.totalMessages} wiadomości</span>
-                        ${hasUnread ? `<span class="bg-coyote text-black text-xs px-2 py-1 rounded-full font-semibold">${conversation.unreadCount}</span>` : ''}
                   </div>
                 </div>
                 </div>
@@ -4239,7 +4964,8 @@
             }).join('');
 
             document.getElementById("conversations-list").innerHTML = conversationsHtml;
-            document.getElementById("conversations-count").textContent = conversationsArray.length;
+            const convCountEl2 = document.getElementById("conversations-count");
+            if (convCountEl2) convCountEl2.textContent = conversationsArray.length;
           }
 
           // Zaktualizuj liczniki w nagłówku
@@ -4263,16 +4989,15 @@
         }
       }
 
-      // Zmienne globalne dla aktualnej konwersacji
-      let currentConversationUser = null;
-
       // Funkcja do otwierania konwersacji
       async function openConversation(userId, userName, userEmail) {
         currentConversationUser = { id: userId, name: userName, email: userEmail };
 
         // Ustaw informacje o użytkowniku w modalu
-        document.getElementById('chat-user-name').textContent = userName;
-        document.getElementById('chat-user-email').textContent = userEmail;
+        const chatNameEl = document.getElementById('chat-user-name');
+        if (chatNameEl) chatNameEl.textContent = userName;
+        const chatEmailEl = document.getElementById('chat-user-email');
+        if (chatEmailEl) chatEmailEl.textContent = userEmail;
 
         // Pokaż modal
         document.getElementById('chat-modal').classList.remove('hidden');
@@ -4281,83 +5006,9 @@
         await loadConversationMessages(userId);
       }
 
-      // Funkcja do zamykania modalu czatu
-      function closeChatModal() {
-        document.getElementById('chat-modal').classList.add('hidden');
-        currentConversationUser = null;
-        document.getElementById('chat-reply-input').value = '';
-      }
+      // Funkcja do zamykania modalu czatu - przeniesiona niżej w kodzie
 
-      // Funkcja do ładowania wiadomości konwersacji
-      async function loadConversationMessages(userId) {
-        try {
-          const messagesContainer = document.getElementById('chat-messages-container');
-          messagesContainer.innerHTML = '<div class="text-center text-zinc-500 py-8"><i class="fa-solid fa-spinner fa-spin"></i> Ładowanie...</div>';
-
-          // Pobierz wszystkie wiadomości między adminem a użytkownikiem
-          const response1 = await fetch(`/api/messages?senderId=${userId}&recipientId=admin&limit=100`);
-          const response2 = await fetch(`/api/messages?senderId=admin&recipientId=${userId}&limit=100`);
-
-          const data1 = await response1.json();
-          const data2 = await response2.json();
-
-          if (!data1.success || !data2.success) {
-            throw new Error('Failed to load conversation');
-          }
-
-          // Połącz wiadomości i posortuj chronologicznie
-          const allMessages = [...data1.data.messages, ...data2.data.messages]
-            .sort((a, b) => a.timestamp - b.timestamp);
-
-          if (allMessages.length === 0) {
-            messagesContainer.innerHTML = '<div class="text-center text-zinc-500 py-8"><i class="fa-solid fa-comment-slash text-4xl mb-4 text-zinc-600"></i><p class="text-sm">Brak wiadomości w tej konwersacji</p></div>';
-            return;
-          }
-
-          // Wyświetl wiadomości
-          const messagesHtml = allMessages.map(msg => {
-            const isFromUser = msg.senderId !== 'admin';
-            const time = new Date(msg.timestamp).toLocaleString("pl-PL", {
-              hour: '2-digit',
-              minute: '2-digit',
-              day: '2-digit',
-              month: '2-digit'
-            });
-
-            return `
-              <div class="flex ${isFromUser ? 'justify-start' : 'justify-end'}">
-                <div class="max-w-[70%] ${isFromUser ? 'bg-zinc-700' : 'bg-coyote'} rounded-lg p-3">
-                  ${msg.topic ? `<div class="font-semibold text-sm mb-1">${msg.topic}</div>` : ''}
-                  <div class="text-sm ${isFromUser ? 'text-zinc-100' : 'text-black'} whitespace-pre-wrap">${msg.content}</div>
-                  <div class="text-xs ${isFromUser ? 'text-zinc-400' : 'text-black/70'} mt-2">${time}</div>
-                </div>
-              </div>
-            `;
-          }).join('');
-
-          messagesContainer.innerHTML = messagesHtml;
-
-          // Przewiń na dół
-          setTimeout(() => {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-          }, 100);
-
-          // Oznacz wiadomości jako przeczytane
-          for (const msg of allMessages) {
-            if (msg.senderId === userId && !msg.isRead) {
-              await fetch(`/api/messages/${msg.id}/read`, { method: 'PUT' });
-            }
-          }
-
-          // Odśwież listę konwersacji
-          loadMessages();
-
-        } catch (error) {
-          console.error('Error loading conversation:', error);
-          document.getElementById('chat-messages-container').innerHTML =
-            '<div class="text-center text-red-400 py-8"><i class="fa-solid fa-exclamation-triangle text-4xl mb-4"></i><p class="text-sm">Błąd ładowania konwersacji</p></div>';
-        }
-      }
+      // Funkcja do ładowania wiadomości konwersacji - przeniesiona niżej w kodzie
 
       // Funkcja do zamykania bieżącego czatu
       function closeCurrentChat() {
@@ -4605,64 +5256,7 @@
         }
       });
 
-      // Funkcja do wysyłania odpowiedzi
-      async function sendChatReply() {
-        if (!currentConversationUser) return;
-
-        const input = document.getElementById('chat-reply-input');
-        const sendBtn = document.getElementById('send-message-btn');
-        const content = input.value.trim();
-
-        if (!content) {
-          showNotification("Wpisz wiadomość przed wysłaniem", "warning");
-          return;
-        }
-
-        // Zablokuj przycisk podczas wysyłania
-        sendBtn.disabled = true;
-        sendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-
-        try {
-          const response = await fetch('/api/messages', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              senderId: 'admin',
-              senderName: 'Administrator',
-              senderType: 'admin',
-              recipientId: currentConversationUser.id,
-              recipientType: 'user',
-              content: content,
-              topic: 'Odpowiedź administratora'
-            })
-          });
-
-          const data = await response.json();
-
-          if (!data.success) {
-            throw new Error(data.error || 'Failed to send message');
-          }
-
-          // Wyczyść input
-          input.value = '';
-
-          // Przeładuj konwersację
-          await loadConversationMessages(currentConversationUser.id);
-
-          // Odśwież listę konwersacji
-          loadMessages();
-
-          showNotification("Wiadomość została wysłana", "success");
-
-        } catch (error) {
-          console.error('Error sending reply:', error);
-          showNotification("Błąd wysyłania wiadomości", "error");
-        } finally {
-          // Odblokuj przycisk
-          sendBtn.disabled = false;
-          sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>';
-        }
-      }
+      // Funkcja do wysyłania odpowiedzi - przeniesiona niżej w kodzie
 
       async function completeMessage(messageId) {
         try {
@@ -4758,7 +5352,6 @@
                     ${lastMessage.senderId === 'admin' ? 'Ty:' : ''} ${lastMessage.content || 'Załącznik'}
                   </p>
                 </div>
-                ${hasUnread ? `<span class="bg-coyote text-black text-xs px-1.5 py-0.5 rounded-full ml-2 flex-shrink-0">${conversation.unreadCount}</span>` : ''}
               </div>
             </div>
           `;
@@ -5042,20 +5635,20 @@
 
           const response = await fetch(`https://${site}`, {
               method: "HEAD",
-              cache: "no-cache",
-              signal: controller.signal,
-            });
+            cache: "no-cache",
+            signal: controller.signal,
+          });
 
-            clearTimeout(timeoutId);
+          clearTimeout(timeoutId);
 
           // Strona jest dostępna jeśli odpowiedź jest OK
-            return {
+          return {
               online: response.ok,
-              lastCheck: new Date(),
+                lastCheck: new Date(),
               status: response.status,
-            };
+              };
 
-        } catch (error) {
+            } catch (error) {
           clearTimeout(timeoutId);
 
           // Zapisz awarię do localStorage
@@ -5130,7 +5723,7 @@
           return null; // Nie znaleziono takiego zdarzenia
       }
 
-      async function logEvent(eventType, site, details) {
+        async function logEvent(eventType, site, details) {
           // Sprawdź czy już istnieje ostatnie zdarzenie tego typu dla tej usługi
           const lastEvent = await getLastEventForService(site, eventType);
           if (lastEvent) {
@@ -5139,43 +5732,43 @@
             return;
           }
 
-        const eventData = {
-          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-          timestamp: new Date().toISOString(),
-          type: eventType,
-          site: site,
-          details: details
-        };
+          const eventData = {
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            timestamp: new Date().toISOString(),
+            type: eventType,
+            site: site,
+            details: details
+          };
 
           // Najpierw spróbuj przez API
-        try {
+          try {
           const response = await fetch(getApiUrl('/api/events-log'), {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json'
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            });
+
+            let eventsLog = [];
+            if (response.ok) {
+              eventsLog = await response.json();
             }
-          });
 
-          let eventsLog = [];
-          if (response.ok) {
-            eventsLog = await response.json();
-          }
+            // Dodaj nowe zdarzenie
+            eventsLog.push(eventData);
 
-          // Dodaj nowe zdarzenie
-          eventsLog.push(eventData);
-
-          // Zapisz z powrotem (max 1000 zdarzeń)
-          if (eventsLog.length > 1000) {
-            eventsLog = eventsLog.slice(-1000);
-          }
+            // Zapisz z powrotem (max 1000 zdarzeń)
+            if (eventsLog.length > 1000) {
+              eventsLog = eventsLog.slice(-1000);
+            }
 
           await fetch(getApiUrl('/api/events-log'), {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(eventsLog)
-          });
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(eventsLog)
+            });
 
           } catch (apiError) {
             // API niedostępne - użyj localStorage jako fallback
@@ -5198,11 +5791,11 @@
             } catch (localStorageError) {
               console.error('Błąd localStorage:', localStorageError);
             }
+          }
         }
-      }
 
-      async function loadEventsLog() {
-        const container = document.getElementById('events-log-container');
+        async function loadEventsLog() {
+          const container = document.getElementById('events-log-container');
         const refreshBtn = document.getElementById('refresh-events-btn');
 
         // Pokaż stan ładowania
@@ -5229,79 +5822,81 @@
                 container.innerHTML = '<div class="text-center text-orange-400 py-2 text-sm mb-2"><i class="fa-solid fa-exclamation-triangle mr-1"></i>Wyświetlane dane lokalne (API niedostępne)</div>';
               } else {
                 container.innerHTML = '<div class="text-center text-orange-400 py-4"><i class="fa-solid fa-exclamation-triangle mr-2"></i>API niedostępne - sprawdź konfigurację serwera</div>';
-            return;
+              return;
               }
-          }
+            }
 
-          if (eventsLog.length === 0) {
-            container.innerHTML = '<div class="text-center text-zinc-400 py-4">Brak zdarzeń w logach</div>';
-            return;
-          }
+            if (eventsLog.length === 0) {
+              container.innerHTML = '<div class="text-center text-zinc-400 py-4">Brak zdarzeń w logach</div>';
+              return;
+            }
 
-          // Sortuj po czasie (najnowsze na górze)
-          eventsLog.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            // Sortuj po czasie (najnowsze na górze)
+            if (Array.isArray(eventsLog)) {
+              eventsLog.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            }
 
-          const eventsHtml = eventsLog.map(event => {
-            const eventDate = new Date(event.timestamp);
-            const formattedDate = eventDate.toLocaleString('pl-PL');
+            const eventsHtml = eventsLog.map(event => {
+              const eventDate = new Date(event.timestamp);
+              const formattedDate = eventDate.toLocaleString('pl-PL');
 
-            let eventIcon, eventColor, eventTitle;
+              let eventIcon, eventColor, eventTitle;
 
-            switch(event.type) {
-              case 'site_offline':
-                eventIcon = 'fa-times-circle';
-                eventColor = 'text-red-400';
-                eventTitle = 'Strona offline';
-                break;
+              switch(event.type) {
+                case 'site_offline':
+                  eventIcon = 'fa-times-circle';
+                  eventColor = 'text-red-400';
+                  eventTitle = 'Strona offline';
+                  break;
                 case 'site_online':
                   eventIcon = 'fa-check-circle';
                   eventColor = 'text-green-400';
                   eventTitle = 'Strona online';
                   break;
                 case 'service_offline':
-                eventIcon = 'fa-exclamation-triangle';
-                eventColor = 'text-orange-400';
+                  eventIcon = 'fa-exclamation-triangle';
+                  eventColor = 'text-orange-400';
                   eventTitle = 'Usługa offline';
                   break;
                 case 'service_online':
                   eventIcon = 'fa-check-circle';
                   eventColor = 'text-green-400';
                   eventTitle = 'Usługa online';
-                break;
-              default:
-                eventIcon = 'fa-info-circle';
-                eventColor = 'text-blue-400';
-                eventTitle = 'Inne zdarzenie';
-            }
+                  break;
+                default:
+                  eventIcon = 'fa-info-circle';
+                  eventColor = 'text-blue-400';
+                  eventTitle = 'Inne zdarzenie';
+              }
 
-            return `
+              return `
               <div class="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg mb-2 animate-fade-in">
-                <div class="flex items-center space-x-3">
-                  <span class="${eventColor}"><i class="fa-solid ${eventIcon}"></i></span>
-                  <div>
-                    <div class="text-sm font-medium">${eventTitle} - ${event.site}</div>
-                    <div class="text-xs text-zinc-500">${formattedDate}</div>
-                    ${event.details ? `<div class="text-xs text-zinc-400 mt-1">${event.details}</div>` : ''}
+                  <div class="flex items-center space-x-3">
+                    <span class="${eventColor}"><i class="fa-solid ${eventIcon}"></i></span>
+                    <div>
+                      <div class="text-sm font-medium">${eventTitle} - ${event.site}</div>
+                      <div class="text-xs text-zinc-500">${formattedDate}</div>
+                      ${event.details ? `<div class="text-xs text-zinc-400 mt-1">${event.details}</div>` : ''}
+                    </div>
                   </div>
-                </div>
-                <button
+                  <button
                   onclick="deleteEvent('${event.id}', this)"
                   class="text-zinc-400 hover:text-red-400 p-1 transition-colors duration-200"
-                  title="Usuń zdarzenie"
+                    title="Usuń zdarzenie"
                   id="delete-btn-${event.id}"
-                >
-                  <i class="fa-solid fa-trash"></i>
-                </button>
-              </div>
-            `;
-          }).join('');
+                  >
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+              `;
+            }).join('');
 
-          container.innerHTML = eventsHtml;
+            container.innerHTML = eventsHtml;
           showNotification("Logi zdarzeń zostały odświeżone", "success");
 
-        } catch (error) {
-          console.error('Błąd podczas ładowania logów:', error);
-          container.innerHTML = '<div class="text-center text-red-400 py-4">Błąd ładowania logów</div>';
+          } catch (error) {
+            console.error('Błąd podczas ładowania logów:', error);
+            container.innerHTML = '<div class="text-center text-red-400 py-4">Błąd ładowania logów</div>';
           showNotification("Błąd ładowania logów zdarzeń", "error");
         } finally {
           // Przywróć przycisk do normalnego stanu
@@ -5329,7 +5924,7 @@
               // API działa - usuń przez API
               eventsLog = await response.json();
           const originalLength = eventsLog.length;
-          eventsLog = eventsLog.filter(event => event.id !== eventId);
+            eventsLog = eventsLog.filter(event => event.id !== eventId);
 
           if (eventsLog.length === originalLength) {
             showNotification("Zdarzenie nie zostało znalezione", "error");
@@ -5337,12 +5932,12 @@
           }
 
           const saveResponse = await fetch(getApiUrl('/api/events-log'), {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(eventsLog)
-          });
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(eventsLog)
+            });
 
           if (!saveResponse.ok) {
             showNotification("Błąd zapisywania zmian", "error");
@@ -5371,8 +5966,8 @@
             eventElement.style.opacity = '0';
             eventElement.style.transform = 'translateX(-20px)';
             setTimeout(() => {
-              // Odśwież tabelę
-              loadEventsLog();
+            // Odśwież tabelę
+            loadEventsLog();
             }, 300);
           } else {
             // Jeśli nie ma elementu, odśwież od razu
@@ -5381,8 +5976,8 @@
 
           showNotification("Zdarzenie zostało usunięte", "success");
 
-        } catch (error) {
-          console.error('Błąd podczas usuwania zdarzenia:', error);
+          } catch (error) {
+            console.error('Błąd podczas usuwania zdarzenia:', error);
           showNotification("Błąd podczas usuwania zdarzenia", "error");
         } finally {
           // Przywróć przycisk do normalnego stanu
@@ -5479,29 +6074,129 @@
         // Funkcje aktywności
         async function loadActivityStats() {
           try {
-            // Symulacja danych - w rzeczywistości pobierać z Firebase
-            const activeUsersEl = document.getElementById("active-users-count");
-            if (activeUsersEl) activeUsersEl.textContent = Math.floor(Math.random() * 50) + 10;
+            // Pobierz dane bezpośrednio z Firestore jako fallback gdy API nie działa
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+            const yearAgo = new Date(today.getTime() - 365 * 24 * 60 * 60 * 1000);
 
-            const todayVisitsEl = document.getElementById("today-visits");
-            if (todayVisitsEl) todayVisitsEl.textContent = Math.floor(Math.random() * 500) + 100;
+            // Aktywne zalogowane użytkownicy (ostatnie 24h)
+            try {
+              const activeUsersQuery = query(
+                collection(db, "activityLogs"),
+                where("timestamp", ">=", new Date(Date.now() - 24 * 60 * 60 * 1000)),
+                where("action", "in", ["LOGIN_SUCCESS", "ADMIN_LOGIN_SUCCESS"])
+              );
+              const activeUsersSnapshot = await getDocs(activeUsersQuery);
+              const activeUsers = [...new Set(activeUsersSnapshot.docs.map(doc => doc.data().userId || doc.data().adminId))].length;
 
-            const todayContactsEl = document.getElementById("today-contacts");
-            if (todayContactsEl) todayContactsEl.textContent = Math.floor(Math.random() * 20) + 5;
+              const activeUsersEl = document.getElementById("active-logged-users");
+              if (activeUsersEl) activeUsersEl.textContent = activeUsers;
+            } catch (error) {
+              console.warn("Could not fetch active users from Firestore:", error);
+              const activeUsersEl = document.getElementById("active-logged-users");
+              if (activeUsersEl) activeUsersEl.textContent = "0";
+            }
 
-            const pendingTasksEl = document.getElementById("pending-tasks");
-            if (pendingTasksEl) pendingTasksEl.textContent = Math.floor(Math.random() * 15) + 3;
+            // Wizyty dzisiaj
+            try {
+              const todayVisitsQuery = query(
+                collection(db, "activityLogs"),
+                where("timestamp", ">=", today)
+              );
+              const todayVisitsSnapshot = await getDocs(todayVisitsQuery);
 
-            const weekVisitsEl = document.getElementById("week-visits");
-            if (weekVisitsEl) weekVisitsEl.textContent = Math.floor(Math.random() * 2000) + 500;
+              const todayVisitsEl = document.getElementById("visits-today");
+              if (todayVisitsEl) todayVisitsEl.textContent = todayVisitsSnapshot.size;
+            } catch (error) {
+              console.warn("Could not fetch today visits from Firestore:", error);
+              const todayVisitsEl = document.getElementById("visits-today");
+              if (todayVisitsEl) todayVisitsEl.textContent = "0";
+            }
 
-            const monthVisitsEl = document.getElementById("month-visits");
-            if (monthVisitsEl) monthVisitsEl.textContent = Math.floor(Math.random() * 8000) + 2000;
+            // Nowe formularze kontaktowe dzisiaj
+            try {
+              const todayContactsQuery = query(
+                collection(db, "contactForms"),
+                where("timestamp", ">=", today)
+              );
+              const todayContactsSnapshot = await getDocs(todayContactsQuery);
 
-            const yearVisitsEl = document.getElementById("year-visits");
-            if (yearVisitsEl) yearVisitsEl.textContent = Math.floor(Math.random() * 50000) + 10000;
+              const todayContactsEl = document.getElementById("new-forms-today");
+              if (todayContactsEl) todayContactsEl.textContent = todayContactsSnapshot.size;
+            } catch (error) {
+              console.warn("Could not fetch today contacts from Firestore:", error);
+              const todayContactsEl = document.getElementById("new-forms-today");
+              if (todayContactsEl) todayContactsEl.textContent = "0";
+            }
+
+            // Oczekujące zadania (pending tasks)
+            try {
+              const pendingTasksQuery = query(
+                collection(db, "pendingTasks"),
+                where("status", "==", "pending")
+              );
+              const pendingTasksSnapshot = await getDocs(pendingTasksQuery);
+
+              const pendingTasksEl = document.getElementById("pending-issues");
+              if (pendingTasksEl) pendingTasksEl.textContent = pendingTasksSnapshot.size;
+            } catch (error) {
+              console.warn("Could not fetch pending tasks from Firestore:", error);
+              const pendingTasksEl = document.getElementById("pending-issues");
+              if (pendingTasksEl) pendingTasksEl.textContent = "0";
+            }
+
+            // Wizyty w tym tygodniu
+            try {
+              const weekVisitsQuery = query(
+                collection(db, "activityLogs"),
+                where("timestamp", ">=", weekAgo)
+              );
+              const weekVisitsSnapshot = await getDocs(weekVisitsQuery);
+
+              const weekVisitsEl = document.getElementById("week-visits");
+              if (weekVisitsEl) weekVisitsEl.textContent = weekVisitsSnapshot.size;
+            } catch (error) {
+              console.warn("Could not fetch week visits from Firestore:", error);
+              const weekVisitsEl = document.getElementById("week-visits");
+              if (weekVisitsEl) weekVisitsEl.textContent = "0";
+            }
+
+            // Wizyty w tym miesiącu
+            try {
+              const monthVisitsQuery = query(
+                collection(db, "activityLogs"),
+                where("timestamp", ">=", monthAgo)
+              );
+              const monthVisitsSnapshot = await getDocs(monthVisitsQuery);
+
+              const monthVisitsEl = document.getElementById("month-visits");
+              if (monthVisitsEl) monthVisitsEl.textContent = monthVisitsSnapshot.size;
+            } catch (error) {
+              console.warn("Could not fetch month visits from Firestore:", error);
+              const monthVisitsEl = document.getElementById("month-visits");
+              if (monthVisitsEl) monthVisitsEl.textContent = "0";
+            }
+
+            // Wizyty w tym roku
+            try {
+              const yearVisitsQuery = query(
+                collection(db, "activityLogs"),
+                where("timestamp", ">=", yearAgo)
+              );
+              const yearVisitsSnapshot = await getDocs(yearVisitsQuery);
+
+              const yearVisitsEl = document.getElementById("year-visits");
+              if (yearVisitsEl) yearVisitsEl.textContent = yearVisitsSnapshot.size;
+            } catch (error) {
+              console.warn("Could not fetch year visits from Firestore:", error);
+              const yearVisitsEl = document.getElementById("year-visits");
+              if (yearVisitsEl) yearVisitsEl.textContent = "0";
+            }
+
           } catch (error) {
-          console.error("Error loading activity stats:", error);
+            console.error("Error loading activity stats:", error);
           }
         }
 
@@ -5522,7 +6217,8 @@
         }
 
         function renderRecentEvents() {
-        const eventsContainer = document.getElementById("recent-events");
+        const eventsContainer = document.getElementById("events-log-container");
+        if (!eventsContainer) return;
           const recentEvents = eventsData.slice(0, 10); // Pokaż 10 najnowszych
 
         const eventsHtml = recentEvents
@@ -5620,34 +6316,46 @@
           try {
             // Sprawdź Firestore
           const firestoreStatus = document.getElementById("firestore-status");
+          if (!firestoreStatus) return;
+
           const firestoreIcon = firestoreStatus.querySelector("i");
           const firestoreText =
             firestoreStatus.querySelector("span:last-child");
 
           // Pokaż ładowanie dla Firestore
-          firestoreIcon.className = "fa-solid fa-spinner fa-spin text-lg text-zinc-400";
-          firestoreText.className = "text-zinc-400 font-semibold text-sm";
-          firestoreText.textContent = "Sprawdzanie...";
+          if (firestoreIcon) firestoreIcon.className = "fa-solid fa-spinner fa-spin text-lg text-zinc-400";
+          if (firestoreText) {
+            firestoreText.className = "text-zinc-400 font-semibold text-sm";
+            firestoreText.textContent = "Sprawdzanie...";
+          }
 
             // Sprawdź Auth
           const authStatus = document.getElementById("auth-status");
+          if (!authStatus) return;
+
           const authIcon = authStatus.querySelector("i");
           const authText = authStatus.querySelector("span:last-child");
 
           // Pokaż ładowanie dla Auth
-          authIcon.className = "fa-solid fa-spinner fa-spin text-lg text-zinc-400";
-          authText.className = "text-zinc-400 font-semibold text-sm";
-          authText.textContent = "Sprawdzanie...";
+          if (authIcon) authIcon.className = "fa-solid fa-spinner fa-spin text-lg text-zinc-400";
+          if (authText) {
+            authText.className = "text-zinc-400 font-semibold text-sm";
+            authText.textContent = "Sprawdzanie...";
+          }
 
             // Sprawdź domenę
           const domainStatus = document.getElementById("domain-status");
+          if (!domainStatus) return;
+
           const domainIcon = domainStatus.querySelector("i");
           const domainText = domainStatus.querySelector("span:last-child");
 
           // Pokaż ładowanie dla domeny
-          domainIcon.className = "fa-solid fa-spinner fa-spin text-lg text-zinc-400";
-          domainText.className = "text-zinc-400 font-semibold text-sm";
-          domainText.textContent = "Sprawdzanie...";
+          if (domainIcon) domainIcon.className = "fa-solid fa-spinner fa-spin text-lg text-zinc-400";
+          if (domainText) {
+            domainText.className = "text-zinc-400 font-semibold text-sm";
+            domainText.textContent = "Sprawdzanie...";
+          }
 
             let allServicesOnline = true;
 
@@ -5685,13 +6393,8 @@
             try {
               // Sprawdź czy jest jakiś zalogowany użytkownik
               if (auth.currentUser) {
-                // Sprawdź czy to nie jest lokalny administrator
-                const userEmail = auth.currentUser.email;
-                const isLocalAdmin = userEmail === 'admin@local' || userEmail === 'admin';
-
-                if (!isLocalAdmin) {
-                  // Jest zalogowany rzeczywisty użytkownik - Auth działa
-                  const authOnline = true;
+                // Jest zalogowany rzeczywisty użytkownik - Auth działa
+                const authOnline = true;
 
                   // Sprawdź czy już istnieje zdarzenie service_online
                   const lastOnlineEvent = await getLastEventForService('Logowanie', 'service_online');
@@ -5703,34 +6406,19 @@
                 authText.className = "text-green-400 font-semibold text-sm";
                 authText.textContent = "Połączony";
               } else {
-                  // Tylko lokalny administrator - traktuj jako nieaktywne
+                  // Nikt nie jest zalogowany
                   const authOnline = false;
 
                   // Sprawdź czy już istnieje zdarzenie service_offline
                   const lastOfflineEvent = await getLastEventForService('Logowanie', 'service_offline');
                   if (!lastOfflineEvent) {
-                    logEvent('service_offline', 'Logowanie', 'Brak aktywnych użytkowników w systemie logowania');
+                    logEvent('service_offline', 'Logowanie', 'Brak zalogowanych użytkowników w systemie');
                   }
 
                   authIcon.className = "fa-solid fa-times-circle text-lg text-orange-400";
                   authText.className = "text-orange-400 font-semibold text-sm";
-                  authText.textContent = "Tylko lokalny";
+                  authText.textContent = "Rozłączony";
                   allServicesOnline = false;
-                }
-              } else {
-                // Nikt nie jest zalogowany
-                const authOnline = false;
-
-                // Sprawdź czy już istnieje zdarzenie service_offline
-                const lastOfflineEvent = await getLastEventForService('Logowanie', 'service_offline');
-                if (!lastOfflineEvent) {
-                  logEvent('service_offline', 'Logowanie', 'Brak zalogowanych użytkowników w systemie');
-                }
-
-                authIcon.className = "fa-solid fa-times-circle text-lg text-orange-400";
-                authText.className = "text-orange-400 font-semibold text-sm";
-                authText.textContent = "Rozłączony";
-                allServicesOnline = false;
               }
             } catch (error) {
               console.error("Auth error:", error);
@@ -6002,41 +6690,45 @@
       // Funkcje liczników formularzy i niezakończonych spraw
       async function loadContactFormsCount() {
         try {
-          // Użyj API zamiast bezpośredniego dostępu do Firestore
           const response = await fetch('/api/admin/stats/contact-forms-today');
           if (response.ok) {
             const data = await response.json();
-            const todayContactsEl = document.getElementById("today-contacts");
-            if (todayContactsEl) todayContactsEl.textContent = data.count || 0;
+            const todayContactsEl = document.getElementById("new-forms-today");
+            if (!todayContactsEl) return;
+            todayContactsEl.textContent = data.count || 0;
           } else {
             console.warn("API request failed:", response.status);
-            const todayContactsEl = document.getElementById("today-contacts");
-            if (todayContactsEl) todayContactsEl.textContent = "0";
+            const todayContactsEl = document.getElementById("new-forms-today");
+            if (!todayContactsEl) return;
+            todayContactsEl.textContent = "0";
           }
         } catch (error) {
           console.error("Error loading contact forms count:", error);
-          const todayContactsEl = document.getElementById("today-contacts");
-          if (todayContactsEl) todayContactsEl.textContent = "0";
+          const todayContactsEl = document.getElementById("new-forms-today");
+          if (!todayContactsEl) return;
+          todayContactsEl.textContent = "0";
         }
       }
 
       async function loadPendingTasksCount() {
         try {
-          // Użyj API zamiast bezpośredniego dostępu do Firestore
           const response = await fetch('/api/admin/stats/pending-tasks');
           if (response.ok) {
             const data = await response.json();
-            const pendingTasksEl = document.getElementById("pending-tasks");
-            if (pendingTasksEl) pendingTasksEl.textContent = data.count || 0;
+            const pendingTasksEl = document.getElementById("pending-issues");
+            if (!pendingTasksEl) return;
+            pendingTasksEl.textContent = data.count || 0;
           } else {
             console.warn("API request failed:", response.status);
-            const pendingTasksEl = document.getElementById("pending-tasks");
-            if (pendingTasksEl) pendingTasksEl.textContent = "0";
+            const pendingTasksEl = document.getElementById("pending-issues");
+            if (!pendingTasksEl) return;
+            pendingTasksEl.textContent = "0";
           }
         } catch (error) {
           console.error("Error loading pending tasks count:", error);
-          const pendingTasksEl = document.getElementById("pending-tasks");
-          if (pendingTasksEl) pendingTasksEl.textContent = "0";
+          const pendingTasksEl = document.getElementById("pending-issues");
+          if (!pendingTasksEl) return;
+          pendingTasksEl.textContent = "0";
         }
       }
 
@@ -6058,33 +6750,41 @@
             .split("T")[0];
 
           // Placeholder - w rzeczywistości pobierać z GA API
-          const todayVisitsEl = document.getElementById("today-visits");
-          if (todayVisitsEl) todayVisitsEl.textContent = Math.floor(Math.random() * 500) + 100;
+          const todayVisitsEl = document.getElementById("visits-today");
+          if (!todayVisitsEl) return;
+          todayVisitsEl.textContent = 0;
 
           const weekVisitsEl = document.getElementById("week-visits");
-          if (weekVisitsEl) weekVisitsEl.textContent = Math.floor(Math.random() * 2000) + 500;
+          if (!weekVisitsEl) return;
+          weekVisitsEl.textContent = 0;
 
           const monthVisitsEl = document.getElementById("month-visits");
-          if (monthVisitsEl) monthVisitsEl.textContent = Math.floor(Math.random() * 8000) + 2000;
+          if (!monthVisitsEl) return;
+          monthVisitsEl.textContent = 0;
 
           const yearVisitsEl = document.getElementById("year-visits");
-          if (yearVisitsEl) yearVisitsEl.textContent = Math.floor(Math.random() * 50000) + 10000;
+          if (!yearVisitsEl) return;
+          yearVisitsEl.textContent = 0;
 
           console.log("GA Statistics fetched (placeholder implementation)");
         } catch (error) {
           console.error("Error fetching GA statistics:", error);
           // Fallback wartości
-          const todayVisitsEl = document.getElementById("today-visits");
-          if (todayVisitsEl) todayVisitsEl.textContent = "0";
+          const todayVisitsEl = document.getElementById("visits-today");
+          if (!todayVisitsEl) return;
+          todayVisitsEl.textContent = "0";
 
           const weekVisitsEl = document.getElementById("week-visits");
-          if (weekVisitsEl) weekVisitsEl.textContent = "0";
+          if (!weekVisitsEl) return;
+          weekVisitsEl.textContent = "0";
 
           const monthVisitsEl = document.getElementById("month-visits");
-          if (monthVisitsEl) monthVisitsEl.textContent = "0";
+          if (!monthVisitsEl) return;
+          monthVisitsEl.textContent = "0";
 
           const yearVisitsEl = document.getElementById("year-visits");
-          if (yearVisitsEl) yearVisitsEl.textContent = "0";
+          if (!yearVisitsEl) return;
+          yearVisitsEl.textContent = "0";
         }
       }
 
@@ -6401,11 +7101,113 @@
           }
         });
 
+        // Event listener dla formularza szybkich odpowiedzi
+        document.getElementById('quick-reply-form').addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          const replyId = document.getElementById('quick-reply-id').value;
+          const title = document.getElementById('quick-reply-title').value.trim();
+          const content = document.getElementById('quick-reply-content').value.trim();
+
+          if (!title || !content) {
+            showNotification('Tytuł i treść odpowiedzi są wymagane', 'error');
+            return;
+          }
+
+          const submitBtn = e.target.querySelector('button[type="submit"]');
+          const originalText = submitBtn.innerHTML;
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Zapisywanie...';
+
+          try {
+            const replyData = { title, content };
+            let response;
+
+            if (replyId) {
+              // Aktualizacja istniejącego szablonu
+              response = await fetch(`/api/quick-replies/${replyId}`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(replyData)
+              });
+            } else {
+              // Tworzenie nowego szablonu
+              response = await fetch('/api/quick-replies', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(replyData)
+              });
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+              showNotification(replyId ? 'Szablon został zaktualizowany' : 'Szablon został utworzony', 'success');
+              closeQuickReplyModal();
+              loadQuickReplies();
+            } else {
+              throw new Error(data.error || 'Failed to save quick reply');
+            }
+          } catch (error) {
+            console.error('Error saving quick reply:', error);
+            showNotification('Błąd podczas zapisywania szablonu', 'error');
+          } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+          }
+        });
+
+        // Event listener dla formularza kategorii
+        document.getElementById('category-form').addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          const submitBtn = e.target.querySelector('button[type="submit"]');
+          const originalText = submitBtn.innerHTML;
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Zapisywanie...';
+
+          try {
+            await saveCategory(e.target);
+          } catch (error) {
+            console.error('Error saving category:', error);
+            showNotification('Błąd podczas zapisywania kategorii', 'error');
+          } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+          }
+        });
+
+        // Event listener dla wyboru koloru
+        document.getElementById('category-color').addEventListener('input', (e) => {
+          document.getElementById('category-color-text').value = e.target.value;
+        });
+
+        // Event listener dla zmiany koloru w polu tekstowym
+        document.getElementById('category-color-text').addEventListener('input', (e) => {
+          const color = e.target.value;
+          if (/^#[0-9A-F]{6}$/i.test(color)) {
+            document.getElementById('category-color').value = color;
+          }
+        });
+
+        // Event listener dla wyboru ikony
+        document.getElementById('icon-picker').addEventListener('click', (e) => {
+          if (e.target.closest('.icon-option')) {
+            const icon = e.target.closest('.icon-option').dataset.icon;
+            document.getElementById('category-icon').value = icon;
+            updateIconSelection(icon);
+          }
+        });
+
       // Automatyczne odświeżanie co 1 godzinę (aby nie tracić limitów Firebase)
       setInterval(
         async () => {
-          if (currentUser && !currentUser.isLocalAdmin) {
-            // Tylko dla administratorów Firebase (nie lokalnych)
+          if (currentUser) {
+            // Tylko dla administratorów Firebase
           try {
             await checkSitesStatus();
               // Activity logs są automatycznie aktualizowane przez listener
@@ -6599,149 +7401,12 @@
 
       // ===== KONIEC FUNKCJI MODERACJI OPINII =====
 
-      // Funkcja sprawdzająca sesję lokalnego administratora przy ładowaniu strony
-      // Funkcja sprawdzająca sesję lokalnego administratora przy ładowaniu strony
-      function checkLocalAdminSessionOnLoad() {
-        console.log('🔍 Checking local admin session on page load...');
-        try {
-          // Sprawdź najpierw localStorage (główny), potem sessionStorage (dodatkowy)
-          const localSession = localStorage.getItem('admin_session');
-          const sessionSession = sessionStorage.getItem('admin_session');
-          const adminSession = localSession || sessionSession;
-
-          console.log('📦 Local storage session:', localSession ? 'EXISTS' : 'NOT FOUND');
-          console.log('📦 Session storage session:', sessionSession ? 'EXISTS' : 'NOT FOUND');
-
-          if (adminSession) {
-            console.log('✅ Admin session found, parsing...');
-            const sessionData = JSON.parse(adminSession);
-            const now = Date.now();
-            const expiresAt = sessionData.expiresAt || (sessionData.loginTime + 2 * 60 * 60 * 1000);
-
-            console.log('⏰ Session expires at:', new Date(expiresAt).toLocaleString());
-            console.log('⏰ Current time:', new Date(now).toLocaleString());
-            console.log('⏰ Time remaining:', Math.floor((expiresAt - now) / (1000 * 60)), 'minutes');
-
-            if (now < expiresAt) {
-              console.log('🚀 Session is valid - auto-logging in admin...');
-              // Sesja jest ważna - zaloguj lokalnego administratora
-              currentUser = {
-                uid: sessionData.uid || 'local-admin',
-                email: sessionData.email || sessionData.login,
-                displayName: sessionData.displayName || `${sessionData.login}@Administrator`,
-                isLocalAdmin: true,
-                originalLogin: sessionData.login
-              };
-
-              updateAdminDisplay(currentUser);
-              startSessionTimeUpdater();
-              document.getElementById("login-section").classList.add("hidden");
-              document.getElementById("admin-panel").classList.remove("hidden");
-              switchTab("dashboard");
-
-              console.log('✅ Auto-login successful!');
-              return true; // Znalaziono i zalogowano lokalnego administratora
-            } else {
-              console.log('❌ Session expired - removing');
-              // Sesja wygasła - usuń ją
-              localStorage.removeItem('admin_session');
-              sessionStorage.removeItem('admin_session');
-            }
-          } else {
-            console.log('❌ No admin session found in storage');
-          }
-        } catch (error) {
-          console.warn('❌ Error checking local admin session:', error);
-          localStorage.removeItem('admin_session');
-          sessionStorage.removeItem('admin_session');
-        }
-        console.log('❌ checkLocalAdminSessionOnLoad returning false');
-        return false;
-      }
 
       // ZJEDNOCZONY SYSTEM AUTORYZACJI (Hybrid Auth)
       let localAdminLoggedIn = false; // Globalna flaga dla lokalnego administratora
 
-      // Główny listener autoryzacji - obsługuje zarówno Firebase jak i lokalnych administratorów
-        onAuthStateChanged(auth, async (user) => {
-        // Jeśli już jesteśmy zalogowani jako lokalny administrator, nie rób nic
-        if (currentUser && currentUser.isLocalAdmin) {
-          console.log('🔐 Already logged in as local admin, skipping Firebase check');
-          return;
-        }
-
-          if (user && (await checkAdminRole(user))) {
-          // Firebase administrator
-          console.log('🔐 Firebase admin logged in');
-            currentUser = user;
-            updateAdminDisplay(user);
-            document.getElementById("login-section").classList.add("hidden");
-            document.getElementById("admin-panel").classList.remove("hidden");
-            switchTab("dashboard");
-        } else {
-          // Firebase nie widzi administratora - sprawdź lokalnego administratora
-          console.log('🔐 Firebase user not found or not admin, checking local admin session');
-          const localSessionValid = checkLocalAdminSessionOnLoad();
-          if (!localSessionValid) {
-            // Ani Firebase ani lokalna sesja - pokaż sekcję logowania
-            console.log('🔐 No valid authentication found, showing login section');
-            document.getElementById("login-section").classList.remove("hidden");
-            document.getElementById("admin-panel").classList.add("hidden");
-          }
-        }
-      });
-
-      // Obsługa checkboxa "Zapamiętaj ADMIN"
-      document.addEventListener("DOMContentLoaded", function () {
-        const toggleElement = document.getElementById("admin-remember-toggle");
-        if (toggleElement) {
-          toggleElement.addEventListener("click", function () {
-            const checkbox = document.getElementById("admin-remember");
-            const text1 = document.getElementById("admin-remember-text-1");
-            const text2 = document.getElementById("admin-remember-text-2");
-
-            if (!checkbox || !text1 || !text2) return;
-
-            checkbox.checked = !checkbox.checked;
-
-            if (checkbox.checked) {
-              text1.classList.add("text-green-500");
-              text1.classList.remove("text-zinc-400");
-              text2.classList.add("text-green-500");
-              text2.classList.remove("text-zinc-400");
-            } else {
-              text1.classList.add("text-zinc-400");
-              text1.classList.remove("text-green-500");
-              text2.classList.add("text-zinc-400");
-              text2.classList.remove("text-green-500");
-            }
-          });
-
-          // Hover efekty
-          toggleElement.addEventListener("mouseenter", function () {
-            const text1 = document.getElementById("admin-remember-text-1");
-            const text2 = document.getElementById("admin-remember-text-2");
-
-            text1.classList.add("text-green-500");
-            text1.classList.remove("text-zinc-400");
-            text2.classList.add("text-green-500");
-            text2.classList.remove("text-zinc-400");
-          });
-
-          toggleElement.addEventListener("mouseleave", function () {
-            const checkbox = document.getElementById("admin-remember");
-            const text1 = document.getElementById("admin-remember-text-1");
-            const text2 = document.getElementById("admin-remember-text-2");
-
-            if (!checkbox.checked) {
-              text1.classList.add("text-zinc-400");
-              text1.classList.remove("text-green-500");
-              text2.classList.add("text-zinc-400");
-              text2.classList.remove("text-green-500");
-            }
-          });
-        }
-
+      // Inicjalizacja event listenerów po załadowaniu DOM
+      document.addEventListener('DOMContentLoaded', function() {
         // Event listener dla pola wiadomości - wykrywanie pisania
         const messageInput = document.getElementById("message-input");
         if (messageInput) {
@@ -6757,6 +7422,1077 @@
           });
         }
 
+        // Inicjalizacja dla zakładki messages
+        if (currentTab === 'messages') {
+          loadMessages();
+          startAutoRefresh();
+          setupTypingListeners();
+        }
+
+        // Event listeners dla nowej zakładki messages
+        const messagesSearch = document.getElementById('messages-search');
+        const messagesFilter = document.getElementById('messages-filter');
+
+        if (messagesSearch) {
+          messagesSearch.addEventListener('input', debounce(() => {
+            currentFilters.search = messagesSearch.value;
+            loadMessagesWithFilters();
+          }, 300));
+        }
+
+        if (messagesFilter) {
+          messagesFilter.addEventListener('change', () => {
+            currentFilters.category = messagesFilter.value;
+            loadMessagesWithFilters();
+          });
+        }
+      });
+
+      // ==================== NOWE FUNKCJE DLA SYSTEMU WIADOMOŚCI ====================
+
+      // Funkcja ładowania statusu wiadomości
+      async function loadMessagesStatus() {
+        try {
+          const response = await fetch('/api/messages/stats');
+          const data = await response.json();
+
+          if (data.success) {
+            const stats = data.data;
+
+            // Logika dźwięku powiadomienia dla nowych wiadomości
+            const newUnreadCount = stats.unread || 0;
+            if (lastUnreadCount !== null && newUnreadCount > lastUnreadCount) {
+              // Odtwórz dźwięk tylko dla nowych wiadomości przychodzących
+              notificationSound.play().catch(e => console.log("Sound play deferred until user interaction"));
+            }
+            lastUnreadCount = newUnreadCount;
+
+            updateMessagesStatusDisplay(stats);
+          }
+        } catch (error) {
+          console.error('Error loading messages status:', error);
+        }
+      }
+
+      // Funkcja aktualizacji wyświetlania statusu
+      async function updateMessagesStatusDisplay(stats) {
+        // Update unread and total counts in header
+        const unreadCountEl = document.getElementById('unread-count');
+        if (unreadCountEl) {
+          unreadCountEl.textContent = stats.unread || 0;
+        }
+
+        const totalCountEl = document.getElementById('total-count');
+        if (totalCountEl) {
+          totalCountEl.textContent = stats.total || 0;
+        }
+
+        // Load categories and create buttons
+        const categoryButtonsEl = document.getElementById('category-buttons');
+        if (!categoryButtonsEl) return;
+
+        try {
+          // Fetch categories from database
+          const categoriesResponse = await fetch('/api/message-categories');
+          const categoriesData = await categoriesResponse.json();
+
+          if (categoriesData.success) {
+            const categories = categoriesData.data.filter(cat => cat.is_active);
+
+            let categoryButtons = '';
+
+            categories.forEach(cat => {
+              const isActive = currentFilters.category === cat.name.toLowerCase().replace(/\s+/g, '');
+              const categoryIcon = cat.icon || 'fa-circle';
+              categoryButtons += `
+                <button onclick="filterMessages('${cat.name.toLowerCase().replace(/\s+/g, '')}')"
+                        class="px-3 py-2 rounded-lg transition-all duration-200 font-medium liquid-glass-button flex items-center gap-2"
+                        style="color: ${cat.color}; ${isActive ? `background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid ${cat.color}60;` : `background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.1);`}">
+                  <i class="fa-solid ${categoryIcon} text-xs"></i>
+                  ${cat.name}
+                </button>
+              `;
+            });
+
+            categoryButtonsEl.innerHTML = categoryButtons;
+          }
+        } catch (error) {
+          console.error('Error loading categories for buttons:', error);
+          categoryButtonsEl.innerHTML = '';
+        }
+      }
+
+      // Funkcja ładowania wiadomości z filtrami
+      async function loadMessagesWithFilters() {
+        const messagesContainer = document.getElementById('messages-container');
+        if (!messagesContainer) return;
+
+        messagesContainer.innerHTML = `
+          <div class="text-center text-zinc-500 py-12">
+            <i class="fa-solid fa-spinner fa-spin text-3xl mb-4 text-zinc-600"></i>
+            <h3 class="text-lg font-semibold mb-2">Ładowanie wiadomości...</h3>
+            <p class="text-sm">Proszę czekać</p>
+          </div>
+        `;
+
+        try {
+          // Przygotuj parametry zapytania
+          let queryParams = new URLSearchParams({
+            recipientId: 'admin',
+            limit: '100'
+          });
+
+          // Dodaj filtry
+          if (currentFilters.search) {
+            queryParams.append('search', currentFilters.search);
+          }
+
+          if (currentFilters.category === 'unread') {
+            queryParams.append('isRead', 'false');
+          } else if (currentFilters.category === 'completed') {
+            queryParams.append('status', 'completed');
+          } else if (currentFilters.category && !['unread', 'completed', 'all'].includes(currentFilters.category)) {
+            // To jest filtr kategorii - znajdź ID kategorii po nazwie
+            try {
+              const categoriesResponse = await fetch('/api/message-categories');
+              const categoriesData = await categoriesResponse.json();
+              if (categoriesData.success) {
+                const category = categoriesData.data.find(cat =>
+                  cat.name.toLowerCase().replace(/\s+/g, '') === currentFilters.category
+                );
+                if (category) {
+                  queryParams.append('categoryId', category.id);
+                }
+              }
+            } catch (error) {
+              console.error('Error loading categories for filtering:', error);
+            }
+          }
+
+          const response = await fetch(`/api/messages?${queryParams}`);
+          const data = await response.json();
+
+          if (data.success) {
+            displayMessages(data.data.messages);
+          } else {
+            throw new Error(data.error || 'Failed to load messages');
+          }
+
+        } catch (error) {
+          console.error('Error loading messages with filters:', error);
+          messagesContainer.innerHTML = `
+            <div class="text-center text-red-400 py-12">
+              <i class="fa-solid fa-exclamation-triangle text-4xl mb-4"></i>
+              <h3 class="text-lg font-semibold mb-2">Błąd ładowania wiadomości</h3>
+              <p class="text-sm">${error.message}</p>
+            </div>
+          `;
+        }
+      }
+
+      // Funkcja wyświetlania wiadomości
+      function displayMessages(messages) {
+        const messagesContainer = document.getElementById('messages-container');
+        if (!messagesContainer) return;
+
+        if (messages.length === 0) {
+          messagesContainer.innerHTML = `
+            <div class="text-center text-zinc-500 py-12">
+              <i class="fa-solid fa-inbox text-4xl mb-4 text-zinc-600"></i>
+              <h3 class="text-lg font-semibold mb-2">Brak wiadomości</h3>
+              <p class="text-sm">Nie znaleziono wiadomości spełniających kryteria</p>
+            </div>
+          `;
+          return;
+        }
+
+        // Grupuj wiadomości w konwersacje
+        const conversations = {};
+
+        messages.forEach(msg => {
+          if (!msg) return; // Pomiń null/undefined wiadomości
+
+          const participants = [msg.senderId, msg.recipientId].filter(id => id).sort();
+          const conversationKey = participants.join('_');
+
+          if (!conversations[conversationKey]) {
+            conversations[conversationKey] = {
+              participants: participants,
+              senderName: msg.senderName || 'Nieznany',
+              senderEmail: msg.senderEmail || '',
+              senderId: msg.senderId || 'unknown',
+              lastMessage: msg,
+              messages: [],
+              unreadCount: 0,
+              totalMessages: 0,
+              categoryName: msg.category_name || 'Inne',
+              categoryColor: msg.category_color || '#6B7280'
+            };
+          }
+
+          conversations[conversationKey].messages.push(msg);
+          conversations[conversationKey].totalMessages++;
+
+          if (msg.isRead === false) {
+            conversations[conversationKey].unreadCount++;
+          }
+        });
+
+        // Konwertuj na tablicę i posortuj
+        const conversationsArray = Object.values(conversations).sort((a, b) => {
+          // Najpierw nieprzeczytane
+          if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
+          if (a.unreadCount === 0 && b.unreadCount > 0) return 1;
+          // Potem po dacie ostatniej wiadomości
+          return b.lastMessage.timestamp - a.lastMessage.timestamp;
+        });
+
+        // Wyświetl wiadomości
+        const messagesHtml = conversationsArray.map(conversation => {
+          const lastMsg = conversation.lastMessage;
+          const date = new Date(lastMsg.timestamp).toLocaleString("pl-PL", {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          const hasUnread = conversation.unreadCount > 0;
+          const statusText = lastMsg.status === 'completed' ? 'Zakończona' : 'Aktywna';
+
+          // Hierarchia wyświetlania: zawsze nickname/displayName, email tylko jeśli brak nazwy
+          const displayName = conversation.senderName || conversation.senderEmail;
+          const displaySubtext = conversation.senderName ? conversation.senderEmail : '';
+
+          // Ikona kategorii
+          const categoryIcon = conversation.categoryName === 'Zamówienia' ? 'fa-shopping-cart' :
+                               conversation.categoryName === 'Oferty' ? 'fa-tag' : 'fa-circle';
+
+          return `
+            <div class="message-item bg-zinc-800/50 rounded-lg p-4 cursor-pointer hover:bg-zinc-800/70 transition-all duration-200 border ${hasUnread ? 'border-l-4 border-l-coyote glowing-border' : 'border-zinc-700'}"
+                 data-user-id="${conversation.senderId}"
+                 data-user-name="${conversation.senderName}"
+                 data-user-email="${conversation.senderEmail}">
+              <div class="flex items-start justify-between mb-3">
+                <div class="flex items-center space-x-3">
+                  <div class="w-10 h-10 bg-coyote rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-user text-black text-sm"></i>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <div>
+                      <h4 class="font-semibold text-white flex items-center gap-2">
+                        <i class="fa-solid ${categoryIcon} text-xs" style="color: ${conversation.categoryColor}"></i>
+                        ${displayName}
+                      </h4>
+                      ${displaySubtext ? `<p class="text-sm text-zinc-400">${displaySubtext}</p>` : ''}
+                    </div>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-xs text-zinc-500 mb-2">${date}</div>
+                  <div class="flex flex-col items-end space-y-1">
+                    <span class="${lastMsg.status === 'completed' ? 'text-green-400' : 'text-orange-400'} text-xs font-medium">
+                      ${statusText}
+                    </span>
+                    <span class="px-2 py-1 rounded text-xs font-medium"
+                          style="background-color: ${conversation.categoryColor}20; color: ${conversation.categoryColor}; border: 1px solid ${conversation.categoryColor}40;">
+                      ${conversation.categoryName}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <p class="text-zinc-300 text-sm leading-relaxed">
+                  ${lastMsg.topic ? `<strong>${lastMsg.topic}:</strong> ` : ''}
+                  ${lastMsg.content.length > 150 ? lastMsg.content.substring(0, 150) + '...' : lastMsg.content}
+                </p>
+              </div>
+
+              <div class="flex items-center justify-between text-xs text-zinc-500">
+                <span>${conversation.totalMessages} wiadomości</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        messagesContainer.innerHTML = messagesHtml;
+
+        // Dodaj event listenery do wszystkich elementów wiadomości
+        const messageItems = messagesContainer.querySelectorAll('.message-item');
+        messageItems.forEach(item => {
+          item.addEventListener('click', function() {
+            const userId = this.getAttribute('data-user-id');
+            const userName = this.getAttribute('data-user-name');
+            const userEmail = this.getAttribute('data-user-email');
+            if (userId && userName && userEmail) {
+              openMessageChat(userId, userName, userEmail);
+            }
+          });
+        });
+      }
+
+      // Funkcja otwierania czatu z wiadomością
+      async function openMessageChat(userId, userName, userEmail) {
+        currentConversationUser = { id: userId, name: userName, email: userEmail };
+
+        // Pokaż modal
+        document.getElementById('chat-modal').classList.remove('hidden');
+
+        // Ustaw informacje użytkownika
+        const chatNameEl2 = document.getElementById('chat-user-name');
+        if (chatNameEl2) chatNameEl2.textContent = userName;
+        const chatEmailEl2 = document.getElementById('chat-user-email');
+        if (chatEmailEl2) chatEmailEl2.textContent = userEmail;
+
+        // Załaduj kategorie do select
+        const categorySelect = document.getElementById('chat-category-select');
+        categorySelect.innerHTML = '<option value="">Ładowanie...</option>';
+
+        try {
+          const response = await fetch('/api/message-categories');
+          const data = await response.json();
+
+          if (data.success) {
+            categorySelect.innerHTML = data.data.map(cat =>
+              `<option value="${cat.id}">${cat.name}</option>`
+            ).join('');
+          }
+        } catch (error) {
+          console.error('Error loading categories for chat:', error);
+          categorySelect.innerHTML = '<option value="">Błąd ładowania</option>';
+        }
+
+        // Obsługa klawisza Enter jest już dodana globalnie w init()
+
+        // Dodaj obsługę zmiany kategorii
+        if (categorySelect) {
+          categorySelect.addEventListener('change', async function() {
+            const selectedCategoryId = this.value;
+            if (!selectedCategoryId) return;
+
+            try {
+              // Znajdź najnowszą wiadomość w konwersacji i zaktualizuj jej kategorię
+              const response = await fetch(`/api/messages?senderId=${userId}&recipientId=admin&limit=1`);
+              const data = await response.json();
+
+              if (data.success && data.data.messages.length > 0) {
+                const latestMessage = data.data.messages[0];
+                await fetch(`/api/messages/${latestMessage.id}/category`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ categoryId: selectedCategoryId })
+                });
+                showNotification("Kategoria została zaktualizowana", "success");
+              }
+            } catch (error) {
+              console.error('Error updating category:', error);
+              showNotification("Błąd podczas aktualizacji kategorii", "error");
+            }
+          });
+        }
+
+        // Załaduj wiadomości konwersacji
+        await loadConversationMessages(userId);
+      }
+
+      // Funkcja otwierania modalu szybkich odpowiedzi
+      async function openQuickRepliesMenu() {
+        const modal = document.getElementById('quick-replies-modal');
+        const listContainer = document.getElementById('quick-replies-list');
+
+        modal.classList.remove('hidden');
+        listContainer.innerHTML = '<div class="text-center text-zinc-500 py-8"><i class="fa-solid fa-spinner fa-spin"></i> Ładowanie...</div>';
+
+        try {
+          const response = await fetch('/api/quick-replies');
+          const data = await response.json();
+
+          if (data.success && data.data.length > 0) {
+            const repliesHtml = data.data.map(reply => `
+              <div class="bg-zinc-800 rounded-lg p-3 mb-3 cursor-pointer hover:bg-zinc-700 transition-colors"
+                   onclick="selectQuickReply('${reply.content.replace(/'/g, "\\'").replace(/\n/g, '\\n')}')">
+                <div class="font-semibold text-white text-sm mb-1">${reply.title}</div>
+                <div class="text-zinc-400 text-xs line-clamp-2">${reply.content}</div>
+              </div>
+            `).join('');
+
+            listContainer.innerHTML = repliesHtml;
+          } else {
+            listContainer.innerHTML = '<div class="text-center text-zinc-500 py-8">Brak dostępnych szablonów</div>';
+          }
+        } catch (error) {
+          console.error('Error loading quick replies:', error);
+          listContainer.innerHTML = '<div class="text-center text-red-400 py-8">Błąd ładowania szablonów</div>';
+        }
+      }
+
+      // Funkcja wyboru szybkiej odpowiedzi
+      function selectQuickReply(content) {
+        const input = document.getElementById('chat-reply-input');
+        if (input) {
+          input.value = content.replace(/\\n/g, '\n').replace(/\\'/g, "'");
+          input.focus();
+        }
+        closeQuickRepliesModal();
+      }
+
+      // Funkcja zamykania modalu szybkich odpowiedzi
+      function closeQuickRepliesModal() {
+        document.getElementById('quick-replies-modal').classList.add('hidden');
+      }
+
+      // Funkcja zamykania modalu czatu
+      function closeChatModal() {
+        document.getElementById('chat-modal').classList.add('hidden');
+        currentConversationUser = null;
+      }
+
+      // Funkcja ładowania wiadomości konwersacji
+      async function loadConversationMessages(userId) {
+        const messagesContainer = document.getElementById('chat-messages');
+        messagesContainer.innerHTML = '<div class="text-center text-zinc-500 py-8"><i class="fa-solid fa-spinner fa-spin"></i> Ładowanie...</div>';
+
+        try {
+          // Pobierz wszystkie wiadomości między adminem a użytkownikiem
+          const [response1, response2] = await Promise.all([
+            fetch(`/api/messages?senderId=${userId}&recipientId=admin&limit=100`),
+            fetch(`/api/messages?senderId=admin&recipientId=${userId}&limit=100`)
+          ]);
+
+          const [data1, data2] = await Promise.all([
+            response1.json(),
+            response2.json()
+          ]);
+
+          if (!data1.success || !data2.success) {
+            throw new Error('Failed to load conversation');
+          }
+
+          // Połącz i posortuj wiadomości
+          const allMessages = [...data1.data.messages, ...data2.data.messages]
+            .sort((a, b) => a.timestamp - b.timestamp);
+
+          if (allMessages.length === 0) {
+            messagesContainer.innerHTML = '<div class="text-center text-zinc-500 py-8">Brak wiadomości w tej konwersacji</div>';
+            return;
+          }
+
+          // Znajdź punkt zmiany statusu z completed na in_progress
+          let statusChangeIndex = -1;
+          for (let i = 0; i < allMessages.length; i++) {
+            if (allMessages[i] && allMessages[i].status === 'in_progress' && i > 0 && allMessages[i-1] && allMessages[i-1].status === 'completed') {
+              statusChangeIndex = i;
+              break;
+            }
+          }
+
+          // Wyświetl wiadomości
+          const messagesHtml = allMessages.map((msg, index) => {
+            if (!msg) return ''; // Pomiń null/undefined wiadomości
+
+            const isFromUser = msg.senderId !== 'admin';
+            const isCompletedSession = msg.status === 'completed';
+            const time = new Date(msg.timestamp || Date.now()).toLocaleString("pl-PL", {
+              hour: '2-digit',
+              minute: '2-digit',
+              day: '2-digit',
+              month: '2-digit'
+            });
+
+            // Dodaj separator jeśli to początek nowej części konwersacji
+            let separatorHtml = '';
+            if (index === statusChangeIndex) {
+              const messageDate = new Date(msg.timestamp || Date.now()).toLocaleDateString("pl-PL", {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              });
+              separatorHtml = `
+                <div class="flex justify-center my-6">
+                  <div class="bg-zinc-600 text-zinc-200 px-6 py-3 rounded-full text-sm font-semibold border-2 border-zinc-500">
+                    --- NOWE ZGŁOSZENIE ${messageDate} ---
+                  </div>
+                </div>
+              `;
+            }
+
+            // Liquid Glass styling: nowe wiadomości = brighter, archived = darker and more transparent
+            const messageClasses = isCompletedSession
+              ? (isFromUser
+                  ? 'bg-zinc-800/40 backdrop-blur-sm border border-zinc-600/30'
+                  : 'bg-zinc-800/40 backdrop-blur-sm border border-solid')
+              : (isFromUser
+                  ? 'bg-zinc-700/80 backdrop-blur-md border border-zinc-600/60'
+                  : 'bg-zinc-700/80 backdrop-blur-md border border-solid');
+
+            // Add coyote border for admin messages
+            const adminBorderStyle = !isFromUser ? 'border' : '';
+
+            // Funkcja czyszczenia zawartości wiadomości - usuwa nagłówki
+            function cleanMessageContent(content) {
+              if (!content) return '';
+
+              // Usuń nagłówki jak "Odpowiedź administratora:", "Pytanie o produkt:", itp.
+              const headerPatterns = [
+                /^Odpowiedź administratora:?\s*/i,
+                /^Pytanie o produkt:?\s*/i,
+                /^Pytanie o produkty:?\s*/i,
+                /^Zapytanie:?\s*/i,
+                /^Wiadomość:?\s*/i
+              ];
+
+              let cleanedContent = content;
+              for (const pattern of headerPatterns) {
+                cleanedContent = cleanedContent.replace(pattern, '');
+              }
+
+              return cleanedContent.trim();
+            }
+
+            const cleanedContent = cleanMessageContent(msg.content || '');
+
+            return separatorHtml + `
+              <div class="flex ${isFromUser ? 'justify-start' : 'justify-end'} mb-4">
+                <div class="max-w-[70%] ${messageClasses} ${adminBorderStyle} rounded-lg p-3" ${!isFromUser ? 'style="border: 1px solid var(--coyote);"' : ''}>
+                  <div class="text-sm text-zinc-100 whitespace-pre-wrap">${cleanedContent}</div>
+                  <div class="text-xs text-zinc-400 mt-2">${time}</div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          messagesContainer.innerHTML = messagesHtml;
+
+          // Przewiń na dół
+          setTimeout(() => {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          }, 100);
+
+          // Oznacz wiadomości jako przeczytane
+          for (const msg of allMessages) {
+            if (msg.senderId === userId && !msg.isRead) {
+              await fetch(`/api/messages/${msg.id}/read`, { method: 'PUT' });
+            }
+          }
+
+          // Odśwież status
+          loadMessagesStatus();
+
+          // Aktualizuj przycisk zakończ/rozpocznij
+          updateCompleteButton();
+
+        } catch (error) {
+          console.error('Error loading conversation:', error);
+          messagesContainer.innerHTML = '<div class="text-center text-red-400 py-8">Błąd ładowania konwersacji</div>';
+        }
+      }
+
+      // Funkcja wysyłania odpowiedzi
+      async function sendChatReply() {
+        if (!currentConversationUser) return;
+
+        const input = document.getElementById('chat-reply-input');
+        const content = input.value.trim();
+
+        if (!content) {
+          showNotification("Wpisz wiadomość przed wysłaniem", "warning");
+          return;
+        }
+
+        try {
+          // Sprawdź czy konwersacja była zakończona - jeśli tak, przywróć do in_progress
+          const statusResponse = await fetch(`/api/messages?senderId=${currentConversationUser.id}&recipientId=admin&status=completed&limit=1`);
+          const statusData = await statusResponse.json();
+
+          if (statusData.success && statusData.data.messages.length > 0) {
+            // Konwersacja była zakończona, przywróć do in_progress
+            const latestCompletedMessage = statusData.data.messages[0];
+            await fetch(`/api/messages/${latestCompletedMessage.id}/status`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status: 'in_progress' })
+            });
+          }
+
+          const response = await fetch('/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              senderId: 'admin',
+              senderName: 'Administrator',
+              senderType: 'admin',
+              recipientId: currentConversationUser.id,
+              recipientType: 'user',
+              content: content
+            })
+          });
+
+          const data = await response.json();
+
+          if (!data.success) {
+            throw new Error(data.error || 'Failed to send message');
+          }
+
+          // Wyczyść input
+          input.value = '';
+
+          // Przeładuj konwersację
+          await loadConversationMessages(currentConversationUser.id);
+
+          // Odśwież wiadomości
+          loadMessagesWithFilters();
+          loadMessagesStatus();
+
+          showNotification("Wiadomość została wysłana", "success");
+
+        } catch (error) {
+          console.error('Error sending reply:', error);
+          showNotification("Błąd wysyłania wiadomości", "error");
+        }
+      }
+
+      // Funkcja zakończenia konwersacji
+      async function toggleConversationStatus() {
+        if (!currentConversationUser) return;
+
+        const btn = document.getElementById('complete-start-btn');
+        const isCurrentlyCompleted = btn.innerHTML.includes('ROZPOCZNIJ');
+
+        if (isCurrentlyCompleted) {
+          // Restart the conversation (from completed to in_progress)
+          try {
+            // Znajdź najnowszą wiadomość w konwersacji i przywróć do in_progress
+            const response = await fetch(`/api/messages?senderId=${currentConversationUser.id}&recipientId=admin&status=completed&limit=1`);
+            const data = await response.json();
+
+            if (data.success && data.data.messages.length > 0) {
+              const latestMessage = data.data.messages[0];
+              await fetch(`/api/messages/${latestMessage.id}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'in_progress' })
+              });
+            }
+
+            // Odśwież chat
+            loadConversationMessages(currentConversationUser.id);
+            loadMessagesWithFilters();
+            loadMessagesStatus();
+
+            showNotification("Konwersacja została wznowiona", "success");
+
+          } catch (error) {
+            console.error('Error restarting conversation:', error);
+          }
+        } else {
+          // Complete the conversation (from in_progress to completed)
+          if (!confirm('Czy na pewno chcesz zakończyć tę konwersację?')) return;
+
+          try {
+            // Znajdź najnowszą wiadomość w konwersacji i oznacz jako completed
+            const response = await fetch(`/api/messages?senderId=${currentConversationUser.id}&recipientId=admin&status=in_progress&limit=1`);
+            const data = await response.json();
+
+            if (data.success && data.data.messages.length > 0) {
+              const latestMessage = data.data.messages[0];
+              await fetch(`/api/messages/${latestMessage.id}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'completed' })
+              });
+            }
+
+            // Zamknij modal
+            closeChatModal();
+
+            // Odśwież wszystko
+            loadMessagesWithFilters();
+            loadMessagesStatus();
+
+            showNotification("Konwersacja została zakończona", "success");
+
+          } catch (error) {
+            console.error('Error completing conversation:', error);
+            showNotification("Błąd podczas kończenia konwersacji", "error");
+          }
+        }
+      }
+
+      // Funkcja aktualizacji przycisku na podstawie statusu konwersacji
+      function updateCompleteButton() {
+        if (!currentConversationUser) return;
+
+        const btn = document.getElementById('complete-start-btn');
+        if (!btn) return;
+
+        // Sprawdź czy konwersacja jest zakończona
+        fetch(`/api/messages?senderId=${currentConversationUser.id}&recipientId=admin&status=completed&limit=1`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.success && data.data.messages.length > 0) {
+              // Konwersacja zakończona - pokaż przycisk ROZPOCZNIJ
+              btn.innerHTML = '<i class="fa-solid fa-times mr-2 text-red-400"></i>ROZPOCZNIJ';
+            } else {
+              // Konwersacja aktywna - pokaż przycisk ZAKOŃCZ
+              btn.innerHTML = '<i class="fa-solid fa-check mr-2 text-green-400"></i>ZAKOŃCZ';
+            }
+          })
+          .catch(error => {
+            console.error('Error checking conversation status:', error);
+          });
+      }
+
+      async function refreshMessages() {
+        console.log('🔄 Manual refresh triggered');
+
+        // Dodaj animację obracania
+        const refreshIcon = document.getElementById('refresh-icon');
+        if (refreshIcon) {
+          refreshIcon.classList.add('fa-spin');
+        }
+
+        try {
+          await loadMessages();
+          loadMessagesStatus(); // Odśwież też status
+        } finally {
+          // Zatrzymaj animację po 1 sekundzie
+          setTimeout(() => {
+            if (refreshIcon) {
+              refreshIcon.classList.remove('fa-spin');
+            }
+          }, 1000);
+        }
+      }
+
+      // Funkcja filtrowania wiadomości po statusie
+      function filterMessages(filterType) {
+        // Aktualizuj currentFilters
+        currentFilters.category = filterType;
+        currentFilters.search = document.getElementById('messages-search')?.value || '';
+
+        // Zaktualizuj dropdown filtra
+        const filterSelect = document.getElementById('messages-filter');
+        if (filterSelect) {
+          switch(filterType) {
+            case 'unread':
+              filterSelect.value = 'unread';
+              break;
+            case 'completed':
+              filterSelect.value = 'completed';
+              break;
+            default:
+              filterSelect.value = 'all';
+              break;
+          }
+        }
+
+        // Przeładuj wiadomości
+        loadMessagesWithFilters();
+      }
+
+      // Funkcja przełączania dropdowna filtrów
+      function toggleFilterDropdown() {
+        const dropdown = document.getElementById('filter-dropdown');
+        if (dropdown) {
+          dropdown.classList.toggle('hidden');
+        }
+      }
+
+      // Funkcja czyszczenia filtrów
+      function clearFilters() {
+        currentFilters = { search: '', category: 'all', status: 'all' };
+        document.getElementById('messages-search').value = '';
+        const filterSelect = document.getElementById('messages-filter');
+        if (filterSelect) filterSelect.value = 'all';
+        loadMessagesWithFilters();
+        // Odśwież liczniki statusów
+        loadMessagesStatus();
+      }
+
+      // Funkcja czyszczenia wyszukiwania wiadomości
+      function clearMessagesSearch() {
+        const searchInput = document.getElementById('messages-search');
+        searchInput.value = '';
+        searchInput.focus();
+        currentFilters.search = '';
+        loadMessagesWithFilters();
+        // Ukryj przycisk clear
+        const clearBtn = document.getElementById('clear-search-btn');
+        if (clearBtn) {
+          clearBtn.classList.add('opacity-0');
+          clearBtn.classList.remove('opacity-100');
+        }
+      }
+
+      // Zmienna do śledzenia czy użytkownik pisze
+      let isUserTyping = false;
+      let typingTimeout = null;
+
+      // Funkcja automatycznego odświeżania
+      function startAutoRefresh() {
+        if (messagesAutoRefresh) {
+          clearInterval(messagesAutoRefresh);
+        }
+
+        messagesAutoRefresh = setInterval(() => {
+          if (currentTab === 'messages' && !isUserTyping) {
+            loadMessages(); // Odśwież wszystkie wiadomości
+          }
+        }, 60000); // Co 60 sekund
+      }
+
+      // Funkcja zatrzymania auto-odświeżania
+      function stopAutoRefresh() {
+        if (messagesAutoRefresh) {
+          clearInterval(messagesAutoRefresh);
+          messagesAutoRefresh = null;
+        }
+      }
+
+      // Funkcje obsługi pisania
+      function handleTypingStart() {
+        isUserTyping = true;
+        // Zatrzymaj timeout jeśli istnieje
+        if (typingTimeout) {
+          clearTimeout(typingTimeout);
+        }
+      }
+
+      function handleTypingEnd() {
+        // Ustaw timeout na 3 sekundy po zakończeniu pisania
+        typingTimeout = setTimeout(() => {
+          isUserTyping = false;
+        }, 3000);
+      }
+
+      // Dodaj event listenery do pól tekstowych
+      function setupTypingListeners() {
+        const searchInput = document.getElementById('messages-search');
+        const chatInput = document.getElementById('chat-reply-input');
+
+        if (searchInput) {
+          searchInput.addEventListener('input', handleTypingStart);
+          searchInput.addEventListener('blur', handleTypingEnd);
+          searchInput.addEventListener('input', function() {
+            const clearBtn = document.getElementById('clear-search-btn');
+            if (clearBtn) {
+              if (this.value.length > 0) {
+                clearBtn.classList.remove('opacity-0');
+                clearBtn.classList.add('opacity-100');
+              } else {
+                clearBtn.classList.add('opacity-0');
+                clearBtn.classList.remove('opacity-100');
+              }
+            }
+          });
+        }
+
+        if (chatInput) {
+          chatInput.addEventListener('input', handleTypingStart);
+          chatInput.addEventListener('blur', handleTypingEnd);
+        }
+      }
+
+      // Funkcje zarządzania kategoriami
+      async function openCategoriesSettings() {
+        document.getElementById('categories-modal').classList.remove('hidden');
+        await loadCategoriesForSettings();
+      }
+
+      function closeCategoriesModal() {
+        document.getElementById('categories-modal').classList.add('hidden');
+      }
+
+      async function loadCategoriesForSettings() {
+        const container = document.getElementById('categories-list');
+        container.innerHTML = '<div class="text-center text-zinc-500 py-8"><i class="fa-solid fa-spinner fa-spin"></i> Ładowanie...</div>';
+
+        try {
+          const response = await fetch('/api/message-categories');
+          const data = await response.json();
+
+          if (data.success) {
+            const categoriesHtml = data.data.map(category => `
+              <div class="flex items-center justify-between p-4 bg-zinc-800 rounded-lg">
+                <div class="flex items-center space-x-3">
+                  <div class="w-8 h-8 rounded" style="background-color: ${category.color}"></div>
+                  <div>
+                    <div class="font-semibold text-white">${category.name}</div>
+                    <div class="text-sm text-zinc-400">${category.icon}</div>
+                  </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <button onclick="editCategory(${category.id})" class="text-zinc-400 hover:text-white">
+                    <i class="fa-solid fa-edit"></i>
+                  </button>
+                  <button onclick="deleteCategory(${category.id})" class="text-zinc-400 hover:text-red-400">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+            `).join('');
+
+            container.innerHTML = categoriesHtml;
+          }
+        } catch (error) {
+          console.error('Error loading categories for settings:', error);
+          container.innerHTML = '<div class="text-center text-red-400 py-8">Błąd ładowania kategorii</div>';
+        }
+      }
+
+      // Funkcje edycji kategorii (placeholder - do implementacji)
+      function addNewCategory() {
+        showNotification("Funkcjonalność dodawania kategorii zostanie dodana wkrótce", "info");
+      }
+
+      function editCategory(id) {
+        showNotification("Funkcjonalność edycji kategorii zostanie dodana wkrótce", "info");
+      }
+
+      async function deleteCategory(id) {
+        if (!confirm('Czy na pewno chcesz usunąć tę kategorię?')) return;
+
+        try {
+          const response = await fetch(`/api/message-categories/${id}`, {
+            method: 'DELETE'
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            await loadCategoriesForSettings();
+            await loadCategories();
+            showNotification("Kategoria została usunięta", "success");
+          } else {
+            throw new Error(data.error);
+          }
+        } catch (error) {
+          console.error('Error deleting category:', error);
+          showNotification("Błąd podczas usuwania kategorii", "error");
+        }
+      }
+
+      // Funkcja przełączania do zakładki Users i wyszukiwania użytkownika
+      function switchToUsersTab(userId) {
+        if (!userId) {
+          showNotification("Brak ID użytkownika", "warning");
+          return;
+        }
+
+        // Przełącz na zakładkę Users
+        switchTab('users');
+
+        // Po krótkim opóźnieniu otwórz szczegóły użytkownika
+        setTimeout(() => {
+          if (window.viewUserDetails) {
+            window.viewUserDetails(userId);
+          }
+        }, 500);
+      }
+
+      // Funkcja wyświetlania profilu użytkownika (placeholder)
+      function viewUserProfile(userId) {
+        showNotification(`Funkcjonalność profilu użytkownika zostanie dodana wkrótce (ID: ${userId})`, "info");
+      }
+
+      // Utility function - debounce
+      function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+          const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+          };
+          clearTimeout(timeout);
+          timeout = setTimeout(later, wait);
+        };
+      }
+
+      // Funkcje pomocnicze dla logowania administratora (global scope)
+
+
+      // Globalne funkcje pomocnicze dla lokalnych administratorów
+
+
+      // Obsługa formularza logowania administratora
+      document.addEventListener('DOMContentLoaded', function() {
+        const loginForm = document.getElementById('admin-login-form');
+        if (loginForm) {
+          loginForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const login = document.getElementById('admin-email').value.trim();
+            const password = document.getElementById('admin-password').value;
+
+            if (!login || !password) {
+              showStatus('Wprowadź login i hasło administratora.', true);
+              return;
+            }
+
+            // Walidacja formatu email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(login)) {
+              showStatus('Wprowadź prawidłowy adres email.', true);
+              return;
+            }
+
+            try {
+              // Ustaw persistence na podstawie checkboxa "Remember Me"
+              const rememberMe = document.getElementById('admin-remember-me').checked;
+              const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+              await setPersistence(auth, persistence);
+
+              // Zapisz ustawienie "Remember Me" w localStorage dla SessionManager
+              localStorage.setItem('strzelca_remember_me', rememberMe.toString());
+
+              // Logowanie wyłącznie przez Firebase Authentication
+              await signInWithEmailAndPassword(auth, login, password);
+
+              // Sprawdź rolę administratora w Firestore
+              const user = auth.currentUser;
+              if (user) {
+                const userDoc = await getDoc(doc(db, "userProfiles", user.uid));
+                if (userDoc.exists()) {
+                  const userData = userDoc.data();
+                  if (userData.role === "admin") {
+                    showStatus('Logowanie administratora pomyślne.');
+                    // Firebase Auth listener automatycznie pokaże panel
+                    return;
+                  }
+                }
+              }
+
+              // Jeśli użytkownik nie ma roli admin, wyloguj
+              await signOut(auth);
+              showStatus('<strong style="color: #dc2626;">Błędne dane. Nieupoważnionym wstęp wzbroniony.</strong>', true);
+            } catch (error) {
+              console.error('Login error:', error);
+              showStatus('<strong style="color: #dc2626;">Błędne dane. Nieupoważnionym wstęp wzbroniony.</strong>', true);
+            }
+          });
+        }
+      });
+
+      // =============================================================================
+      // SLIDING EXPIRATION - RESET SESSION TIMER ON USER ACTIVITY
+      // =============================================================================
+      let lastSessionReset = 0;
+      const sessionResetThrottleMs = 30000; // 30 sekund
+
+      const resetSession = () => {
+        const now = Date.now();
+        if (now - lastSessionReset >= sessionResetThrottleMs) {
+          if (window.sessionManager && currentUser) {
+            window.sessionManager.extendSession(); // Resetuje timer sesji
+            lastSessionReset = now;
+          }
+        }
+      };
+
+      // Dodaj listenery dla wszystkich zdarzeń aktywności
+      ['mousedown', 'mousemove', 'keypress', 'scroll', 'click', 'touchstart'].forEach(event => {
+        document.addEventListener(event, resetSession, { passive: true });
       });
     </script>
 

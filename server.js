@@ -111,99 +111,6 @@ app.post('/api/log-event', (req, res) => {
   }
 });
 
-// Active users endpoint - rozszerzony
-app.post('/api/user-activity', async (req, res) => {
-  try {
-    const activityData = {
-      userId: req.body.userId || req.body.sessionId || 'anonymous',
-      userEmail: req.body.userEmail || null,
-      timestamp: req.body.timestamp || new Date().toISOString(),
-      action: req.body.action || 'page_view',
-      path: req.body.path || '/',
-      userAgent: req.body.userAgent || req.get('User-Agent'),
-      ip: req.body.ip || req.ip,
-      sessionType: req.body.sessionType || 'standard'
-    };
-
-    await db.logUserActivity(activityData);
-
-    // Pobierz statystyki dla odpowiedzi
-    const stats = await db.getUserActivityStats();
-
-    res.json({
-      success: true,
-      activeUsers: stats.total,
-      sessionExtended: true
-    });
-  } catch (error) {
-    console.error('Error tracking user activity:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get active users count
-app.get('/api/active-users', async (req, res) => {
-  try {
-    const stats = await db.getUserActivityStats();
-    res.json(stats);
-  } catch (error) {
-    console.error('Error getting active users:', error);
-    res.json({ loggedIn: 0, guests: 0, total: 0 });
-  }
-});
-
-// Get detailed active sessions (for admin panel)
-app.get('/api/active-sessions', async (req, res) => {
-  try {
-    const sessions = await db.getUserActivitySessions();
-
-    // Dodaj dodatkowe pola dla kompatybilności
-    const enhancedSessions = sessions.map(session => ({
-      ...session,
-      isActive: true,
-      timeSinceLastActivity: Math.floor((Date.now() - new Date(session.lastActivity)) / 1000),
-      ip: session.ipAddress // dla kompatybilności z istniejącym kodem
-    }));
-
-    // Sort by last activity (most recent first)
-    enhancedSessions.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
-
-    res.json({
-      sessions: enhancedSessions,
-      total: enhancedSessions.length,
-      loggedIn: enhancedSessions.filter(s => s.userId !== 'anonymous' && !s.userId.startsWith('guest')).length,
-      guests: enhancedSessions.filter(s => s.userId === 'anonymous' || s.userId.startsWith('guest')).length
-    });
-  } catch (error) {
-    console.error('Error getting active sessions:', error);
-    res.status(500).json({ sessions: [], total: 0, error: error.message });
-  }
-});
-
-// Get session details for specific user
-app.get('/api/session-details/:userId', async (req, res) => {
-  try {
-    const userId = req.params.userId;
-    const session = await db.getUserSession(userId);
-
-    if (!session) {
-      return res.json({ session: null, message: 'User session not found' });
-    }
-
-    // Dodaj dodatkowe pola dla kompatybilności
-    const sessionDetails = {
-      ...session,
-      ip: session.ipAddress, // dla kompatybilności z istniejącym kodem
-      timeSinceLastActivity: Math.floor((Date.now() - new Date(session.lastActivity)) / 1000),
-      sessionDuration: Math.floor((new Date(session.lastActivity) - new Date(session.timestamp)) / 1000)
-    };
-
-    res.json({ session: sessionDetails });
-  } catch (error) {
-    console.error('Error getting session details:', error);
-    res.status(500).json({ session: null, error: error.message });
-  }
-});
 
 // Get system events
 app.get('/api/system-events', (req, res) => {
@@ -342,15 +249,31 @@ app.get('/api/messages', messagesAPI.get);
 app.post('/api/messages', messagesAPI.post);
 app.put('/api/messages/:id/status', messagesAPI.updateStatus);
 app.put('/api/messages/:id/read', messagesAPI.markRead);
+app.put('/api/messages/:id/category', messagesAPI.updateCategory);
 app.get('/api/messages/stats', messagesAPI.getStats);
+
+// Endpointy dla kategorii wiadomości
+app.get('/api/message-categories', messagesAPI.getCategories);
+app.post('/api/message-categories', messagesAPI.addCategory);
+app.put('/api/message-categories/:id', messagesAPI.updateCategory);
+app.delete('/api/message-categories/:id', messagesAPI.deleteCategory);
 
 // Admin API - obsługiwane przez api/admin.js
 const adminAPI = require('./api/admin');
 
 // Rejestracja endpointów API administratorów
-app.post('/api/admin/verify', adminAPI.verify);
-app.get('/api/admin/list', adminAPI.list);
-app.post('/api/admin/create', adminAPI.create);
+app.get('/api/admin/activity-logs', adminAPI.getActivityLogs);
+app.get('/api/admin/stats/contact-forms-today', adminAPI.getContactFormsToday);
+app.get('/api/admin/stats/pending-tasks', adminAPI.getPendingTasks);
+
+// Quick Replies API - obsługiwane przez api/quick-replies.js
+const quickRepliesAPI = require('./api/quick-replies');
+
+// Rejestracja endpointów API szybkich odpowiedzi
+app.get('/api/quick-replies', quickRepliesAPI.get);
+app.post('/api/quick-replies', quickRepliesAPI.post);
+app.put('/api/quick-replies/:id', quickRepliesAPI.put);
+app.delete('/api/quick-replies/:id', quickRepliesAPI.delete);
 
 // Serve static files from root directory
 app.use(express.static('.'));

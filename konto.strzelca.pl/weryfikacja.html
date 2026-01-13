@@ -44,20 +44,37 @@
         </div>
     </div>
 
-    <!-- Session Manager -->
-    <script src="../session-manager.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script>
-        // Firebase config (zakładam że masz już skonfigurowane)
         const firebaseConfig = {
-            // Dodaj swoją konfigurację Firebase tutaj
+            apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
+            authDomain: "strzelca-pl.firebaseapp.com",
+            projectId: "strzelca-pl",
+            storageBucket: "strzelca-pl.firebasestorage.app",
+            messagingSenderId: "511362047688",
+            appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
+            measurementId: "G-9EJ2R3JPVD"
         };
 
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Ustaw trwałość sesji na LOCAL
+        await auth.setPersistence(auth.Auth.Persistence.LOCAL);
+
+        // Listener stanu autoryzacji
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // Użytkownik jest zalogowany - można kontynuować weryfikację
+                console.log('Użytkownik zalogowany podczas weryfikacji');
+            } else {
+                // Użytkownik niezalogowany - przekieruj do logowania
+                console.log('Użytkownik niezalogowany podczas weryfikacji, przekierowanie do login.html');
+                window.location.href = 'login.html';
+            }
+        });
 
         const auth = firebase.auth();
         let countdown = 5;

@@ -219,7 +219,6 @@
     </footer>
 
     <!-- Session Manager -->
-    <script src="../session-manager.js"></script>
 
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -243,6 +242,21 @@
 
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
+
+      // Ustaw trwałość sesji na LOCAL dla wszystkich stron wymagających logowania
+      await auth.setPersistence(auth.Auth.Persistence.LOCAL);
+
+      // Listener stanu autoryzacji - jeśli użytkownik już jest zalogowany, przekieruj do profilu
+      onAuthStateChanged(auth, (user) => {
+          if (user) {
+              // Użytkownik już jest zalogowany - przekieruj do profilu
+              console.log('Użytkownik już zalogowany, przekierowanie do profil.html');
+              window.location.href = 'profil.html';
+          } else {
+              // Użytkownik niezalogowany - pozwól mu się zalogować
+              console.log('Użytkownik niezalogowany, można się zalogować');
+          }
+      });
 
       function showStatus(message, isError = false) {
         const statusEl = document.getElementById("status-message");
@@ -338,6 +352,11 @@
             }
 
             showStatus("Zalogowano pomyślnie! Przekierowanie...");
+
+            // Ustaw ustawienia sesji dla SessionManager
+            if (typeof setSessionSettings === 'function') {
+              setSessionSettings(remember);
+            }
 
             // Przekieruj do strony głównej (globalny system się zajmie resztą)
             setTimeout(() => {
