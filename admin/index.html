@@ -2614,7 +2614,7 @@
         browserLocalPersistence,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
       import {
-        getFirestore,
+        initializeFirestore,
         doc,
         getDoc,
         getDocs,
@@ -2644,12 +2644,13 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
 
-      // Ustaw persistence na podstawie zapisanych ustawień Remember Me
-      const savedRememberMe = localStorage.getItem('strzelca_remember_me') === 'true';
-      const initialPersistence = savedRememberMe ? browserLocalPersistence : browserSessionPersistence;
-      await setPersistence(auth, initialPersistence);
+      // Ustaw persistence na local (administrator jest pamiętany między sesjami)
+      await setPersistence(auth, browserLocalPersistence);
 
-      const db = getFirestore(app);
+      // Inicjalizuj Firestore z ustawieniem dla Safari
+      const db = initializeFirestore(app, {
+        experimentalForceLongPolling: true
+      });
 
       let currentUser = null;
       let currentTab = "dashboard";
@@ -3072,6 +3073,8 @@
             document.getElementById("login-section").classList.add("hidden");
             document.getElementById("admin-panel").classList.remove("hidden");
             switchTab("dashboard");
+            // Załaduj stats dla SuperAdmin'a
+            setTimeout(() => loadDashboardStats(), 100);
             return;
           }
 
@@ -3097,8 +3100,10 @@
                 document.getElementById("login-section").classList.add("hidden");
                 document.getElementById("admin-panel").classList.remove("hidden");
 
-                // Załaduj dashboard
+                // Załaduj dashboard i stats dopiero po zakończeniu ładowania profilu
                 switchTab("dashboard");
+                // Opóźnij ładowanie stats, żeby dać czas na zakończenie ładowania profilu
+                setTimeout(() => loadDashboardStats(), 100);
                 return;
               } else {
                 console.warn('User has role:', userData.role, 'but expected admin');
@@ -6079,6 +6084,8 @@
 
             // Sprawdź Firestore
             try {
+              // Sprawdź połączenie przez waitForPendingWrites oraz testowy odczyt
+              await db.waitForPendingWrites();
               const testDoc = await getDoc(doc(db, "test", "connection"));
               const firestoreOnline = true;
 
@@ -6305,36 +6312,54 @@
           clearInterval(activityLogsListener); // Odłącz poprzedni interval
         }
 
-        // Zamiast real-time listener, użyj pollingu co 30 sekund
+        // Zamiast real-time listener, użyj pollingu co 30 sekund z bezpośrednim odczytem z Firestore
         activityLogsListener = setInterval(async () => {
           try {
-            const response = await fetch('/api/admin/activity-logs?limit=10');
-            if (response.ok) {
-              const data = await response.json();
-              eventsData = data.logs || [];
+            // Pobierz activity logs bezpośrednio z Firestore
+            const activityLogsRef = collection(db, 'activityLogs');
+            const q = query(activityLogsRef, orderBy('timestamp', 'desc'), limit(10));
+            const querySnapshot = await getDocs(q);
 
+            const logs = [];
+            querySnapshot.forEach((doc) => {
+              logs.push({
+                id: doc.id,
+                ...doc.data(),
+                timestamp: doc.data().timestamp?.toDate?.()?.toISOString() || doc.data().timestamp
+              });
+            });
+
+            eventsData = logs;
             renderRecentEvents();
-              const lastEventsUpdateEl = document.getElementById("last-events-update");
-              if (lastEventsUpdateEl) lastEventsUpdateEl.textContent = new Date().toLocaleString("pl-PL");
-            }
+            const lastEventsUpdateEl = document.getElementById("last-events-update");
+            if (lastEventsUpdateEl) lastEventsUpdateEl.textContent = new Date().toLocaleString("pl-PL");
           } catch (error) {
             console.error("Activity logs polling error:", error);
             showNotification("Błąd ładowania logów aktywności.", "error");
           }
         }, 30000); // Co 30 sekund
 
-        // Pierwsze wywołanie natychmiastowe
+        // Pierwsze wywołanie natychmiastowe z bezpośrednim odczytem z Firestore
         setTimeout(async () => {
           try {
-            const response = await fetch('/api/admin/activity-logs?limit=10');
-            if (response.ok) {
-              const data = await response.json();
-              eventsData = data.logs || [];
+            // Pobierz activity logs bezpośrednio z Firestore
+            const activityLogsRef = collection(db, 'activityLogs');
+            const q = query(activityLogsRef, orderBy('timestamp', 'desc'), limit(10));
+            const querySnapshot = await getDocs(q);
 
-              renderRecentEvents();
-              const lastEventsUpdateEl = document.getElementById("last-events-update");
-              if (lastEventsUpdateEl) lastEventsUpdateEl.textContent = new Date().toLocaleString("pl-PL");
-            }
+            const logs = [];
+            querySnapshot.forEach((doc) => {
+              logs.push({
+                id: doc.id,
+                ...doc.data(),
+                timestamp: doc.data().timestamp?.toDate?.()?.toISOString() || doc.data().timestamp
+              });
+            });
+
+            eventsData = logs;
+            renderRecentEvents();
+            const lastEventsUpdateEl = document.getElementById("last-events-update");
+            if (lastEventsUpdateEl) lastEventsUpdateEl.textContent = new Date().toLocaleString("pl-PL");
           } catch (error) {
             console.error("Initial activity logs load error:", error);
           }
