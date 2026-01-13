@@ -2610,7 +2610,6 @@
         signOut,
         onAuthStateChanged,
         setPersistence,
-        browserSessionPersistence,
         browserLocalPersistence,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
       import {
@@ -2629,6 +2628,7 @@
         addDoc,
         onSnapshot,
         writeBatch,
+        serverTimestamp,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
       const firebaseConfig = {
@@ -2644,19 +2644,20 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
 
-      // Ustaw persistence na local jako pierwszą operację asynchroniczną (administrator jest pamiętany między sesjami)
-      (async () => {
+      // Inicjalizuj Firestore z ustawieniem dla Safari
+      const db = initializeFirestore(app, {
+        experimentalForceLongPolling: true
+      });
+
+      // Ustaw persistence na local jako pierwszą operację asynchroniczną
+      // (musi być wykonane PRZED onAuthStateChanged, żeby nie było ciągłego wylogowywania)
+      async function initAuthPersistence() {
         try {
           await setPersistence(auth, browserLocalPersistence);
         } catch (error) {
           console.error("Error setting persistence:", error);
         }
-      })();
-
-      // Inicjalizuj Firestore z ustawieniem dla Safari
-      const db = initializeFirestore(app, {
-        experimentalForceLongPolling: true
-      });
+      }
 
       let currentUser = null;
       let currentTab = "dashboard";
@@ -3079,84 +3080,57 @@
         }
       };
 
+      async function initAuthAndSession() {
+        // Persistence MUSI być ustawione przed onAuthStateChanged
+        await initAuthPersistence();
 
+        onAuthStateChanged(auth, async (user) => {
+          if (user) {
+            const isAdmin = await checkAdminRole(user);
+            if (!isAdmin) {
+              console.warn("User does not have admin role, signing out:", user.uid);
+              await signOut(auth);
+              showStatus('<strong style="color: #dc2626; font-weight: bold;">Brak uprawnień administratora.</strong>', true);
+              if (window.sessionInterval) {
+                clearInterval(window.sessionInterval);
+                window.sessionInterval = null;
+              }
+              return;
+            }
 
-      onAuthStateChanged(auth, async (user) => {
-        if (user) {
+            // (Opcjonalnie) wczytaj kolory filtrów dla admina (SuperAdmin ma puste)
+            try {
+              if (user.uid !== 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43') {
+                const userDoc = await getDoc(doc(db, "userProfiles", user.uid));
+                const userData = userDoc.exists() ? userDoc.data() : null;
+                if (userData?.filterColors) userFilterColors = userData.filterColors;
+              } else {
+                userFilterColors = {};
+              }
+            } catch (error) {
+              console.warn("Could not load user filter colors:", error);
+            }
 
-          // Najpierw sprawdź czy to SuperAdmin (bez sprawdzania Firestore)
-          const superAdminUID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
-          if (user.uid === superAdminUID) {
-            console.log('SuperAdmin login detected:', user.uid);
-            currentUser = user;
-            userFilterColors = {}; // SuperAdmin może nie mieć filtrów
             updateAdminDisplay(user);
             document.getElementById("login-section").classList.add("hidden");
             document.getElementById("admin-panel").classList.remove("hidden");
+
+            // Dopiero po zakończeniu weryfikacji admina uruchamiaj statystyki dashboardu
             switchTab("dashboard");
-            // Załaduj stats dla SuperAdmin'a
             setTimeout(() => loadDashboardStats(), 100);
-            return;
-          }
-
-          // Dla zwykłych użytkowników sprawdź rolę w Firestore
-          try {
-            console.log('Checking admin role in Firestore for user:', user.uid);
-            const userDoc = await getDoc(doc(db, "userProfiles", user.uid));
-            if (userDoc.exists()) {
-              const userData = userDoc.data();
-              console.log('User data from Firestore:', userData);
-
-              if (userData.role === "admin") {
-                console.log('Admin role confirmed for user:', user.uid);
-                currentUser = user;
-
-                // Załaduj kolory filtrów z bazy danych użytkownika
-                if (userData.filterColors) {
-                  userFilterColors = userData.filterColors;
-                }
-
-                updateAdminDisplay(user);
-
-                document.getElementById("login-section").classList.add("hidden");
-                document.getElementById("admin-panel").classList.remove("hidden");
-
-                // Załaduj dashboard i stats dopiero po zakończeniu ładowania profilu
-                switchTab("dashboard");
-                // Opóźnij ładowanie stats, żeby dać czas na zakończenie ładowania profilu
-                setTimeout(() => loadDashboardStats(), 100);
-                return;
-              } else {
-                console.warn('User has role:', userData.role, 'but expected admin');
-              }
-            } else {
-              console.warn('User profile not found in Firestore for UID:', user.uid);
+          } else {
+            currentUser = null;
+            document.getElementById("login-section").classList.remove("hidden");
+            document.getElementById("admin-panel").classList.add("hidden");
+            if (window.sessionInterval) {
+              clearInterval(window.sessionInterval);
+              window.sessionInterval = null;
             }
-          } catch (error) {
-            console.error("Error checking admin role in Firestore:", error);
-            // Nie wylogowuj natychmiast - może to być tymczasowy błąd
-            showStatus('<strong style="color: #ffa500; font-weight: bold;">Sprawdzanie uprawnień... Spróbuj odświeżyć stronę.</strong>', true);
-            return;
           }
+        });
+      }
 
-          // Jeśli użytkownik nie ma roli admin
-          console.warn('User does not have admin role, signing out:', user.uid);
-          await signOut(auth);
-          showStatus('<strong style="color: #dc2626; font-weight: bold;">Brak uprawnień administratora.</strong>', true);
-          if (window.sessionInterval) {
-            clearInterval(window.sessionInterval);
-            window.sessionInterval = null;
-          } // Zatrzymaj UI updater
-        } else {
-          currentUser = null;
-          document.getElementById("login-section").classList.remove("hidden");
-          document.getElementById("admin-panel").classList.add("hidden");
-          if (window.sessionInterval) {
-            clearInterval(window.sessionInterval);
-            window.sessionInterval = null;
-          } // Zatrzymaj UI updater przy wylogowaniu
-        }
-      });
+      initAuthAndSession();
 
       // =============================================================================
       // GLOBAL ACTIVITY EVENT LISTENERS (Sliding Expiration)
@@ -3239,10 +3213,7 @@
 
           // Ładowanie statystyk aktywności
           await loadActivityStats();
-          await loadContactFormsCount();
-
-          // Ładowanie statystyk Google Analytics
-          await fetchGAStatistics();
+          // (Formularze / wizyty / pending) są liczone bezpośrednio z Firestore w loadActivityStats()
 
           // Ustawienie listener dla activityLogs (tylko jeśli jeszcze nie jest ustawiony)
           if (!activityLogsListener) {
@@ -3318,9 +3289,6 @@
               .join("");
 
             container.innerHTML = logsHtml;
-          } else {
-            throw new Error(`API returned ${response.status}`);
-          }
         } catch (apiError) {
           console.warn('API failed, using mock data for localhost:', apiError.message);
 
@@ -4452,31 +4420,27 @@
             return;
           }
 
-          let response;
           if (categoryId) {
-            // Aktualizacja istniejącej kategorii
-            response = await fetch(`/api/messages/categories/${categoryId}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(categoryData)
+            // Aktualizacja istniejącej kategorii (Firestore)
+            await updateDoc(doc(db, "messageCategories", categoryId), {
+              ...categoryData,
+              updatedAt: serverTimestamp(),
             });
           } else {
-            // Dodanie nowej kategorii
-            response = await fetch('/api/messages/categories', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(categoryData)
+            // Dodanie nowej kategorii (Firestore)
+            await addDoc(collection(db, "messageCategories"), {
+              ...categoryData,
+              is_active: true,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
             });
           }
 
-          const data = await response.json();
-
-          if (data.success) {
-            showNotification(categoryId ? 'Kategoria została zaktualizowana' : 'Kategoria została dodana', 'success');
-            closeCategoryModal();
-            loadCategories();
-          } else {
-            throw new Error(data.error || 'Failed to save category');
+          showNotification(categoryId ? 'Kategoria została zaktualizowana' : 'Kategoria została dodana', 'success');
+          closeCategoryModal();
+          loadCategories();
+          if (typeof loadCategoriesForSettings === "function") {
+            loadCategoriesForSettings();
           }
         } catch (error) {
           console.error('Error saving category:', error);
@@ -4496,17 +4460,17 @@
         }
 
         try {
-          const response = await fetch(`/api/messages/categories/${categoryId}`, {
-            method: 'DELETE'
+          // Bez serwera /api: soft-delete w Firestore (zostawiamy dokument, żeby nie psuć istniejących wiadomości)
+          await updateDoc(doc(db, "messageCategories", categoryId), {
+            is_active: false,
+            deletedAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
           });
 
-          const data = await response.json();
-
-          if (data.success) {
-            showNotification('Kategoria została usunięta', 'success');
-            loadCategories();
-          } else {
-            throw new Error(data.error || 'Failed to delete category');
+          showNotification('Kategoria została usunięta', 'success');
+          loadCategories();
+          if (typeof loadCategoriesForSettings === "function") {
+            loadCategoriesForSettings();
           }
         } catch (error) {
           console.error('Error deleting category:', error);
@@ -4803,18 +4767,8 @@
       let availableCategories = [];
 
       // Udostępnij funkcje globalnie dla onclick
-      window.loadMessages = async function() {
-        console.log('🔄 loadMessages called from window');
-        // Znajdź właściwą funkcję
-        const messagesTab = document.getElementById('tab-messages');
-        if (messagesTab && messagesTab.classList.contains('active')) {
-          // Jesteśmy już na zakładce messages, wywołaj loadMessages
-          const func = arguments.callee._originalFunction;
-          if (func) return func.apply(this, arguments);
-        } else {
-          // Przełącz na zakładkę messages i załaduj
-          switchTab('messages');
-        }
+      window.loadMessages = async () => {
+        return loadMessages();
       };
 
       async function loadMessages() {
@@ -4850,24 +4804,29 @@
             throw new Error('Strona otwarta lokalnie! Uruchom serwer: node server.js i otwórz http://localhost:3000/admin/index.html');
           }
 
-          // Pobierz wiadomości skierowane do administratora z Firestore
+          // Pobierz wiadomości z Firestore bezpośrednio z kolekcji (wymóg: getDocs(collection(db, 'privateMessages')))
           console.log('🌐 Loading messages from Firestore collection "privateMessages"');
-          const messagesRef = collection(db, "privateMessages");
-          const messagesQuery = query(messagesRef, where("recipientId", "==", "admin"), orderBy("timestamp", "desc"), limit(100));
-          const querySnapshot = await getDocs(messagesQuery);
+          const querySnapshot = await getDocs(collection(db, "privateMessages"));
           
           const messages = [];
           querySnapshot.forEach((doc) => {
+            const data = doc.data();
             messages.push({
               id: doc.id,
-              ...doc.data(),
-              timestamp: doc.data().timestamp?.toDate ? doc.data().timestamp.toDate() : (doc.data().timestamp || new Date())
+              ...data,
+              timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : (data.timestamp || new Date())
             });
           });
-          
-          const total = messages.length;
 
-          if (messages.length === 0) {
+          // Interesują nas tylko konwersacje, gdzie uczestnikiem jest admin
+          const adminMessages = messages
+            .filter((m) => m.senderId === "admin" || m.recipientId === "admin")
+            .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+            .slice(0, 500);
+
+          const total = adminMessages.length;
+
+          if (adminMessages.length === 0) {
             document.getElementById("conversations-list").innerHTML =
               '<div class="text-center text-zinc-500 py-8"><i class="fa-solid fa-inbox text-4xl mb-4 text-zinc-600"></i><p class="text-sm">Brak konwersacji</p></div>';
             const convCountEl = document.getElementById("conversations-count");
@@ -4876,7 +4835,7 @@
             // Grupuj wiadomości w konwersacje
             const conversations = {};
 
-            messages.forEach(msg => {
+            adminMessages.forEach(msg => {
               // Użyj kombinacji senderId + recipientId jako klucz konwersacji
               const participants = [msg.senderId, msg.recipientId].sort();
               const conversationKey = participants.join('_');
@@ -4953,7 +4912,7 @@
           }
 
           // Zaktualizuj liczniki w nagłówku
-          const unreadCount = messages.filter(msg => !msg.isRead).length;
+          const unreadCount = adminMessages.filter(msg => !msg.isRead && msg.recipientId === "admin").length;
           const unreadCountEl = document.getElementById("unread-count");
           if (unreadCountEl) unreadCountEl.textContent = unreadCount;
 
@@ -5125,28 +5084,22 @@
           const userId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           const userName = email.split('@')[0]; // Użyj części przed @ jako nazwy
 
-          // Wyślij pierwszą wiadomość
-          const response = await fetch('/api/messages', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              senderId: userId,
-              senderName: userName,
-              senderEmail: email,
-              senderType: 'guest',
-              recipientId: 'admin',
-              recipientType: 'admin',
-              topic: topic || 'Nowa rozmowa',
-              content: message,
-              conversationType: 'support_chat'
-            })
+          // Wyślij pierwszą wiadomość bezpośrednio do Firestore (brak /api/*)
+          await addDoc(collection(db, "privateMessages"), {
+            senderId: userId,
+            senderName: userName,
+            senderEmail: email,
+            senderType: "guest",
+            recipientId: "admin",
+            recipientType: "admin",
+            topic: topic || "Nowa rozmowa",
+            content: message,
+            conversationType: "support_chat",
+            status: "in_progress",
+            isRead: false,
+            timestamp: new Date(),
+            createdAt: new Date(),
           });
-
-          const data = await response.json();
-
-          if (!data.success) {
-            throw new Error(data.error || 'Failed to create chat');
-          }
 
           // Zamknij modal
           closeNewChatModal();
@@ -5232,8 +5185,8 @@
       async function markMessageAsRead(messageId) {
         try {
           // Oznacz wiadomość jako przeczytaną bezpośrednio w Firestore
-          const messageRef = doc(db, 'messages', messageId);
-          await updateDoc(messageRef, { isRead: true });
+          const messageRef = doc(db, 'privateMessages', messageId);
+          await updateDoc(messageRef, { isRead: true, readAt: new Date(), readBy: "admin" });
         } catch (error) {
           console.error("Error marking message as read:", error);
         }
@@ -5243,15 +5196,14 @@
       async function updateMessageStats() {
         try {
           // Pobierz statystyki bezpośrednio z Firestore
-          const messagesRef = collection(db, 'messages');
-          const q = query(messagesRef, where('recipientId', '==', 'admin'));
-          const querySnapshot = await getDocs(q);
+          const querySnapshot = await getDocs(collection(db, "privateMessages"));
 
           let total = 0;
           let unread = 0;
 
           querySnapshot.forEach((doc) => {
             const message = doc.data();
+            if (message?.recipientId !== "admin") return;
             total++;
             if (!message.isRead) unread++;
           });
@@ -6411,10 +6363,9 @@
           const tomorrow = new Date(today);
           tomorrow.setDate(tomorrow.getDate() + 1);
 
-          const messagesRef = collection(db, 'messages');
+          const messagesRef = collection(db, 'contactForms');
           const q = query(
             messagesRef,
-            where('recipientId', '==', 'admin'),
             where('timestamp', '>=', today),
             where('timestamp', '<', tomorrow)
           );
@@ -6435,11 +6386,9 @@
       async function loadPendingTasksCount() {
         try {
           // Pobierz liczbę oczekujących zadań bezpośrednio z Firestore
-          const messagesRef = collection(db, 'messages');
           const q = query(
-            messagesRef,
-            where('recipientId', '==', 'admin'),
-            where('status', '==', 'in_progress')
+            collection(db, "pendingTasks"),
+            where("status", "==", "pending"),
           );
           const querySnapshot = await getDocs(q);
 
@@ -6447,12 +6396,6 @@
           const pendingTasksEl = document.getElementById("pending-issues");
           if (!pendingTasksEl) return;
           pendingTasksEl.textContent = count;
-        } catch (error) {
-          console.error("Error loading pending tasks count:", error);
-          const pendingTasksEl = document.getElementById("pending-issues");
-          if (!pendingTasksEl) return;
-            pendingTasksEl.textContent = "0";
-          }
         } catch (error) {
           console.error("Error loading pending tasks count:", error);
           const pendingTasksEl = document.getElementById("pending-issues");
@@ -7166,10 +7109,8 @@
       // Funkcja ładowania statusu wiadomości
       async function loadMessagesStatus() {
         try {
-          // Pobierz wszystkie wiadomości admina z Firestore
-          const messagesRef = collection(db, 'messages');
-          const q = query(messagesRef, where('recipientId', '==', 'admin'));
-          const querySnapshot = await getDocs(q);
+          // Pobierz wiadomości bezpośrednio z Firestore (bez indeksów złożonych)
+          const querySnapshot = await getDocs(collection(db, "privateMessages"));
 
           // Oblicz statystyki
           let total = 0;
@@ -7180,6 +7121,9 @@
 
           querySnapshot.forEach((doc) => {
             const message = doc.data();
+            // Licz tylko wiadomości skierowane do admina (jak wcześniej)
+            if (message?.recipientId !== "admin") return;
+
             total++;
 
             if (!message.isRead) unread++;
@@ -7290,61 +7234,74 @@
         `;
 
         try {
-          // Buduj query Firestore z filtrami
-          let messagesQuery = collection(db, 'messages');
+          // Bez /api/* i bez indeksów złożonych: pobierz kolekcję i filtruj po stronie klienta
+          const querySnapshot = await getDocs(collection(db, "privateMessages"));
 
-          // Zawsze filtruj po recipientId = 'admin'
-          messagesQuery = query(messagesQuery, where('recipientId', '==', 'admin'));
+          const toMs = (t) => {
+            if (!t) return 0;
+            if (typeof t === "number") return t;
+            if (t instanceof Date) return t.getTime();
+            if (typeof t?.toDate === "function") return t.toDate().getTime();
+            const parsed = new Date(t);
+            return Number.isFinite(parsed.getTime()) ? parsed.getTime() : 0;
+          };
 
-          // Dodaj filtry
-          if (currentFilters.category === 'unread') {
-            messagesQuery = query(messagesQuery, where('isRead', '==', false));
-          } else if (currentFilters.category === 'read') {
-            messagesQuery = query(messagesQuery, where('isRead', '==', true));
-          } else if (currentFilters.category === 'completed') {
-            messagesQuery = query(messagesQuery, where('status', '==', 'completed'));
-          } else if (currentFilters.category === 'in_progress') {
-            messagesQuery = query(messagesQuery, where('status', '==', 'in_progress'));
-          } else if (currentFilters.category && !['unread', 'read', 'completed', 'in_progress', 'all'].includes(currentFilters.category)) {
-            // To jest filtr kategorii - znajdź ID kategorii po nazwie
+          let messages = querySnapshot.docs.map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              ...data,
+              timestamp: toMs(data.timestamp),
+            };
+          });
+
+          // Zawsze filtruj po recipientId = 'admin' (panel admin)
+          messages = messages.filter((m) => m.recipientId === "admin" || m.senderId === "admin");
+
+          // Filtry statusu / odczytu
+          if (currentFilters.category === "unread") {
+            messages = messages.filter((m) => m.recipientId === "admin" && m.isRead === false);
+          } else if (currentFilters.category === "read") {
+            messages = messages.filter((m) => m.recipientId === "admin" && m.isRead === true);
+          } else if (currentFilters.category === "completed") {
+            messages = messages.filter((m) => m.status === "completed");
+          } else if (currentFilters.category === "in_progress") {
+            messages = messages.filter((m) => m.status === "in_progress");
+          } else if (
+            currentFilters.category &&
+            !["unread", "read", "completed", "in_progress", "all"].includes(currentFilters.category)
+          ) {
+            // Filtr kategorii: mapuj nazwę -> id i dopasuj po categoryId/category_id lub category_name
             try {
-              console.log('Filtering by category:', currentFilters.category);
-              const categoriesRef = collection(db, 'messageCategories');
-              const categoriesQuery = query(categoriesRef);
-              const categoriesSnapshot = await getDocs(categoriesQuery);
-
+              const categoriesSnapshot = await getDocs(collection(db, "messageCategories"));
               let categoryId = null;
               categoriesSnapshot.forEach((doc) => {
                 const category = doc.data();
-                if (category.name.toLowerCase().replace(/\s+/g, '') === currentFilters.category) {
+                if (category?.name?.toLowerCase?.().replace(/\s+/g, "") === currentFilters.category) {
                   categoryId = doc.id;
                 }
               });
 
               if (categoryId) {
-                messagesQuery = query(messagesQuery, where('categoryId', '==', categoryId));
-                console.log('Added categoryId to query:', categoryId);
+                messages = messages.filter(
+                  (m) => m.categoryId === categoryId || m.category_id === categoryId,
+                );
               } else {
-                console.warn('Category not found for:', currentFilters.category);
+                // fallback po nazwie w dokumencie wiadomości
+                messages = messages.filter(
+                  (m) =>
+                    (m.category_name || "")
+                      .toLowerCase()
+                      .replace(/\s+/g, "") === currentFilters.category,
+                );
               }
             } catch (error) {
-              console.error('Error loading categories for filtering:', error);
+              console.error("Error loading categories for filtering:", error);
             }
           }
 
-          // Sortuj po timestamp malejąco (najnowsze najpierw)
-          messagesQuery = query(messagesQuery, orderBy('timestamp', 'desc'), limit(100));
-
-          const querySnapshot = await getDocs(messagesQuery);
-          const messages = [];
-
-          querySnapshot.forEach((doc) => {
-            messages.push({
-              id: doc.id,
-              ...doc.data(),
-              timestamp: doc.data().timestamp?.toDate?.()?.getTime() || doc.data().timestamp
-            });
-          });
+          // Sortuj po timestamp malejąco (najnowsze najpierw) + limit
+          messages = messages.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 200);
 
           displayMessages(messages);
 
@@ -7575,11 +7532,13 @@
         listContainer.innerHTML = '<div class="text-center text-zinc-500 py-8"><i class="fa-solid fa-spinner fa-spin"></i> Ładowanie...</div>';
 
         try {
-          const response = await fetch('/api/quick-replies');
-          const data = await response.json();
+          // Bez /api/*: pobierz szablony bezpośrednio z Firestore
+          const q = query(collection(db, "quick_replies"), orderBy("createdAt", "desc"), limit(50));
+          const snapshot = await getDocs(q);
+          const replies = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-          if (data.success && data.data.length > 0) {
-            const repliesHtml = data.data.map(reply => `
+          if (replies.length > 0) {
+            const repliesHtml = replies.map(reply => `
               <div class="bg-zinc-800 rounded-lg p-3 mb-3 cursor-pointer hover:bg-zinc-700 transition-colors"
                    onclick="selectQuickReply('${reply.content.replace(/'/g, "\\'").replace(/\n/g, '\\n')}')">
                 <div class="font-semibold text-white text-sm mb-1">${reply.title}</div>
@@ -7624,24 +7583,30 @@
         messagesContainer.innerHTML = '<div class="text-center text-zinc-500 py-8"><i class="fa-solid fa-spinner fa-spin"></i> Ładowanie...</div>';
 
         try {
-          // Pobierz wszystkie wiadomości między adminem a użytkownikiem
-          const [response1, response2] = await Promise.all([
-            fetch(`/api/messages?senderId=${userId}&recipientId=admin&limit=100`),
-            fetch(`/api/messages?senderId=admin&recipientId=${userId}&limit=100`)
-          ]);
+          // Bez /api/*: pobierz ostatnie wiadomości z Firestore i przefiltruj po uczestnikach
+          const recentQuery = query(
+            collection(db, "privateMessages"),
+            orderBy("timestamp", "desc"),
+            limit(500),
+          );
+          const recentSnapshot = await getDocs(recentQuery);
 
-          const [data1, data2] = await Promise.all([
-            response1.json(),
-            response2.json()
-          ]);
+          const toMs = (t) => {
+            if (!t) return 0;
+            if (typeof t === "number") return t;
+            if (t instanceof Date) return t.getTime();
+            if (typeof t?.toDate === "function") return t.toDate().getTime(); // Firestore Timestamp
+            const parsed = new Date(t);
+            return Number.isFinite(parsed.getTime()) ? parsed.getTime() : 0;
+          };
 
-          if (!data1.success || !data2.success) {
-            throw new Error('Failed to load conversation');
-          }
-
-          // Połącz i posortuj wiadomości
-          const allMessages = [...data1.data.messages, ...data2.data.messages]
-            .sort((a, b) => a.timestamp - b.timestamp);
+          const recent = recentSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+          const allMessages = recent
+            .filter((m) =>
+              (m.senderId === userId && m.recipientId === "admin") ||
+              (m.senderId === "admin" && m.recipientId === userId),
+            )
+            .sort((a, b) => toMs(a.timestamp) - toMs(b.timestamp));
 
           if (allMessages.length === 0) {
             messagesContainer.innerHTML = '<div class="text-center text-zinc-500 py-8">Brak wiadomości w tej konwersacji</div>';
@@ -7742,7 +7707,11 @@
           // Oznacz wiadomości jako przeczytane
           for (const msg of allMessages) {
             if (msg.senderId === userId && !msg.isRead) {
-              await fetch(`/api/messages/${msg.id}/read`, { method: 'PUT' });
+              await updateDoc(doc(db, "privateMessages", msg.id), {
+                isRead: true,
+                readAt: new Date(),
+                readBy: "admin",
+              });
             }
           }
 
@@ -7771,38 +7740,42 @@
         }
 
         try {
-          // Sprawdź czy konwersacja była zakończona - jeśli tak, przywróć do in_progress
-          const statusResponse = await fetch(`/api/messages?senderId=${currentConversationUser.id}&recipientId=admin&status=completed&limit=1`);
-          const statusData = await statusResponse.json();
+          // Sprawdź czy konwersacja była zakończona - jeśli tak, przywróć do in_progress (Firestore)
+          const recentQuery = query(
+            collection(db, "privateMessages"),
+            orderBy("timestamp", "desc"),
+            limit(200),
+          );
+          const recentSnapshot = await getDocs(recentQuery);
+          const recent = recentSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+          const latestCompleted = recent.find(
+            (m) =>
+              m.senderId === currentConversationUser.id &&
+              m.recipientId === "admin" &&
+              m.status === "completed",
+          );
 
-          if (statusData.success && statusData.data.messages.length > 0) {
-            // Konwersacja była zakończona, przywróć do in_progress
-            const latestCompletedMessage = statusData.data.messages[0];
-            await fetch(`/api/messages/${latestCompletedMessage.id}/status`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ status: 'in_progress' })
+          if (latestCompleted?.id) {
+            await updateDoc(doc(db, "privateMessages", latestCompleted.id), {
+              status: "in_progress",
+              reopenedAt: new Date(),
+              reopenedBy: "admin",
             });
           }
 
-          const response = await fetch('/api/messages', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              senderId: 'admin',
-              senderName: 'Administrator',
-              senderType: 'admin',
-              recipientId: currentConversationUser.id,
-              recipientType: 'user',
-              content: content
-            })
+          // Wyślij odpowiedź administratora bezpośrednio do Firestore
+          await addDoc(collection(db, "privateMessages"), {
+            senderId: "admin",
+            senderName: "Administrator",
+            senderType: "admin",
+            recipientId: currentConversationUser.id,
+            recipientType: "user",
+            content: content,
+            status: "in_progress",
+            isRead: true,
+            timestamp: new Date(),
+            createdAt: new Date(),
           });
-
-          const data = await response.json();
-
-          if (!data.success) {
-            throw new Error(data.error || 'Failed to send message');
-          }
 
           // Wyczyść input
           input.value = '';
@@ -7832,16 +7805,25 @@
         if (isCurrentlyCompleted) {
           // Restart the conversation (from completed to in_progress)
           try {
-            // Znajdź najnowszą wiadomość w konwersacji i przywróć do in_progress
-            const response = await fetch(`/api/messages?senderId=${currentConversationUser.id}&recipientId=admin&status=completed&limit=1`);
-            const data = await response.json();
-
-            if (data.success && data.data.messages.length > 0) {
-              const latestMessage = data.data.messages[0];
-              await fetch(`/api/messages/${latestMessage.id}/status`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'in_progress' })
+            // Znajdź najnowszą wiadomość w konwersacji i przywróć do in_progress (Firestore)
+            const recentQuery = query(
+              collection(db, "privateMessages"),
+              orderBy("timestamp", "desc"),
+              limit(200),
+            );
+            const recentSnapshot = await getDocs(recentQuery);
+            const recent = recentSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+            const latestCompleted = recent.find(
+              (m) =>
+                ((m.senderId === currentConversationUser.id && m.recipientId === "admin") ||
+                  (m.senderId === "admin" && m.recipientId === currentConversationUser.id)) &&
+                m.status === "completed",
+            );
+            if (latestCompleted?.id) {
+              await updateDoc(doc(db, "privateMessages", latestCompleted.id), {
+                status: "in_progress",
+                reopenedAt: new Date(),
+                reopenedBy: "admin",
               });
             }
 
@@ -7860,16 +7842,25 @@
           if (!confirm('Czy na pewno chcesz zakończyć tę konwersację?')) return;
 
           try {
-            // Znajdź najnowszą wiadomość w konwersacji i oznacz jako completed
-            const response = await fetch(`/api/messages?senderId=${currentConversationUser.id}&recipientId=admin&status=in_progress&limit=1`);
-            const data = await response.json();
-
-            if (data.success && data.data.messages.length > 0) {
-              const latestMessage = data.data.messages[0];
-              await fetch(`/api/messages/${latestMessage.id}/status`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'completed' })
+            // Znajdź najnowszą wiadomość w konwersacji i oznacz jako completed (Firestore)
+            const recentQuery = query(
+              collection(db, "privateMessages"),
+              orderBy("timestamp", "desc"),
+              limit(200),
+            );
+            const recentSnapshot = await getDocs(recentQuery);
+            const recent = recentSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+            const latestInProgress = recent.find(
+              (m) =>
+                ((m.senderId === currentConversationUser.id && m.recipientId === "admin") ||
+                  (m.senderId === "admin" && m.recipientId === currentConversationUser.id)) &&
+                m.status === "in_progress",
+            );
+            if (latestInProgress?.id) {
+              await updateDoc(doc(db, "privateMessages", latestInProgress.id), {
+                status: "completed",
+                completedAt: new Date(),
+                completedBy: "admin",
               });
             }
 
@@ -7896,21 +7887,34 @@
         const btn = document.getElementById('complete-start-btn');
         if (!btn) return;
 
-        // Sprawdź czy konwersacja jest zakończona
-        fetch(`/api/messages?senderId=${currentConversationUser.id}&recipientId=admin&status=completed&limit=1`)
-          .then(response => response.json())
-          .then(data => {
-            if (data.success && data.data.messages.length > 0) {
+        // Sprawdź czy konwersacja jest zakończona (Firestore, bez /api/*)
+        (async () => {
+          try {
+            const recentQuery = query(
+              collection(db, "privateMessages"),
+              orderBy("timestamp", "desc"),
+              limit(200),
+            );
+            const recentSnapshot = await getDocs(recentQuery);
+            const recent = recentSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+            const hasCompleted = recent.some(
+              (m) =>
+                ((m.senderId === currentConversationUser.id && m.recipientId === "admin") ||
+                  (m.senderId === "admin" && m.recipientId === currentConversationUser.id)) &&
+                m.status === "completed",
+            );
+
+            if (hasCompleted) {
               // Konwersacja zakończona - pokaż przycisk ROZPOCZNIJ
               btn.innerHTML = '<i class="fa-solid fa-times mr-2 text-red-400"></i>ROZPOCZNIJ';
             } else {
               // Konwersacja aktywna - pokaż przycisk ZAKOŃCZ
               btn.innerHTML = '<i class="fa-solid fa-check mr-2 text-green-400"></i>ZAKOŃCZ';
             }
-          })
-          .catch(error => {
-            console.error('Error checking conversation status:', error);
-          });
+          } catch (error) {
+            console.error("Error checking conversation status:", error);
+          }
+        })();
       }
 
       async function refreshMessages() {
@@ -8207,7 +8211,7 @@
                   <button onclick="editCategory('${category.id}')" class="text-zinc-400 hover:text-white">
                     <i class="fa-solid fa-edit"></i>
                   </button>
-                  <button onclick="deleteCategory('${category.id}')" class="text-zinc-400 hover:text-red-400">
+                  <button onclick="deleteCategory('${category.id}', '${String(category.name || "").replace(/'/g, "\\'")}')" class="text-zinc-400 hover:text-red-400">
                     <i class="fa-solid fa-trash"></i>
                   </button>
                 </div>
@@ -8221,37 +8225,11 @@
         }
       }
 
-      // Funkcje edycji kategorii (placeholder - do implementacji)
-      function addNewCategory() {
-        showNotification("Funkcjonalność dodawania kategorii zostanie dodana wkrótce", "info");
-      }
-
-      function editCategory(id) {
-        showNotification("Funkcjonalność edycji kategorii zostanie dodana wkrótce", "info");
-      }
-
-      async function deleteCategory(id) {
-        if (!confirm('Czy na pewno chcesz usunąć tę kategorię?')) return;
-
-        try {
-          const response = await fetch(`/api/messages/categories/${id}`, {
-            method: 'DELETE'
-          });
-
-          const data = await response.json();
-
-          if (data.success) {
-            await loadCategoriesForSettings();
-            await loadCategories();
-            showNotification("Kategoria została usunięta", "success");
-          } else {
-            throw new Error(data.error);
-          }
-        } catch (error) {
-          console.error('Error deleting category:', error);
-          showNotification("Błąd podczas usuwania kategorii", "error");
-        }
-      }
+      // Globalnie dostępna funkcja dla przycisku "Dodaj kategorię"
+      // (musi być na window, bo jest używana w onclick w HTML)
+      window.addNewCategory = () => {
+        openCategoryModal();
+      };
 
       // Funkcja przełączania do zakładki Users i wyszukiwania użytkownika
       function switchToUsersTab(userId) {
