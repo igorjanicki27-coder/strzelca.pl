@@ -2645,7 +2645,9 @@
       const auth = getAuth(app);
 
       // Ustaw persistence na local (administrator jest pamiętany między sesjami)
-      await setPersistence(auth, browserLocalPersistence);
+      setPersistence(auth, browserLocalPersistence).catch(error => {
+        console.error("Error setting persistence:", error);
+      });
 
       // Inicjalizuj Firestore z ustawieniem dla Safari
       const db = initializeFirestore(app, {
@@ -2671,9 +2673,24 @@
       // Funkcja sprawdzania roli administratora
       async function checkAdminRole(user) {
         try {
-          // Sprawdź czy UID użytkownika odpowiada admin UID z Firestore Rules
-          const adminUID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
-          return user.uid === adminUID;
+          // Sprawdź czy UID użytkownika odpowiada superAdmin UID
+          const superAdminUID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
+          if (user.uid === superAdminUID) {
+            currentUser = user;
+            return true;
+          }
+
+          // Sprawdź rolę w Firestore
+          const userDoc = await getDoc(doc(db, "userProfiles", user.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            if (userData.role === "admin") {
+              currentUser = user;
+              return true;
+            }
+          }
+          
+          return false;
         } catch (error) {
           console.error("Error checking admin role:", error);
           return false;
@@ -4379,19 +4396,25 @@
       // Funkcja ładowania kategorii do edycji
       async function loadCategoryForEdit(categoryId) {
         try {
-          const response = await fetch('/api/messages/categories');
-          const data = await response.json();
+          const categoriesRef = collection(db, "messageCategories");
+          const querySnapshot = await getDocs(categoriesRef);
+          
+          const categories = [];
+          querySnapshot.forEach((doc) => {
+            categories.push({
+              id: doc.id,
+              ...doc.data()
+            });
+          });
 
-          if (data.success) {
-            const category = data.data.find(c => c.id === categoryId);
-            if (category) {
-              document.getElementById('category-id').value = category.id;
-              document.getElementById('category-name').value = category.name;
-              document.getElementById('category-color').value = category.color;
-              document.getElementById('category-color-text').value = category.color;
-              document.getElementById('category-icon').value = category.icon;
-              updateIconSelection(category.icon);
-            }
+          const category = categories.find(c => c.id === categoryId);
+          if (category) {
+            document.getElementById('category-id').value = category.id;
+            document.getElementById('category-name').value = category.name;
+            document.getElementById('category-color').value = category.color;
+            document.getElementById('category-color-text').value = category.color;
+            document.getElementById('category-icon').value = category.icon;
+            updateIconSelection(category.icon);
           }
         } catch (error) {
           console.error('Error loading category for edit:', error);
@@ -4823,19 +4846,22 @@
             throw new Error('Strona otwarta lokalnie! Uruchom serwer: node server.js i otwórz http://localhost:3000/admin/index.html');
           }
 
-          // Pobierz wiadomości skierowane do administratora z API
-          console.log('🌐 Making API request to /api/messages?recipientId=admin&limit=100');
-          const response = await fetch('/api/messages?recipientId=admin&limit=100');
-          console.log('📥 Response status:', response.status);
-
-          const data = await response.json();
-          console.log('📦 Response data:', data);
-
-          if (!data.success) {
-            throw new Error(data.error || 'Failed to load messages');
-          }
-
-          const { messages, total } = data.data;
+          // Pobierz wiadomości skierowane do administratora z Firestore
+          console.log('🌐 Loading messages from Firestore collection "privateMessages"');
+          const messagesRef = collection(db, "privateMessages");
+          const messagesQuery = query(messagesRef, where("recipientId", "==", "admin"), orderBy("timestamp", "desc"), limit(100));
+          const querySnapshot = await getDocs(messagesQuery);
+          
+          const messages = [];
+          querySnapshot.forEach((doc) => {
+            messages.push({
+              id: doc.id,
+              ...doc.data(),
+              timestamp: doc.data().timestamp?.toDate ? doc.data().timestamp.toDate() : (doc.data().timestamp || new Date())
+            });
+          });
+          
+          const total = messages.length;
 
           if (messages.length === 0) {
             document.getElementById("conversations-list").innerHTML =
@@ -7257,12 +7283,17 @@
         if (!categoryButtonsEl) return;
 
         try {
-          // Fetch categories from database
-          const categoriesResponse = await fetch('/api/messages/categories');
-          const categoriesData = await categoriesResponse.json();
-
-          if (categoriesData.success) {
-            const categories = categoriesData.data.filter(cat => cat.is_active);
+          // Fetch categories from Firestore
+          const categoriesRef = collection(db, "messageCategories");
+          const categoriesSnapshot = await getDocs(categoriesRef);
+          
+          const categories = [];
+          categoriesSnapshot.forEach((doc) => {
+            const catData = { id: doc.id, ...doc.data() };
+            if (catData.is_active !== false) { // Filtruj aktywne kategorie
+              categories.push(catData);
+            }
+          });
 
             let categoryButtons = '';
 
@@ -7544,27 +7575,40 @@
         categorySelect.innerHTML = '<option value="">Ładowanie...</option>';
 
         try {
-          const response = await fetch('/api/messages/categories');
-          const data = await response.json();
+          const categoriesRef = collection(db, "messageCategories");
+          const categoriesSnapshot = await getDocs(categoriesRef);
+          
+          const categories = [];
+          categoriesSnapshot.forEach((doc) => {
+            categories.push({
+              id: doc.id,
+              ...doc.data()
+            });
+          });
+          
+          categorySelect.innerHTML = categories.map(cat =>
+            `<option value="${cat.id}">${cat.name}</option>`
+          ).join('');
 
-          if (data.success) {
-            categorySelect.innerHTML = data.data.map(cat =>
-              `<option value="${cat.id}">${cat.name}</option>`
-            ).join('');
-
-            // Ustaw aktualną kategorię rozmowy
-            try {
-              const conversationResponse = await fetch(`/api/messages?senderId=${userId}&recipientId=admin&limit=1`);
-              const conversationData = await conversationResponse.json();
-              if (conversationData.success && conversationData.data.messages.length > 0) {
-                const latestMessage = conversationData.data.messages[0];
-                if (latestMessage.category_id) {
-                  categorySelect.value = latestMessage.category_id;
-                }
+          // Ustaw aktualną kategorię rozmowy
+          try {
+            const messagesRef = collection(db, "privateMessages");
+            const messagesQuery = query(
+              messagesRef,
+              where("senderId", "==", userId),
+              where("recipientId", "==", "admin"),
+              orderBy("timestamp", "desc"),
+              limit(1)
+            );
+            const messagesSnapshot = await getDocs(messagesQuery);
+            if (!messagesSnapshot.empty) {
+              const latestMessage = { id: messagesSnapshot.docs[0].id, ...messagesSnapshot.docs[0].data() };
+              if (latestMessage.category_id) {
+                categorySelect.value = latestMessage.category_id;
               }
-            } catch (error) {
-              console.error('Error setting current category:', error);
             }
+          } catch (error) {
+            console.error('Error setting current category:', error);
           }
         } catch (error) {
           console.error('Error loading categories for chat:', error);
@@ -7954,11 +7998,16 @@
         try {
           // Pobierz kategorie jeśli nie są jeszcze załadowane
           if (!window.cachedCategories) {
-            const categoriesResponse = await fetch('/api/messages/categories');
-            const categoriesData = await categoriesResponse.json();
-            if (categoriesData.success) {
-              window.cachedCategories = categoriesData.data.filter(cat => cat.is_active);
-            }
+            const categoriesRef = collection(db, "messageCategories");
+            const categoriesSnapshot = await getDocs(categoriesRef);
+            
+            window.cachedCategories = [];
+            categoriesSnapshot.forEach((doc) => {
+              const catData = { id: doc.id, ...doc.data() };
+              if (catData.is_active !== false) {
+                window.cachedCategories.push(catData);
+              }
+            });
           }
 
           const categories = window.cachedCategories || [];
@@ -8189,11 +8238,18 @@
         container.innerHTML = '<div class="text-center text-zinc-500 py-8"><i class="fa-solid fa-spinner fa-spin"></i> Ładowanie...</div>';
 
         try {
-          const response = await fetch('/api/messages/categories');
-          const data = await response.json();
+          const categoriesRef = collection(db, "messageCategories");
+          const categoriesSnapshot = await getDocs(categoriesRef);
+          
+          const categories = [];
+          categoriesSnapshot.forEach((doc) => {
+            categories.push({
+              id: doc.id,
+              ...doc.data()
+            });
+          });
 
-          if (data.success) {
-            const categoriesHtml = data.data.map(category => `
+          const categoriesHtml = categories.map(category => `
               <div class="flex items-center justify-between p-4 bg-zinc-800 rounded-lg">
                 <div class="flex items-center space-x-3">
                   <div class="w-8 h-8 rounded" style="background-color: ${category.color}"></div>
@@ -8203,18 +8259,17 @@
                   </div>
                 </div>
                 <div class="flex items-center space-x-2">
-                  <button onclick="editCategory(${category.id})" class="text-zinc-400 hover:text-white">
+                  <button onclick="editCategory('${category.id}')" class="text-zinc-400 hover:text-white">
                     <i class="fa-solid fa-edit"></i>
                   </button>
-                  <button onclick="deleteCategory(${category.id})" class="text-zinc-400 hover:text-red-400">
+                  <button onclick="deleteCategory('${category.id}')" class="text-zinc-400 hover:text-red-400">
                     <i class="fa-solid fa-trash"></i>
                   </button>
                 </div>
               </div>
             `).join('');
 
-            container.innerHTML = categoriesHtml;
-          }
+          container.innerHTML = categoriesHtml;
         } catch (error) {
           console.error('Error loading categories for settings:', error);
           container.innerHTML = '<div class="text-center text-red-400 py-8">Błąd ładowania kategorii</div>';
@@ -8406,19 +8461,21 @@
 
         // Znajdź kategorię po ID żeby uzyskać kolor
         try {
-          const categoriesResponse = fetch('/api/messages/categories');
-          categoriesResponse.then(response => response.json()).then(data => {
-            if (data.success) {
-              const category = data.data.find(cat => cat.id == categoryId);
-              if (category) {
-                const categoryColor = userFilterColors[category.name.toLowerCase().replace(/\s+/g, '')] || category.color || '#6B7280';
+          const categoriesRef = collection(db, "messageCategories");
+          getDocs(categoriesRef).then((snapshot) => {
+            const categories = [];
+            snapshot.forEach((doc) => {
+              categories.push({ id: doc.id, ...doc.data() });
+            });
+            const category = categories.find(cat => cat.id == categoryId);
+            if (category) {
+              const categoryColor = userFilterColors[category.name.toLowerCase().replace(/\s+/g, '')] || category.color || '#6B7280';
 
-                // Zaktualizuj style w modalu czatu jeśli potrzebne
-                const chatModal = document.getElementById('chat-modal');
-                if (chatModal) {
-                  // Możesz dodać specjalne style dla aktywnej kategorii w modalu
-                  console.log('Category color updated in chat modal:', categoryColor);
-                }
+              // Zaktualizuj style w modalu czatu jeśli potrzebne
+              const chatModal = document.getElementById('chat-modal');
+              if (chatModal) {
+                // Możesz dodać specjalne style dla aktywnej kategorii w modalu
+                console.log('Category color updated in chat modal:', categoryColor);
               }
             }
           });
