@@ -32,7 +32,8 @@ const messagesAPI = {
         dateTo: req.query.dateTo,
         status: req.query.status,
         isRead: req.query.isRead ? req.query.isRead === 'true' : undefined,
-        recipientId: req.query.recipientId || 'admin' // Domyślnie tylko do admina
+        recipientId: req.query.recipientId || 'admin', // Domyślnie tylko do admina
+        categoryId: req.query.categoryId
       };
 
       const result = await db.getMessages(options);

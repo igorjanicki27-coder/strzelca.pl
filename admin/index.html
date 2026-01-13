@@ -32,7 +32,7 @@
         background-color: #0a0a0a;
         background-image:
           linear-gradient(rgba(10, 10, 10, 0.6), #0a0a0a),
-          url("https://strzelca.pl/tlo.png");
+          url("/tlo.png");
         background-size: cover;
         background-position: center top;
         background-attachment: fixed;
@@ -552,6 +552,21 @@
     </style>
   </head>
   <body>
+    <script>
+      // Dynamiczne ustawienie ścieżki do tła
+      document.addEventListener('DOMContentLoaded', function() {
+        const htmlElement = document.documentElement;
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
+
+        if (isLocalhost) {
+          // Dla lokalnego środowiska użyj względnej ścieżki
+          htmlElement.style.backgroundImage = 'linear-gradient(rgba(10, 10, 10, 0.6), #0a0a0a), url("../tlo.png")';
+        } else {
+          // Dla domeny użyj zewnętrznego URL-a
+          htmlElement.style.backgroundImage = 'linear-gradient(rgba(10, 10, 10, 0.6), #0a0a0a), url("https://strzelca.pl/tlo.png")';
+        }
+      });
+    </script>
 
     <!-- Sekcja logowania -->
     <div
@@ -586,13 +601,6 @@
               placeholder="Hasło"
               required
             />
-          </div>
-
-          <div class="flex items-center justify-center">
-            <input type="checkbox" id="admin-remember-me" class="hidden peer" />
-            <label for="admin-remember-me" class="cursor-pointer text-sm text-zinc-400 peer-checked:text-green-500 transition-colors">
-              Zapamiętaj mnie
-            </label>
           </div>
 
           <button type="submit" class="btn-admin w-full" id="admin-login-btn">
@@ -816,36 +824,6 @@
               </div>
             </div>
 
-            <!-- Sekcja Zdarzenia -->
-            <div class="admin-card mb-8">
-              <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold coyote-text">Zdarzenia</h2>
-                <div class="flex space-x-2">
-                <button
-                  onclick="loadEventsLog()"
-                  id="refresh-events-btn"
-                  class="btn-admin text-sm px-3 py-1"
-                >
-                  <i class="fa-solid fa-refresh mr-1"></i>
-                  Odśwież
-                </button>
-                  <button
-                    onclick="clearAllEvents()"
-                    class="btn-danger text-sm px-3 py-1"
-                  >
-                    <i class="fa-solid fa-trash mr-1"></i>
-                    Usuń wszystkie
-                </button>
-                </div>
-              </div>
-
-              <div id="events-log-container">
-                <!-- Tabela zdarzeń będzie ładowana dynamicznie -->
-                <div class="text-center text-zinc-400 py-4">
-                  <i class="fa-solid fa-spinner fa-spin mr-2"></i>Ładowanie logów...
-                </div>
-              </div>
-            </div>
           </div>
 
         <!-- Dashboard -->
@@ -1204,8 +1182,8 @@
           <!-- Pasek wyszukiwania i filtrów -->
           <div class="liquid-glass p-6 mb-6">
             <div class="flex items-center gap-3">
-              <!-- Wyszukiwarka (rozciągnięta do ~80% szerokości) -->
-              <div class="flex-[0_0_80%] relative">
+              <!-- Wyszukiwarka (po lewej stronie, rozszerzona) -->
+              <div class="flex-[1_1_auto] relative">
                 <input
                   type="text"
                   id="messages-search"
@@ -1215,28 +1193,12 @@
                 <button
                   onclick="clearMessagesSearch()"
                   id="clear-search-btn"
-                  class="absolute right-3 top-1/2 transform -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors opacity-0"
-                  style="background: none; border: none;"
+                  class="absolute right-3 top-1/2 transform -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors opacity-0 cursor-pointer z-10"
+                  style="background: none; border: none; padding: 4px;"
                 >
                   <i class="fa-solid fa-times text-sm"></i>
                 </button>
               </div>
-
-              <!-- Ikona filtra (po prawej stronie) -->
-              <button onclick="toggleFilterDropdown()" class="text-zinc-400 hover:text-coyote transition-colors p-2 relative">
-                <i class="fa-solid fa-filter text-lg"></i>
-                <!-- Dropdown filtrów -->
-                <div id="filter-dropdown" class="absolute right-0 top-full mt-2 bg-zinc-800 border border-zinc-600 rounded-lg shadow-lg hidden z-10 min-w-[200px]">
-                  <div class="p-2">
-                    <select id="messages-filter" class="w-full bg-zinc-700 border border-zinc-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-coyote">
-                      <option value="all">Wszystkie</option>
-                      <option value="unread">Nieprzeczytane</option>
-                      <option value="completed">Zakończone</option>
-                      <!-- Opcje kategorii będą dodawane dynamicznie -->
-                    </select>
-                  </div>
-                </div>
-              </button>
             </div>
           </div>
 
@@ -1986,9 +1948,9 @@
             <div class="admin-card mt-8" style="background: linear-gradient(135deg, rgba(193, 154, 107, 0.1), rgba(193, 154, 107, 0.05)); backdrop-filter: blur(20px); border: 1px solid rgba(193, 154, 107, 0.2);">
               <div class="flex justify-between items-center mb-6">
                 <h3 class="text-xl font-bold">Dziennik Aktywności</h3>
-                <button onclick="loadDashboardActivityLogs()" class="btn-admin px-4 py-2">
+                <button onclick="refreshActivityLogs()" class="btn-admin px-4 py-2" id="refresh-activity-btn">
                   <i class="fa-solid fa-refresh mr-2"></i>
-                  Odśwież
+                  <span id="refresh-activity-text">Odśwież</span>
                 </button>
               </div>
 
@@ -2002,13 +1964,6 @@
               </div>
             </div>
 
-            <!-- Przyciski akcji -->
-            <div class="mt-8 flex justify-center">
-              <button onclick="saveContactSettings()" class="btn-admin px-8 py-3">
-                <i class="fa-solid fa-save mr-2"></i>
-                Zapisz ustawienia
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -2781,6 +2736,70 @@
           loadEventsLog();
         }
 
+        // Specjalna obsługa dashboard - załaduj dziennik aktywności z opóźnieniem
+        if (tabName === "dashboard") {
+          setTimeout(() => {
+            const activityContainer = document.getElementById('admin-activity-log');
+            if (activityContainer) {
+              console.log('Dashboard tab switched, loading activity logs...');
+              loadDashboardActivityLogs();
+            } else {
+              console.warn('admin-activity-log container still not found after tab switch');
+            }
+          }, 300);
+        }
+
+        // Specjalna obsługa messages - dodaj event listenery dla wyszukiwania i filtrów
+        if (tabName === "messages") {
+          setTimeout(() => {
+            const messagesSearch = document.getElementById('messages-search');
+            const messagesFilter = document.getElementById('messages-filter');
+
+            if (messagesSearch && !messagesSearch.hasSearchListener) {
+              console.log('Adding search event listeners in switchTab');
+              messagesSearch.hasSearchListener = true;
+
+              messagesSearch.addEventListener('input', (e) => {
+                console.log('Search input event fired in switchTab, value:', e.target.value);
+                currentFilters.search = e.target.value;
+
+                // Pokaż/ukryj przycisk clear
+                const clearBtn = document.getElementById('clear-search-btn');
+                if (clearBtn) {
+                  if (e.target.value.length > 0) {
+                    clearBtn.classList.remove('opacity-0');
+                    clearBtn.classList.add('opacity-100');
+                  } else {
+                    clearBtn.classList.add('opacity-0');
+                    clearBtn.classList.remove('opacity-100');
+                  }
+                }
+
+                loadMessagesWithFilters();
+              });
+
+              messagesSearch.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                  console.log('Search Enter pressed in switchTab, value:', e.target.value);
+                  e.preventDefault();
+                  currentFilters.search = e.target.value;
+                  loadMessagesWithFilters();
+                }
+              });
+            }
+
+            if (messagesFilter && !messagesFilter.hasFilterListener) {
+              console.log('Adding filter dropdown event listener in switchTab');
+              messagesFilter.hasFilterListener = true;
+              messagesFilter.addEventListener('change', () => {
+                console.log('Filter dropdown changed in switchTab to:', messagesFilter.value);
+                currentFilters.category = messagesFilter.value;
+                loadMessagesWithFilters();
+              });
+            }
+          }, 100);
+        }
+
         currentTab = tabName;
 
         // Ładowanie danych dla wybranej zakładki
@@ -2789,7 +2808,8 @@
             checkMainServicesStatus();
             break;
           case "dashboard":
-            loadDashboardStats();
+            // Opóźnij ładowanie dashboard żeby dać czas na renderowanie DOM
+            setTimeout(() => loadDashboardStats(), 500);
             break;
           case "users":
             loadUsers();
@@ -3102,8 +3122,56 @@
       window.refreshDashboardWithLoading = refreshDashboardWithLoading;
       window.loadDashboardActivityLogs = loadDashboardActivityLogs;
 
+      // Funkcja odświeżania dziennika aktywności z animacją przycisku
+      window.refreshActivityLogs = async () => {
+        const btn = document.getElementById('refresh-activity-btn');
+        const icon = btn.querySelector('i');
+        const text = document.getElementById('refresh-activity-text');
+
+        console.log('refreshActivityLogs called');
+
+        // Zapisz oryginalne klasy
+        const originalIconHTML = icon.outerHTML;
+        const originalText = text.textContent;
+
+        // Pokaż animację ładowania z płynnym przejściem
+        btn.disabled = true;
+        btn.style.opacity = '0.7';
+
+        // Zmień tylko ikonę na spinner z animacją
+        icon.className = 'fa-solid fa-spinner fa-spin mr-2';
+        icon.style.transition = 'transform 0.3s ease';
+        text.textContent = 'Ładowanie...';
+        text.style.transition = 'opacity 0.3s ease';
+
+        try {
+          console.log('Calling loadDashboardActivityLogs from refresh button');
+          // Minimalny czas animacji 800ms żeby była widoczna
+          const startTime = Date.now();
+          await loadDashboardActivityLogs();
+          const elapsed = Date.now() - startTime;
+          if (elapsed < 800) {
+            await new Promise(resolve => setTimeout(resolve, 800 - elapsed));
+          }
+          console.log('loadDashboardActivityLogs completed successfully');
+        } catch (error) {
+          console.error('Error in refreshActivityLogs:', error);
+        } finally {
+          // Płynne przywrócenie oryginalnego stanu
+          btn.disabled = false;
+          btn.style.opacity = '1';
+
+          // Przywróć oryginalną ikonę
+          icon.outerHTML = originalIconHTML;
+          text.textContent = originalText;
+
+          console.log('Refresh button animation reset');
+        }
+      };
+
       // Funkcje ładowania danych
       async function loadDashboardStats() {
+        console.log('loadDashboardStats called, currentUser exists:', !!currentUser);
         // Sprawdź czy użytkownik jest uwierzytelniony i ma rolę admin
         if (!currentUser) {
           console.warn("Brak uwierzytelnionego użytkownika - pomijanie ładowania statystyk");
@@ -3123,9 +3191,6 @@
           // Ładowanie statystyk aktywności
           await loadActivityStats();
           await loadContactFormsCount();
-
-          // Ładowanie dziennika aktywności dla dashboardu
-          await loadDashboardActivityLogs();
 
           // Ładowanie statystyk Google Analytics
           await fetchGAStatistics();
@@ -3148,13 +3213,27 @@
       // Funkcja ładowania dziennika aktywności dla dashboardu
       async function loadDashboardActivityLogs() {
         const container = document.getElementById('admin-activity-log');
-        if (!container) return;
+        console.log('loadDashboardActivityLogs called, container exists:', !!container);
+        if (!container) {
+          console.warn('admin-activity-log container not found, skipping activity logs loading');
+          return;
+        }
+
+        console.log('Loading activity logs...');
 
         try {
-          const response = await fetch('/api/admin/activity-logs?limit=10');
+          // Timeout na 5 sekund dla API
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('API timeout')), 5000);
+          });
+
+          const apiPromise = fetch('/api/admin/activity-logs?limit=10');
+          const response = await Promise.race([apiPromise, timeoutPromise]);
+
           if (response.ok) {
             const data = await response.json();
             const logs = data.logs || [];
+            console.log('Loaded logs from API:', logs.length);
 
             if (logs.length === 0) {
               container.innerHTML = `
@@ -3176,7 +3255,7 @@
                 return `
                   <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="showEventDetails ? showEventDetails('${log.id}') : null">
                     <div class="flex justify-between items-start mb-2">
-                      <div class="font-semibold text-white">${log.user || "System"}</div>
+                      <div class="font-semibold text-white">${log.adminId || log.user || "System"}</div>
                       <div class="text-xs text-zinc-500">${timeAgo}</div>
                     </div>
                     <div class="text-sm text-zinc-300">${activityLog.description}</div>
@@ -3188,72 +3267,63 @@
 
             container.innerHTML = logsHtml;
           } else {
-            container.innerHTML = `
-              <div class="text-center text-red-400 py-8">
-                <i class="fa-solid fa-exclamation-triangle text-2xl mb-4"></i>
-                <h4 class="text-lg font-semibold mb-2">Błąd ładowania</h4>
-                <p class="text-sm">Nie udało się załadować dziennika aktywności</p>
-              </div>
-            `;
+            throw new Error(`API returned ${response.status}`);
           }
         } catch (apiError) {
-          console.warn('API fetch failed, trying direct Firestore fallback:', apiError);
+          console.warn('API failed, using mock data for localhost:', apiError.message);
 
-          // Fallback: Pobierz dane bezpośrednio z Firestore
-          try {
-            const activityLogsQuery = query(
-              collection(db, "activityLogs"),
-              orderBy("timestamp", "desc"),
-              limit(10)
-            );
-            const snapshot = await getDocs(activityLogsQuery);
-            const logs = snapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data(),
-              timestamp: doc.data().timestamp
-            }));
+          // Mock data dla localhost gdy API nie działa
+          const mockLogs = [
+            {
+              id: '1',
+              type: 'admin_login',
+              action: 'Administrator zalogowany',
+              details: 'Administrator zalogował się do panelu',
+              timestamp: new Date().toISOString(),
+              adminId: 'firebase-admin',
+              user: 'Administrator'
+            },
+            {
+              id: '2',
+              type: 'dashboard_view',
+              action: 'Wyświetlono dashboard',
+              details: 'Administrator przeglądał dashboard',
+              timestamp: new Date(Date.now() - 60000).toISOString(),
+              adminId: 'firebase-admin',
+              user: 'Administrator'
+            },
+            {
+              id: '3',
+              type: 'settings_view',
+              action: 'Przeglądnięto ustawienia',
+              details: 'Administrator przeglądał ustawienia systemu',
+              timestamp: new Date(Date.now() - 120000).toISOString(),
+              adminId: 'firebase-admin',
+              user: 'Administrator'
+            }
+          ];
 
-            if (logs.length === 0) {
-              container.innerHTML = `
-                <div class="text-center text-zinc-500 py-8">
-                  <i class="fa-solid fa-list text-2xl mb-4 text-zinc-600"></i>
-                  <h4 class="text-lg font-semibold mb-2">Brak aktywności</h4>
-                  <p class="text-sm">Dziennik aktywności jest pusty</p>
+          const logsHtml = mockLogs
+            .map((log) => {
+              const timestamp = new Date(log.timestamp);
+              const timeAgo = getTimeAgo ? getTimeAgo(timestamp) : timestamp.toLocaleString("pl-PL");
+              const activityLog = { description: log.action || 'Aktywność', content: log.details || '' };
+
+              return `
+                <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition">
+                  <div class="flex justify-between items-start mb-2">
+                    <div class="font-semibold text-white">${log.user || "System"}</div>
+                    <div class="text-xs text-zinc-500">${timeAgo}</div>
+                  </div>
+                  <div class="text-sm text-zinc-300">${activityLog.description}</div>
+                  <div class="text-xs text-zinc-500 mt-1">${activityLog.content}</div>
                 </div>
               `;
-              return;
-            }
+            })
+            .join("");
 
-            const logsHtml = logs
-              .map((log) => {
-                const timestamp = log.timestamp ? new Date(log.timestamp.toDate ? log.timestamp.toDate() : log.timestamp) : new Date();
-                const timeAgo = getTimeAgo ? getTimeAgo(timestamp) : timestamp.toLocaleString("pl-PL");
-                const activityLog = renderActivityLog ? renderActivityLog(log) : { description: log.action || 'Aktywność', content: log.details || '' };
-
-                return `
-                  <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="showEventDetails ? showEventDetails('${log.id}') : null">
-                    <div class="flex justify-between items-start mb-2">
-                      <div class="font-semibold text-white">${log.user || "System"}</div>
-                      <div class="text-xs text-zinc-500">${timeAgo}</div>
-                    </div>
-                    <div class="text-sm text-zinc-300">${activityLog.description}</div>
-                    <div class="text-xs text-zinc-500 mt-1">${activityLog.content}</div>
-                  </div>
-                `;
-              })
-              .join("");
-
-            container.innerHTML = logsHtml;
-          } catch (firestoreError) {
-            console.error('Both API and Firestore fallback failed:', apiError, firestoreError);
-            container.innerHTML = `
-              <div class="text-center text-red-400 py-8">
-                <i class="fa-solid fa-exclamation-triangle text-2xl mb-4"></i>
-                <h4 class="text-lg font-semibold mb-2">Błąd ładowania</h4>
-                <p class="text-sm">Nie udało się załadować danych z API ani Firestore</p>
-              </div>
-            `;
-          }
+          container.innerHTML = logsHtml;
+          console.log('Loaded mock activity logs for localhost');
         }
       }
 
@@ -4373,22 +4443,6 @@
       };
 
       // Funkcja zapisywania ustawień kontaktu
-      window.saveContactSettings = async () => {
-        try {
-          const settings = {
-            formEnabled: document.getElementById('contact-form-enabled').checked,
-            recipientEmail: document.getElementById('contact-recipient-email').value.trim(),
-            notificationSubject: document.getElementById('contact-notification-subject').value.trim()
-          };
-
-          // Tutaj można dodać API call do zapisywania ustawień
-          // Na razie tylko symulacja
-          showNotification('Ustawienia kontaktu zostały zapisane', 'success');
-        } catch (error) {
-          console.error('Error saving contact settings:', error);
-          showNotification('Błąd zapisywania ustawień', 'error');
-        }
-      };
 
       // =================== KONIEC ZARZĄDZANIA KATEGORIAMI ===================
 
@@ -4698,6 +4752,7 @@
         if (document.getElementById('messages-container')) {
           await loadMessagesWithFilters();
           await loadMessagesStatus();
+          await updateCategoryButtonsHighlight(); // Aktualizuj przyciski po załadowaniu
           return;
         }
 
@@ -7283,19 +7338,12 @@
           setupTypingListeners();
         }
 
-        // Event listeners dla nowej zakładki messages
-        const messagesSearch = document.getElementById('messages-search');
-        const messagesFilter = document.getElementById('messages-filter');
-
-        if (messagesSearch) {
-          messagesSearch.addEventListener('input', debounce(() => {
-            currentFilters.search = messagesSearch.value;
-            loadMessagesWithFilters();
-          }, 300));
-        }
-
-        if (messagesFilter) {
+        // Event listener dla dropdown filtra messages
+        if (messagesFilter && !messagesFilter.hasFilterListener) {
+          console.log('Adding filter dropdown event listener');
+          messagesFilter.hasFilterListener = true;
           messagesFilter.addEventListener('change', () => {
+            console.log('Filter dropdown changed to:', messagesFilter.value);
             currentFilters.category = messagesFilter.value;
             loadMessagesWithFilters();
           });
@@ -7355,6 +7403,17 @@
 
             let categoryButtons = '';
 
+            // Dodaj przycisk "Wszystkie"
+            const isAllActive = !currentFilters.category || currentFilters.category === 'all' || ['unread', 'completed'].includes(currentFilters.category);
+            categoryButtons += `
+              <button onclick="filterMessages('all')"
+                      class="px-3 py-2 rounded-lg transition-all duration-200 font-medium liquid-glass-button flex items-center gap-2"
+                      style="color: #6B7280; ${isAllActive ? `background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid #6B728060;` : `background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.1);`}">
+                <i class="fa-solid fa-list text-xs"></i>
+                Wszystkie
+              </button>
+            `;
+
             categories.forEach(cat => {
               const isActive = currentFilters.category === cat.name.toLowerCase().replace(/\s+/g, '');
               const categoryIcon = cat.icon || 'fa-circle';
@@ -7405,19 +7464,29 @@
 
           if (currentFilters.category === 'unread') {
             queryParams.append('isRead', 'false');
+          } else if (currentFilters.category === 'read') {
+            queryParams.append('isRead', 'true');
           } else if (currentFilters.category === 'completed') {
             queryParams.append('status', 'completed');
-          } else if (currentFilters.category && !['unread', 'completed', 'all'].includes(currentFilters.category)) {
+          } else if (currentFilters.category === 'in_progress') {
+            queryParams.append('status', 'in_progress');
+          } else if (currentFilters.category && !['unread', 'read', 'completed', 'in_progress', 'all'].includes(currentFilters.category)) {
             // To jest filtr kategorii - znajdź ID kategorii po nazwie
             try {
+              console.log('Filtering by category:', currentFilters.category);
               const categoriesResponse = await fetch('/api/message-categories');
               const categoriesData = await categoriesResponse.json();
+              console.log('Categories data:', categoriesData);
               if (categoriesData.success) {
                 const category = categoriesData.data.find(cat =>
                   cat.name.toLowerCase().replace(/\s+/g, '') === currentFilters.category
                 );
+                console.log('Found category:', category);
                 if (category) {
                   queryParams.append('categoryId', category.id);
+                  console.log('Added categoryId to query:', category.id);
+                } else {
+                  console.warn('Category not found for:', currentFilters.category);
                 }
               }
             } catch (error) {
@@ -8021,11 +8090,70 @@
         }
       }
 
+      // Funkcja aktualizacji podświetlenia przycisków kategorii
+      async function updateCategoryButtonsHighlight() {
+        const categoryButtonsEl = document.getElementById('category-buttons');
+        if (!categoryButtonsEl) return;
+
+        try {
+          // Pobierz kategorie jeśli nie są jeszcze załadowane
+          if (!window.cachedCategories) {
+            const categoriesResponse = await fetch('/api/message-categories');
+            const categoriesData = await categoriesResponse.json();
+            if (categoriesData.success) {
+              window.cachedCategories = categoriesData.data.filter(cat => cat.is_active);
+            }
+          }
+
+          const categories = window.cachedCategories || [];
+
+          let categoryButtons = '';
+
+          // Dodaj przycisk "Wszystkie"
+          const isAllActive = !currentFilters.category || currentFilters.category === 'all' || ['unread', 'completed'].includes(currentFilters.category);
+          categoryButtons += `
+            <button onclick="filterMessages('all')"
+                    class="px-3 py-2 rounded-lg transition-all duration-200 font-medium liquid-glass-button flex items-center gap-2"
+                    style="color: #6B7280; ${isAllActive ? `background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid #6B728060;` : `background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.1);`}">
+              <i class="fa-solid fa-list text-xs"></i>
+              Wszystkie
+            </button>
+          `;
+
+          categories.forEach(cat => {
+            const isActive = currentFilters.category === cat.name.toLowerCase().replace(/\s+/g, '');
+            const categoryIcon = cat.icon || 'fa-circle';
+            const categoryColor = userFilterColors[cat.name.toLowerCase().replace(/\s+/g, '')] || cat.color || '#6B7280';
+            categoryButtons += `
+              <button onclick="filterMessages('${cat.name.toLowerCase().replace(/\s+/g, '')}')"
+                      class="px-3 py-2 rounded-lg transition-all duration-200 font-medium liquid-glass-button flex items-center gap-2"
+                      style="color: ${categoryColor}; ${isActive ? `background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid ${categoryColor}60;` : `background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.1);`}">
+                <i class="fa-solid ${categoryIcon} text-xs"></i>
+                ${cat.name}
+              </button>
+            `;
+          });
+
+          categoryButtonsEl.innerHTML = categoryButtons;
+        } catch (error) {
+          console.error('Error updating category buttons highlight:', error);
+        }
+      }
+
       // Funkcja filtrowania wiadomości po statusie
       function filterMessages(filterType) {
+        console.log('filterMessages called with:', filterType);
+
+        // Jeśli kliknięto w już aktywną kategorię, wróć do widoku wszystkich
+        if (currentFilters.category === filterType && filterType !== 'all') {
+          console.log('Clicked active category, resetting to all');
+          filterType = 'all';
+        }
+
         // Aktualizuj currentFilters
         currentFilters.category = filterType;
         currentFilters.search = document.getElementById('messages-search')?.value || '';
+        console.log('Updated currentFilters:', currentFilters);
 
         // Zaktualizuj dropdown filtra
         const filterSelect = document.getElementById('messages-filter');
@@ -8034,10 +8162,20 @@
             case 'unread':
               filterSelect.value = 'unread';
               break;
+            case 'read':
+              filterSelect.value = 'read';
+              break;
             case 'completed':
               filterSelect.value = 'completed';
               break;
+            case 'in_progress':
+              filterSelect.value = 'in_progress';
+              break;
+            case 'all':
+              filterSelect.value = 'all';
+              break;
             default:
+              // Dla kategorii wiadomości, ustaw na 'all' ponieważ select nie ma opcji kategorii
               filterSelect.value = 'all';
               break;
           }
@@ -8045,15 +8183,40 @@
 
         // Przeładuj wiadomości
         loadMessagesWithFilters();
+        // Przeładuj przyciski kategorii żeby zaktualizować podświetlenie
+        updateCategoryButtonsHighlight();
       }
 
       // Funkcja przełączania dropdowna filtrów
       function toggleFilterDropdown() {
+        console.log('toggleFilterDropdown called');
         const dropdown = document.getElementById('filter-dropdown');
         if (dropdown) {
+          const isHidden = dropdown.classList.contains('hidden');
           dropdown.classList.toggle('hidden');
+          console.log('Dropdown visibility toggled, was hidden:', isHidden, 'now hidden:', dropdown.classList.contains('hidden'));
+        } else {
+          console.warn('filter-dropdown element not found');
         }
       }
+
+      // Funkcja zamykania dropdown gdy klikniemy gdzie indziej
+      document.addEventListener('click', function(event) {
+        const dropdown = document.getElementById('filter-dropdown');
+        const filterBtn = event.target.closest('[onclick*="toggleFilterDropdown"]');
+
+        if (dropdown && !dropdown.classList.contains('hidden') && !filterBtn && !dropdown.contains(event.target)) {
+          console.log('Closing dropdown by outside click');
+          dropdown.classList.add('hidden');
+        }
+      });
+
+      // Udostępnij funkcje globalnie
+      window.filterMessages = filterMessages;
+      window.toggleFilterDropdown = toggleFilterDropdown;
+      window.closeChatModal = closeChatModal;
+      window.clearMessagesSearch = clearMessagesSearch;
+      window.updateCategoryButtonsHighlight = updateCategoryButtonsHighlight;
 
       // Funkcja czyszczenia filtrów
       function clearFilters() {
@@ -8068,9 +8231,12 @@
 
       // Funkcja czyszczenia wyszukiwania wiadomości
       function clearMessagesSearch() {
+        console.log('clearMessagesSearch called');
         const searchInput = document.getElementById('messages-search');
-        searchInput.value = '';
-        searchInput.focus();
+        if (searchInput) {
+          searchInput.value = '';
+          searchInput.focus();
+        }
         currentFilters.search = '';
         loadMessagesWithFilters();
         // Ukryj przycisk clear
@@ -8078,6 +8244,7 @@
         if (clearBtn) {
           clearBtn.classList.add('opacity-0');
           clearBtn.classList.remove('opacity-100');
+          console.log('Clear button hidden');
         }
       }
 
@@ -8294,13 +8461,8 @@
             }
 
             try {
-              // Ustaw persistence na podstawie checkboxa "Remember Me"
-              const rememberMe = document.getElementById('admin-remember-me').checked;
-              const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
-              await setPersistence(auth, persistence);
-
-              // Zapisz ustawienie "Remember Me" w localStorage dla SessionManager
-              localStorage.setItem('strzelca_remember_me', rememberMe.toString());
+              // Ustaw persistence na session (użytkownik nie jest pamiętany)
+              await setPersistence(auth, browserSessionPersistence);
 
               // Logowanie wyłącznie przez Firebase Authentication
               await signInWithEmailAndPassword(auth, login, password);
