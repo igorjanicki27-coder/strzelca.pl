@@ -2644,14 +2644,10 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
 
-      // Ustaw persistence na local jako pierwszą operację asynchroniczną (administrator jest pamiętany między sesjami)
-      (async () => {
-        try {
-          await setPersistence(auth, browserLocalPersistence);
-        } catch (error) {
-          console.error("Error setting persistence:", error);
-        }
-      })();
+      // Ustaw persistence na local zaraz po inicjalizacji auth (administrator jest pamiętany między sesjami)
+      setPersistence(auth, browserLocalPersistence).catch(error => {
+        console.error("Error setting persistence:", error);
+      });
 
       // Inicjalizuj Firestore z ustawieniem dla Safari
       const db = initializeFirestore(app, {
@@ -4452,32 +4448,8 @@
             return;
           }
 
-          let response;
-          if (categoryId) {
-            // Aktualizacja istniejącej kategorii
-            response = await fetch(`/api/messages/categories/${categoryId}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(categoryData)
-            });
-          } else {
-            // Dodanie nowej kategorii
-            response = await fetch('/api/messages/categories', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(categoryData)
-            });
-          }
-
-          const data = await response.json();
-
-          if (data.success) {
-            showNotification(categoryId ? 'Kategoria została zaktualizowana' : 'Kategoria została dodana', 'success');
-            closeCategoryModal();
-            loadCategories();
-          } else {
-            throw new Error(data.error || 'Failed to save category');
-          }
+          // TODO: Implementacja przez Firebase Firestore
+          showNotification('Funkcja zapisywania kategorii wymaga implementacji przez Firebase', 'info');
         } catch (error) {
           console.error('Error saving category:', error);
           showNotification('Błąd zapisywania kategorii', 'error');
@@ -4496,18 +4468,8 @@
         }
 
         try {
-          const response = await fetch(`/api/messages/categories/${categoryId}`, {
-            method: 'DELETE'
-          });
-
-          const data = await response.json();
-
-          if (data.success) {
-            showNotification('Kategoria została usunięta', 'success');
-            loadCategories();
-          } else {
-            throw new Error(data.error || 'Failed to delete category');
-          }
+          // TODO: Implementacja przez Firebase Firestore
+          showNotification('Funkcja usuwania kategorii wymaga implementacji przez Firebase', 'info');
         } catch (error) {
           console.error('Error deleting category:', error);
           showNotification('Błąd usuwania kategorii', 'error');
@@ -5125,28 +5087,11 @@
           const userId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           const userName = email.split('@')[0]; // Użyj części przed @ jako nazwy
 
-          // Wyślij pierwszą wiadomość
-          const response = await fetch('/api/messages', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              senderId: userId,
-              senderName: userName,
-              senderEmail: email,
-              senderType: 'guest',
-              recipientId: 'admin',
-              recipientType: 'admin',
-              topic: topic || 'Nowa rozmowa',
-              content: message,
-              conversationType: 'support_chat'
-            })
-          });
-
-          const data = await response.json();
-
-          if (!data.success) {
-            throw new Error(data.error || 'Failed to create chat');
-          }
+          // TODO: Implementacja przez Firebase Firestore - dodanie wiadomości do privateMessages
+          showNotification('Funkcja tworzenia czatu wymaga implementacji przez Firebase', 'info');
+          createBtn.disabled = false;
+          createBtn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i>Utwórz czat';
+          return;
 
           // Zamknij modal
           closeNewChatModal();
@@ -7575,22 +7520,8 @@
         listContainer.innerHTML = '<div class="text-center text-zinc-500 py-8"><i class="fa-solid fa-spinner fa-spin"></i> Ładowanie...</div>';
 
         try {
-          const response = await fetch('/api/quick-replies');
-          const data = await response.json();
-
-          if (data.success && data.data.length > 0) {
-            const repliesHtml = data.data.map(reply => `
-              <div class="bg-zinc-800 rounded-lg p-3 mb-3 cursor-pointer hover:bg-zinc-700 transition-colors"
-                   onclick="selectQuickReply('${reply.content.replace(/'/g, "\\'").replace(/\n/g, '\\n')}')">
-                <div class="font-semibold text-white text-sm mb-1">${reply.title}</div>
-                <div class="text-zinc-400 text-xs line-clamp-2">${reply.content}</div>
-              </div>
-            `).join('');
-
-            listContainer.innerHTML = repliesHtml;
-          } else {
-            listContainer.innerHTML = '<div class="text-center text-zinc-500 py-8">Brak dostępnych szablonów</div>';
-          }
+          // TODO: Implementacja przez Firebase Firestore - pobranie quickReplies z kolekcji
+          listContainer.innerHTML = '<div class="text-center text-zinc-500 py-8">Funkcja wymaga implementacji przez Firebase</div>';
         } catch (error) {
           console.error('Error loading quick replies:', error);
           listContainer.innerHTML = '<div class="text-center text-red-400 py-8">Błąd ładowania szablonów</div>';
@@ -7771,38 +7702,9 @@
         }
 
         try {
-          // Sprawdź czy konwersacja była zakończona - jeśli tak, przywróć do in_progress
-          const statusResponse = await fetch(`/api/messages?senderId=${currentConversationUser.id}&recipientId=admin&status=completed&limit=1`);
-          const statusData = await statusResponse.json();
-
-          if (statusData.success && statusData.data.messages.length > 0) {
-            // Konwersacja była zakończona, przywróć do in_progress
-            const latestCompletedMessage = statusData.data.messages[0];
-            await fetch(`/api/messages/${latestCompletedMessage.id}/status`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ status: 'in_progress' })
-            });
-          }
-
-          const response = await fetch('/api/messages', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              senderId: 'admin',
-              senderName: 'Administrator',
-              senderType: 'admin',
-              recipientId: currentConversationUser.id,
-              recipientType: 'user',
-              content: content
-            })
-          });
-
-          const data = await response.json();
-
-          if (!data.success) {
-            throw new Error(data.error || 'Failed to send message');
-          }
+          // TODO: Implementacja przez Firebase Firestore - dodanie wiadomości do privateMessages
+          showNotification('Funkcja wysyłania wiadomości wymaga implementacji przez Firebase', 'info');
+          return;
 
           // Wyczyść input
           input.value = '';
