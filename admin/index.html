@@ -1790,40 +1790,142 @@
 
           <!-- Szkolenia -->
           <div id="tab-szkolenia" class="tab-content">
-            <h1 class="text-3xl font-bold coyote-text mb-8">
-              Zarządzanie Szkolenia
-            </h1>
-
             <div class="flex justify-between items-center mb-8">
-              <p class="text-zinc-400">
-                Zarządzaj szkoleniami. Dodawaj nowe szkolenia, edytuj istniejące i
-                kontroluj dostępność.
-              </p>
-              <button onclick="addNewTraining()" class="btn-admin">
-                <i class="fa-solid fa-plus mr-2"></i>
-                Dodaj szkolenie
+              <h1 class="text-3xl font-bold coyote-text">
+                Zarządzanie Szkoleniami
+              </h1>
+              <button onclick="refreshTrainings()" class="text-zinc-400 hover:text-coyote transition-colors p-2" id="refresh-trainings-btn">
+                <i class="fa-solid fa-sync-alt text-lg" id="refresh-trainings-icon"></i>
               </button>
             </div>
 
-            <!-- Lista szkoleń -->
-            <div class="admin-card">
-              <div id="trainings-list" class="space-y-4">
-                <!-- Szkolenia będą ładowane dynamicznie -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div class="admin-card">
+                <h3 class="text-xl font-bold mb-4">Dodaj/Edytuj Szkolenie</h3>
+                <form id="training-form" class="space-y-4">
+                  <input type="hidden" id="training-id" />
+                  <input
+                    type="text"
+                    id="training-title"
+                    placeholder="Nazwa szkolenia"
+                    required
+                  />
+                  <input
+                    type="text"
+                    id="training-price"
+                    placeholder="Cena (np. 299.99)"
+                    required
+                  />
+                  <input
+                    type="text"
+                    id="training-img"
+                    placeholder="URL zdjęcia"
+                    required
+                  />
+                  
+                  <div class="flex items-center gap-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        id="training-available-all"
+                        class="w-4 h-4"
+                      />
+                      <span class="text-sm">Dostępne dla wszystkich</span>
+                    </label>
+                  </div>
+
+                  <div class="toolbar">
+                    <button type="button" onclick="formatText('bold')">
+                      <i class="fa-solid fa-bold"></i>
+                    </button>
+                    <button
+                      type="button"
+                      onclick="formatText('insertUnorderedList')"
+                    >
+                      <i class="fa-solid fa-list-ul"></i>
+                    </button>
+                    <button type="button" onclick="formatText('justifyCenter')">
+                      <i class="fa-solid fa-align-center"></i>
+                    </button>
+                    <button type="button" onclick="insertImage()">
+                      <i class="fa-solid fa-image"></i>
+                    </button>
+                  </div>
+
+                  <div
+                    id="training-description"
+                    class="editor-content"
+                    contenteditable="true"
+                    placeholder="Opis szkolenia..."
+                  ></div>
+
+                  <div class="flex space-x-4">
+                    <button type="submit" class="btn-admin flex-1">
+                      <i class="fa-solid fa-save mr-2"></i>
+                      Zapisz szkolenie
+                    </button>
+                    <button
+                      type="button"
+                      onclick="clearTrainingForm()"
+                      class="btn-admin flex-1"
+                    >
+                      <i class="fa-solid fa-plus mr-2"></i>
+                      Nowe szkolenie
+                    </button>
+                  </div>
+                </form>
+
+                <!-- Zarządzanie dostępem użytkowników -->
+                <div id="training-access-section" class="mt-8 pt-8 border-t border-zinc-700 hidden">
+                  <h4 class="text-lg font-bold mb-4">Zarządzanie dostępem</h4>
+                  <div class="space-y-4">
+                    <div>
+                      <label class="block text-sm font-medium mb-2">Dodaj dostęp dla użytkownika</label>
+                      <div class="flex gap-2">
+                        <select id="training-user-select" class="flex-1">
+                          <option value="">Wybierz użytkownika...</option>
+                        </select>
+                        <button
+                          type="button"
+                          onclick="addTrainingAccess()"
+                          class="btn-admin"
+                        >
+                          <i class="fa-solid fa-plus mr-2"></i>
+                          Dodaj
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium mb-2">Użytkownicy z dostępem</label>
+                      <div id="training-access-list" class="space-y-2">
+                        <!-- Lista użytkowników z dostępem -->
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div id="trainings-loading" class="text-center py-8 text-zinc-400">
-                <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
-                <p>Ładowanie szkoleń...</p>
-            </div>
+              <div class="admin-card">
+                <h3 class="text-xl font-bold mb-4">Lista Szkoleń</h3>
+                <div id="trainings-list" class="space-y-4">
+                  <!-- Szkolenia będą ładowane dynamicznie -->
+                </div>
 
-            <div
-                id="trainings-empty"
-              class="text-center py-8 text-zinc-400 hidden"
-            >
-                <i
-                  class="fa-solid fa-graduation-cap text-4xl mb-4 text-zinc-600"
-                ></i>
-                <p>Brak szkoleń do wyświetlenia</p>
+                <div id="trainings-loading" class="text-center py-8 text-zinc-400">
+                  <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
+                  <p>Ładowanie szkoleń...</p>
+                </div>
+
+                <div
+                  id="trainings-empty"
+                  class="text-center py-8 text-zinc-400 hidden"
+                >
+                  <i
+                    class="fa-solid fa-graduation-cap text-4xl mb-4 text-zinc-600"
+                  ></i>
+                  <p>Brak szkoleń do wyświetlenia</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2659,6 +2761,8 @@
       let currentUserFilter = "all";
       let usersList = [];
       let productsList = [];
+      let trainingsList = [];
+      let currentTrainingId = null;
       let currentConversationId = null;
       let pendingTasksListener = null;
       let activityLogsListener = null;
@@ -2896,7 +3000,7 @@
             // Brak specjalnej funkcji ładowania dla tej zakładki
             break;
           case "szkolenia":
-            // Brak specjalnej funkcji ładowania dla tej zakładki
+            loadTrainings();
             break;
           case "blog":
             // Brak specjalnej funkcji ładowania dla tej zakładki
@@ -6549,6 +6653,361 @@
           } catch (error) {
             console.error("Error saving product:", error);
             showNotification("Błąd zapisywania produktu.", "error");
+          }
+        });
+
+      window.clearProductForm = () => {
+        document.getElementById("product-form").reset();
+        document.getElementById("product-description").innerHTML = "";
+        document.getElementById("product-id").value = "";
+      };
+
+      // Funkcje zarządzania szkoleniami
+      async function loadTrainings() {
+        try {
+          const q = query(collection(db, "trainings"), orderBy("order", "asc"));
+          const snapshot = await getDocs(q);
+          trainingsList = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+
+          renderTrainingsList();
+          document.getElementById("trainings-loading").classList.add("hidden");
+          if (trainingsList.length === 0) {
+            document.getElementById("trainings-empty").classList.remove("hidden");
+          } else {
+            document.getElementById("trainings-empty").classList.add("hidden");
+          }
+        } catch (error) {
+          console.error("Error loading trainings:", error);
+          showNotification("Błąd ładowania szkoleń.", "error");
+          document.getElementById("trainings-loading").classList.add("hidden");
+        }
+      }
+
+      function renderTrainingsList() {
+        const trainingsHtml = trainingsList
+          .map(
+            (training) => `
+                <div class="flex justify-between items-center p-3 bg-zinc-800 rounded-lg">
+                    <div class="flex-1">
+                        <div class="font-semibold">${training.title}</div>
+                        <div class="text-sm text-zinc-400">${training.price} zł</div>
+                        <div class="text-xs text-zinc-500 mt-1">
+                          ${training.available === true ? '<span class="text-green-400">Dostępne dla wszystkich</span>' : '<span class="text-yellow-400">Ograniczony dostęp</span>'}
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="editTraining('${training.id}')" class="text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400 rounded text-xs">Edytuj</button>
+                        <button onclick="moveTrainingUp('${training.id}')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 border border-zinc-400 rounded text-xs" ${trainingsList.findIndex(t => t.id === training.id) === 0 ? 'disabled' : ''}>↑</button>
+                        <button onclick="moveTrainingDown('${training.id}')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 border border-zinc-400 rounded text-xs" ${trainingsList.findIndex(t => t.id === training.id) === trainingsList.length - 1 ? 'disabled' : ''}>↓</button>
+                        <button onclick="deleteTraining('${training.id}')" class="text-red-400 hover:text-red-300 px-2 py-1 border border-red-400 rounded text-xs">Usuń</button>
+                    </div>
+                </div>
+            `,
+          )
+          .join("");
+
+        document.getElementById("trainings-list").innerHTML =
+          trainingsHtml ||
+          '<div class="text-center text-zinc-500 py-4">Brak szkoleń</div>';
+      }
+
+      window.editTraining = async (trainingId) => {
+        const training = trainingsList.find((t) => t.id === trainingId);
+        if (!training) return;
+
+        currentTrainingId = trainingId;
+        document.getElementById("training-id").value = training.id;
+        document.getElementById("training-title").value = training.title || "";
+        document.getElementById("training-price").value = training.price || "";
+        document.getElementById("training-img").value = training.img || "";
+        document.getElementById("training-available-all").checked = training.available === true;
+        document.getElementById("training-description").innerHTML = training.desc || "";
+
+        // Pokaż sekcję zarządzania dostępem
+        document.getElementById("training-access-section").classList.remove("hidden");
+        
+        // Załaduj listę użytkowników do selecta
+        await loadTrainingUsersSelect();
+        
+        // Załaduj listę użytkowników z dostępem
+        await loadTrainingAccessList(trainingId);
+
+        // Scroll do formularza
+        document
+          .querySelector("#tab-szkolenia")
+          .scrollIntoView({ behavior: "smooth" });
+      };
+
+      window.deleteTraining = async (trainingId) => {
+        if (!confirm("Czy na pewno chcesz usunąć to szkolenie?")) return;
+
+        try {
+          // Usuń również dostęp użytkowników
+          const accessRef = collection(db, "trainingAccess");
+          const accessQuery = query(accessRef, where("trainingId", "==", trainingId));
+          const accessSnapshot = await getDocs(accessQuery);
+          const deletePromises = accessSnapshot.docs.map(doc => deleteDoc(doc.ref));
+          await Promise.all(deletePromises);
+
+          await deleteDoc(doc(db, "trainings", trainingId));
+          showNotification("Szkolenie zostało usunięte.");
+          loadTrainings();
+        } catch (error) {
+          console.error("Error deleting training:", error);
+          showNotification("Błąd usuwania szkolenia.", "error");
+        }
+      };
+
+      window.moveTrainingUp = async (trainingId) => {
+        const index = trainingsList.findIndex(t => t.id === trainingId);
+        if (index <= 0) return;
+
+        try {
+          const currentTraining = trainingsList[index];
+          const previousTraining = trainingsList[index - 1];
+          
+          const currentOrder = currentTraining.order;
+          const previousOrder = previousTraining.order;
+
+          await updateDoc(doc(db, "trainings", currentTraining.id), { order: previousOrder });
+          await updateDoc(doc(db, "trainings", previousTraining.id), { order: currentOrder });
+
+          loadTrainings();
+        } catch (error) {
+          console.error("Error moving training up:", error);
+          showNotification("Błąd zmiany pozycji szkolenia.", "error");
+        }
+      };
+
+      window.moveTrainingDown = async (trainingId) => {
+        const index = trainingsList.findIndex(t => t.id === trainingId);
+        if (index >= trainingsList.length - 1) return;
+
+        try {
+          const currentTraining = trainingsList[index];
+          const nextTraining = trainingsList[index + 1];
+          
+          const currentOrder = currentTraining.order;
+          const nextOrder = nextTraining.order;
+
+          await updateDoc(doc(db, "trainings", currentTraining.id), { order: nextOrder });
+          await updateDoc(doc(db, "trainings", nextTraining.id), { order: currentOrder });
+
+          loadTrainings();
+        } catch (error) {
+          console.error("Error moving training down:", error);
+          showNotification("Błąd zmiany pozycji szkolenia.", "error");
+        }
+      };
+
+      window.addNewTraining = () => {
+        clearTrainingForm();
+        document.getElementById("training-access-section").classList.add("hidden");
+        currentTrainingId = null;
+      };
+
+      window.clearTrainingForm = () => {
+        document.getElementById("training-form").reset();
+        document.getElementById("training-description").innerHTML = "";
+        document.getElementById("training-id").value = "";
+        document.getElementById("training-access-section").classList.add("hidden");
+        currentTrainingId = null;
+      };
+
+      window.refreshTrainings = async () => {
+        const refreshBtn = document.getElementById("refresh-trainings-btn");
+        const refreshIcon = document.getElementById("refresh-trainings-icon");
+        if (refreshBtn && refreshIcon) {
+          refreshIcon.classList.add("fa-spin");
+          try {
+            await loadTrainings();
+          } finally {
+            refreshIcon.classList.remove("fa-spin");
+          }
+        }
+      };
+
+      async function loadTrainingUsersSelect() {
+        const select = document.getElementById("training-user-select");
+        if (!select) return;
+
+        try {
+          const snapshot = await getDocs(collection(db, "userProfiles"));
+          const users = [];
+          snapshot.forEach((doc) => {
+            const userData = doc.data();
+            users.push({
+              id: doc.id,
+              name: userData.displayName || userData.email || "Użytkownik",
+              email: userData.email || "",
+            });
+          });
+
+          select.innerHTML = '<option value="">Wybierz użytkownika...</option>' +
+            users.map(user => 
+              `<option value="${user.id}">${user.name} (${user.email})</option>`
+            ).join("");
+        } catch (error) {
+          console.error("Error loading users for training access:", error);
+        }
+      }
+
+      async function loadTrainingAccessList(trainingId) {
+        const accessList = document.getElementById("training-access-list");
+        if (!accessList || !trainingId) return;
+
+        try {
+          const accessRef = collection(db, "trainingAccess");
+          const accessQuery = query(accessRef, where("trainingId", "==", trainingId));
+          const accessSnapshot = await getDocs(accessQuery);
+          
+          const accessUsers = [];
+          for (const accessDoc of accessSnapshot.docs) {
+            const accessData = accessDoc.data();
+            const userDoc = await getDoc(doc(db, "userProfiles", accessData.userId));
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              accessUsers.push({
+                id: accessData.userId,
+                name: userData.displayName || userData.email || "Użytkownik",
+                email: userData.email || "",
+                accessId: accessDoc.id,
+              });
+            }
+          }
+
+          if (accessUsers.length === 0) {
+            accessList.innerHTML = '<div class="text-sm text-zinc-500">Brak użytkowników z dostępem</div>';
+          } else {
+            accessList.innerHTML = accessUsers.map(user => `
+              <div class="flex justify-between items-center p-2 bg-zinc-800 rounded">
+                <div>
+                  <div class="text-sm font-medium">${user.name}</div>
+                  <div class="text-xs text-zinc-400">${user.email}</div>
+                </div>
+                <button
+                  onclick="removeTrainingAccess('${user.accessId}', '${user.name}')"
+                  class="text-red-400 hover:text-red-300 text-xs px-2 py-1 border border-red-400 rounded"
+                >
+                  Usuń
+                </button>
+              </div>
+            `).join("");
+          }
+        } catch (error) {
+          console.error("Error loading training access list:", error);
+          accessList.innerHTML = '<div class="text-sm text-red-400">Błąd ładowania listy dostępu</div>';
+        }
+      }
+
+      window.addTrainingAccess = async () => {
+        const userId = document.getElementById("training-user-select").value;
+        if (!userId || !currentTrainingId) {
+          showNotification("Wybierz użytkownika i szkolenie.", "error");
+          return;
+        }
+
+        try {
+          // Sprawdź czy użytkownik już ma dostęp
+          const accessRef = collection(db, "trainingAccess");
+          const accessQuery = query(
+            accessRef,
+            where("trainingId", "==", currentTrainingId),
+            where("userId", "==", userId)
+          );
+          const existingAccess = await getDocs(accessQuery);
+
+          if (!existingAccess.empty) {
+            showNotification("Ten użytkownik już ma dostęp do tego szkolenia.", "error");
+            return;
+          }
+
+          await addDoc(accessRef, {
+            trainingId: currentTrainingId,
+            userId: userId,
+            grantedAt: new Date(),
+            grantedBy: currentUser.uid,
+          });
+
+          showNotification("Dostęp został dodany.");
+          document.getElementById("training-user-select").value = "";
+          await loadTrainingAccessList(currentTrainingId);
+        } catch (error) {
+          console.error("Error adding training access:", error);
+          showNotification("Błąd dodawania dostępu.", "error");
+        }
+      };
+
+      window.removeTrainingAccess = async (accessId, userName) => {
+        if (!confirm(`Czy na pewno chcesz usunąć dostęp dla ${userName}?`)) return;
+
+        try {
+          await deleteDoc(doc(db, "trainingAccess", accessId));
+          showNotification("Dostęp został usunięty.");
+          await loadTrainingAccessList(currentTrainingId);
+        } catch (error) {
+          console.error("Error removing training access:", error);
+          showNotification("Błąd usuwania dostępu.", "error");
+        }
+      };
+
+      // Obsługa formularza szkolenia
+      document
+        .getElementById("training-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const trainingId = document.getElementById("training-id").value;
+          const title = document.getElementById("training-title").value.trim();
+          const price = document.getElementById("training-price").value.trim();
+          const img = document.getElementById("training-img").value.trim();
+          const desc = document.getElementById("training-description").innerHTML;
+          const available = document.getElementById("training-available-all").checked;
+
+          if (!title || !price || !img) {
+            showNotification("Wypełnij wszystkie wymagane pola.", "error");
+            return;
+          }
+
+          try {
+            const trainingData = {
+              title,
+              price,
+              img,
+              desc,
+              available: available ? true : false,
+              date: Date.now(),
+              order: trainingId ? trainingsList.find(t => t.id === trainingId)?.order || trainingsList.length : trainingsList.length,
+            };
+
+            if (trainingId) {
+              // Aktualizacja istniejącego szkolenia
+              await updateDoc(doc(db, "trainings", trainingId), trainingData);
+              showNotification("Szkolenie zostało zaktualizowane.");
+            } else {
+              // Dodanie nowego szkolenia
+              const newTrainingRef = await addDoc(collection(db, "trainings"), trainingData);
+              currentTrainingId = newTrainingRef.id;
+              showNotification("Szkolenie zostało dodane.");
+              // Pokaż sekcję zarządzania dostępem
+              document.getElementById("training-access-section").classList.remove("hidden");
+              await loadTrainingUsersSelect();
+            }
+
+            // Wyczyść formularz tylko jeśli nie edytujemy
+            if (!trainingId) {
+              clearTrainingForm();
+            } else {
+              document.getElementById("training-id").value = trainingId;
+            }
+
+            loadTrainings();
+          } catch (error) {
+            console.error("Error saving training:", error);
+            showNotification("Błąd zapisywania szkolenia.", "error");
           }
         });
 

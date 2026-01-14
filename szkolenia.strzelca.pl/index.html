@@ -248,6 +248,7 @@
                 getDoc,
                 query,
                 orderBy,
+                where,
             } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
             const firebaseConfig = {
@@ -281,19 +282,43 @@
                 const grid = document.getElementById("training-grid");
                 grid.innerHTML = "";
 
+                // Sprawdź czy użytkownik jest zalogowany
+                const user = auth.currentUser;
+
+                // Pobierz listę dostępów użytkownika (jeśli jest zalogowany)
+                let userAccessList = [];
+                if (user) {
+                    try {
+                        const accessRef = collection(db, "trainingAccess");
+                        const accessQuery = query(accessRef, where("userId", "==", user.uid));
+                        const accessSnap = await getDocs(accessQuery);
+                        userAccessList = accessSnap.docs.map(doc => doc.data().trainingId);
+                    } catch (error) {
+                        console.error("Error loading user access:", error);
+                    }
+                }
+
                 snap.forEach((d) => {
                     const t = d.data();
-                    const isAvailable = t.available === true; // Domyślnie wszystkie szkolenia są niedostępne
+                    // Szkolenie jest dostępne jeśli:
+                    // 1. available === true (dla wszystkich) LUB
+                    // 2. użytkownik ma dostęp w trainingAccess
+                    const isAvailableForAll = t.available === true;
+                    const hasUserAccess = user && userAccessList.includes(d.id);
+                    const isAvailable = isAvailableForAll || hasUserAccess;
+
+                    // Pokaż tylko dostępne szkolenia
+                    if (!isAvailable) return;
 
                     grid.innerHTML += `
-                <article class="card-dark flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50 ${!isAvailable ? "training-unavailable" : ""}" role="article">
+                <article class="card-dark flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50" role="article">
                     <div class="h-48 md:h-64 training-img-container"><img src="${t.img}" alt="${t.title}" loading="lazy"></div>
                     <div class="p-4 md:p-8 flex flex-col flex-grow text-center">
                         <h3 class="text-lg md:text-xl font-bold uppercase mb-2 font-[Orbitron] text-white tracking-tight">${t.title}</h3>
                         <p class="coyote-text font-black text-xl md:text-2xl mb-6 md:mb-8" aria-label="Cena: ${t.price} złotych">${t.price} PLN</p>
                         <div class="mt-auto flex flex-col gap-2 md:gap-3">
                             <button onclick="window.showTrainingDetails('${d.id}')" aria-label="Zobacz szczegóły szkolenia ${t.title}" class="w-full py-2 md:py-3 border border-zinc-800 text-[9px] md:text-[10px] uppercase font-bold hover:bg-zinc-800 transition rounded tracking-widest text-zinc-400">Szczegóły</button>
-                            <button onclick="window.handleOfferInquiry('${t.title}')" aria-label="Zapytaj o ofertę szkolenia ${t.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition ${!isAvailable ? "opacity-50 cursor-not-allowed" : ""}" ${!isAvailable ? "disabled" : ""}>Zapytaj o ofertę</button>
+                            <button onclick="window.handleOfferInquiry('${t.title}')" aria-label="Zapytaj o ofertę szkolenia ${t.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Zapytaj o ofertę</button>
                         </div>
                     </div>
                 </article>`;
@@ -303,7 +328,21 @@
             window.showTrainingDetails = async (id) => {
                 const d = await getDoc(doc(db, "trainings", id));
                 const t = d.data();
-                const isAvailable = t.available === true;
+                
+                // Sprawdź dostęp użytkownika
+                let user = auth.currentUser;
+                let hasAccess = t.available === true;
+                
+                if (!hasAccess && user) {
+                    const accessRef = collection(db, "trainingAccess");
+                    const accessQuery = query(
+                        accessRef,
+                        where("trainingId", "==", id),
+                        where("userId", "==", user.uid)
+                    );
+                    const accessSnap = await getDocs(accessQuery);
+                    hasAccess = !accessSnap.empty;
+                }
 
                 document.getElementById("details-content").innerHTML = `
                 <h2 class="text-2xl font-black uppercase mb-4 font-[Orbitron] text-white">${t.title}</h2>
@@ -312,16 +351,20 @@
                 </div>
                 <div class="flex justify-between items-center border-t border-zinc-800 pt-6">
                     <p class="text-3xl font-black coyote-text">${t.price} PLN</p>
-                    <button onclick="window.handleOfferInquiry('${t.title}')" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition flex items-center justify-center gap-2 ${!isAvailable ? "opacity-50 cursor-not-allowed" : ""}" ${!isAvailable ? "disabled" : ""}>
+                    <button onclick="window.handleOfferInquiry('${t.title}')" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition flex items-center justify-center gap-2">
                         <i class="fas fa-envelope"></i>
                         Zapytaj o ofertę
                     </button>
-                </div>
-                ${!isAvailable ? '<p class="text-zinc-500 text-xs mt-4 text-center">To szkolenie jest obecnie niedostępne. Skontaktuj się z nami, aby uzyskać więcej informacji.</p>' : ""}`;
+                </div>`;
                 document
                     .getElementById("details-modal")
                     .classList.remove("hidden");
             };
+
+            // Odśwież listę szkoleń gdy użytkownik się zaloguje/wyloguje
+            onAuthStateChanged(auth, (user) => {
+                fetchAll();
+            });
 
             fetchAll();
         </script>

@@ -101,9 +101,13 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 
-const urlParams = new URLSearchParams(window.location.search);
+        const urlParams = new URLSearchParams(window.location.search);
         const mode = urlParams.get('mode');
         const actionCode = urlParams.get('oobCode');
+
+        // Debug - sprawdź parametry
+        console.log('Mode:', mode);
+        console.log('Action Code:', actionCode);
 
         function showError(message) {
             document.getElementById('action-content').innerHTML = `
@@ -234,15 +238,24 @@ const urlParams = new URLSearchParams(window.location.search);
 
         // Główna logika rozpoznawania akcji
         if (!actionCode) {
+            console.error('Brak kodu akcji (oobCode) w URL');
             showError('Brak kodu akcji. Sprawdź link.');
             return;
         }
 
-switch (mode) {
-  case 'resetPassword':
+        if (!mode) {
+            console.error('Brak parametru mode w URL');
+            showError('Brak parametru akcji. Sprawdź link.');
+            return;
+        }
+
+        switch (mode) {
+            case 'resetPassword':
+                console.log('Rozpoczynam proces resetowania hasła...');
                 // Najpierw sprawdź czy kod jest poprawny
                 verifyPasswordResetCode(auth, actionCode)
                     .then((email) => {
+                        console.log('Kod resetowania hasła jest poprawny, email:', email);
                         showPasswordResetForm(email);
                     })
                     .catch((error) => {
@@ -255,12 +268,14 @@ switch (mode) {
                         }
                         showError(errorMessage);
                     });
-    break;
+                break;
 
-  case 'verifyEmail':
+            case 'verifyEmail':
+                console.log('Rozpoczynam proces weryfikacji emaila...');
                 // Weryfikacja emaila
                 applyActionCode(auth, actionCode)
                     .then(() => {
+                        console.log('Email został pomyślnie zweryfikowany');
                         document.getElementById('action-content').innerHTML = `
                             <div class="checkmark"></div>
                             <h1 class="text-2xl md:text-3xl font-bold coyote-text uppercase italic font-[Orbitron] mb-4">
@@ -284,12 +299,13 @@ switch (mode) {
                         }
                         showError(errorMessage);
                     });
-    break;
+                break;
 
-  default:
+            default:
+                console.error('Nieznana akcja:', mode);
                 showError('Nieznana akcja. Sprawdź link.');
                 break;
-}
+        }
     </script>
 </body>
 </html>

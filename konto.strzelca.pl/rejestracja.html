@@ -903,6 +903,15 @@
               role: "user",
             };
 
+            // 0. Sprawdź dostępność nazwy użytkownika przed utworzeniem konta
+            const nameAvailability = await checkDisplayNameAvailability(formData.displayName);
+            if (!nameAvailability.available) {
+              showError("display-name-error", nameAvailability.reason);
+              registerBtn.disabled = false;
+              registerBtn.innerHTML = '<i class="fa-solid fa-user-plus mr-2"></i>Utwórz STRZELCA';
+              return;
+            }
+
             // 1. Utwórz konto w Firebase Auth
             const userCredential = await createUserWithEmailAndPassword(
               auth,
