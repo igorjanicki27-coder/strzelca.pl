@@ -20,6 +20,7 @@ class AdminCommon {
     ];
     this.checkInterval = 30 * 60 * 1000; // 30 minut
     this.checkTimer = null;
+    this.activitiesPollingInterval = null;
     this.outages = JSON.parse(localStorage.getItem('admin_outages') || '[]');
   }
 
@@ -269,25 +270,48 @@ class AdminCommon {
       return;
     }
 
-    const { collection, query, orderBy, limit, onSnapshot } = window.firebaseImports;
+    const { collection, query, orderBy, limit, getDocs } = window.firebaseImports;
 
-    // Nasłuchuj zmian w kolekcji activityLogs
-    const activitiesQuery = query(
-      collection(window.db, 'activityLogs'),
-      orderBy('timestamp', 'desc'),
-      limit(10)
-    );
+    // Funkcja do pobierania aktywności (polling zamiast real-time listener)
+    const loadActivities = async () => {
+      try {
+        const activitiesQuery = query(
+          collection(window.db, 'activityLogs'),
+          orderBy('timestamp', 'desc'),
+          limit(10)
+        );
 
-    onSnapshot(activitiesQuery, (snapshot) => {
-      const activities = [];
-      snapshot.forEach((doc) => {
-        activities.push({ id: doc.id, ...doc.data() });
-      });
+        const snapshot = await getDocs(activitiesQuery);
+        const activities = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          activities.push({ 
+            id: doc.id, 
+            ...data,
+            timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : (data.timestamp || new Date())
+          });
+        });
 
-      this.updateActivitiesUI(activities);
-    }, (error) => {
-      console.error('Error listening to activities:', error);
-    });
+        this.updateActivitiesUI(activities);
+      } catch (error) {
+        // Obsługa błędów CORS i innych problemów z dostępem
+        if (error.code === 'permission-denied' || error.message?.includes('CORS') || error.message?.includes('access control')) {
+          console.warn('Brak uprawnień do odczytu aktywności lub problem z CORS:', error.message);
+          this.updateActivitiesUI([]);
+        } else {
+          console.error('Error loading activities:', error);
+        }
+      }
+    };
+
+    // Pobierz aktywności natychmiast
+    loadActivities();
+
+    // Ustaw polling co 30 sekund zamiast real-time listenera (unikamy problemów z CORS)
+    if (this.activitiesPollingInterval) {
+      clearInterval(this.activitiesPollingInterval);
+    }
+    this.activitiesPollingInterval = setInterval(loadActivities, 30000);
   }
 
   updateActivitiesUI(activities) {
@@ -385,6 +409,10 @@ class AdminCommon {
     if (this.checkTimer) {
       clearInterval(this.checkTimer);
       this.checkTimer = null;
+    }
+    if (this.activitiesPollingInterval) {
+      clearInterval(this.activitiesPollingInterval);
+      this.activitiesPollingInterval = null;
     }
   }
 

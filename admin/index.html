@@ -2186,13 +2186,14 @@
           </button>
         </div>
 
-        <form id="user-edit-form" class="space-y-6">
+        <form id="user-edit-form" class="space-y-8">
+          <input type="hidden" id="edit-user-id" />
+          
           <!-- Dane podstawowe -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 class="text-lg font-bold mb-4">Dane podstawowe</h3>
+          <div class="space-y-6">
+            <h3 class="text-xl font-bold coyote-text pb-2 border-b border-zinc-700">Dane podstawowe</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="space-y-4">
-                <input type="hidden" id="edit-user-id" />
                 <div>
                   <label class="text-sm text-zinc-400 block mb-2"
                     >Nazwa wyświetlana</label
@@ -2218,6 +2219,9 @@
                   <label class="text-sm text-zinc-400 block mb-2">Imię</label>
                   <input type="text" id="edit-first-name" placeholder="Imię" />
                 </div>
+              </div>
+
+              <div class="space-y-4">
                 <div>
                   <label class="text-sm text-zinc-400 block mb-2"
                     >Nazwisko</label
@@ -2236,9 +2240,12 @@
                 </div>
               </div>
             </div>
+          </div>
 
-            <div>
-              <h3 class="text-lg font-bold mb-4">Adres dostawy</h3>
+          <!-- Adres dostawy -->
+          <div class="space-y-6 pt-6 border-t border-zinc-700">
+            <h3 class="text-xl font-bold coyote-text pb-2 border-b border-zinc-700">Adres dostawy</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="space-y-4">
                 <div>
                   <label class="text-sm text-zinc-400 block mb-2">Ulica</label>
@@ -2264,6 +2271,9 @@
                     placeholder="Kod pocztowy"
                   />
                 </div>
+              </div>
+
+              <div class="space-y-4">
                 <div>
                   <label class="text-sm text-zinc-400 block mb-2">Miasto</label>
                   <input type="text" id="edit-city" placeholder="Miasto" />
@@ -2283,37 +2293,38 @@
           </div>
 
           <!-- Preferencje i status -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 class="text-lg font-bold mb-4">Preferencje</h3>
+          <div class="space-y-6 pt-6 border-t border-zinc-700">
+            <h3 class="text-xl font-bold coyote-text pb-2 border-b border-zinc-700">Preferencje i status</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="space-y-4">
-                <div class="flex items-center space-x-3">
-                  <input type="checkbox" id="edit-newsletter" />
-                  <label for="edit-newsletter" class="text-sm"
+                <h4 class="text-base font-semibold text-zinc-300 mb-3">Preferencje</h4>
+                <div class="flex items-center space-x-3 p-4 bg-zinc-800/50 rounded-lg">
+                  <input type="checkbox" id="edit-newsletter" class="w-5 h-5" />
+                  <label for="edit-newsletter" class="text-sm cursor-pointer"
                     >Newsletter</label
                   >
                 </div>
               </div>
-            </div>
 
-            <div>
-              <h3 class="text-lg font-bold mb-4">Status konta</h3>
               <div class="space-y-4">
-                <div>
-                  <label class="text-sm text-zinc-400 block mb-2">Rola</label>
-                  <select id="edit-role" class="w-full">
-                    <option value="user">Użytkownik</option>
-                    <option value="company">Firma</option>
-                    <option value="admin">Administrator</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="text-sm text-zinc-400 block mb-2">Status</label>
-                  <select id="edit-status" class="w-full">
-                    <option value="active">Aktywny</option>
-                    <option value="blocked">Zablokowany</option>
-                    <option value="suspended">Zawieszony</option>
-                  </select>
+                <h4 class="text-base font-semibold text-zinc-300 mb-3">Status konta</h4>
+                <div class="space-y-4">
+                  <div>
+                    <label class="text-sm text-zinc-400 block mb-2">Rola</label>
+                    <select id="edit-role" class="w-full">
+                      <option value="user">Użytkownik</option>
+                      <option value="company">Firma</option>
+                      <option value="admin">Administrator</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="text-sm text-zinc-400 block mb-2">Status</label>
+                    <select id="edit-status" class="w-full">
+                      <option value="active">Aktywny</option>
+                      <option value="blocked">Zablokowany</option>
+                      <option value="suspended">Zawieszony</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2703,6 +2714,55 @@
       </div>
     </div>
 
+    <!-- Error handler dla Firestore CORS - MUSI być przed importami Firebase -->
+    <script>
+      // Wycisz hałaśliwe błędy CORS z Firestore Listen/channel (nie blokują działania, SDK ma fallbacki)
+      (function() {
+        // Przechwyć window.onerror PRZED załadowaniem Firebase
+        const originalError = window.onerror;
+        window.onerror = function(message, source, lineno, colno, error) {
+          // Ignoruj błędy CORS z Firestore Listen/channel
+          if (typeof message === 'string' && message.includes('firestore.googleapis.com') && message.includes('Listen/channel')) {
+            return true; // Wycisz błąd
+          }
+          // Dla innych błędów użyj oryginalnego handlera
+          if (originalError) {
+            return originalError(message, source, lineno, colno, error);
+          }
+          return false;
+        };
+
+        // Przechwyć XMLHttpRequest PRZED załadowaniem Firebase
+        const originalXHROpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function(method, url, ...args) {
+          this._url = url;
+          return originalXHROpen.apply(this, [method, url, ...args]);
+        };
+        const originalXHRSend = XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.send = function(...args) {
+          if (this._url && this._url.includes('firestore.googleapis.com') && this._url.includes('Listen/channel')) {
+            // Wycisz błędy dla tego konkretnego endpointu
+            this.addEventListener('error', function(e) {
+              e.stopPropagation();
+            }, true);
+          }
+          return originalXHRSend.apply(this, args);
+        };
+
+        // Przechwyć console.error PRZED załadowaniem Firebase
+        const originalConsoleError = console.error;
+        console.error = function(...args) {
+          const errorMessage = args.join(' ');
+          // Ignoruj błędy CORS z Firestore Listen/channel
+          if (errorMessage.includes('firestore.googleapis.com') && 
+              (errorMessage.includes('Listen/channel') || errorMessage.includes('access control checks'))) {
+            return; // Wycisz błąd
+          }
+          // Dla innych błędów użyj oryginalnego console.error
+          return originalConsoleError.apply(console, args);
+        };
+      })();
+    </script>
 
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -2729,7 +2789,6 @@
         where,
         limit,
         addDoc,
-        onSnapshot,
         writeBatch,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -2751,9 +2810,15 @@
         console.error("Error setting persistence:", error);
       });
 
-      // Inicjalizuj Firestore z ustawieniem dla Safari
+      // Inicjalizuj Firestore (Safari/CORS hardening)
+      // - experimentalAutoDetectLongPolling: stabilniej na Safari i w sieciach z restrykcjami
+      // - useFetchStreams: false usuwa fetch-streamy, które w Safari potrafią logować błędy CORS
+      // Uwaga: Error handler dla CORS jest już ustawiony w osobnym <script> przed importami Firebase
       const db = initializeFirestore(app, {
-        experimentalForceLongPolling: true
+        // Najbardziej kompatybilny transport dla Safari:
+        // wymuś long-polling (XHR) zamiast streamów.
+        experimentalForceLongPolling: true,
+        useFetchStreams: false,
       });
 
       let currentUser = null;
@@ -2780,23 +2845,35 @@
           // Sprawdź czy UID użytkownika odpowiada superAdmin UID
           const superAdminUID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
           if (user.uid === superAdminUID) {
+            console.log('SuperAdmin UID match:', user.uid);
             currentUser = user;
             return true;
           }
 
           // Sprawdź rolę w Firestore
+          console.log('Checking Firestore for user profile:', user.uid);
           const userDoc = await getDoc(doc(db, "userProfiles", user.uid));
           if (userDoc.exists()) {
             const userData = userDoc.data();
+            console.log('User profile found, role:', userData.role);
             if (userData.role === "admin") {
               currentUser = user;
               return true;
+            } else {
+              console.warn('User does not have admin role. Current role:', userData.role);
             }
+          } else {
+            console.warn('User profile not found in Firestore for UID:', user.uid);
           }
           
           return false;
         } catch (error) {
           console.error("Error checking admin role:", error);
+          console.error("Error details:", {
+            code: error.code,
+            message: error.message,
+            stack: error.stack
+          });
           return false;
         }
       }
@@ -3093,19 +3170,25 @@
             const user = userCredential.user;
 
             // Sprawdź czy użytkownik ma rolę administratora
+            console.log('Checking admin role for user:', user.uid, user.email);
             const isAdmin = await checkAdminRole(user);
             if (!isAdmin) {
+              console.warn('User does not have admin role, signing out');
               await signOut(auth);
               // Zaloguj nieudane logowanie - brak uprawnień
-              await logActivity("system", "ADMIN_LOGIN_FAILED", {
-                login: login,
-                reason: "insufficient_permissions",
-                method: "firebase",
-                ip: "unknown",
-                userAgent: navigator.userAgent,
-              });
+              try {
+                await logActivity("system", "ADMIN_LOGIN_FAILED", {
+                  login: login,
+                  reason: "insufficient_permissions",
+                  method: "firebase",
+                  ip: "unknown",
+                  userAgent: navigator.userAgent,
+                });
+              } catch (logError) {
+                console.error("Error logging failed login:", logError);
+              }
               showStatus(
-                "Błędne dane. nieupoważnionym wstęp wzbroniony",
+                "<strong style='color: #dc2626; font-weight: bold;'>Brak uprawnień administratora. Sprawdź czy Twoje konto ma rolę 'admin' w systemie.</strong>",
                 true,
               );
               return;
@@ -3234,8 +3317,19 @@
             }
           } catch (error) {
             console.error("Error checking admin role in Firestore:", error);
+            console.error("Error details:", {
+              code: error.code,
+              message: error.message,
+              stack: error.stack
+            });
             // Nie wylogowuj natychmiast - może to być tymczasowy błąd
-            showStatus('<strong style="color: #ffa500; font-weight: bold;">Sprawdzanie uprawnień... Spróbuj odświeżyć stronę.</strong>', true);
+            let errorMsg = '<strong style="color: #ffa500; font-weight: bold;">Błąd sprawdzania uprawnień. ';
+            if (error.code === 'permission-denied') {
+              errorMsg += 'Brak uprawnień do odczytu z Firestore. Skontaktuj się z administratorem.</strong>';
+            } else {
+              errorMsg += 'Spróbuj odświeżyć stronę. Jeśli problem się powtarza, skontaktuj się z administratorem.</strong>';
+            }
+            showStatus(errorMsg, true);
             return;
           }
 
@@ -3418,9 +3512,6 @@
               .join("");
 
             container.innerHTML = logsHtml;
-          } else {
-            throw new Error(`API returned ${response.status}`);
-          }
         } catch (apiError) {
           console.warn('API failed, using mock data for localhost:', apiError.message);
 
@@ -3507,20 +3598,39 @@
         }
       }
 
-      function filterUsers(filter) {
+      // Uwaga: ten plik działa jako ES module (<script type="module">),
+      // więc funkcje NIE są automatycznie dostępne dla inline onclick.
+      // Wystawiamy ją jawnie na window, bo przyciski filtrów używają onclick="filterUsers(...)"
+      window.filterUsers = function filterUsers(filter) {
         currentUserFilter = filter;
 
         document.querySelectorAll(".user-filter-btn").forEach((btn) => {
-          btn.classList.remove("active", "border-coyote", "text-coyote");
-          btn.classList.add("border-zinc-700");
+          // reset do stanu nieaktywnego
+          btn.classList.remove(
+            "active",
+            "border-coyote",
+            "text-coyote",
+            "bg-coyote/10",
+            "shadow-[0_0_0_1px_rgba(193,154,107,0.35)]"
+          );
+          btn.classList.add("border-zinc-700", "text-zinc-300");
         });
 
-        document
-          .querySelector(`[data-filter="${filter}"]`)
-          .classList.add("active", "border-coyote", "text-coyote");
+        const activeBtn = document.querySelector(`[data-filter="${filter}"]`);
+        if (activeBtn) {
+          // usuń "szare" style, żeby nie nadpisywały aktywnego wyglądu
+          activeBtn.classList.remove("border-zinc-700", "text-zinc-300");
+          activeBtn.classList.add(
+            "active",
+            "border-coyote",
+            "text-coyote",
+            "bg-coyote/10",
+            "shadow-[0_0_0_1px_rgba(193,154,107,0.35)]"
+          );
+        }
 
         renderUsersList();
-      }
+      };
 
       function renderUsersList() {
         let filteredUsers = usersList;
@@ -3657,33 +3767,81 @@
           };
 
           const detailsHtml = `
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <h3 class="text-lg font-bold mb-4">Informacje podstawowe</h3>
-                            <div class="space-y-3">
-                                <div><strong>Nazwa użytkownika:</strong> ${decryptedUser.displayName}</div>
-                                <div><strong>Email:</strong> ${decryptedUser.email}</div>
-                                <div><strong>Imię:</strong> ${decryptedUser.firstName || "Nie podano"}</div>
-                                <div><strong>Nazwisko:</strong> ${decryptedUser.lastName || "Nie podano"}</div>
-                                <div><strong>Telefon:</strong> ${decryptedUser.phone || "Nie podano"}</div>
-                                <div><strong>Rola:</strong> ${decryptedUser.role || "user"}</div>
-                                <div><strong>Status:</strong> ${decryptedUser.status || "active"}</div>
-                                <div><strong>Data rejestracji:</strong> ${new Date(decryptedUser.createdAt?.toDate?.() || decryptedUser.createdAt).toLocaleString("pl-PL")}</div>
+                    <div class="space-y-8">
+                        <!-- Informacje podstawowe -->
+                        <div class="space-y-4">
+                            <h3 class="text-xl font-bold coyote-text pb-2 border-b border-zinc-700">Informacje podstawowe</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                    <div class="text-xs text-zinc-400 mb-1">Nazwa użytkownika</div>
+                                    <div class="text-white font-medium">${decryptedUser.displayName || "Nie podano"}</div>
+                                </div>
+                                <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                    <div class="text-xs text-zinc-400 mb-1">Email</div>
+                                    <div class="text-white font-medium">${decryptedUser.email || "Nie podano"}</div>
+                                </div>
+                                <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                    <div class="text-xs text-zinc-400 mb-1">Imię</div>
+                                    <div class="text-white font-medium">${decryptedUser.firstName || "Nie podano"}</div>
+                                </div>
+                                <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                    <div class="text-xs text-zinc-400 mb-1">Nazwisko</div>
+                                    <div class="text-white font-medium">${decryptedUser.lastName || "Nie podano"}</div>
+                                </div>
+                                <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                    <div class="text-xs text-zinc-400 mb-1">Telefon</div>
+                                    <div class="text-white font-medium">${decryptedUser.phone || "Nie podano"}</div>
+                                </div>
+                                <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                    <div class="text-xs text-zinc-400 mb-1">Rola</div>
+                                    <div class="text-white font-medium uppercase">${decryptedUser.role || "user"}</div>
+                                </div>
+                                <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                    <div class="text-xs text-zinc-400 mb-1">Status</div>
+                                    <div class="text-white font-medium uppercase">${decryptedUser.status || "active"}</div>
+                                </div>
+                                <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                    <div class="text-xs text-zinc-400 mb-1">Data rejestracji</div>
+                                    <div class="text-white font-medium">${new Date(decryptedUser.createdAt?.toDate?.() || decryptedUser.createdAt).toLocaleString("pl-PL")}</div>
+                                </div>
                             </div>
                         </div>
-                        <div>
-                            <h3 class="text-lg font-bold mb-4">Adres dostawy</h3>
-                            <div class="space-y-3">
-                                <div><strong>Ulica:</strong> ${decryptedUser.address.street || "Nie podano"}</div>
-                                <div><strong>Numer:</strong> ${decryptedUser.address.buildingNumber || "Nie podano"}</div>
-                                <div><strong>Kod pocztowy:</strong> ${decryptedUser.address.postalCode || "Nie podano"}</div>
-                                <div><strong>Miasto:</strong> ${decryptedUser.address.city || "Nie podano"}</div>
-                                <div><strong>Paczkomat:</strong> ${decryptedUser.parcelLocker || "Nie podano"}</div>
-                            </div>
 
-                            <h3 class="text-lg font-bold mb-4 mt-6">Preferencje</h3>
-                            <div class="space-y-3">
-                                <div><strong>Newsletter:</strong> ${decryptedUser.newsletter ? "Tak" : "Nie"}</div>
+                        <!-- Adres dostawy -->
+                        <div class="space-y-4 pt-6 border-t border-zinc-700">
+                            <h3 class="text-xl font-bold coyote-text pb-2 border-b border-zinc-700">Adres dostawy</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                    <div class="text-xs text-zinc-400 mb-1">Ulica</div>
+                                    <div class="text-white font-medium">${decryptedUser.address.street || "Nie podano"}</div>
+                                </div>
+                                <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                    <div class="text-xs text-zinc-400 mb-1">Numer budynku</div>
+                                    <div class="text-white font-medium">${decryptedUser.address.buildingNumber || "Nie podano"}</div>
+                                </div>
+                                <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                    <div class="text-xs text-zinc-400 mb-1">Kod pocztowy</div>
+                                    <div class="text-white font-medium">${decryptedUser.address.postalCode || "Nie podano"}</div>
+                                </div>
+                                <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                    <div class="text-xs text-zinc-400 mb-1">Miasto</div>
+                                    <div class="text-white font-medium">${decryptedUser.address.city || "Nie podano"}</div>
+                                </div>
+                                <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                    <div class="text-xs text-zinc-400 mb-1">Paczkomat</div>
+                                    <div class="text-white font-medium">${decryptedUser.parcelLocker || "Nie podano"}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Preferencje -->
+                        <div class="space-y-4 pt-6 border-t border-zinc-700">
+                            <h3 class="text-xl font-bold coyote-text pb-2 border-b border-zinc-700">Preferencje</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                    <div class="text-xs text-zinc-400 mb-1">Newsletter</div>
+                                    <div class="text-white font-medium">${decryptedUser.newsletter ? "Tak" : "Nie"}</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -3763,74 +3921,80 @@
         };
 
         const detailsHtml = `
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                          <h3 class="text-lg font-bold mb-4 text-coyote">Informacje podstawowe</h3>
-                          <div class="space-y-3">
-                              <div class="flex justify-between py-2 border-b border-zinc-700">
-                                  <span class="text-zinc-400 font-medium">Nazwa użytkownika:</span>
-                                  <span class="text-white">${decryptedUser.displayName}</span>
+                  <div class="space-y-8">
+                      <!-- Informacje podstawowe -->
+                      <div class="space-y-4">
+                          <h3 class="text-xl font-bold coyote-text pb-2 border-b border-zinc-700">Informacje podstawowe</h3>
+                          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                  <div class="text-xs text-zinc-400 mb-1">Nazwa użytkownika</div>
+                                  <div class="text-white font-medium">${decryptedUser.displayName || "Nie podano"}</div>
                               </div>
-                              <div class="flex justify-between py-2 border-b border-zinc-700">
-                                  <span class="text-zinc-400 font-medium">Email:</span>
-                                  <span class="text-white">${decryptedUser.email}</span>
+                              <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                  <div class="text-xs text-zinc-400 mb-1">Email</div>
+                                  <div class="text-white font-medium">${decryptedUser.email || "Nie podano"}</div>
                               </div>
-                              <div class="flex justify-between py-2 border-b border-zinc-700">
-                                  <span class="text-zinc-400 font-medium">Imię:</span>
-                                  <span class="text-white">${decryptedUser.firstName || "Nie podano"}</span>
+                              <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                  <div class="text-xs text-zinc-400 mb-1">Imię</div>
+                                  <div class="text-white font-medium">${decryptedUser.firstName || "Nie podano"}</div>
                               </div>
-                              <div class="flex justify-between py-2 border-b border-zinc-700">
-                                  <span class="text-zinc-400 font-medium">Nazwisko:</span>
-                                  <span class="text-white">${decryptedUser.lastName || "Nie podano"}</span>
+                              <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                  <div class="text-xs text-zinc-400 mb-1">Nazwisko</div>
+                                  <div class="text-white font-medium">${decryptedUser.lastName || "Nie podano"}</div>
                               </div>
-                              <div class="flex justify-between py-2 border-b border-zinc-700">
-                                  <span class="text-zinc-400 font-medium">Telefon:</span>
-                                  <span class="text-white">${decryptedUser.phone || "Nie podano"}</span>
+                              <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                  <div class="text-xs text-zinc-400 mb-1">Telefon</div>
+                                  <div class="text-white font-medium">${decryptedUser.phone || "Nie podano"}</div>
                               </div>
-                              <div class="flex justify-between py-2 border-b border-zinc-700">
-                                  <span class="text-zinc-400 font-medium">Rola:</span>
-                                  <span class="text-white">${decryptedUser.role || "user"}</span>
+                              <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                  <div class="text-xs text-zinc-400 mb-1">Rola</div>
+                                  <div class="text-white font-medium uppercase">${decryptedUser.role || "user"}</div>
                               </div>
-                              <div class="flex justify-between py-2 border-b border-zinc-700">
-                                  <span class="text-zinc-400 font-medium">Status:</span>
-                                  <span class="text-white">${decryptedUser.status || "active"}</span>
+                              <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                  <div class="text-xs text-zinc-400 mb-1">Status</div>
+                                  <div class="text-white font-medium uppercase">${decryptedUser.status || "active"}</div>
                               </div>
-                              <div class="flex justify-between py-2">
-                                  <span class="text-zinc-400 font-medium">Data rejestracji:</span>
-                                  <span class="text-white">${new Date(decryptedUser.createdAt?.toDate?.() || decryptedUser.createdAt).toLocaleString("pl-PL")}</span>
+                              <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                  <div class="text-xs text-zinc-400 mb-1">Data rejestracji</div>
+                                  <div class="text-white font-medium">${new Date(decryptedUser.createdAt?.toDate?.() || decryptedUser.createdAt).toLocaleString("pl-PL")}</div>
                               </div>
                           </div>
                       </div>
-                      <div>
-                          <h3 class="text-lg font-bold mb-4 text-coyote">Adres dostawy</h3>
-                          <div class="space-y-3">
-                              <div class="flex justify-between py-2 border-b border-zinc-700">
-                                  <span class="text-zinc-400 font-medium">Ulica:</span>
-                                  <span class="text-white">${decryptedUser.address.street || "Nie podano"}</span>
+
+                      <!-- Adres dostawy -->
+                      <div class="space-y-4 pt-6 border-t border-zinc-700">
+                          <h3 class="text-xl font-bold coyote-text pb-2 border-b border-zinc-700">Adres dostawy</h3>
+                          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                  <div class="text-xs text-zinc-400 mb-1">Ulica</div>
+                                  <div class="text-white font-medium">${decryptedUser.address.street || "Nie podano"}</div>
                               </div>
-                              <div class="flex justify-between py-2 border-b border-zinc-700">
-                                  <span class="text-zinc-400 font-medium">Numer:</span>
-                                  <span class="text-white">${decryptedUser.address.buildingNumber || "Nie podano"}</span>
+                              <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                  <div class="text-xs text-zinc-400 mb-1">Numer budynku</div>
+                                  <div class="text-white font-medium">${decryptedUser.address.buildingNumber || "Nie podano"}</div>
                               </div>
-                              <div class="flex justify-between py-2 border-b border-zinc-700">
-                                  <span class="text-zinc-400 font-medium">Kod pocztowy:</span>
-                                  <span class="text-white">${decryptedUser.address.postalCode || "Nie podano"}</span>
+                              <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                  <div class="text-xs text-zinc-400 mb-1">Kod pocztowy</div>
+                                  <div class="text-white font-medium">${decryptedUser.address.postalCode || "Nie podano"}</div>
                               </div>
-                              <div class="flex justify-between py-2 border-b border-zinc-700">
-                                  <span class="text-zinc-400 font-medium">Miasto:</span>
-                                  <span class="text-white">${decryptedUser.address.city || "Nie podano"}</span>
+                              <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                  <div class="text-xs text-zinc-400 mb-1">Miasto</div>
+                                  <div class="text-white font-medium">${decryptedUser.address.city || "Nie podano"}</div>
                               </div>
-                              <div class="flex justify-between py-2">
-                                  <span class="text-zinc-400 font-medium">Paczkomat:</span>
-                                  <span class="text-white">${decryptedUser.parcelLocker || "Nie podano"}</span>
+                              <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                  <div class="text-xs text-zinc-400 mb-1">Paczkomat</div>
+                                  <div class="text-white font-medium">${decryptedUser.parcelLocker || "Nie podano"}</div>
                               </div>
                           </div>
+                      </div>
 
-                          <h3 class="text-lg font-bold mb-4 mt-6 text-coyote">Preferencje</h3>
-                          <div class="space-y-3">
-                              <div class="flex justify-between py-2">
-                                  <span class="text-zinc-400 font-medium">Newsletter:</span>
-                                  <span class="text-white">${decryptedUser.newsletter ? "Tak" : "Nie"}</span>
+                      <!-- Preferencje -->
+                      <div class="space-y-4 pt-6 border-t border-zinc-700">
+                          <h3 class="text-xl font-bold coyote-text pb-2 border-b border-zinc-700">Preferencje</h3>
+                          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div class="p-4 bg-zinc-800/50 rounded-lg">
+                                  <div class="text-xs text-zinc-400 mb-1">Newsletter</div>
+                                  <div class="text-white font-medium">${decryptedUser.newsletter ? "Tak" : "Nie"}</div>
                               </div>
                           </div>
                       </div>
@@ -4250,11 +4414,8 @@
           // Usuń quick reply bezpośrednio z Firestore
           const replyRef = doc(db, 'quickReplies', replyId);
           await deleteDoc(replyRef);
-            showNotification('Szablon został usunięty', 'success');
-            loadQuickReplies();
-          } else {
-            throw new Error(data.error || 'Failed to delete quick reply');
-          }
+          showNotification('Szablon został usunięty', 'success');
+          loadQuickReplies();
         } catch (error) {
           console.error('Error deleting quick reply:', error);
           showNotification('Błąd podczas usuwania szablonu', 'error');
@@ -5522,8 +5683,6 @@
                 timestamp: doc.data().timestamp?.toDate?.()?.toISOString() || doc.data().timestamp
               };
             }
-              }
-            }
           } catch (apiError) {
             // Sprawdź w localStorage fallback
             try {
@@ -5556,16 +5715,7 @@
             // Dodaj zdarzenie systemowe bezpośrednio do Firestore
             const eventsRef = collection(db, 'system_events');
             await addDoc(eventsRef, eventData);
-            });
-
-            if (response.ok) {
-              const result = await response.json();
-              console.log('System event logged:', result.data);
-            } else {
-              console.warn('Failed to log system event:', response.status);
-              // Fallback do localStorage
-              fallbackLogSystemEvent(eventData);
-            }
+            console.log('System event logged to Firestore');
           } catch (error) {
             console.warn('Error logging system event, using fallback:', error.message);
             fallbackLogSystemEvent(eventData);
@@ -5874,11 +6024,12 @@
               if (todayContactsEl) todayContactsEl.textContent = "0";
             }
 
-            // Oczekujące zadania (pending tasks)
+            // Oczekujące zadania (pending tasks) - używamy messages z statusem in_progress
             try {
               const pendingTasksQuery = query(
-                collection(db, "pendingTasks"),
-                where("status", "==", "pending")
+                collection(db, "messages"),
+                where("recipientId", "==", "admin"),
+                where("status", "==", "in_progress")
               );
               const pendingTasksSnapshot = await getDocs(pendingTasksQuery);
 
@@ -5966,12 +6117,14 @@
 
         const eventsHtml = recentEvents
           .map((event) => {
-            const timeAgo = getTimeAgo(event.timestamp);
+            const eventTimestamp = event.timestamp?.toDate ? event.timestamp.toDate() : new Date(event.timestamp);
+            const timeAgo = getTimeAgo(eventTimestamp);
             const activityLog = renderActivityLog(event);
+            const userDisplayName = getUserDisplayName(event);
             return `
               <div class="p-4 bg-zinc-800 rounded-lg cursor-pointer hover:bg-zinc-700 transition" onclick="showEventDetails('${event.id}')">
                 <div class="flex justify-between items-start mb-2">
-                  <div class="font-semibold text-white">${event.user || "System"}</div>
+                  <div class="font-semibold text-white">${userDisplayName}</div>
                   <div class="text-xs text-zinc-500">${timeAgo}</div>
                 </div>
                 <div class="text-sm text-zinc-300">${activityLog.description}</div>
@@ -5987,12 +6140,26 @@
         }
 
         function getTimeAgo(date) {
+          // Obsługa różnych formatów daty
+          let dateObj;
+          if (date?.toDate) {
+            // Firestore Timestamp
+            dateObj = date.toDate();
+          } else if (date instanceof Date) {
+            dateObj = date;
+          } else if (typeof date === 'string') {
+            dateObj = new Date(date);
+          } else {
+            return "Data niedostępna";
+          }
+
           const now = new Date();
-          const diffMs = now - date;
+          const diffMs = now - dateObj;
           const diffMins = Math.floor(diffMs / (1000 * 60));
           const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
           const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
+          if (diffMins < 1) return "Przed chwilą";
           if (diffMins < 60) return `${diffMins} min temu`;
           if (diffHours < 24) return `${diffHours} godz. temu`;
           return `${diffDays} dni temu`;
@@ -6019,12 +6186,12 @@
                 <div class="space-y-4">
                   <div>
                     <label class="text-sm text-zinc-400">Użytkownik:</label>
-                    <div class="text-white font-semibold">${event.user || "System"}</div>
+                    <div class="text-white font-semibold">${getUserDisplayName(event)}</div>
                   </div>
 
                   <div>
                     <label class="text-sm text-zinc-400">Rodzaj zdarzenia:</label>
-                    <div class="text-white">${event.type}</div>
+                    <div class="text-white">${getActionLabel(event.action || event.type || "UNKNOWN")}</div>
                   </div>
 
                   <div>
@@ -6039,8 +6206,22 @@
 
                   <div>
                     <label class="text-sm text-zinc-400">Data i czas:</label>
-                    <div class="text-white">${event.timestamp?.toDate?.()?.toLocaleString("pl-PL") || new Date(event.timestamp).toLocaleString("pl-PL")}</div>
+                    <div class="text-white">${event.timestamp?.toDate?.()?.toLocaleString("pl-PL") || (event.timestamp ? new Date(event.timestamp).toLocaleString("pl-PL") : "Data niedostępna")}</div>
                   </div>
+                  
+                  ${event.userId && event.userId !== "system" ? `
+                  <div>
+                    <label class="text-sm text-zinc-400">ID użytkownika:</label>
+                    <div class="text-white text-sm">${event.userId}</div>
+                  </div>
+                  ` : ""}
+                  
+                  ${event.action ? `
+                  <div>
+                    <label class="text-sm text-zinc-400">Akcja (kod):</label>
+                    <div class="text-white text-sm font-mono">${event.action}</div>
+                  </div>
+                  ` : ""}
                 </div>
               </div>
             </div>
@@ -6411,41 +6592,133 @@
       }
 
       // Funkcja renderowania pojedynczego logu aktywności
+      // Mapowanie akcji na czytelne polskie nazwy
+      function getActionLabel(action) {
+        const actionLabels = {
+          "ADMIN_LOGIN_SUCCESS": "Zalogowanie administratora",
+          "ADMIN_LOGIN_FAILED": "Nieudane logowanie administratora",
+          "USER_UNBLOCKED": "Odblokowanie użytkownika",
+          "USER_BLOCKED": "Zablokowanie użytkownika",
+          "USER_DELETED": "Usunięcie użytkownika",
+          "PASSWORD_RESET_REQUEST": "Żądanie resetu hasła",
+          "ROLE_CHANGE": "Zmiana roli użytkownika",
+          "PROFILE_EDITED": "Edycja profilu",
+          "MESSAGE_SENT": "Wysłanie wiadomości",
+          "LIKE_BLOG": "Polubienie posta",
+          "CONTACT_FORM": "Wypełnienie formularza kontaktowego",
+          "USER_REGISTER": "Rejestracja użytkownika",
+          "PRODUCT_VIEW": "Przeglądanie produktu"
+        };
+        return actionLabels[action] || action || "Nieznana akcja";
+      }
+
+      // Funkcja do pobierania nazwy użytkownika
+      function getUserDisplayName(event) {
+        if (event.userEmail) {
+          return event.userEmail;
+        }
+        if (event.userId === "system") {
+          return "System";
+        }
+        if (event.userId) {
+          // Jeśli userId jest emailem, użyj go
+          if (event.userId.includes("@")) {
+            return event.userId;
+          }
+          // W przeciwnym razie użyj userId
+          return event.userId;
+        }
+        return "Nieznany użytkownik";
+      }
+
       function renderActivityLog(event) {
         let description = "";
         let content = "";
         let details = "";
 
-        switch (event.type) {
+        // Użyj właściwych pól z bazy danych
+        const action = event.action || event.type || "UNKNOWN";
+        const userDisplayName = getUserDisplayName(event);
+        const actionLabel = getActionLabel(action);
+        const eventDetails = event.details || {};
+        const detailsText = typeof eventDetails === 'string' ? eventDetails : JSON.stringify(eventDetails);
+
+        switch (action) {
           case "MESSAGE_SENT":
-            description = `${event.user} wysłał wiadomość`;
-            content = event.content || "Treść niedostępna";
-            details = `Użytkownik ${event.user} wysłał wiadomość do ${event.recipient || "innego użytkownika"} o treści: "${event.content || "Treść niedostępna"}"`;
+            description = `${userDisplayName} wysłał wiadomość`;
+            content = eventDetails.content || eventDetails.message || "Treść niedostępna";
+            details = `Użytkownik ${userDisplayName} wysłał wiadomość${eventDetails.recipient ? ` do ${eventDetails.recipient}` : ""}${content !== "Treść niedostępna" ? ` o treści: "${content}"` : ""}`;
             break;
           case "LIKE_BLOG":
-            description = `${event.user} polubił post`;
-            content = event.content || "Tytuł niedostępny";
-            details = `Użytkownik ${event.user} polubił post na blogu: "${event.content || "Tytuł niedostępny"}"`;
+            description = `${userDisplayName} polubił post`;
+            content = eventDetails.title || eventDetails.postTitle || "Tytuł niedostępny";
+            details = `Użytkownik ${userDisplayName} polubił post na blogu: "${content}"`;
             break;
           case "CONTACT_FORM":
-            description = `${event.user} wypełnił formularz kontaktowy`;
-            content = event.subject || "Zapytanie";
-            details = `Użytkownik ${event.user} wypełnił formularz kontaktowy z tematem: "${event.subject || "Zapytanie"}"`;
+            description = `${userDisplayName} wypełnił formularz kontaktowy`;
+            content = eventDetails.subject || eventDetails.topic || "Zapytanie";
+            details = `Użytkownik ${userDisplayName} wypełnił formularz kontaktowy z tematem: "${content}"`;
             break;
           case "USER_REGISTER":
-            description = `${event.user} zarejestrował się`;
+            description = `${userDisplayName} zarejestrował się`;
             content = "Nowe konto";
-            details = `Użytkownik ${event.user} pomyślnie zarejestrował nowe konto w systemie`;
+            details = `Użytkownik ${userDisplayName} pomyślnie zarejestrował nowe konto w systemie`;
             break;
           case "PRODUCT_VIEW":
-            description = `${event.user} przeglądał produkt`;
-            content = event.productName || "Produkt";
-            details = `Użytkownik ${event.user} przeglądał produkt: "${event.productName || "Produkt"}"`;
+            description = `${userDisplayName} przeglądał produkt`;
+            content = eventDetails.productName || "Produkt";
+            details = `Użytkownik ${userDisplayName} przeglądał produkt: "${content}"`;
+            break;
+          case "ADMIN_LOGIN_SUCCESS":
+            description = `${userDisplayName} zalogował się jako administrator`;
+            content = "Logowanie administratora";
+            details = `Administrator ${userDisplayName} pomyślnie zalogował się do panelu administracyjnego`;
+            break;
+          case "ADMIN_LOGIN_FAILED":
+            description = `Nieudana próba logowania administratora`;
+            content = "Błąd logowania";
+            details = `Nieudana próba logowania${eventDetails.email ? ` dla użytkownika ${eventDetails.email}` : ""}${eventDetails.reason ? `. Powód: ${eventDetails.reason}` : ""}`;
+            break;
+          case "USER_BLOCKED":
+            description = `${userDisplayName} zablokował użytkownika`;
+            content = eventDetails.targetUser || "Użytkownik";
+            details = `Administrator ${userDisplayName} zablokował użytkownika: ${content}${eventDetails.reason ? `. Powód: ${eventDetails.reason}` : ""}`;
+            break;
+          case "USER_UNBLOCKED":
+            description = `${userDisplayName} odblokował użytkownika`;
+            content = eventDetails.targetUser || "Użytkownik";
+            details = `Administrator ${userDisplayName} odblokował użytkownika: ${content}`;
+            break;
+          case "USER_DELETED":
+            description = `${userDisplayName} usunął użytkownika`;
+            content = eventDetails.targetUser || "Użytkownik";
+            details = `Administrator ${userDisplayName} usunął użytkownika: ${content}`;
+            break;
+          case "PASSWORD_RESET_REQUEST":
+            description = `${userDisplayName} żąda resetu hasła`;
+            content = "Reset hasła";
+            details = `Użytkownik ${userDisplayName} złożył żądanie resetu hasła`;
+            break;
+          case "ROLE_CHANGE":
+            description = `${userDisplayName} zmienił rolę użytkownika`;
+            content = eventDetails.targetUser || "Użytkownik";
+            const oldRole = eventDetails.oldRole || "nieznana";
+            const newRole = eventDetails.newRole || "nieznana";
+            details = `Administrator ${userDisplayName} zmienił rolę użytkownika ${content} z "${oldRole}" na "${newRole}"`;
+            break;
+          case "PROFILE_EDITED":
+            description = `${userDisplayName} edytował profil`;
+            content = eventDetails.targetUser || userDisplayName;
+            details = `Profil użytkownika ${content} został zedytowany${eventDetails.changes ? `. Zmiany: ${typeof eventDetails.changes === 'string' ? eventDetails.changes : JSON.stringify(eventDetails.changes)}` : ""}`;
             break;
           default:
-            description = `${event.user} wykonał akcję ${event.type}`;
-            content = event.content || "Szczegóły niedostępne";
-            details = `Użytkownik ${event.user} wykonał akcję typu ${event.type}: ${event.content || "Szczegóły niedostępne"}`;
+            description = `${userDisplayName} wykonał akcję: ${actionLabel}`;
+            content = actionLabel;
+            if (detailsText && detailsText !== "{}" && detailsText !== "") {
+              details = `Użytkownik ${userDisplayName} wykonał akcję "${actionLabel}". Szczegóły: ${detailsText}`;
+            } else {
+              details = `Użytkownik ${userDisplayName} wykonał akcję "${actionLabel}"`;
+            }
         }
 
         return { description, content, details };
@@ -6496,12 +6769,6 @@
           const pendingTasksEl = document.getElementById("pending-issues");
           if (!pendingTasksEl) return;
           pendingTasksEl.textContent = count;
-        } catch (error) {
-          console.error("Error loading pending tasks count:", error);
-          const pendingTasksEl = document.getElementById("pending-issues");
-          if (!pendingTasksEl) return;
-            pendingTasksEl.textContent = "0";
-          }
         } catch (error) {
           console.error("Error loading pending tasks count:", error);
           const pendingTasksEl = document.getElementById("pending-issues");
@@ -7554,6 +7821,7 @@
         }
 
         // Event listener dla dropdown filtra messages
+        const messagesFilter = document.getElementById('messages-filter');
         if (messagesFilter && !messagesFilter.hasFilterListener) {
           console.log('Adding filter dropdown event listener');
           messagesFilter.hasFilterListener = true;
@@ -7673,7 +7941,6 @@
             });
 
             categoryButtonsEl.innerHTML = categoryButtons;
-          }
         } catch (error) {
           console.error('Error loading categories for buttons:', error);
           categoryButtonsEl.innerHTML = '';
@@ -8737,22 +9004,18 @@
               });
 
               console.log('Kategoria zmieniona pomyślnie w Firestore');
-                console.log('Kategoria zmieniona pomyślnie w DB');
-                // Zaktualizuj wartość selecta żeby pokazywał nową kategorię
-                this.value = selectedCategoryId;
+              // Zaktualizuj wartość selecta żeby pokazywał nową kategorię
+              this.value = selectedCategoryId;
 
-                showNotification("Kategoria rozmowy została zaktualizowana", "success");
+              showNotification("Kategoria rozmowy została zaktualizowana", "success");
 
-                // Odśwież dane po krótkim opóźnieniu, żeby dać czas na zapisanie zmian
-                setTimeout(() => {
-                  loadMessagesWithFilters();
-                  updateCategoryButtonsHighlight();
-                  // Odśwież kolory w modalu czatu jeśli potrzebne
-                  updateChatModalCategoryColors(selectedCategoryId);
-                }, 500);
-              } else {
-                throw new Error('Failed to update conversation category');
-              }
+              // Odśwież dane po krótkim opóźnieniu, żeby dać czas na zapisanie zmian
+              setTimeout(() => {
+                loadMessagesWithFilters();
+                updateCategoryButtonsHighlight();
+                // Odśwież kolory w modalu czatu jeśli potrzebne
+                updateChatModalCategoryColors(selectedCategoryId);
+              }, 500);
             } catch (error) {
               console.error('Error updating category:', error);
               showNotification("Błąd podczas aktualizacji kategorii", "error");
@@ -8802,4 +9065,5 @@
       </div>
     </div>
   </body>
+</html>
 </html>

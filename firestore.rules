@@ -1,0 +1,295 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Helper function to check if user is super admin (by UID)
+    function isSuperAdmin() {
+      return isAuthenticated() && request.auth.uid == 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
+    }
+    
+    // Helper function to check if user is admin or super admin
+    function isAdminOrSuperAdmin() {
+      return isAdmin() || isSuperAdmin();
+    }
+    
+    // Helper function to check if user owns the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // =============================================================================
+    // USER PROFILES
+    // =============================================================================
+    match /userProfiles/{userId} {
+      // Users can read their own profile
+      allow read: if isOwner(userId);
+      
+      // Users can update their own profile (except role)
+      allow update: if isOwner(userId) && 
+        (!('role' in request.resource.data) || 
+         request.resource.data.role == resource.data.role);
+      
+      // Admins can read all profiles
+      allow read: if isAdminOrSuperAdmin();
+      
+      // Admins can create, update, and delete any profile
+      allow create, update, delete: if isAdminOrSuperAdmin();
+    }
+    
+    // =============================================================================
+    // MESSAGES
+    // =============================================================================
+    match /messages/{messageId} {
+      // Users can read messages where they are sender or recipient
+      allow read: if isAuthenticated() && (
+        resource.data.senderId == request.auth.uid ||
+        resource.data.recipientId == request.auth.uid ||
+        resource.data.recipientId == 'admin'
+      );
+      
+      // Users can create messages
+      allow create: if isAuthenticated() && 
+        request.resource.data.senderId == request.auth.uid;
+      
+      // Admins can read, update, and delete all messages
+      allow read, update, delete: if isAdminOrSuperAdmin();
+      
+      // Users can update their own messages (limited fields)
+      allow update: if isAuthenticated() && 
+        resource.data.senderId == request.auth.uid &&
+        !('status' in request.resource.data.diff(resource.data)) &&
+        !('recipientId' in request.resource.data.diff(resource.data));
+    }
+    
+    // =============================================================================
+    // CONVERSATIONS
+    // =============================================================================
+    match /conversations/{conversationId} {
+      // Users can read their own conversations
+      allow read: if isAuthenticated() && (
+        conversationId == request.auth.uid ||
+        resource.data.userId == request.auth.uid
+      );
+      
+      // Admins can read, update, and delete all conversations
+      allow read, update, delete: if isAdminOrSuperAdmin();
+      
+      // System can create conversations (when messages are sent)
+      allow create: if isAuthenticated();
+    }
+    
+    // =============================================================================
+    // MESSAGE CATEGORIES
+    // =============================================================================
+    match /messageCategories/{categoryId} {
+      // Authenticated users can read categories
+      allow read: if isAuthenticated();
+      
+      // Only admins can create, update, and delete categories
+      allow create, update, delete: if isAdminOrSuperAdmin();
+    }
+    
+    // =============================================================================
+    // ACTIVITY LOGS
+    // =============================================================================
+    match /activityLogs/{logId} {
+      // Users can read their own activity logs
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.adminId == request.auth.uid
+      );
+      
+      // Admins can read all activity logs
+      allow read: if isAdminOrSuperAdmin();
+      
+      // Authenticated users can create activity logs
+      allow create: if isAuthenticated();
+      
+      // Only admins can update and delete activity logs
+      allow update, delete: if isAdminOrSuperAdmin();
+    }
+    
+    // =============================================================================
+    // SYSTEM EVENTS
+    // =============================================================================
+    match /system_events/{eventId} {
+      // Only admins can read system events
+      allow read: if isAdminOrSuperAdmin();
+      
+      // Only admins can create, update, and delete system events
+      allow create, update, delete: if isAdminOrSuperAdmin();
+    }
+    
+    // =============================================================================
+    // USER EVENTS
+    // =============================================================================
+    match /user_events/{eventId} {
+      // Users can read their own events
+      allow read: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      // Admins can read all user events
+      allow read: if isAdminOrSuperAdmin();
+      
+      // Authenticated users can create their own events
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      
+      // Only admins can update and delete user events
+      allow update, delete: if isAdminOrSuperAdmin();
+    }
+    
+    // =============================================================================
+    // QUICK REPLIES
+    // =============================================================================
+    match /quickReplies/{replyId} {
+      // Only admins can read, create, update, and delete quick replies
+      allow read, create, update, delete: if isAdminOrSuperAdmin();
+    }
+    
+    // Alternative collection name (if used)
+    match /quick_replies/{replyId} {
+      // Only admins can read, create, update, and delete quick replies
+      allow read, create, update, delete: if isAdminOrSuperAdmin();
+    }
+    
+    // =============================================================================
+    // PENDING TASKS
+    // =============================================================================
+    match /pendingTasks/{taskId} {
+      // Only admins can read, create, update, and delete pending tasks
+      allow read, create, update, delete: if isAdminOrSuperAdmin();
+    }
+    
+    // =============================================================================
+    // CONTACT FORMS
+    // =============================================================================
+    match /contactForms/{formId} {
+      // Authenticated users can create contact forms
+      allow create: if isAuthenticated();
+      
+      // Only admins can read, update, and delete contact forms
+      allow read, update, delete: if isAdminOrSuperAdmin();
+    }
+    
+    // =============================================================================
+    // PRODUCTS
+    // =============================================================================
+    match /products/{productId} {
+      // Everyone can read products
+      allow read: if true;
+      
+      // Only admins can create, update, and delete products
+      allow create, update, delete: if isAdminOrSuperAdmin();
+    }
+    
+    // =============================================================================
+    // TRAININGS
+    // =============================================================================
+    match /trainings/{trainingId} {
+      // Everyone can read trainings
+      allow read: if true;
+      
+      // Only admins can create, update, and delete trainings
+      allow create, update, delete: if isAdminOrSuperAdmin();
+    }
+    
+    // =============================================================================
+    // TRAINING ACCESS
+    // =============================================================================
+    match /trainingAccess/{accessId} {
+      // Users can read their own training access
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isAdminOrSuperAdmin()
+      );
+      
+      // Only admins can create, update, and delete training access
+      allow create, update, delete: if isAdminOrSuperAdmin();
+    }
+    
+    // =============================================================================
+    // EVENTS
+    // =============================================================================
+    match /events/{eventId} {
+      // Everyone can read events
+      allow read: if true;
+      
+      // Only admins can create, update, and delete events
+      allow create, update, delete: if isAdminOrSuperAdmin();
+    }
+    
+    // =============================================================================
+    // CHARITY
+    // =============================================================================
+    match /charity/{charityId} {
+      // Everyone can read charity actions
+      allow read: if true;
+      
+      // Only admins can create, update, and delete charity actions
+      allow create, update, delete: if isAdminOrSuperAdmin();
+    }
+    
+    // =============================================================================
+    // USER REVIEWS
+    // =============================================================================
+    match /userReviews/{reviewId} {
+      // Everyone can read reviews
+      allow read: if true;
+      
+      // Authenticated users can create reviews
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      
+      // Users can update their own reviews
+      allow update: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      // Admins can update and delete all reviews
+      allow update, delete: if isAdminOrSuperAdmin();
+    }
+    
+    // =============================================================================
+    // PRIVATE MESSAGES
+    // =============================================================================
+    match /privateMessages/{messageId} {
+      // Users can read messages where they are sender or recipient
+      allow read: if isAuthenticated() && (
+        resource.data.senderId == request.auth.uid ||
+        resource.data.recipientId == request.auth.uid
+      );
+      
+      // Users can create messages
+      allow create: if isAuthenticated() && 
+        request.resource.data.senderId == request.auth.uid;
+      
+      // Users can update their own messages
+      allow update: if isAuthenticated() && 
+        resource.data.senderId == request.auth.uid;
+      
+      // Admins can read, update, and delete all messages
+      allow read, update, delete: if isAdminOrSuperAdmin();
+    }
+    
+    // =============================================================================
+    // DEFAULT DENY
+    // =============================================================================
+    // Deny all other collections by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
