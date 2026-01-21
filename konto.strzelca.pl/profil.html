@@ -412,6 +412,8 @@
             doc,
             getDoc,
             updateDoc,
+            setDoc,
+            deleteDoc,
             collection,
             query,
             where,
@@ -628,6 +630,48 @@
             }
         }
 
+        // Lista zabronionych nazw
+        const forbiddenNames = [
+            "admin", "administrator", "mod", "moderator", "moderacja", "moderowanie",
+            "support", "pomoc", "help", "owner", "wlasciciel", "boss", "szef",
+            "system", "bot", "robot", "strzelec", "strzelca", "platform", "site"
+        ];
+
+        // Funkcja sprawdzania dostępności nazwy użytkownika
+        async function checkDisplayNameAvailability(displayName, currentUserId) {
+            try {
+                // Sprawdź czy nazwa nie jest zabroniona
+                if (forbiddenNames.includes(displayName.toLowerCase())) {
+                    return {
+                        available: false,
+                        reason: "Ta nazwa jest zarezerwowana"
+                    };
+                }
+
+                // Sprawdź czy nazwa już istnieje w kolekcji displayNames
+                const displayNameDoc = await getDoc(doc(db, "displayNames", displayName.toLowerCase()));
+
+                if (displayNameDoc.exists()) {
+                    // Jeśli nazwa należy do aktualnego użytkownika, jest dostępna
+                    if (displayNameDoc.data().userId === currentUserId) {
+                        return { available: true };
+                    }
+                    return {
+                        available: false,
+                        reason: "Ta nazwa jest już zajęta"
+                    };
+                }
+
+                return { available: true };
+            } catch (error) {
+                console.error("Error checking display name:", error);
+                return {
+                    available: false,
+                    reason: "Błąd sprawdzania dostępności nazwy"
+                };
+            }
+        }
+
         // Zapisywanie zmian profilu
         document.getElementById('profile-form').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -639,9 +683,24 @@
             saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Zapisywanie...';
 
             try {
+                const newDisplayName = document.getElementById('edit-display-name').value.trim();
+                const oldDisplayName = userProfile.displayName || '';
+                const displayNameChanged = newDisplayName.toLowerCase() !== oldDisplayName.toLowerCase();
+
+                // Jeśli nazwa użytkownika się zmieniła, sprawdź dostępność
+                if (displayNameChanged) {
+                    const nameAvailability = await checkDisplayNameAvailability(newDisplayName, currentUser.uid);
+                    if (!nameAvailability.available) {
+                        alert(nameAvailability.reason);
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = '<i class="fa-solid fa-save mr-2"></i>Zapisz zmiany';
+                        return;
+                    }
+                }
+
                 // Zaszyfruj wrażliwe dane przed zapisaniem
                 const updatedProfile = {
-                    displayName: document.getElementById('edit-display-name').value.trim(),
+                    displayName: newDisplayName,
                     firstName: document.getElementById('edit-first-name').value.trim(),
                     lastName: document.getElementById('edit-last-name').value.trim(),
                     phone: btoa(document.getElementById('edit-phone').value.trim()),
@@ -658,6 +717,24 @@
                 };
 
                 await updateDoc(doc(db, "userProfiles", currentUser.uid), updatedProfile);
+
+                // Aktualizuj kolekcję displayNames jeśli nazwa się zmieniła
+                if (displayNameChanged) {
+                    // Usuń starą nazwę z kolekcji displayNames
+                    if (oldDisplayName) {
+                        try {
+                            await deleteDoc(doc(db, "displayNames", oldDisplayName.toLowerCase()));
+                        } catch (error) {
+                            console.error("Error deleting old display name:", error);
+                        }
+                    }
+                    // Dodaj nową nazwę do kolekcji displayNames
+                    await setDoc(doc(db, "displayNames", newDisplayName.toLowerCase()), {
+                        displayName: newDisplayName,
+                        userId: currentUser.uid,
+                        updatedAt: new Date()
+                    });
+                }
 
                 // Aktualizuj mailing list jeśli zmieniła się zgoda na newsletter
                 if (updatedProfile.newsletterChanged !== undefined) {

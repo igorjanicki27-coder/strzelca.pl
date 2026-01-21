@@ -276,12 +276,17 @@
     </style>
 
     <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-9EJ2R3JPVD"></script>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-9EJ2R3JPVD"
+    ></script>
     <script>
       window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-9EJ2R3JPVD');
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-9EJ2R3JPVD");
     </script>
   </head>
   <body>
@@ -329,7 +334,7 @@
                   <input
                     type="text"
                     id="display-name"
-                    placeholder="Janek00"
+                    placeholder="Jan.K"
                     required
                     minlength="3"
                     maxlength="12"
@@ -690,16 +695,19 @@
       await auth.setPersistence(browserLocalPersistence);
 
       // Listener stanu autoryzacji - jeśli użytkownik już jest zalogowany, przekieruj do profilu
-      const { onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+      const { onAuthStateChanged } =
+        await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
       onAuthStateChanged(auth, (user) => {
-          if (user) {
-              // Użytkownik już jest zalogowany - przekieruj do profilu
-              console.log('Użytkownik już zalogowany, przekierowanie do profil.html');
-              window.location.href = 'profil.html';
-          } else {
-              // Użytkownik niezalogowany - pozwól mu się zarejestrować
-              console.log('Użytkownik niezalogowany, można się zarejestrować');
-          }
+        if (user) {
+          // Użytkownik już jest zalogowany - przekieruj do profilu
+          console.log(
+            "Użytkownik już zalogowany, przekierowanie do profil.html",
+          );
+          window.location.href = "profil.html";
+        } else {
+          // Użytkownik niezalogowany - pozwól mu się zarejestrować
+          console.log("Użytkownik niezalogowany, można się zarejestrować");
+        }
       });
 
       // Lista zabronionych nazw
@@ -737,14 +745,10 @@
             };
           }
 
-          // Sprawdź czy nazwa już istnieje w bazie danych
-          const q = query(
-            collection(db, "userProfiles"),
-            where("displayName", "==", displayName),
-          );
-          const querySnapshot = await getDocs(q);
+          // Sprawdź czy nazwa już istnieje w kolekcji displayNames
+          const displayNameDoc = await getDoc(doc(db, "displayNames", displayName.toLowerCase()));
 
-          if (!querySnapshot.empty) {
+          if (displayNameDoc.exists()) {
             return {
               available: false,
               reason: "Ta nazwa jest już zajęta",
@@ -904,11 +908,14 @@
             };
 
             // 0. Sprawdź dostępność nazwy użytkownika przed utworzeniem konta
-            const nameAvailability = await checkDisplayNameAvailability(formData.displayName);
+            const nameAvailability = await checkDisplayNameAvailability(
+              formData.displayName,
+            );
             if (!nameAvailability.available) {
               showError("display-name-error", nameAvailability.reason);
               registerBtn.disabled = false;
-              registerBtn.innerHTML = '<i class="fa-solid fa-user-plus mr-2"></i>Utwórz STRZELCA';
+              registerBtn.innerHTML =
+                '<i class="fa-solid fa-user-plus mr-2"></i>Utwórz STRZELCA';
               return;
             }
 
@@ -959,6 +966,13 @@
 
             // Zapisz dane profilu w Firestore
             await setDoc(doc(db, "userProfiles", user.uid), profileData);
+
+            // Zapisz nazwę użytkownika w kolekcji displayNames (dla sprawdzania dostępności)
+            await setDoc(doc(db, "displayNames", formData.displayName.toLowerCase()), {
+              displayName: formData.displayName,
+              userId: user.uid,
+              createdAt: new Date(),
+            });
 
             // 4. Jeśli użytkownik zgodził się na newsletter, dodaj do mailing list
             if (formData.newsletter) {
@@ -1151,7 +1165,10 @@
         if (!field) return;
 
         // Znajdź kontener lub użyj samego pola
-        const container = field.closest(".strzelec-input-container") || field.parentElement || field;
+        const container =
+          field.closest(".strzelec-input-container") ||
+          field.parentElement ||
+          field;
         const errorElement = document.getElementById(fieldId + "-error");
 
         field.addEventListener("input", () => {
@@ -1190,12 +1207,36 @@
       // Walidatory dla poszczególnych pól
       const validators = {
         "first-name": (value) => ({
-          isValid: value === "" || (value.length >= 1 && value.length <= 25 && /^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*(?:\s+[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*)*(?:\s*-\s*[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*)*$/.test(value)),
-          message: value !== "" && !(/^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*(?:\s+[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*)*(?:\s*-\s*[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*)*$/.test(value)) ? "Imię musi mieć 1-25 znaków i pasować do wzoru: Xxxx, Xx Xx, Xx-Xx, Xx - Xx" : "",
+          isValid:
+            value === "" ||
+            (value.length >= 1 &&
+              value.length <= 25 &&
+              /^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*(?:\s+[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*)*(?:\s*-\s*[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*)*$/.test(
+                value,
+              )),
+          message:
+            value !== "" &&
+            !/^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*(?:\s+[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*)*(?:\s*-\s*[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*)*$/.test(
+              value,
+            )
+              ? "Imię musi mieć 1-25 znaków i pasować do wzoru: Xxxx, Xx Xx, Xx-Xx, Xx - Xx"
+              : "",
         }),
         "last-name": (value) => ({
-          isValid: value === "" || (value.length >= 1 && value.length <= 25 && /^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*(?:\s+[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*)*(?:\s*-\s*[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*)*$/.test(value)),
-          message: value !== "" && !(/^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*(?:\s+[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*)*(?:\s*-\s*[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*)*$/.test(value)) ? "Nazwisko musi mieć 1-25 znaków i pasować do wzoru: Xxxx, Xx Xx, Xx-Xx, Xx - Xx" : "",
+          isValid:
+            value === "" ||
+            (value.length >= 1 &&
+              value.length <= 25 &&
+              /^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*(?:\s+[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*)*(?:\s*-\s*[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*)*$/.test(
+                value,
+              )),
+          message:
+            value !== "" &&
+            !/^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*(?:\s+[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*)*(?:\s*-\s*[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*)*$/.test(
+              value,
+            )
+              ? "Nazwisko musi mieć 1-25 znaków i pasować do wzoru: Xxxx, Xx Xx, Xx-Xx, Xx - Xx"
+              : "",
         }),
         email: (value) => ({
           isValid: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
@@ -1284,19 +1325,31 @@
       });
 
       // Dodatkowa obsługa bezpośrednich kliknięć na radio buttons
-      document.getElementById("gender-male").addEventListener("change", function() {
-        if (this.checked) {
-          document.querySelector('label[for="gender-male"]').classList.add("active");
-          document.querySelector('label[for="gender-female"]').classList.remove("active");
-        }
-      });
+      document
+        .getElementById("gender-male")
+        .addEventListener("change", function () {
+          if (this.checked) {
+            document
+              .querySelector('label[for="gender-male"]')
+              .classList.add("active");
+            document
+              .querySelector('label[for="gender-female"]')
+              .classList.remove("active");
+          }
+        });
 
-      document.getElementById("gender-female").addEventListener("change", function() {
-        if (this.checked) {
-          document.querySelector('label[for="gender-female"]').classList.add("active");
-          document.querySelector('label[for="gender-male"]').classList.remove("active");
-        }
-      });
+      document
+        .getElementById("gender-female")
+        .addEventListener("change", function () {
+          if (this.checked) {
+            document
+              .querySelector('label[for="gender-female"]')
+              .classList.add("active");
+            document
+              .querySelector('label[for="gender-male"]')
+              .classList.remove("active");
+          }
+        });
 
       // Autowstawianie myślnika w kodzie pocztowym
       document
@@ -1317,7 +1370,11 @@
 
           // Przetwarzaj każdy znak
           for (let i = 0; i < value.length; i++) {
-            if (i === 0 || value[i - 1] === " " || (value[i - 1] === "-" && value[i - 2] === " ")) {
+            if (
+              i === 0 ||
+              value[i - 1] === " " ||
+              (value[i - 1] === "-" && value[i - 2] === " ")
+            ) {
               result += value[i].toUpperCase();
             } else {
               result += value[i];

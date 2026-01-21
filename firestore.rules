@@ -50,6 +50,23 @@ service cloud.firestore {
     }
     
     // =============================================================================
+    // DISPLAY NAMES (for checking availability during registration)
+    // =============================================================================
+    match /displayNames/{displayName} {
+      // Everyone can read display names (needed for registration)
+      allow read: if true;
+      
+      // Only authenticated users can create display names (when registering)
+      allow create: if isAuthenticated();
+      
+      // Only admins can delete display names
+      allow delete: if isAdminOrSuperAdmin();
+      
+      // No updates allowed (display names are immutable)
+      allow update: if false;
+    }
+    
+    // =============================================================================
     // MESSAGES
     // =============================================================================
     match /messages/{messageId} {
