@@ -75,6 +75,16 @@
             border-color: var(--coyote) !important;
             background: #161616 !important;
         }
+        input:disabled, input[readonly] {
+            background: #0a0a0a !important;
+            border-color: #333 !important;
+            color: #888 !important;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .field-label-readonly {
+            color: #666 !important;
+        }
 
         .btn-save {
             background: var(--coyote);
@@ -236,29 +246,45 @@
             <h2 class="text-2xl font-bold coyote-text mb-6">Edytuj profil</h2>
 
             <form id="profile-form" class="space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Nazwa profilu -->
-                    <div>
-                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Nazwa profilu</label>
-                        <input type="text" id="edit-display-name" required minlength="3" maxlength="30">
-                    </div>
+                <!-- Dane podstawowe (tylko do odczytu) -->
+                <div class="bg-zinc-800/50 p-6 rounded-2xl border border-zinc-700 mb-6">
+                    <h3 class="text-lg font-semibold text-white mb-4">Dane podstawowe (nie można zmienić)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Nazwa profilu -->
+                        <div>
+                            <label class="text-[10px] uppercase font-bold field-label-readonly ml-2 mb-2 block tracking-widest">Nazwa profilu</label>
+                            <input type="text" id="edit-display-name" readonly disabled>
+                        </div>
 
-                    <!-- Imię -->
-                    <div>
-                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Imię STRZELCA</label>
-                        <input type="text" id="edit-first-name" required>
-                    </div>
+                        <!-- E-mail -->
+                        <div>
+                            <label class="text-[10px] uppercase font-bold field-label-readonly ml-2 mb-2 block tracking-widest">Adres e-mail</label>
+                            <input type="email" id="edit-email" readonly disabled>
+                        </div>
 
-                    <!-- Nazwisko -->
-                    <div>
-                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Nazwisko STRZELCA</label>
-                        <input type="text" id="edit-last-name" required>
-                    </div>
+                        <!-- Imię -->
+                        <div>
+                            <label class="text-[10px] uppercase font-bold field-label-readonly ml-2 mb-2 block tracking-widest">Imię STRZELCA</label>
+                            <input type="text" id="edit-first-name" readonly disabled>
+                        </div>
 
-                    <!-- Telefon -->
-                    <div>
-                        <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Numer telefonu</label>
-                        <input type="tel" id="edit-phone" required>
+                        <!-- Nazwisko -->
+                        <div>
+                            <label class="text-[10px] uppercase font-bold field-label-readonly ml-2 mb-2 block tracking-widest">Nazwisko STRZELCA</label>
+                            <input type="text" id="edit-last-name" readonly disabled>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dane do edycji -->
+                <div class="space-y-6">
+                    <h3 class="text-lg font-semibold text-white">Dane kontaktowe</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Telefon -->
+                        <div>
+                            <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Numer telefonu</label>
+                            <input type="tel" id="edit-phone" required>
+                        </div>
                     </div>
                 </div>
 
@@ -298,6 +324,10 @@
                     <button type="button" onclick="logout()" class="bg-red-700 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition">
                         <i class="fa-solid fa-sign-out-alt mr-2"></i>
                         Wyloguj się
+                    </button>
+                    <button type="button" onclick="deleteAccount()" class="bg-red-900 text-white px-6 py-3 rounded-lg hover:bg-red-800 transition border border-red-700">
+                        <i class="fa-solid fa-trash mr-2"></i>
+                        Usuń konto
                     </button>
                 </div>
             </form>
@@ -607,6 +637,7 @@
 
                     // Wypełnij formularz (odszyfrowanymi danymi)
                     document.getElementById('edit-display-name').value = decryptedProfile.displayName || '';
+                    document.getElementById('edit-email').value = currentUser.email || '';
                     document.getElementById('edit-first-name').value = decryptedProfile.firstName || '';
                     document.getElementById('edit-last-name').value = decryptedProfile.lastName || '';
                     document.getElementById('edit-phone').value = decryptedProfile.phone || '';
@@ -683,26 +714,9 @@
             saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Zapisywanie...';
 
             try {
-                const newDisplayName = document.getElementById('edit-display-name').value.trim();
-                const oldDisplayName = userProfile.displayName || '';
-                const displayNameChanged = newDisplayName.toLowerCase() !== oldDisplayName.toLowerCase();
-
-                // Jeśli nazwa użytkownika się zmieniła, sprawdź dostępność
-                if (displayNameChanged) {
-                    const nameAvailability = await checkDisplayNameAvailability(newDisplayName, currentUser.uid);
-                    if (!nameAvailability.available) {
-                        alert(nameAvailability.reason);
-                        saveBtn.disabled = false;
-                        saveBtn.innerHTML = '<i class="fa-solid fa-save mr-2"></i>Zapisz zmiany';
-                        return;
-                    }
-                }
-
                 // Zaszyfruj wrażliwe dane przed zapisaniem
+                // NIE zapisujemy: displayName, firstName, lastName, email - są zablokowane
                 const updatedProfile = {
-                    displayName: newDisplayName,
-                    firstName: document.getElementById('edit-first-name').value.trim(),
-                    lastName: document.getElementById('edit-last-name').value.trim(),
                     phone: btoa(document.getElementById('edit-phone').value.trim()),
                     address: {
                         street: btoa(document.getElementById('edit-street').value.trim()),
@@ -717,24 +731,6 @@
                 };
 
                 await updateDoc(doc(db, "userProfiles", currentUser.uid), updatedProfile);
-
-                // Aktualizuj kolekcję displayNames jeśli nazwa się zmieniła
-                if (displayNameChanged) {
-                    // Usuń starą nazwę z kolekcji displayNames
-                    if (oldDisplayName) {
-                        try {
-                            await deleteDoc(doc(db, "displayNames", oldDisplayName.toLowerCase()));
-                        } catch (error) {
-                            console.error("Error deleting old display name:", error);
-                        }
-                    }
-                    // Dodaj nową nazwę do kolekcji displayNames
-                    await setDoc(doc(db, "displayNames", newDisplayName.toLowerCase()), {
-                        displayName: newDisplayName,
-                        userId: currentUser.uid,
-                        updatedAt: new Date()
-                    });
-                }
 
                 // Aktualizuj mailing list jeśli zmieniła się zgoda na newsletter
                 if (updatedProfile.newsletterChanged !== undefined) {
@@ -792,6 +788,77 @@
                 } else {
                     alert('Błąd podczas zmiany hasła.');
                 }
+            }
+        };
+
+        // Usuwanie konta
+        window.deleteAccount = async () => {
+            if (!currentUser) return;
+
+            // Potwierdzenie usunięcia konta
+            const confirmMessage = `Czy na pewno chcesz usunąć swoje konto?\n\nTa operacja jest nieodwracalna i spowoduje:\n- Usunięcie wszystkich danych profilu\n- Usunięcie konta użytkownika\n- Utratę dostępu do wszystkich funkcji\n\nAby potwierdzić, wpisz "USUŃ" w poniższym oknie:`;
+            
+            const confirmation = prompt(confirmMessage);
+            if (confirmation !== 'USUŃ') {
+                alert('Anulowano usuwanie konta.');
+                return;
+            }
+
+            // Ostateczne potwierdzenie
+            const finalConfirm = confirm('To jest ostatnie ostrzeżenie. Czy na pewno chcesz usunąć konto?');
+            if (!finalConfirm) {
+                alert('Anulowano usuwanie konta.');
+                return;
+            }
+
+            try {
+                // Usuń dane profilu z Firestore
+                await deleteDoc(doc(db, "userProfiles", currentUser.uid));
+                
+                // Usuń nazwę użytkownika z kolekcji displayNames
+                if (userProfile && userProfile.displayName) {
+                    try {
+                        await deleteDoc(doc(db, "displayNames", userProfile.displayName.toLowerCase()));
+                    } catch (error) {
+                        console.error("Error deleting display name:", error);
+                    }
+                }
+
+                // Usuń z mailing list
+                try {
+                    await deleteDoc(doc(db, "mailingList", currentUser.email));
+                } catch (error) {
+                    console.error("Error deleting from mailing list:", error);
+                }
+
+                // Usuń konto użytkownika z Firebase Auth
+                // Uwaga: deleteUser wymaga reautentykacji, więc najpierw wylogujmy użytkownika
+                // i przekierujmy na stronę logowania z informacją o konieczności kontaktu z administratorem
+                await signOut(auth);
+
+                // Zaloguj zdarzenie usunięcia konta
+                await logUserEvent(
+                    'ACCOUNT_DELETION',
+                    currentUser.uid,
+                    userProfile?.displayName || currentUser.email,
+                    'Użytkownik usunął swoje konto',
+                    null,
+                    null,
+                    {
+                        email: currentUser.email,
+                        deletedAt: new Date().toISOString()
+                    }
+                );
+
+                // Wyczyść localStorage
+                localStorage.clear();
+
+                alert('Twoje konto zostało usunięte. Zostaniesz przekierowany na stronę główną.');
+                window.location.href = 'https://strzelca.pl/index.html';
+
+            } catch (error) {
+                console.error('Error deleting account:', error);
+                alert('Wystąpił błąd podczas usuwania konta. Skontaktuj się z administratorem.');
             }
         };
 

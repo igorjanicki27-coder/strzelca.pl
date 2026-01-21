@@ -161,37 +161,41 @@
     <div class="main-wrapper">
       <!-- Panel użytkownika -->
       <div id="user-panel" class="fixed top-4 right-4 z-50 hidden">
-        <div
-          class="bg-zinc-900/95 backdrop-blur-md border border-zinc-700 rounded-2xl p-4 shadow-2xl"
-        >
-          <div id="user-info" class="flex items-center space-x-3 mb-3">
-            <div
-              id="user-avatar"
-              class="w-10 h-10 rounded-full bg-coyote flex items-center justify-center text-white font-bold"
-            >
+        <div class="relative">
+          <!-- Avatar - widoczny zawsze -->
+          <button
+            id="user-avatar-button"
+            class="w-12 h-12 rounded-full bg-coyote flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-80 transition shadow-lg"
+            onclick="toggleUserMenu()"
+          >
+            <div id="user-avatar">
               <i class="fa-solid fa-user"></i>
             </div>
-            <div>
+          </button>
+          
+          <!-- Menu rozwijane -->
+          <div
+            id="user-menu"
+            class="absolute top-14 right-0 bg-zinc-900/95 backdrop-blur-md border border-zinc-700 rounded-2xl p-4 shadow-2xl min-w-[200px] hidden"
+          >
+            <div class="space-y-2">
               <div
                 id="user-display-name"
-                class="text-white font-semibold text-sm"
+                class="text-white font-semibold text-sm mb-3 pb-3 border-b border-zinc-700"
               ></div>
-              <div class="text-zinc-400 text-xs">STRZELEC</div>
+              <a
+                href="https://konto.strzelca.pl/profil.html"
+                class="block text-zinc-300 hover:text-coyote transition text-sm"
+              >
+                <i class="fa-solid fa-user mr-2"></i>Mój profil
+              </a>
+              <button
+                onclick="logout()"
+                class="block w-full text-left text-zinc-300 hover:text-red-400 transition text-sm"
+              >
+                <i class="fa-solid fa-sign-out-alt mr-2"></i>Wyloguj się
+              </button>
             </div>
-          </div>
-          <div class="space-y-2">
-            <a
-              href="https://konto.strzelca.pl/profil.html"
-              class="block text-zinc-300 hover:text-coyote transition text-sm"
-            >
-              <i class="fa-solid fa-user mr-2"></i>Mój profil
-            </a>
-            <button
-              onclick="logout()"
-              class="block w-full text-left text-zinc-300 hover:text-red-400 transition text-sm"
-            >
-              <i class="fa-solid fa-sign-out-alt mr-2"></i>Wyloguj się
-            </button>
           </div>
         </div>
       </div>
@@ -491,10 +495,39 @@
         }
       }
 
+      // Funkcja rozwijania/zwijania menu użytkownika
+      window.toggleUserMenu = () => {
+        const userMenu = document.getElementById("user-menu");
+        if (userMenu) {
+          userMenu.classList.toggle("hidden");
+        }
+      };
+
+      // Zamykanie menu po kliknięciu poza nim
+      document.addEventListener("click", (event) => {
+        const userPanel = document.getElementById("user-panel");
+        const userMenu = document.getElementById("user-menu");
+        const userAvatarButton = document.getElementById("user-avatar-button");
+        
+        if (
+          userPanel &&
+          userMenu &&
+          !userPanel.contains(event.target) &&
+          !userMenu.classList.contains("hidden")
+        ) {
+          userMenu.classList.add("hidden");
+        }
+      });
+
       // Funkcja wylogowania
       window.logout = async () => {
         try {
           await signOut(auth);
+          // Zamknij menu po wylogowaniu
+          const userMenu = document.getElementById("user-menu");
+          if (userMenu) {
+            userMenu.classList.add("hidden");
+          }
         } catch (error) {
           console.error("Logout error:", error);
         }
