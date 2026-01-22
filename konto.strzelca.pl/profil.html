@@ -1,950 +1,1276 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="https://strzelca.pl/ikona.svg">
-    <link rel="apple-touch-icon" href="https://strzelca.pl/ikona.svg">
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="https://strzelca.pl/ikona.svg"
+    />
+    <link rel="apple-touch-icon" href="https://strzelca.pl/ikona.svg" />
 
     <title>Profil - strzelca.pl</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
     <style>
-        :root { --coyote: #C19A6B; }
-        body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e5e5e5; margin: 0; }
-        .coyote-text { color: var(--coyote); font-family: 'Orbitron'; }
+      :root {
+        --coyote: #c19a6b;
+      }
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #0a0a0a;
+        color: #e5e5e5;
+        margin: 0;
+      }
+      .coyote-text {
+        color: var(--coyote);
+        font-family: "Orbitron";
+      }
 
-        .avatar-container {
-            position: relative;
-            display: inline-block;
-        }
+      .avatar-container {
+        position: relative;
+        display: inline-block;
+      }
 
-        .avatar {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            border: 4px solid var(--coyote);
-            object-fit: cover;
-        }
+      .avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 4px solid var(--coyote);
+        object-fit: cover;
+      }
 
-        .avatar-placeholder {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            border: 4px solid var(--coyote);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 48px;
-            background: linear-gradient(135deg, var(--coyote), #8B6B4A);
-        }
+      .avatar-placeholder {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 4px solid var(--coyote);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 48px;
+        background: linear-gradient(135deg, var(--coyote), #8b6b4a);
+      }
 
-        .avatar-upload {
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            background: var(--coyote);
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: 0.3s;
-        }
+      .avatar-upload {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        background: var(--coyote);
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: 0.3s;
+      }
 
-        .avatar-upload:hover {
-            transform: scale(1.1);
-        }
+      .avatar-upload:hover {
+        transform: scale(1.1);
+      }
 
-        input, select, textarea {
-            background: #111 !important;
-            border: 1px solid #222 !important;
-            color: white !important;
-            padding: 12px 16px !important;
-            border-radius: 8px;
-            width: 100%;
-            outline: none;
-            transition: 0.3s;
-        }
-        input:focus, select:focus, textarea:focus {
-            border-color: var(--coyote) !important;
-            background: #161616 !important;
-        }
-        input:disabled, input[readonly] {
-            background: #0a0a0a !important;
-            border-color: #333 !important;
-            color: #888 !important;
-            cursor: not-allowed;
-            opacity: 0.7;
-        }
-        .field-label-readonly {
-            color: #666 !important;
-        }
+      input,
+      select,
+      textarea {
+        background: #111 !important;
+        border: 1px solid #222 !important;
+        color: white !important;
+        padding: 12px 16px !important;
+        border-radius: 8px;
+        width: 100%;
+        outline: none;
+        transition: 0.3s;
+      }
+      input[type="checkbox"] {
+        width: auto !important;
+        padding: 0 !important;
+        border-radius: 4px;
+      }
+      input:focus,
+      select:focus,
+      textarea:focus {
+        border-color: var(--coyote) !important;
+        background: #161616 !important;
+      }
+      input:disabled,
+      input[readonly] {
+        background: #0a0a0a !important;
+        border-color: #333 !important;
+        color: #888 !important;
+        cursor: not-allowed;
+        opacity: 0.7;
+      }
+      .field-label-readonly {
+        color: #666 !important;
+      }
 
-        .btn-save {
-            background: var(--coyote);
-            color: black;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 12px 24px;
-            border-radius: 8px;
-            transition: 0.3s;
-            cursor: pointer;
-        }
-        .btn-save:hover { transform: scale(1.05); box-shadow: 0 0 15px rgba(193, 154, 107, 0.3); }
-        .btn-save:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+      .btn-save {
+        background: var(--coyote);
+        color: black;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        padding: 12px 24px;
+        border-radius: 8px;
+        transition: 0.3s;
+        cursor: pointer;
+      }
+      .btn-save:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 15px rgba(193, 154, 107, 0.3);
+      }
+      .btn-save:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
 
-        /* Style dla opinii */
-        .star-rating {
-            display: flex;
-            gap: 4px;
-        }
-        .star {
-            color: #C19A6B;
-            font-size: 18px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        .star:hover, .star.active {
-            color: #C19A6B;
-        }
-        .star.inactive {
-            color: #666;
-        }
+      /* Style dla opinii */
+      .star-rating {
+        display: flex;
+        gap: 4px;
+      }
+      .star {
+        color: #c19a6b;
+        font-size: 18px;
+        cursor: pointer;
+        transition: 0.3s;
+      }
+      .star:hover,
+      .star.active {
+        color: #c19a6b;
+      }
+      .star.inactive {
+        color: #666;
+      }
 
-        .review-card {
-            background: rgba(39, 39, 42, 0.5);
-            border: 1px solid #374151;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
-        }
-        .review-header {
-            display: flex;
-            justify-content: between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        .review-author {
-            font-weight: bold;
-            color: #C19A6B;
-        }
-        .review-date {
-            color: #9CA3AF;
-            font-size: 12px;
-        }
-        .review-rating {
-            display: flex;
-            gap: 2px;
-        }
-        .review-comment {
-            color: #E5E7EB;
-            margin-top: 8px;
-        }
+      .review-card {
+        background: rgba(39, 39, 42, 0.5);
+        border: 1px solid #374151;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      .review-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .review-author {
+        font-weight: bold;
+        color: #c19a6b;
+      }
+      .review-date {
+        color: #9ca3af;
+        font-size: 12px;
+      }
+      .review-rating {
+        display: flex;
+        gap: 2px;
+      }
+      .review-comment {
+        color: #e5e7eb;
+        margin-top: 8px;
+      }
 
-        /* Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-        }
-        .modal.show {
-            display: flex;
-        }
-        .modal-content {
-            background: #1a1a1a;
-            border-radius: 16px;
-            padding: 24px;
-            max-width: 500px;
-            width: 90%;
-            border: 1px solid #333;
-        }
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .modal-close {
-            background: none;
-            border: none;
-            color: #9CA3AF;
-            font-size: 24px;
-            cursor: pointer;
-        }
-        .rating-input {
-            display: flex;
-            gap: 8px;
-            margin: 16px 0;
-        }
+      /* Modal */
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+      }
+      .modal.show {
+        display: flex;
+      }
+      .modal-content {
+        background: #1a1a1a;
+        border-radius: 16px;
+        padding: 24px;
+        max-width: 500px;
+        width: 90%;
+        border: 1px solid #333;
+      }
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      .modal-close {
+        background: none;
+        border: none;
+        color: #9ca3af;
+        font-size: 24px;
+        cursor: pointer;
+      }
+      .rating-input {
+        display: flex;
+        gap: 8px;
+        margin: 16px 0;
+      }
     </style>
 
     <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-9EJ2R3JPVD"></script>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-9EJ2R3JPVD"
+    ></script>
     <script>
       window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-9EJ2R3JPVD');
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-9EJ2R3JPVD");
     </script>
-</head>
-<body>
-
-    <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative">
-        <a href="https://strzelca.pl" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl">
-            <i class="fa-solid fa-arrow-left"></i>
-        </a>
-        <div class="container mx-auto px-6 flex justify-center">
-            <div class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400">
-                PROFIL.<span class="coyote-text">STRZELCA</span>.PL
-            </div>
+  </head>
+  <body>
+    <nav
+      class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative"
+    >
+      <a
+        href="https://strzelca.pl"
+        class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl"
+      >
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <div class="container mx-auto px-6 flex justify-center">
+        <div
+          class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400"
+        >
+          PROFIL.<span class="coyote-text">STRZELCA</span>.PL
         </div>
+      </div>
     </nav>
 
     <main class="container mx-auto px-6 py-12 max-w-4xl">
-        <!-- Nagłówek profilu -->
-        <div class="bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800 shadow-2xl mb-8">
-            <div class="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8">
-                <!-- Avatar -->
-                <div class="avatar-container">
-                    <div id="avatar-display" class="avatar-placeholder">
-                        <i class="fa-solid fa-user text-white"></i>
-                    </div>
-                    <div class="avatar-upload" onclick="document.getElementById('avatar-input').click()">
-                        <i class="fa-solid fa-camera text-black text-sm"></i>
-                    </div>
-                    <input type="file" id="avatar-input" accept="image/*" style="display: none;">
-                </div>
-
-                <!-- Informacje podstawowe -->
-                <div class="flex-1 text-center md:text-left">
-                    <h1 id="display-name" class="text-3xl font-bold text-white mb-2">Ładowanie...</h1>
-                    <p id="user-email" class="text-zinc-400 mb-4"></p>
-                    <div class="flex flex-wrap justify-center md:justify-start gap-4 text-sm">
-                        <span id="member-since" class="bg-zinc-800 px-3 py-1 rounded-full"></span>
-                        <span id="verification-status" class="bg-green-800 px-3 py-1 rounded-full">Email zweryfikowany</span>
-                    </div>
-                </div>
+      <!-- Nagłówek profilu -->
+      <div
+        class="bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800 shadow-2xl mb-8"
+      >
+        <div
+          class="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8"
+        >
+          <!-- Avatar -->
+          <div class="avatar-container">
+            <div id="avatar-display" class="avatar-placeholder">
+              <i class="fa-solid fa-user text-white"></i>
             </div>
+            <div
+              class="avatar-upload"
+              onclick="document.getElementById('avatar-input').click()"
+            >
+              <i class="fa-solid fa-camera text-black text-sm"></i>
+            </div>
+            <input
+              type="file"
+              id="avatar-input"
+              accept="image/*"
+              style="display: none"
+            />
+          </div>
+
+          <!-- Informacje podstawowe -->
+          <div class="flex-1 text-center md:text-left">
+            <h1 id="display-name" class="text-3xl font-bold text-white mb-2">
+              Ładowanie...
+            </h1>
+            <p id="user-email" class="text-zinc-400 mb-4"></p>
+            <div
+              class="flex flex-wrap justify-center md:justify-start gap-4 text-sm"
+            >
+              <span
+                id="member-since"
+                class="bg-zinc-800 px-3 py-1 rounded-full"
+              ></span>
+              <span
+                id="verification-status"
+                class="bg-green-800 px-3 py-1 rounded-full"
+                >Email zweryfikowany</span
+              >
+            </div>
+          </div>
         </div>
+      </div>
 
-        <!-- Formularz edycji profilu -->
-        <div class="bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800 shadow-2xl">
-            <h2 class="text-2xl font-bold coyote-text mb-6">Edytuj profil</h2>
+      <!-- Formularz edycji profilu -->
+      <div
+        class="bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800 shadow-2xl"
+      >
+        <h2 class="text-2xl font-bold coyote-text mb-6">Edytuj profil</h2>
 
-            <form id="profile-form" class="space-y-6">
-                <!-- Dane podstawowe (tylko do odczytu) -->
-                <div class="bg-zinc-800/50 p-6 rounded-2xl border border-zinc-700 mb-6">
-                    <h3 class="text-lg font-semibold text-white mb-4">Dane podstawowe (nie można zmienić)</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Nazwa profilu -->
-                        <div>
-                            <label class="text-[10px] uppercase font-bold field-label-readonly ml-2 mb-2 block tracking-widest">Nazwa profilu</label>
-                            <input type="text" id="edit-display-name" readonly disabled>
-                        </div>
+        <form id="profile-form" class="space-y-6">
+          <!-- Dane podstawowe (tylko do odczytu) -->
+          <div
+            class="bg-zinc-800/50 p-6 rounded-2xl border border-zinc-700 mb-6"
+          >
+            <h3 class="text-lg font-semibold text-white mb-4">
+              Dane podstawowe
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Nazwa profilu -->
+              <div>
+                <label
+                  class="text-[10px] uppercase font-bold field-label-readonly ml-2 mb-2 block tracking-widest"
+                  >Nazwa profilu</label
+                >
+                <input type="text" id="edit-display-name" readonly disabled />
+              </div>
 
-                        <!-- E-mail -->
-                        <div>
-                            <label class="text-[10px] uppercase font-bold field-label-readonly ml-2 mb-2 block tracking-widest">Adres e-mail</label>
-                            <input type="email" id="edit-email" readonly disabled>
-                        </div>
+              <!-- E-mail -->
+              <div>
+                <label
+                  class="text-[10px] uppercase font-bold field-label-readonly ml-2 mb-2 block tracking-widest"
+                  >Adres e-mail</label
+                >
+                <input type="email" id="edit-email" readonly disabled />
+              </div>
 
-                        <!-- Imię -->
-                        <div>
-                            <label class="text-[10px] uppercase font-bold field-label-readonly ml-2 mb-2 block tracking-widest">Imię STRZELCA</label>
-                            <input type="text" id="edit-first-name" readonly disabled>
-                        </div>
+              <!-- Imię -->
+              <div>
+                <label
+                  class="text-[10px] uppercase font-bold field-label-readonly ml-2 mb-2 block tracking-widest"
+                  >Imię STRZELCA</label
+                >
+                <input type="text" id="edit-first-name" readonly disabled />
+              </div>
 
-                        <!-- Nazwisko -->
-                        <div>
-                            <label class="text-[10px] uppercase font-bold field-label-readonly ml-2 mb-2 block tracking-widest">Nazwisko STRZELCA</label>
-                            <input type="text" id="edit-last-name" readonly disabled>
-                        </div>
-                    </div>
+              <!-- Nazwisko -->
+              <div>
+                <label
+                  class="text-[10px] uppercase font-bold field-label-readonly ml-2 mb-2 block tracking-widest"
+                  >Nazwisko STRZELCA</label
+                >
+                <input type="text" id="edit-last-name" readonly disabled />
+              </div>
+            </div>
+          </div>
+
+          <!-- Dane kontaktowe -->
+          <div class="bg-zinc-800/50 p-6 rounded-2xl border border-zinc-700">
+            <h3 class="text-lg font-semibold text-white mb-4">
+              Dane kontaktowe
+            </h3>
+
+            <!-- Telefon i Paczkomat w jednej linii -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Telefon -->
+              <div>
+                <label
+                  class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
+                  >Numer telefonu</label
+                >
+                <input
+                  type="tel"
+                  id="edit-phone"
+                  required
+                  placeholder="np. 555 444 333"
+                />
+              </div>
+
+              <!-- Paczkomat -->
+              <div>
+                <label
+                  class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
+                  >Paczkomat InPost (opcjonalnie)</label
+                >
+                <input
+                  type="text"
+                  id="edit-parcel-locker"
+                  placeholder="np. WAW01A"
+                />
+              </div>
+            </div>
+
+            <!-- Adres STRZELCA -->
+            <div class="space-y-4 mt-6 pt-6 border-t border-zinc-700">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label
+                    class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
+                    >Ulica</label
+                  >
+                  <input
+                    type="text"
+                    id="edit-street"
+                    placeholder="np. Nowowiejska"
+                  />
                 </div>
-
-                <!-- Dane do edycji -->
-                <div class="space-y-6">
-                    <h3 class="text-lg font-semibold text-white">Dane kontaktowe</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Telefon -->
-                        <div>
-                            <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Numer telefonu</label>
-                            <input type="tel" id="edit-phone" required>
-                        </div>
-                    </div>
+                <div>
+                  <label
+                    class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
+                    >Numer budynku / lokalu</label
+                  >
+                  <input
+                    type="text"
+                    id="edit-building-number"
+                    placeholder="np. 12/3"
+                  />
                 </div>
+              </div>
 
-                <!-- Adres dostawy -->
-                <div class="space-y-4">
-                    <h3 class="text-lg font-semibold text-white">Adres STRZELCA</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input type="text" id="edit-street" placeholder="Ulica">
-                        <input type="text" id="edit-building-number" placeholder="Numer budynku/lokalu">
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input type="text" id="edit-postal-code" placeholder="Kod pocztowy">
-                        <input type="text" id="edit-city" placeholder="Miasto">
-                    </div>
-                    <input type="text" id="edit-parcel-locker" placeholder="Paczkomat InPost (opcjonalnie)">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label
+                    class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
+                    >Kod pocztowy</label
+                  >
+                  <input
+                    type="text"
+                    id="edit-postal-code"
+                    placeholder="np. 00-000"
+                  />
                 </div>
+                <div>
+                  <label
+                    class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
+                    >Miasto</label
+                  >
+                  <input
+                    type="text"
+                    id="edit-city"
+                    placeholder="np. Warszawa"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
 
-                <!-- Preferencje -->
-                <div class="space-y-4">
-                    <h3 class="text-lg font-semibold text-white">Preferencje</h3>
-                    <div class="flex items-center space-x-3">
-                        <input type="checkbox" id="edit-newsletter">
-                        <label for="edit-newsletter" class="text-sm">Chcę otrzymywać newsletter (rezygnacja możliwa w każdej chwili)</label>
-                    </div>
-                </div>
+          <!-- Preferencje -->
+          <div class="space-y-4 pt-6 border-t border-zinc-700">
+            <h3 class="text-lg font-semibold text-white mb-4">Preferencje</h3>
+            <div class="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="edit-newsletter"
+                class="mt-1 shrink-0"
+              />
+              <label
+                for="edit-newsletter"
+                class="text-sm text-zinc-300 leading-relaxed min-w-0 break-words"
+              >
+                Chcę otrzymywać newsletter (rezygnacja możliwa w każdej chwili)
+              </label>
+            </div>
+          </div>
 
-                <!-- Przyciski -->
-                <div class="flex flex-col sm:flex-row gap-4 pt-6 border-t border-zinc-700">
-                    <button type="submit" class="btn-save flex-1">
-                        <i class="fa-solid fa-save mr-2"></i>
-                        Zapisz zmiany
-                    </button>
-                    <button type="button" onclick="changePassword()" class="bg-zinc-700 text-white px-6 py-3 rounded-lg hover:bg-zinc-600 transition">
-                        <i class="fa-solid fa-key mr-2"></i>
-                        Zmień hasło
-                    </button>
-                    <button type="button" onclick="logout()" class="bg-red-700 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition">
-                        <i class="fa-solid fa-sign-out-alt mr-2"></i>
-                        Wyloguj się
-                    </button>
-                    <button type="button" onclick="deleteAccount()" class="bg-red-900 text-white px-6 py-3 rounded-lg hover:bg-red-800 transition border border-red-700">
-                        <i class="fa-solid fa-trash mr-2"></i>
-                        Usuń konto
-                    </button>
-                </div>
-            </form>
+          <!-- Przyciski -->
+          <div
+            class="flex flex-col sm:flex-row gap-4 pt-6 border-t border-zinc-700"
+          >
+            <button type="submit" class="btn-save flex-1">
+              <i class="fa-solid fa-save mr-2"></i>
+              Zapisz zmiany
+            </button>
+            <button
+              type="button"
+              onclick="changePassword()"
+              class="bg-zinc-700 text-white px-6 py-3 rounded-lg hover:bg-zinc-600 transition"
+            >
+              <i class="fa-solid fa-key mr-2"></i>
+              Zmień hasło
+            </button>
+            <button
+              type="button"
+              onclick="deleteAccount()"
+              class="bg-red-900 text-white px-6 py-3 rounded-lg hover:bg-red-800 transition border border-red-700"
+            >
+              <i class="fa-solid fa-trash mr-2"></i>
+              Usuń konto
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Sekcja statystyk -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+        <div
+          class="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800 text-center"
+        >
+          <div class="text-3xl font-bold coyote-text mb-2">0</div>
+          <div class="text-sm text-zinc-400 uppercase tracking-widest">
+            Wystawionych ofert
+          </div>
         </div>
-
-        <!-- Sekcja statystyk -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-            <div class="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800 text-center">
-                <div class="text-3xl font-bold coyote-text mb-2">0</div>
-                <div class="text-sm text-zinc-400 uppercase tracking-widest">Wystawionych ofert</div>
-            </div>
-            <div class="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800 text-center">
-                <div class="text-3xl font-bold coyote-text mb-2">0</div>
-                <div class="text-sm text-zinc-400 uppercase tracking-widest">Wiadomości</div>
-            </div>
-            <div class="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800 text-center">
-                <div class="text-3xl font-bold coyote-text mb-2">0</div>
-                <div class="text-sm text-zinc-400 uppercase tracking-widest">Ulubionych</div>
-            </div>
+        <div
+          class="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800 text-center"
+        >
+          <div class="text-3xl font-bold coyote-text mb-2">0</div>
+          <div class="text-sm text-zinc-400 uppercase tracking-widest">
+            Wiadomości
+          </div>
         </div>
-
-        <!-- Sekcja opinii użytkowników -->
-        <div id="reviews-section" class="mt-8">
-            <div class="bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800 shadow-2xl">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold coyote-text">Opinie użytkowników</h2>
-                    <button id="add-review-btn" class="bg-zinc-700 text-white px-4 py-2 rounded-lg hover:bg-zinc-600 transition">
-                        <i class="fa-solid fa-plus mr-2"></i>
-                        Dodaj opinię
-                    </button>
-                </div>
-
-                <!-- Średnia ocena -->
-                <div class="flex items-center space-x-4 mb-6">
-                    <div class="text-4xl font-bold coyote-text" id="average-rating">0.0</div>
-                    <div class="flex space-x-1" id="average-stars">
-                        <i class="fa-solid fa-star text-zinc-600"></i>
-                        <i class="fa-solid fa-star text-zinc-600"></i>
-                        <i class="fa-solid fa-star text-zinc-600"></i>
-                        <i class="fa-solid fa-star text-zinc-600"></i>
-                        <i class="fa-solid fa-star text-zinc-600"></i>
-                    </div>
-                    <div class="text-sm text-zinc-400" id="reviews-count">(0 opinii)</div>
-                </div>
-
-                <!-- Lista opinii -->
-                <div id="reviews-list" class="space-y-4">
-                    <!-- Opinie będą ładowane dynamicznie -->
-                </div>
-            </div>
+        <div
+          class="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800 text-center"
+        >
+          <div class="text-3xl font-bold coyote-text mb-2">0</div>
+          <div class="text-sm text-zinc-400 uppercase tracking-widest">
+            Ulubionych
+          </div>
         </div>
+      </div>
+
+      <!-- Sekcja opinii użytkowników -->
+      <div id="reviews-section" class="mt-8">
+        <div
+          class="bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800 shadow-2xl"
+        >
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold coyote-text">Opinie użytkowników</h2>
+            <button
+              id="add-review-btn"
+              class="bg-zinc-700 text-white px-4 py-2 rounded-lg hover:bg-zinc-600 transition"
+            >
+              <i class="fa-solid fa-plus mr-2"></i>
+              Dodaj opinię
+            </button>
+          </div>
+
+          <!-- Średnia ocena -->
+          <div class="flex items-center space-x-4 mb-6">
+            <div class="text-4xl font-bold coyote-text" id="average-rating">
+              0.0
+            </div>
+            <div class="flex space-x-1" id="average-stars">
+              <i class="fa-solid fa-star text-zinc-600"></i>
+              <i class="fa-solid fa-star text-zinc-600"></i>
+              <i class="fa-solid fa-star text-zinc-600"></i>
+              <i class="fa-solid fa-star text-zinc-600"></i>
+              <i class="fa-solid fa-star text-zinc-600"></i>
+            </div>
+            <div class="text-sm text-zinc-400" id="reviews-count">
+              (0 opinii)
+            </div>
+          </div>
+
+          <!-- Lista opinii -->
+          <div id="reviews-list" class="space-y-4">
+            <!-- Opinie będą ładowane dynamicznie -->
+          </div>
+        </div>
+      </div>
     </main>
 
     <!-- Modal dodawania opinii -->
     <div id="add-review-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="text-xl font-bold coyote-text">Dodaj opinię</h3>
-                <button class="modal-close" onclick="closeReviewModal()">&times;</button>
-            </div>
-
-            <form id="review-form">
-                <div class="mb-4">
-                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Wybierz użytkownika do oceny</label>
-                    <select id="rated-user-select" required class="w-full">
-                        <option value="">Wybierz użytkownika...</option>
-                        <!-- Użytkownicy będą ładowani dynamicznie -->
-                    </select>
-                </div>
-
-                <div class="mb-4">
-                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Ocena (0-5 gwiazdek)</label>
-                    <div class="rating-input">
-                        <i class="fa-solid fa-star star" data-rating="1"></i>
-                        <i class="fa-solid fa-star star" data-rating="2"></i>
-                        <i class="fa-solid fa-star star" data-rating="3"></i>
-                        <i class="fa-solid fa-star star" data-rating="4"></i>
-                        <i class="fa-solid fa-star star" data-rating="5"></i>
-                    </div>
-                    <input type="hidden" id="rating-value" value="0">
-                </div>
-
-                <div class="mb-6">
-                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Krótki opis opinii</label>
-                    <textarea id="review-comment" required minlength="10" maxlength="500" rows="4" placeholder="Napisz swoją opinię o tym użytkowniku..."></textarea>
-                </div>
-
-                <div class="flex gap-4">
-                    <button type="submit" class="btn-save flex-1">
-                        <i class="fa-solid fa-save mr-2"></i>
-                        Dodaj opinię
-                    </button>
-                    <button type="button" onclick="closeReviewModal()" class="bg-zinc-700 text-white px-6 py-3 rounded-lg hover:bg-zinc-600 transition">
-                        Anuluj
-                    </button>
-                </div>
-            </form>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="text-xl font-bold coyote-text">Dodaj opinię</h3>
+          <button class="modal-close" onclick="closeReviewModal()">
+            &times;
+          </button>
         </div>
+
+        <form id="review-form">
+          <div class="mb-4">
+            <label
+              class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
+              >Wybierz użytkownika do oceny</label
+            >
+            <select id="rated-user-select" required class="w-full">
+              <option value="">Wybierz użytkownika...</option>
+              <!-- Użytkownicy będą ładowani dynamicznie -->
+            </select>
+          </div>
+
+          <div class="mb-4">
+            <label
+              class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
+              >Ocena (0-5 gwiazdek)</label
+            >
+            <div class="rating-input">
+              <i class="fa-solid fa-star star" data-rating="1"></i>
+              <i class="fa-solid fa-star star" data-rating="2"></i>
+              <i class="fa-solid fa-star star" data-rating="3"></i>
+              <i class="fa-solid fa-star star" data-rating="4"></i>
+              <i class="fa-solid fa-star star" data-rating="5"></i>
+            </div>
+            <input type="hidden" id="rating-value" value="0" />
+          </div>
+
+          <div class="mb-6">
+            <label
+              class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
+              >Krótki opis opinii</label
+            >
+            <textarea
+              id="review-comment"
+              required
+              minlength="10"
+              maxlength="500"
+              rows="4"
+              placeholder="Napisz swoją opinię o tym użytkowniku..."
+            ></textarea>
+          </div>
+
+          <div class="flex gap-4">
+            <button type="submit" class="btn-save flex-1">
+              <i class="fa-solid fa-save mr-2"></i>
+              Dodaj opinię
+            </button>
+            <button
+              type="button"
+              onclick="closeReviewModal()"
+              class="bg-zinc-700 text-white px-6 py-3 rounded-lg hover:bg-zinc-600 transition"
+            >
+              Anuluj
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
 
-    <footer class="text-center py-10 border-t border-zinc-900 text-zinc-700 text-[10px] uppercase font-bold tracking-[0.4em]">
-        <a href="https://strzelca.pl" class="hover:text-white transition">STRZELCA.PL</a> |
-        <a href="https://dokumenty.strzelca.pl" class="hover:text-white transition ml-4">DOKUMENTY - REGULAMINY, ZWROTY ITP.</a>
+    <footer
+      class="text-center py-10 border-t border-zinc-900 text-zinc-700 text-[10px] uppercase font-bold tracking-[0.4em]"
+    >
+      <a href="https://strzelca.pl" class="hover:text-white transition"
+        >STRZELCA.PL</a
+      >
+      |
+      <a
+        href="https://dokumenty.strzelca.pl"
+        class="hover:text-white transition ml-4"
+        >DOKUMENTY - REGULAMINY, ZWROTY ITP.</a
+      >
     </footer>
 
     <!-- Session Manager -->
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import {
-            getFirestore,
-            doc,
-            getDoc,
-            updateDoc,
-            setDoc,
-            deleteDoc,
-            collection,
-            query,
-            where,
-            getDocs,
-            addDoc,
-            orderBy,
-            limit
-        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        import { getAuth, onAuthStateChanged, signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import {
+        getFirestore,
+        doc,
+        getDoc,
+        updateDoc,
+        setDoc,
+        deleteDoc,
+        collection,
+        query,
+        where,
+        getDocs,
+        addDoc,
+        orderBy,
+        limit,
+      } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+      import {
+        getAuth,
+        onAuthStateChanged,
+        signOut,
+        updatePassword,
+        EmailAuthProvider,
+        reauthenticateWithCredential,
+        setPersistence,
+        browserLocalPersistence,
+      } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
-            authDomain: "strzelca-pl.firebaseapp.com",
-            projectId: "strzelca-pl",
-            storageBucket: "strzelca-pl.firebasestorage.app",
-            messagingSenderId: "511362047688",
-            appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
-            measurementId: "G-9EJ2R3JPVD"
-        };
+      const firebaseConfig = {
+        apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
+        authDomain: "strzelca-pl.firebaseapp.com",
+        projectId: "strzelca-pl",
+        storageBucket: "strzelca-pl.firebasestorage.app",
+        messagingSenderId: "511362047688",
+        appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
+        measurementId: "G-9EJ2R3JPVD",
+      };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      const auth = getAuth(app);
 
-        // Ustaw trwałość sesji na LOCAL dla wszystkich stron wymagających logowania
-        await setPersistence(auth, browserLocalPersistence);
+      // Ustaw trwałość sesji na LOCAL dla wszystkich stron wymagających logowania
+      await setPersistence(auth, browserLocalPersistence);
 
-        let currentUser = null;
-        let userProfile = null;
+      let currentUser = null;
+      let userProfile = null;
 
-        // Listener stanu autoryzacji z logiką przekierowań
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                // Użytkownik jest zalogowany - pozwól mu zostać na stronie
-                currentUser = user;
-                console.log('Użytkownik zalogowany:', user.email);
+      // Listener stanu autoryzacji z logiką przekierowań
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          // Użytkownik jest zalogowany - pozwól mu zostać na stronie
+          currentUser = user;
+          console.log("Użytkownik zalogowany:", user.email);
 
-                // Pobierz dane użytkownika z bazy dla kolorów przycisków
-                await loadUserProfile(user.uid);
+          // Pobierz dane użytkownika z bazy dla kolorów przycisków
+          await loadUserProfile(user.uid);
 
-                // Załaduj profil użytkownika
-                await loadProfile();
+          // Załaduj profil użytkownika
+          await loadProfile();
+        } else {
+          // Użytkownik nie jest zalogowany - przekieruj do strony logowania
+          console.log("Użytkownik niezalogowany, przekierowanie do login.html");
+          window.location.href = "login.html";
+        }
+      });
+
+      // Funkcja pobierania danych użytkownika z bazy
+      async function loadUserProfile(uid) {
+        try {
+          const profileDoc = await getDoc(doc(db, "userProfiles", uid));
+          if (profileDoc.exists()) {
+            userProfile = profileDoc.data();
+            console.log("Dane użytkownika załadowane:", userProfile);
+
+            // Tutaj można ustawić kolory przycisków na podstawie danych użytkownika
+            // Na razie pozostawiam to do implementacji gdy zrozumiem strukturę
+          } else {
+            console.log("Profil użytkownika nie istnieje");
+          }
+        } catch (error) {
+          console.error("Błąd podczas ładowania profilu użytkownika:", error);
+        }
+      }
+
+      // Funkcja logowania aktywności (zachowana dla kompatybilności wstecznej)
+      async function logActivity(
+        type,
+        userId,
+        userName,
+        details,
+        timestamp = null,
+      ) {
+        try {
+          const activityData = {
+            type: type,
+            userId: userId,
+            userName: userName,
+            details: details,
+            timestamp: timestamp || new Date(),
+          };
+
+          const { addDoc, collection } =
+            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+          await addDoc(collection(db, "activityLogs"), activityData);
+
+          console.log("Aktywność zalogowana:", activityData);
+        } catch (error) {
+          console.error("Błąd podczas logowania aktywności:", error);
+        }
+      }
+
+      // Nowa funkcja logowania zdarzeń użytkowników
+      async function logUserEvent(
+        type,
+        userId,
+        userName,
+        action,
+        targetId = null,
+        targetType = null,
+        metadata = {},
+      ) {
+        try {
+          const eventData = {
+            type: type,
+            userId: userId,
+            userName: userName,
+            action: action,
+            targetId: targetId,
+            targetType: targetType,
+            details: action,
+            metadata: metadata,
+            timestamp: new Date().toISOString(),
+          };
+
+          // Najpierw spróbuj przez API
+          try {
+            const response = await fetch("/api/user-events", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(eventData),
+            });
+
+            if (response.ok) {
+              const result = await response.json();
+              console.log("User event logged via API:", result.data);
+              return;
+            }
+          } catch (apiError) {
+            console.warn(
+              "API logging failed, falling back to Firebase:",
+              apiError.message,
+            );
+          }
+
+          // Fallback do Firebase (zachowana kompatybilność wsteczna)
+          const { addDoc, collection } =
+            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+          await addDoc(collection(db, "activityLogs"), {
+            type: type,
+            userId: userId,
+            userName: userName,
+            details: action,
+            timestamp: new Date(),
+          });
+
+          console.log("User event logged via Firebase fallback:", eventData);
+        } catch (error) {
+          console.error("Błąd podczas logowania zdarzenia użytkownika:", error);
+        }
+      }
+
+      // Funkcje pomocnicze
+      function getDefaultAvatar(gender) {
+        if (gender === "female") {
+          return '<i class="fa-solid fa-user text-white"></i>';
+        } else {
+          return '<i class="fa-solid fa-user text-white"></i>';
+        }
+      }
+
+      function formatDate(timestamp) {
+        if (!timestamp) return "";
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
+        return date.toLocaleDateString("pl-PL");
+      }
+
+      // Ładowanie danych profilu
+      async function loadProfile() {
+        if (!currentUser) {
+          window.location.href = "./login.html";
+          return;
+        }
+
+        try {
+          const profileDoc = await getDoc(
+            doc(db, "userProfiles", currentUser.uid),
+          );
+
+          if (profileDoc.exists()) {
+            userProfile = profileDoc.data();
+
+            // Wypełnij nagłówek
+            document.getElementById("display-name").textContent =
+              userProfile.displayName;
+            document.getElementById("user-email").textContent =
+              userProfile.email;
+            document.getElementById("member-since").textContent =
+              `Członek od ${formatDate(userProfile.createdAt)}`;
+
+            // Ustaw avatar
+            const avatarDisplay = document.getElementById("avatar-display");
+            if (userProfile.avatar) {
+              avatarDisplay.innerHTML = `<img src="${userProfile.avatar}" alt="Avatar" class="avatar">`;
             } else {
-                // Użytkownik nie jest zalogowany - przekieruj do strony logowania
-                console.log('Użytkownik niezalogowany, przekierowanie do login.html');
-                window.location.href = 'login.html';
+              avatarDisplay.innerHTML = getDefaultAvatar(userProfile.gender);
             }
-        });
 
-        // Funkcja pobierania danych użytkownika z bazy
-        async function loadUserProfile(uid) {
-            try {
-                const profileDoc = await getDoc(doc(db, "userProfiles", uid));
-                if (profileDoc.exists()) {
-                    userProfile = profileDoc.data();
-                    console.log('Dane użytkownika załadowane:', userProfile);
+            // Odszyfruj dane wrażliwe
+            const decryptedProfile = {
+              ...userProfile,
+              phone: userProfile.phone ? atob(userProfile.phone) : "",
+              parcelLocker: userProfile.parcelLocker
+                ? atob(userProfile.parcelLocker)
+                : "",
+              address: {
+                street: userProfile.address?.street
+                  ? atob(userProfile.address.street)
+                  : "",
+                buildingNumber: userProfile.address?.buildingNumber
+                  ? atob(userProfile.address.buildingNumber)
+                  : "",
+                postalCode: userProfile.address?.postalCode
+                  ? atob(userProfile.address.postalCode)
+                  : "",
+                city: userProfile.address?.city
+                  ? atob(userProfile.address.city)
+                  : "",
+              },
+            };
 
-                    // Tutaj można ustawić kolory przycisków na podstawie danych użytkownika
-                    // Na razie pozostawiam to do implementacji gdy zrozumiem strukturę
-                } else {
-                    console.log('Profil użytkownika nie istnieje');
-                }
-            } catch (error) {
-                console.error('Błąd podczas ładowania profilu użytkownika:', error);
-            }
+            // Wypełnij formularz (odszyfrowanymi danymi)
+            document.getElementById("edit-display-name").value =
+              decryptedProfile.displayName || "";
+            document.getElementById("edit-email").value =
+              currentUser.email || "";
+            document.getElementById("edit-first-name").value =
+              decryptedProfile.firstName || "";
+            document.getElementById("edit-last-name").value =
+              decryptedProfile.lastName || "";
+            document.getElementById("edit-phone").value =
+              decryptedProfile.phone || "";
+            document.getElementById("edit-street").value =
+              decryptedProfile.address?.street || "";
+            document.getElementById("edit-building-number").value =
+              decryptedProfile.address?.buildingNumber || "";
+            document.getElementById("edit-postal-code").value =
+              decryptedProfile.address?.postalCode || "";
+            document.getElementById("edit-city").value =
+              decryptedProfile.address?.city || "";
+            document.getElementById("edit-parcel-locker").value =
+              decryptedProfile.parcelLocker || "";
+            document.getElementById("edit-newsletter").checked =
+              decryptedProfile.newsletter || false;
+
+            // Załaduj opinie użytkownika
+            loadUserReviews();
+          } else {
+            alert(
+              "Nie znaleziono danych profilu. Skontaktuj się z administratorem.",
+            );
+            logout();
+          }
+        } catch (error) {
+          console.error("Error loading profile:", error);
+          alert("Błąd podczas ładowania profilu.");
         }
+      }
 
-        // Funkcja logowania aktywności (zachowana dla kompatybilności wstecznej)
-        async function logActivity(type, userId, userName, details, timestamp = null) {
-            try {
-                const activityData = {
-                    type: type,
-                    userId: userId,
-                    userName: userName,
-                    details: details,
-                    timestamp: timestamp || new Date()
-                };
+      // Lista zabronionych nazw
+      const forbiddenNames = [
+        "admin",
+        "administrator",
+        "mod",
+        "moderator",
+        "moderacja",
+        "moderowanie",
+        "support",
+        "pomoc",
+        "help",
+        "owner",
+        "wlasciciel",
+        "boss",
+        "szef",
+        "system",
+        "bot",
+        "robot",
+        "strzelec",
+        "strzelca",
+        "platform",
+        "site",
+      ];
 
-                const { addDoc, collection } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-                await addDoc(collection(db, "activityLogs"), activityData);
+      // Funkcja sprawdzania dostępności nazwy użytkownika
+      async function checkDisplayNameAvailability(displayName, currentUserId) {
+        try {
+          // Sprawdź czy nazwa nie jest zabroniona
+          if (forbiddenNames.includes(displayName.toLowerCase())) {
+            return {
+              available: false,
+              reason: "Ta nazwa jest zarezerwowana",
+            };
+          }
 
-                console.log('Aktywność zalogowana:', activityData);
-            } catch (error) {
-                console.error('Błąd podczas logowania aktywności:', error);
+          // Sprawdź czy nazwa już istnieje w kolekcji displayNames
+          const displayNameDoc = await getDoc(
+            doc(db, "displayNames", displayName.toLowerCase()),
+          );
+
+          if (displayNameDoc.exists()) {
+            // Jeśli nazwa należy do aktualnego użytkownika, jest dostępna
+            if (displayNameDoc.data().userId === currentUserId) {
+              return { available: true };
             }
+            return {
+              available: false,
+              reason: "Ta nazwa jest już zajęta",
+            };
+          }
+
+          return { available: true };
+        } catch (error) {
+          console.error("Error checking display name:", error);
+          return {
+            available: false,
+            reason: "Błąd sprawdzania dostępności nazwy",
+          };
         }
+      }
 
-        // Nowa funkcja logowania zdarzeń użytkowników
-        async function logUserEvent(type, userId, userName, action, targetId = null, targetType = null, metadata = {}) {
-            try {
-                const eventData = {
-                    type: type,
-                    userId: userId,
-                    userName: userName,
-                    action: action,
-                    targetId: targetId,
-                    targetType: targetType,
-                    details: action,
-                    metadata: metadata,
-                    timestamp: new Date().toISOString()
-                };
+      // Zapisywanie zmian profilu
+      document
+        .getElementById("profile-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
 
-                // Najpierw spróbuj przez API
-                try {
-                    const response = await fetch('/api/user-events', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(eventData)
-                    });
+          if (!currentUser || !userProfile) return;
 
-                    if (response.ok) {
-                        const result = await response.json();
-                        console.log('User event logged via API:', result.data);
-                        return;
-                    }
-                } catch (apiError) {
-                    console.warn('API logging failed, falling back to Firebase:', apiError.message);
-                }
+          const saveBtn = e.target.querySelector('button[type="submit"]');
+          saveBtn.disabled = true;
+          saveBtn.innerHTML =
+            '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Zapisywanie...';
 
-                // Fallback do Firebase (zachowana kompatybilność wsteczna)
-                const { addDoc, collection } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-                await addDoc(collection(db, "activityLogs"), {
-                    type: type,
-                    userId: userId,
-                    userName: userName,
-                    details: action,
-                    timestamp: new Date()
+          try {
+            // Zaszyfruj wrażliwe dane przed zapisaniem
+            // NIE zapisujemy: displayName, firstName, lastName, email - są zablokowane
+            const updatedProfile = {
+              phone: btoa(document.getElementById("edit-phone").value.trim()),
+              address: {
+                street: btoa(
+                  document.getElementById("edit-street").value.trim(),
+                ),
+                buildingNumber: btoa(
+                  document.getElementById("edit-building-number").value.trim(),
+                ),
+                postalCode: btoa(
+                  document.getElementById("edit-postal-code").value.trim(),
+                ),
+                city: btoa(document.getElementById("edit-city").value.trim()),
+              },
+              parcelLocker: btoa(
+                document.getElementById("edit-parcel-locker").value.trim(),
+              ),
+              newsletter: document.getElementById("edit-newsletter").checked,
+              // Aktualizuj mailing list jeśli zmieniła się zgoda na newsletter
+              newsletterChanged:
+                document.getElementById("edit-newsletter").checked !==
+                userProfile.newsletter,
+            };
+
+            await updateDoc(
+              doc(db, "userProfiles", currentUser.uid),
+              updatedProfile,
+            );
+
+            // Aktualizuj mailing list jeśli zmieniła się zgoda na newsletter
+            if (updatedProfile.newsletterChanged !== undefined) {
+              if (updatedProfile.newsletter) {
+                // Dodaj do mailing list
+                await setDoc(doc(db, "mailingList", currentUser.email), {
+                  email: currentUser.email,
+                  subscribedAt: new Date(),
+                  active: true,
+                  source: "profile_update",
                 });
-
-                console.log('User event logged via Firebase fallback:', eventData);
-            } catch (error) {
-                console.error('Błąd podczas logowania zdarzenia użytkownika:', error);
-            }
-        }
-
-        // Funkcje pomocnicze
-        function getDefaultAvatar(gender) {
-            if (gender === 'female') {
-                return '<i class="fa-solid fa-user text-white"></i>';
-            } else {
-                return '<i class="fa-solid fa-user text-white"></i>';
-            }
-        }
-
-        function formatDate(timestamp) {
-            if (!timestamp) return '';
-            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-            return date.toLocaleDateString('pl-PL');
-        }
-
-        // Ładowanie danych profilu
-        async function loadProfile() {
-            if (!currentUser) {
-                window.location.href = './login.html';
-                return;
-            }
-
-            try {
-                const profileDoc = await getDoc(doc(db, "userProfiles", currentUser.uid));
-
-                if (profileDoc.exists()) {
-                    userProfile = profileDoc.data();
-
-                    // Wypełnij nagłówek
-                    document.getElementById('display-name').textContent = userProfile.displayName;
-                    document.getElementById('user-email').textContent = userProfile.email;
-                    document.getElementById('member-since').textContent = `Członek od ${formatDate(userProfile.createdAt)}`;
-
-                    // Ustaw avatar
-                    const avatarDisplay = document.getElementById('avatar-display');
-                    if (userProfile.avatar) {
-                        avatarDisplay.innerHTML = `<img src="${userProfile.avatar}" alt="Avatar" class="avatar">`;
-                    } else {
-                        avatarDisplay.innerHTML = getDefaultAvatar(userProfile.gender);
-                    }
-
-                    // Odszyfruj dane wrażliwe
-                    const decryptedProfile = {
-                        ...userProfile,
-                        phone: userProfile.phone ? atob(userProfile.phone) : '',
-                        parcelLocker: userProfile.parcelLocker ? atob(userProfile.parcelLocker) : '',
-                        address: {
-                            street: userProfile.address?.street ? atob(userProfile.address.street) : '',
-                            buildingNumber: userProfile.address?.buildingNumber ? atob(userProfile.address.buildingNumber) : '',
-                            postalCode: userProfile.address?.postalCode ? atob(userProfile.address.postalCode) : '',
-                            city: userProfile.address?.city ? atob(userProfile.address.city) : ''
-                        }
-                    };
-
-                    // Wypełnij formularz (odszyfrowanymi danymi)
-                    document.getElementById('edit-display-name').value = decryptedProfile.displayName || '';
-                    document.getElementById('edit-email').value = currentUser.email || '';
-                    document.getElementById('edit-first-name').value = decryptedProfile.firstName || '';
-                    document.getElementById('edit-last-name').value = decryptedProfile.lastName || '';
-                    document.getElementById('edit-phone').value = decryptedProfile.phone || '';
-                    document.getElementById('edit-street').value = decryptedProfile.address?.street || '';
-                    document.getElementById('edit-building-number').value = decryptedProfile.address?.buildingNumber || '';
-                    document.getElementById('edit-postal-code').value = decryptedProfile.address?.postalCode || '';
-                    document.getElementById('edit-city').value = decryptedProfile.address?.city || '';
-                    document.getElementById('edit-parcel-locker').value = decryptedProfile.parcelLocker || '';
-                    document.getElementById('edit-newsletter').checked = decryptedProfile.newsletter || false;
-
-                    // Załaduj opinie użytkownika
-                    loadUserReviews();
-
-                } else {
-                    alert('Nie znaleziono danych profilu. Skontaktuj się z administratorem.');
-                    logout();
-                }
-            } catch (error) {
-                console.error('Error loading profile:', error);
-                alert('Błąd podczas ładowania profilu.');
-            }
-        }
-
-        // Lista zabronionych nazw
-        const forbiddenNames = [
-            "admin", "administrator", "mod", "moderator", "moderacja", "moderowanie",
-            "support", "pomoc", "help", "owner", "wlasciciel", "boss", "szef",
-            "system", "bot", "robot", "strzelec", "strzelca", "platform", "site"
-        ];
-
-        // Funkcja sprawdzania dostępności nazwy użytkownika
-        async function checkDisplayNameAvailability(displayName, currentUserId) {
-            try {
-                // Sprawdź czy nazwa nie jest zabroniona
-                if (forbiddenNames.includes(displayName.toLowerCase())) {
-                    return {
-                        available: false,
-                        reason: "Ta nazwa jest zarezerwowana"
-                    };
-                }
-
-                // Sprawdź czy nazwa już istnieje w kolekcji displayNames
-                const displayNameDoc = await getDoc(doc(db, "displayNames", displayName.toLowerCase()));
-
-                if (displayNameDoc.exists()) {
-                    // Jeśli nazwa należy do aktualnego użytkownika, jest dostępna
-                    if (displayNameDoc.data().userId === currentUserId) {
-                        return { available: true };
-                    }
-                    return {
-                        available: false,
-                        reason: "Ta nazwa jest już zajęta"
-                    };
-                }
-
-                return { available: true };
-            } catch (error) {
-                console.error("Error checking display name:", error);
-                return {
-                    available: false,
-                    reason: "Błąd sprawdzania dostępności nazwy"
-                };
-            }
-        }
-
-        // Zapisywanie zmian profilu
-        document.getElementById('profile-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            if (!currentUser || !userProfile) return;
-
-            const saveBtn = e.target.querySelector('button[type="submit"]');
-            saveBtn.disabled = true;
-            saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Zapisywanie...';
-
-            try {
-                // Zaszyfruj wrażliwe dane przed zapisaniem
-                // NIE zapisujemy: displayName, firstName, lastName, email - są zablokowane
-                const updatedProfile = {
-                    phone: btoa(document.getElementById('edit-phone').value.trim()),
-                    address: {
-                        street: btoa(document.getElementById('edit-street').value.trim()),
-                        buildingNumber: btoa(document.getElementById('edit-building-number').value.trim()),
-                        postalCode: btoa(document.getElementById('edit-postal-code').value.trim()),
-                        city: btoa(document.getElementById('edit-city').value.trim())
-                    },
-                    parcelLocker: btoa(document.getElementById('edit-parcel-locker').value.trim()),
-                    newsletter: document.getElementById('edit-newsletter').checked,
-                    // Aktualizuj mailing list jeśli zmieniła się zgoda na newsletter
-                    newsletterChanged: document.getElementById('edit-newsletter').checked !== userProfile.newsletter
-                };
-
-                await updateDoc(doc(db, "userProfiles", currentUser.uid), updatedProfile);
-
-                // Aktualizuj mailing list jeśli zmieniła się zgoda na newsletter
-                if (updatedProfile.newsletterChanged !== undefined) {
-                    if (updatedProfile.newsletter) {
-                        // Dodaj do mailing list
-                        await setDoc(doc(db, "mailingList", currentUser.email), {
-                            email: currentUser.email,
-                            subscribedAt: new Date(),
-                            active: true,
-                            source: 'profile_update'
-                        });
-                    } else {
-                        // Usuń z mailing list
-                        await deleteDoc(doc(db, "mailingList", currentUser.email));
-                    }
-                }
-
-                alert('Profil został zaktualizowany!');
-                userProfile = { ...userProfile, ...updatedProfile };
-                delete userProfile.newsletterChanged; // Usuń tymczasowe pole
-                loadProfile(); // Odśwież wyświetlane dane
-
-            } catch (error) {
-                console.error('Error updating profile:', error);
-                alert('Błąd podczas aktualizacji profilu.');
-            } finally {
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = '<i class="fa-solid fa-save mr-2"></i>Zapisz zmiany';
-            }
-        });
-
-        // Zmiana hasła
-        window.changePassword = async () => {
-            const newPassword = prompt('Wprowadź nowe hasło (minimum 8 znaków):');
-            if (!newPassword || newPassword.length < 8) {
-                alert('Hasło musi mieć co najmniej 8 znaków.');
-                return;
-            }
-
-            const confirmPassword = prompt('Potwierdź nowe hasło:');
-            if (newPassword !== confirmPassword) {
-                alert('Hasła nie są identyczne.');
-                return;
-            }
-
-            try {
-                await updatePassword(currentUser, newPassword);
-                alert('Hasło zostało zmienione!');
-            } catch (error) {
-                console.error('Error changing password:', error);
-
-                if (error.code === 'auth/requires-recent-login') {
-                    alert('Aby zmienić hasło, musisz się ponownie zalogować.');
-                    logout();
-                } else {
-                    alert('Błąd podczas zmiany hasła.');
-                }
-            }
-        };
-
-        // Usuwanie konta
-        window.deleteAccount = async () => {
-            if (!currentUser) return;
-
-            // Potwierdzenie usunięcia konta
-            const confirmMessage = `Czy na pewno chcesz usunąć swoje konto?\n\nTa operacja jest nieodwracalna i spowoduje:\n- Usunięcie wszystkich danych profilu\n- Usunięcie konta użytkownika\n- Utratę dostępu do wszystkich funkcji\n\nAby potwierdzić, wpisz "USUŃ" w poniższym oknie:`;
-            
-            const confirmation = prompt(confirmMessage);
-            if (confirmation !== 'USUŃ') {
-                alert('Anulowano usuwanie konta.');
-                return;
-            }
-
-            // Ostateczne potwierdzenie
-            const finalConfirm = confirm('To jest ostatnie ostrzeżenie. Czy na pewno chcesz usunąć konto?');
-            if (!finalConfirm) {
-                alert('Anulowano usuwanie konta.');
-                return;
-            }
-
-            try {
-                // Usuń dane profilu z Firestore
-                await deleteDoc(doc(db, "userProfiles", currentUser.uid));
-                
-                // Usuń nazwę użytkownika z kolekcji displayNames
-                if (userProfile && userProfile.displayName) {
-                    try {
-                        await deleteDoc(doc(db, "displayNames", userProfile.displayName.toLowerCase()));
-                    } catch (error) {
-                        console.error("Error deleting display name:", error);
-                    }
-                }
-
+              } else {
                 // Usuń z mailing list
-                try {
-                    await deleteDoc(doc(db, "mailingList", currentUser.email));
-                } catch (error) {
-                    console.error("Error deleting from mailing list:", error);
-                }
-
-                // Usuń konto użytkownika z Firebase Auth
-                // Uwaga: deleteUser wymaga reautentykacji, więc najpierw wylogujmy użytkownika
-                // i przekierujmy na stronę logowania z informacją o konieczności kontaktu z administratorem
-                await signOut(auth);
-
-                // Zaloguj zdarzenie usunięcia konta
-                await logUserEvent(
-                    'ACCOUNT_DELETION',
-                    currentUser.uid,
-                    userProfile?.displayName || currentUser.email,
-                    'Użytkownik usunął swoje konto',
-                    null,
-                    null,
-                    {
-                        email: currentUser.email,
-                        deletedAt: new Date().toISOString()
-                    }
-                );
-
-                // Wyczyść localStorage
-                localStorage.clear();
-
-                alert('Twoje konto zostało usunięte. Zostaniesz przekierowany na stronę główną.');
-                window.location.href = 'https://strzelca.pl/index.html';
-
-            } catch (error) {
-                console.error('Error deleting account:', error);
-                alert('Wystąpił błąd podczas usuwania konta. Skontaktuj się z administratorem.');
-            }
-        };
-
-        // Wylogowanie
-        window.logout = async () => {
-            try {
-                await signOut(auth);
-                // Wyczyść ewentualne dane w localStorage (preferencje kolorów itp.)
-                localStorage.clear();
-                window.location.href = 'https://strzelca.pl/index.html';
-            } catch (error) {
-                console.error('Error signing out:', error);
-            }
-        };
-
-        // Obsługa zmiany avatara
-        document.getElementById('avatar-input').addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            // Sprawdź rozmiar pliku (max 2MB)
-            if (file.size > 2 * 1024 * 1024) {
-                alert('Plik jest zbyt duży. Maksymalny rozmiar to 2MB.');
-                return;
+                await deleteDoc(doc(db, "mailingList", currentUser.email));
+              }
             }
 
-            // Sprawdź typ pliku
-            if (!file.type.startsWith('image/')) {
-                alert('Wybierz plik graficzny.');
-                return;
-            }
-
-            try {
-                // Tutaj można dodać kompresję i upload do Firebase Storage
-                // Na razie tylko pokazujemy podgląd
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    document.getElementById('avatar-display').innerHTML =
-                        `<img src="${e.target.result}" alt="Avatar" class="avatar">`;
-                };
-                reader.readAsDataURL(file);
-
-                alert('Funkcja uploadu avatara zostanie zaimplementowana wkrótce.');
-
-            } catch (error) {
-                console.error('Error uploading avatar:', error);
-                alert('Błąd podczas uploadu avatara.');
-            }
+            alert("Profil został zaktualizowany!");
+            userProfile = { ...userProfile, ...updatedProfile };
+            delete userProfile.newsletterChanged; // Usuń tymczasowe pole
+            loadProfile(); // Odśwież wyświetlane dane
+          } catch (error) {
+            console.error("Error updating profile:", error);
+            alert("Błąd podczas aktualizacji profilu.");
+          } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML =
+              '<i class="fa-solid fa-save mr-2"></i>Zapisz zmiany';
+          }
         });
 
-        // ===== FUNKCJE DO OBSŁUGI OPINII =====
-
-        // Ładowanie opinii użytkownika
-        async function loadUserReviews() {
-            try {
-                const reviewsQuery = query(
-                    collection(db, "userReviews"),
-                    where("ratedId", "==", currentUser.uid),
-                    where("status", "==", "approved"),
-                    orderBy("timestamp", "desc")
-                );
-
-                const reviewsSnapshot = await getDocs(reviewsQuery);
-                const reviews = reviewsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-                displayReviews(reviews);
-                updateAverageRating(reviews);
-
-            } catch (error) {
-                console.error('Błąd ładowania opinii:', error);
-            }
+      // Zmiana hasła
+      window.changePassword = async () => {
+        const newPassword = prompt("Wprowadź nowe hasło (minimum 8 znaków):");
+        if (!newPassword || newPassword.length < 8) {
+          alert("Hasło musi mieć co najmniej 8 znaków.");
+          return;
         }
 
-        // Wyświetlanie opinii
-        function displayReviews(reviews) {
-            const reviewsList = document.getElementById('reviews-list');
+        const confirmPassword = prompt("Potwierdź nowe hasło:");
+        if (newPassword !== confirmPassword) {
+          alert("Hasła nie są identyczne.");
+          return;
+        }
 
-            if (reviews.length === 0) {
-                reviewsList.innerHTML = '<p class="text-zinc-400 text-center py-8">Brak opinii użytkowników.</p>';
-                return;
+        try {
+          await updatePassword(currentUser, newPassword);
+          alert("Hasło zostało zmienione!");
+        } catch (error) {
+          console.error("Error changing password:", error);
+
+          if (error.code === "auth/requires-recent-login") {
+            alert("Aby zmienić hasło, musisz się ponownie zalogować.");
+            logout();
+          } else {
+            alert("Błąd podczas zmiany hasła.");
+          }
+        }
+      };
+
+      // Usuwanie konta
+      window.deleteAccount = async () => {
+        if (!currentUser) return;
+
+        // Potwierdzenie usunięcia konta
+        const confirmMessage = `Czy na pewno chcesz usunąć swoje konto?\n\nTa operacja jest nieodwracalna i spowoduje:\n- Usunięcie wszystkich danych profilu\n- Usunięcie konta użytkownika\n- Utratę dostępu do wszystkich funkcji\n\nAby potwierdzić, wpisz "USUŃ" w poniższym oknie:`;
+
+        const confirmation = prompt(confirmMessage);
+        if (confirmation !== "USUŃ") {
+          alert("Anulowano usuwanie konta.");
+          return;
+        }
+
+        // Ostateczne potwierdzenie
+        const finalConfirm = confirm(
+          "To jest ostatnie ostrzeżenie. Czy na pewno chcesz usunąć konto?",
+        );
+        if (!finalConfirm) {
+          alert("Anulowano usuwanie konta.");
+          return;
+        }
+
+        try {
+          // Usuń dane profilu z Firestore
+          await deleteDoc(doc(db, "userProfiles", currentUser.uid));
+
+          // Usuń nazwę użytkownika z kolekcji displayNames
+          if (userProfile && userProfile.displayName) {
+            try {
+              await deleteDoc(
+                doc(db, "displayNames", userProfile.displayName.toLowerCase()),
+              );
+            } catch (error) {
+              console.error("Error deleting display name:", error);
             }
+          }
 
-            reviewsList.innerHTML = reviews.map(review => `
+          // Usuń z mailing list
+          try {
+            await deleteDoc(doc(db, "mailingList", currentUser.email));
+          } catch (error) {
+            console.error("Error deleting from mailing list:", error);
+          }
+
+          // Usuń konto użytkownika z Firebase Auth
+          // Uwaga: deleteUser wymaga reautentykacji, więc najpierw wylogujmy użytkownika
+          // i przekierujmy na stronę logowania z informacją o konieczności kontaktu z administratorem
+          await signOut(auth);
+
+          // Zaloguj zdarzenie usunięcia konta
+          await logUserEvent(
+            "ACCOUNT_DELETION",
+            currentUser.uid,
+            userProfile?.displayName || currentUser.email,
+            "Użytkownik usunął swoje konto",
+            null,
+            null,
+            {
+              email: currentUser.email,
+              deletedAt: new Date().toISOString(),
+            },
+          );
+
+          // Wyczyść localStorage
+          localStorage.clear();
+
+          alert(
+            "Twoje konto zostało usunięte. Zostaniesz przekierowany na stronę główną.",
+          );
+          window.location.href = "https://strzelca.pl/index.html";
+        } catch (error) {
+          console.error("Error deleting account:", error);
+          alert(
+            "Wystąpił błąd podczas usuwania konta. Skontaktuj się z administratorem.",
+          );
+        }
+      };
+
+      // Wylogowanie
+      window.logout = async () => {
+        try {
+          await signOut(auth);
+          // Wyczyść ewentualne dane w localStorage (preferencje kolorów itp.)
+          localStorage.clear();
+          window.location.href = "https://strzelca.pl/index.html";
+        } catch (error) {
+          console.error("Error signing out:", error);
+        }
+      };
+
+      // Obsługa zmiany avatara
+      document
+        .getElementById("avatar-input")
+        .addEventListener("change", async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          // Sprawdź rozmiar pliku (max 2MB)
+          if (file.size > 2 * 1024 * 1024) {
+            alert("Plik jest zbyt duży. Maksymalny rozmiar to 2MB.");
+            return;
+          }
+
+          // Sprawdź typ pliku
+          if (!file.type.startsWith("image/")) {
+            alert("Wybierz plik graficzny.");
+            return;
+          }
+
+          try {
+            // Tutaj można dodać kompresję i upload do Firebase Storage
+            // Na razie tylko pokazujemy podgląd
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              document.getElementById("avatar-display").innerHTML =
+                `<img src="${e.target.result}" alt="Avatar" class="avatar">`;
+            };
+            reader.readAsDataURL(file);
+
+            alert("Funkcja uploadu avatara zostanie zaimplementowana wkrótce.");
+          } catch (error) {
+            console.error("Error uploading avatar:", error);
+            alert("Błąd podczas uploadu avatara.");
+          }
+        });
+
+      // ===== FUNKCJE DO OBSŁUGI OPINII =====
+
+      // Ładowanie opinii użytkownika
+      async function loadUserReviews() {
+        try {
+          const reviewsQuery = query(
+            collection(db, "userReviews"),
+            where("ratedId", "==", currentUser.uid),
+            where("status", "==", "approved"),
+            orderBy("timestamp", "desc"),
+          );
+
+          const reviewsSnapshot = await getDocs(reviewsQuery);
+          const reviews = reviewsSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+
+          displayReviews(reviews);
+          updateAverageRating(reviews);
+        } catch (error) {
+          console.error("Błąd ładowania opinii:", error);
+        }
+      }
+
+      // Wyświetlanie opinii
+      function displayReviews(reviews) {
+        const reviewsList = document.getElementById("reviews-list");
+
+        if (reviews.length === 0) {
+          reviewsList.innerHTML =
+            '<p class="text-zinc-400 text-center py-8">Brak opinii użytkowników.</p>';
+          return;
+        }
+
+        reviewsList.innerHTML = reviews
+          .map(
+            (review) => `
                 <div class="review-card">
                     <div class="review-header">
-                        <span class="review-author">${review.raterName || 'Anonimowy użytkownik'}</span>
+                        <span class="review-author">${review.raterName || "Anonimowy użytkownik"}</span>
                         <span class="review-date">${formatDate(review.timestamp)}</span>
                     </div>
                     <div class="review-rating">
@@ -952,218 +1278,233 @@
                     </div>
                     <div class="review-comment">${review.comment}</div>
                 </div>
-            `).join('');
+            `,
+          )
+          .join("");
+      }
+
+      // Generowanie gwiazdek dla opinii
+      function generateStars(rating) {
+        let stars = "";
+        for (let i = 1; i <= 5; i++) {
+          stars += `<i class="fa-solid fa-star ${i <= rating ? "text-yellow-400" : "text-zinc-600"}"></i>`;
+        }
+        return stars;
+      }
+
+      // Aktualizacja średniej oceny
+      function updateAverageRating(reviews) {
+        const averageRating = document.getElementById("average-rating");
+        const averageStars = document.getElementById("average-stars");
+        const reviewsCount = document.getElementById("reviews-count");
+
+        if (reviews.length === 0) {
+          averageRating.textContent = "0.0";
+          reviewsCount.textContent = "(0 opinii)";
+          return;
         }
 
-        // Generowanie gwiazdek dla opinii
-        function generateStars(rating) {
-            let stars = '';
-            for (let i = 1; i <= 5; i++) {
-                stars += `<i class="fa-solid fa-star ${i <= rating ? 'text-yellow-400' : 'text-zinc-600'}"></i>`;
-            }
-            return stars;
-        }
+        const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
+        const avg = (sum / reviews.length).toFixed(1);
 
-        // Aktualizacja średniej oceny
-        function updateAverageRating(reviews) {
-            const averageRating = document.getElementById('average-rating');
-            const averageStars = document.getElementById('average-stars');
-            const reviewsCount = document.getElementById('reviews-count');
+        averageRating.textContent = avg;
+        reviewsCount.textContent = `(${reviews.length} opinii)`;
 
-            if (reviews.length === 0) {
-                averageRating.textContent = '0.0';
-                reviewsCount.textContent = '(0 opinii)';
-                return;
-            }
+        // Aktualizuj wizualne gwiazdki
+        const starElements = averageStars.querySelectorAll(".fa-star");
+        const fullStars = Math.floor(avg);
 
-            const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
-            const avg = (sum / reviews.length).toFixed(1);
-
-            averageRating.textContent = avg;
-            reviewsCount.textContent = `(${reviews.length} opinii)`;
-
-            // Aktualizuj wizualne gwiazdki
-            const starElements = averageStars.querySelectorAll('.fa-star');
-            const fullStars = Math.floor(avg);
-
-            starElements.forEach((star, index) => {
-                if (index < fullStars) {
-                    star.className = 'fa-solid fa-star text-yellow-400';
-                } else if (index === fullStars && avg % 1 >= 0.5) {
-                    star.className = 'fa-solid fa-star-half-alt text-yellow-400';
-                } else {
-                    star.className = 'fa-solid fa-star text-zinc-600';
-                }
-            });
-        }
-
-        // Ładowanie listy użytkowników do wyboru
-        async function loadUsersList() {
-            try {
-                const usersQuery = query(collection(db, "userProfiles"));
-                const usersSnapshot = await getDocs(usersQuery);
-
-                const select = document.getElementById('rated-user-select');
-                const currentOptions = '<option value="">Wybierz użytkownika...</option>';
-
-                const users = usersSnapshot.docs
-                    .map(doc => ({ id: doc.id, ...doc.data() }))
-                    .filter(user => user.id !== currentUser.uid && user.role !== 'admin') // Wyklucz siebie i adminów
-                    .map(user => `<option value="${user.id}">${user.displayName} (${user.email})</option>`)
-                    .join('');
-
-                select.innerHTML = currentOptions + users;
-
-            } catch (error) {
-                console.error('Błąd ładowania użytkowników:', error);
-            }
-        }
-
-        // Obsługa gwiazdek w formularzu
-        function initializeStarRating() {
-            const stars = document.querySelectorAll('.rating-input .star');
-            const ratingInput = document.getElementById('rating-value');
-
-            stars.forEach(star => {
-                star.addEventListener('click', () => {
-                    const rating = parseInt(star.dataset.rating);
-                    ratingInput.value = rating;
-
-                    stars.forEach((s, index) => {
-                        if (index < rating) {
-                            s.classList.add('active');
-                            s.classList.remove('inactive');
-                        } else {
-                            s.classList.remove('active');
-                            s.classList.add('inactive');
-                        }
-                    });
-                });
-            });
-        }
-
-        // Otwórz modal dodawania opinii
-        function openReviewModal() {
-            document.getElementById('add-review-modal').classList.add('show');
-            loadUsersList();
-            resetReviewForm();
-        }
-
-        // Zamknij modal
-        function closeReviewModal() {
-            document.getElementById('add-review-modal').classList.remove('show');
-            resetReviewForm();
-        }
-
-        // Reset formularza opinii
-        function resetReviewForm() {
-            document.getElementById('review-form').reset();
-            document.getElementById('rating-value').value = '0';
-            document.querySelectorAll('.rating-input .star').forEach(star => {
-                star.classList.remove('active', 'inactive');
-            });
-        }
-
-        // Dodawanie nowej opinii
-        async function submitReview(event) {
-            event.preventDefault();
-
-            const ratedUserId = document.getElementById('rated-user-select').value;
-            const rating = parseInt(document.getElementById('rating-value').value);
-            const comment = document.getElementById('review-comment').value.trim();
-
-            if (!ratedUserId) {
-                alert('Wybierz użytkownika do oceny.');
-                return;
-            }
-
-            if (rating === 0) {
-                alert('Wybierz ocenę (co najmniej 1 gwiazdka).');
-                return;
-            }
-
-            if (comment.length < 10) {
-                alert('Opis opinii musi mieć co najmniej 10 znaków.');
-                return;
-            }
-
-            try {
-                // Pobierz dane ocenianego użytkownika
-                const ratedUserDoc = await getDoc(doc(db, "userProfiles", ratedUserId));
-                const ratedUser = ratedUserDoc.data();
-
-                // Dodaj opinię do bazy danych
-                await addDoc(collection(db, "userReviews"), {
-                    raterId: currentUser.uid,
-                    raterName: userProfile.displayName,
-                    ratedId: ratedUserId,
-                    ratedName: ratedUser.displayName,
-                    rating: rating,
-                    comment: comment,
-                    timestamp: new Date(),
-                    status: 'approved' // W wersji podstawowej wszystkie opinie są automatycznie zatwierdzane
-                });
-
-                // Zaloguj zdarzenie użytkownika
-                await logUserEvent(
-                    'USER-REVIEW',
-                    currentUser.uid,
-                    userProfile.displayName,
-                    `Ocena użytkownika ${ratedUser.displayName}: ${rating} gwiazdek`,
-                    ratedUser.uid,
-                    'user',
-                    {
-                        rating: rating,
-                        comment: comment.substring(0, 100) + (comment.length > 100 ? '...' : ''),
-                        targetUserName: ratedUser.displayName
-                    }
-                );
-
-                alert('Opinia została dodana pomyślnie!');
-                closeReviewModal();
-
-                // Odśwież opinie jeśli jesteśmy na profilu ocenianego użytkownika
-                if (ratedUserId === currentUser.uid) {
-                    loadUserReviews();
-                }
-
-            } catch (error) {
-                console.error('Błąd dodawania opinii:', error);
-                alert('Wystąpił błąd podczas dodawania opinii. Spróbuj ponownie.');
-            }
-        }
-
-        // Inicjalizacja obsługi zdarzeń
-        function initializeReviewEvents() {
-            // Przycisk dodawania opinii
-            document.getElementById('add-review-btn').addEventListener('click', openReviewModal);
-
-            // Formularz opinii
-            document.getElementById('review-form').addEventListener('submit', submitReview);
-
-            // Inicjalizacja gwiazdek
-            initializeStarRating();
-
-            // Zamykanie modalu przy kliknięciu poza nim
-            document.getElementById('add-review-modal').addEventListener('click', (e) => {
-                if (e.target.id === 'add-review-modal') {
-                    closeReviewModal();
-                }
-            });
-        }
-
-        // ===== KONIEC FUNKCJI OPINII =====
-
-        // Sprawdź stan autoryzacji
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                loadProfile();
-                initializeReviewEvents();
-            } else {
-                window.location.href = './login.html';
-            }
+        starElements.forEach((star, index) => {
+          if (index < fullStars) {
+            star.className = "fa-solid fa-star text-yellow-400";
+          } else if (index === fullStars && avg % 1 >= 0.5) {
+            star.className = "fa-solid fa-star-half-alt text-yellow-400";
+          } else {
+            star.className = "fa-solid fa-star text-zinc-600";
+          }
         });
+      }
+
+      // Ładowanie listy użytkowników do wyboru
+      async function loadUsersList() {
+        try {
+          const usersQuery = query(collection(db, "userProfiles"));
+          const usersSnapshot = await getDocs(usersQuery);
+
+          const select = document.getElementById("rated-user-select");
+          const currentOptions =
+            '<option value="">Wybierz użytkownika...</option>';
+
+          const users = usersSnapshot.docs
+            .map((doc) => ({ id: doc.id, ...doc.data() }))
+            .filter(
+              (user) => user.id !== currentUser.uid && user.role !== "admin",
+            ) // Wyklucz siebie i adminów
+            .map(
+              (user) =>
+                `<option value="${user.id}">${user.displayName} (${user.email})</option>`,
+            )
+            .join("");
+
+          select.innerHTML = currentOptions + users;
+        } catch (error) {
+          console.error("Błąd ładowania użytkowników:", error);
+        }
+      }
+
+      // Obsługa gwiazdek w formularzu
+      function initializeStarRating() {
+        const stars = document.querySelectorAll(".rating-input .star");
+        const ratingInput = document.getElementById("rating-value");
+
+        stars.forEach((star) => {
+          star.addEventListener("click", () => {
+            const rating = parseInt(star.dataset.rating);
+            ratingInput.value = rating;
+
+            stars.forEach((s, index) => {
+              if (index < rating) {
+                s.classList.add("active");
+                s.classList.remove("inactive");
+              } else {
+                s.classList.remove("active");
+                s.classList.add("inactive");
+              }
+            });
+          });
+        });
+      }
+
+      // Otwórz modal dodawania opinii
+      function openReviewModal() {
+        document.getElementById("add-review-modal").classList.add("show");
+        loadUsersList();
+        resetReviewForm();
+      }
+
+      // Zamknij modal
+      function closeReviewModal() {
+        document.getElementById("add-review-modal").classList.remove("show");
+        resetReviewForm();
+      }
+
+      // Reset formularza opinii
+      function resetReviewForm() {
+        document.getElementById("review-form").reset();
+        document.getElementById("rating-value").value = "0";
+        document.querySelectorAll(".rating-input .star").forEach((star) => {
+          star.classList.remove("active", "inactive");
+        });
+      }
+
+      // Dodawanie nowej opinii
+      async function submitReview(event) {
+        event.preventDefault();
+
+        const ratedUserId = document.getElementById("rated-user-select").value;
+        const rating = parseInt(document.getElementById("rating-value").value);
+        const comment = document.getElementById("review-comment").value.trim();
+
+        if (!ratedUserId) {
+          alert("Wybierz użytkownika do oceny.");
+          return;
+        }
+
+        if (rating === 0) {
+          alert("Wybierz ocenę (co najmniej 1 gwiazdka).");
+          return;
+        }
+
+        if (comment.length < 10) {
+          alert("Opis opinii musi mieć co najmniej 10 znaków.");
+          return;
+        }
+
+        try {
+          // Pobierz dane ocenianego użytkownika
+          const ratedUserDoc = await getDoc(
+            doc(db, "userProfiles", ratedUserId),
+          );
+          const ratedUser = ratedUserDoc.data();
+
+          // Dodaj opinię do bazy danych
+          await addDoc(collection(db, "userReviews"), {
+            raterId: currentUser.uid,
+            raterName: userProfile.displayName,
+            ratedId: ratedUserId,
+            ratedName: ratedUser.displayName,
+            rating: rating,
+            comment: comment,
+            timestamp: new Date(),
+            status: "approved", // W wersji podstawowej wszystkie opinie są automatycznie zatwierdzane
+          });
+
+          // Zaloguj zdarzenie użytkownika
+          await logUserEvent(
+            "USER-REVIEW",
+            currentUser.uid,
+            userProfile.displayName,
+            `Ocena użytkownika ${ratedUser.displayName}: ${rating} gwiazdek`,
+            ratedUser.uid,
+            "user",
+            {
+              rating: rating,
+              comment:
+                comment.substring(0, 100) + (comment.length > 100 ? "..." : ""),
+              targetUserName: ratedUser.displayName,
+            },
+          );
+
+          alert("Opinia została dodana pomyślnie!");
+          closeReviewModal();
+
+          // Odśwież opinie jeśli jesteśmy na profilu ocenianego użytkownika
+          if (ratedUserId === currentUser.uid) {
+            loadUserReviews();
+          }
+        } catch (error) {
+          console.error("Błąd dodawania opinii:", error);
+          alert("Wystąpił błąd podczas dodawania opinii. Spróbuj ponownie.");
+        }
+      }
+
+      // Inicjalizacja obsługi zdarzeń
+      function initializeReviewEvents() {
+        // Przycisk dodawania opinii
+        document
+          .getElementById("add-review-btn")
+          .addEventListener("click", openReviewModal);
+
+        // Formularz opinii
+        document
+          .getElementById("review-form")
+          .addEventListener("submit", submitReview);
+
+        // Inicjalizacja gwiazdek
+        initializeStarRating();
+
+        // Zamykanie modalu przy kliknięciu poza nim
+        document
+          .getElementById("add-review-modal")
+          .addEventListener("click", (e) => {
+            if (e.target.id === "add-review-modal") {
+              closeReviewModal();
+            }
+          });
+      }
+
+      // ===== KONIEC FUNKCJI OPINII =====
+
+      // Sprawdź stan autoryzacji
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          currentUser = user;
+          loadProfile();
+          initializeReviewEvents();
+        } else {
+          window.location.href = "./login.html";
+        }
+      });
     </script>
-</body>
+  </body>
 </html>

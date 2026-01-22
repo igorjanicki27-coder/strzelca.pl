@@ -165,10 +165,10 @@
           <!-- Avatar - widoczny zawsze -->
           <button
             id="user-avatar-button"
-            class="w-12 h-12 rounded-full bg-coyote flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-80 transition shadow-lg"
+            class="w-12 h-12 rounded-full bg-coyote flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-80 transition shadow-lg overflow-hidden"
             onclick="toggleUserMenu()"
           >
-            <div id="user-avatar">
+            <div id="user-avatar" class="w-full h-full flex items-center justify-center">
               <i class="fa-solid fa-user"></i>
             </div>
           </button>
@@ -189,12 +189,6 @@
               >
                 <i class="fa-solid fa-user mr-2"></i>Mój profil
               </a>
-              <button
-                onclick="logout()"
-                class="block w-full text-left text-zinc-300 hover:text-red-400 transition text-sm"
-              >
-                <i class="fa-solid fa-sign-out-alt mr-2"></i>Wyloguj się
-              </button>
             </div>
           </div>
         </div>
@@ -470,8 +464,13 @@
         updateUserInterface(user);
       });
 
+      // Funkcja pomocnicza do generowania domyślnego awatara
+      function getDefaultAvatar(gender) {
+        return '<i class="fa-solid fa-user text-white"></i>';
+      }
+
       // Funkcja aktualizacji interfejsu użytkownika
-      function updateUserInterface(user) {
+      async function updateUserInterface(user) {
         const loginBtn = document.getElementById("login-button");
         const userPanel = document.getElementById("user-panel");
         const userDisplayName = document.getElementById("user-display-name");
@@ -486,8 +485,26 @@
           const displayName = user.displayName || user.email.split("@")[0];
           userDisplayName.textContent = displayName;
 
-          // Domyślny avatar
-          userAvatar.innerHTML = '<i class="fa-solid fa-user"></i>';
+          // Pobierz awatar z profilu użytkownika
+          try {
+            const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
+            if (profileDoc.exists()) {
+              const userProfile = profileDoc.data();
+              if (userProfile.avatar) {
+                // Jeśli użytkownik ma awatar, wyświetl go
+                userAvatar.innerHTML = `<img src="${userProfile.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
+              } else {
+                // Użyj domyślnego awatara
+                userAvatar.innerHTML = getDefaultAvatar(userProfile.gender);
+              }
+            } else {
+              // Jeśli profil nie istnieje, użyj domyślnego awatara
+              userAvatar.innerHTML = getDefaultAvatar();
+            }
+          } catch (error) {
+            console.error("Error loading user profile:", error);
+            userAvatar.innerHTML = getDefaultAvatar();
+          }
         } else {
           // Użytkownik niezalogowany
           loginBtn.classList.remove("hidden");

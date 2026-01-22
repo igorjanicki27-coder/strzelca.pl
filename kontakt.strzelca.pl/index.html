@@ -137,6 +137,51 @@
     </style>
   </head>
   <body>
+    <!-- Panel użytkownika -->
+    <div id="user-panel" class="fixed top-4 right-4 z-50 hidden">
+      <div class="relative">
+        <!-- Avatar - widoczny zawsze -->
+        <button
+          id="user-avatar-button"
+          class="w-12 h-12 rounded-full bg-coyote flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-80 transition shadow-lg overflow-hidden"
+          onclick="toggleUserMenu()"
+        >
+          <div id="user-avatar" class="w-full h-full flex items-center justify-center">
+            <i class="fa-solid fa-user"></i>
+          </div>
+        </button>
+        
+        <!-- Menu rozwijane -->
+        <div
+          id="user-menu"
+          class="absolute top-14 right-0 bg-zinc-900/95 backdrop-blur-md border border-zinc-700 rounded-2xl p-4 shadow-2xl min-w-[200px] hidden"
+        >
+          <div class="space-y-2">
+            <div
+              id="user-display-name"
+              class="text-white font-semibold text-sm mb-3 pb-3 border-b border-zinc-700"
+            ></div>
+            <a
+              href="https://konto.strzelca.pl/profil.html"
+              class="block text-zinc-300 hover:text-coyote transition text-sm"
+            >
+              <i class="fa-solid fa-user mr-2"></i>Mój profil
+            </a>
+            <button onclick="logout()" class="block w-full text-left text-zinc-300 hover:text-red-400 transition text-sm">
+              <i class="fa-solid fa-sign-out-alt mr-2"></i>Wyloguj się
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Przycisk logowania dla niezalogowanych -->
+    <div id="login-button" class="fixed top-4 right-4 z-50">
+      <a href="https://konto.strzelca.pl/login.html" class="bg-coyote text-black px-4 py-2 rounded-lg font-semibold hover:bg-white transition shadow-lg">
+        <i class="fa-solid fa-sign-in-alt mr-2"></i>Zaloguj się
+      </a>
+    </div>
+
     <nav
       class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative"
     >
@@ -330,7 +375,7 @@
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
       import { getFirestore, doc, getDoc, collection, setDoc, query, orderBy, limit, getDocs, updateDoc, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-      import { getAuth, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+      import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
@@ -348,6 +393,110 @@
 
       // Ustaw trwałość sesji na browserLocalPersistence dla wszystkich subdomen
       await setPersistence(auth, browserLocalPersistence);
+
+      let currentUser = null;
+
+      // Funkcja pomocnicza do generowania domyślnego awatara
+      function getDefaultAvatar(gender) {
+        return '<i class="fa-solid fa-user text-white"></i>';
+      }
+
+      // Funkcja rozwijania/zwijania menu użytkownika
+      window.toggleUserMenu = () => {
+        const userMenu = document.getElementById("user-menu");
+        if (userMenu) {
+          userMenu.classList.toggle("hidden");
+        }
+      };
+
+      // Zamykanie menu po kliknięciu poza nim
+      document.addEventListener("click", (event) => {
+        const userPanel = document.getElementById("user-panel");
+        const userMenu = document.getElementById("user-menu");
+        
+        if (
+          userPanel &&
+          userMenu &&
+          !userPanel.contains(event.target) &&
+          !userMenu.classList.contains("hidden")
+        ) {
+          userMenu.classList.add("hidden");
+        }
+      });
+
+      // Funkcja aktualizacji interfejsu użytkownika
+      async function updateUserInterface(user) {
+        const loginBtn = document.getElementById("login-button");
+        const userPanel = document.getElementById("user-panel");
+        const userDisplayName = document.getElementById("user-display-name");
+        const userAvatar = document.getElementById("user-avatar");
+
+        if (user) {
+          // Użytkownik zalogowany
+          if (loginBtn) loginBtn.classList.add("hidden");
+          if (userPanel) userPanel.classList.remove("hidden");
+
+          // Wyświetl nazwę użytkownika
+          const displayName = user.displayName || user.email.split("@")[0];
+          if (userDisplayName) {
+            userDisplayName.textContent = displayName;
+          }
+
+          // Pobierz awatar z profilu użytkownika
+          try {
+            const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
+            if (profileDoc.exists()) {
+              const userProfile = profileDoc.data();
+              if (userProfile.displayName && userDisplayName) {
+                userDisplayName.textContent = userProfile.displayName;
+              }
+              if (userAvatar) {
+                if (userProfile.avatar) {
+                  // Jeśli użytkownik ma awatar, wyświetl go
+                  userAvatar.innerHTML = `<img src="${userProfile.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
+                } else {
+                  // Użyj domyślnego awatara
+                  userAvatar.innerHTML = getDefaultAvatar(userProfile.gender);
+                }
+              }
+            } else {
+              // Jeśli profil nie istnieje, użyj domyślnego awatara
+              if (userAvatar) {
+                userAvatar.innerHTML = getDefaultAvatar();
+              }
+            }
+          } catch (error) {
+            console.error("Error loading user profile:", error);
+            if (userAvatar) {
+              userAvatar.innerHTML = getDefaultAvatar();
+            }
+          }
+        } else {
+          // Użytkownik niezalogowany
+          if (loginBtn) loginBtn.classList.remove("hidden");
+          if (userPanel) userPanel.classList.add("hidden");
+        }
+      }
+
+      // Funkcja wylogowania
+      window.logout = async () => {
+        try {
+          await signOut(auth);
+          // Zamknij menu po wylogowaniu
+          const userMenu = document.getElementById("user-menu");
+          if (userMenu) {
+            userMenu.classList.add("hidden");
+          }
+        } catch (error) {
+          console.error("Logout error:", error);
+        }
+      };
+
+      // Monitorowanie stanu logowania
+      onAuthStateChanged(auth, (user) => {
+        currentUser = user;
+        updateUserInterface(user);
+      });
 
       // Funkcja sprawdzająca stan logowania i kontrolująca formularz
       function checkLoginStatus() {

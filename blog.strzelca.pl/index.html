@@ -20,7 +20,192 @@
     <link rel="apple-touch-icon" href="https://strzelca.pl/ikona.svg">
 
     <title>recenzja.strzelca.pl | Opinie</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root { --coyote: #C19A6B; }
+    </style>
+</head>
+<body>
+    <!-- Panel użytkownika -->
+    <div id="user-panel" class="fixed top-4 right-4 z-50 hidden">
+        <div class="relative">
+            <!-- Avatar - widoczny zawsze -->
+            <button
+                id="user-avatar-button"
+                class="w-12 h-12 rounded-full bg-[#C19A6B] flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-80 transition shadow-lg overflow-hidden"
+                onclick="toggleUserMenu()"
+            >
+                <div id="user-avatar" class="w-full h-full flex items-center justify-center">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+            </button>
+            
+            <!-- Menu rozwijane -->
+            <div
+                id="user-menu"
+                class="absolute top-14 right-0 bg-zinc-900/95 backdrop-blur-md border border-zinc-700 rounded-2xl p-4 shadow-2xl min-w-[200px] hidden"
+            >
+                <div class="space-y-2">
+                    <div
+                        id="user-display-name"
+                        class="text-white font-semibold text-sm mb-3 pb-3 border-b border-zinc-700"
+                    ></div>
+                    <a
+                        href="https://konto.strzelca.pl/profil.html"
+                        class="block text-zinc-300 hover:text-[#C19A6B] transition text-sm"
+                    >
+                        <i class="fa-solid fa-user mr-2"></i>Mój profil
+                    </a>
+                    <button onclick="logout()" class="block w-full text-left text-zinc-300 hover:text-red-400 transition text-sm">
+                        <i class="fa-solid fa-sign-out-alt mr-2"></i>Wyloguj się
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Przycisk logowania dla niezalogowanych -->
+    <div id="login-button" class="fixed top-4 right-4 z-50">
+        <a href="https://konto.strzelca.pl/login.html" class="bg-[#C19A6B] text-black px-4 py-2 rounded-lg font-semibold hover:bg-white transition shadow-lg">
+            <i class="fa-solid fa-sign-in-alt mr-2"></i>Zaloguj się
+        </a>
+    </div>
+
+    <div style="display: flex; justify-content: center; align-items: center; height: 65vh; background: linear-gradient(rgba(10,10,10,0.1) 0%, rgba(10,10,10,0.4) 50%, #0a0a0a 100%), url('https://strzelca.pl/tlo.png'); background-size: cover; background-position: top center;">
+        <div style="text-align: center;">
+            <h1 style="font-size: 2rem; margin-bottom: 1rem;">Recenzje wkrótce dostępne</h1>
+            <p style="color: #e5e5e5;">Sekcja recenzji jest w trakcie rozwoju.</p>
+            <a href="https://strzelca.pl" style="color: #C19A6B; text-decoration: none; margin-top: 2rem; display: inline-block;">← Powrót do Centrum Dowodzenia</a>
+        </div>
+    </div>
+
     <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
+            authDomain: "strzelca-pl.firebaseapp.com",
+            projectId: "strzelca-pl",
+            storageBucket: "strzelca-pl.firebasestorage.app",
+            messagingSenderId: "511362047688",
+            appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
+            measurementId: "G-9EJ2R3JPVD"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // Ustaw trwałość sesji na browserLocalPersistence dla wszystkich subdomen
+        await setPersistence(auth, browserLocalPersistence);
+
+        let currentUser = null;
+
+        // Funkcja pomocnicza do generowania domyślnego awatara
+        function getDefaultAvatar(gender) {
+            return '<i class="fa-solid fa-user text-white"></i>';
+        }
+
+        // Funkcja rozwijania/zwijania menu użytkownika
+        window.toggleUserMenu = () => {
+            const userMenu = document.getElementById("user-menu");
+            if (userMenu) {
+                userMenu.classList.toggle("hidden");
+            }
+        };
+
+        // Zamykanie menu po kliknięciu poza nim
+        document.addEventListener("click", (event) => {
+            const userPanel = document.getElementById("user-panel");
+            const userMenu = document.getElementById("user-menu");
+            
+            if (
+                userPanel &&
+                userMenu &&
+                !userPanel.contains(event.target) &&
+                !userMenu.classList.contains("hidden")
+            ) {
+                userMenu.classList.add("hidden");
+            }
+        });
+
+        // Funkcja aktualizacji interfejsu użytkownika
+        async function updateUserInterface(user) {
+            const loginBtn = document.getElementById("login-button");
+            const userPanel = document.getElementById("user-panel");
+            const userDisplayName = document.getElementById("user-display-name");
+            const userAvatar = document.getElementById("user-avatar");
+
+            if (user) {
+                // Użytkownik zalogowany
+                loginBtn.classList.add("hidden");
+                userPanel.classList.remove("hidden");
+
+                // Wyświetl nazwę użytkownika
+                const displayName = user.displayName || user.email.split("@")[0];
+                if (userDisplayName) {
+                    userDisplayName.textContent = displayName;
+                }
+
+                // Pobierz awatar z profilu użytkownika
+                try {
+                    const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
+                    if (profileDoc.exists()) {
+                        const userProfile = profileDoc.data();
+                        if (userProfile.displayName && userDisplayName) {
+                            userDisplayName.textContent = userProfile.displayName;
+                        }
+                        if (userAvatar) {
+                            if (userProfile.avatar) {
+                                // Jeśli użytkownik ma awatar, wyświetl go
+                                userAvatar.innerHTML = `<img src="${userProfile.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
+                            } else {
+                                // Użyj domyślnego awatara
+                                userAvatar.innerHTML = getDefaultAvatar(userProfile.gender);
+                            }
+                        }
+                    } else {
+                        // Jeśli profil nie istnieje, użyj domyślnego awatara
+                        if (userAvatar) {
+                            userAvatar.innerHTML = getDefaultAvatar();
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error loading user profile:", error);
+                    if (userAvatar) {
+                        userAvatar.innerHTML = getDefaultAvatar();
+                    }
+                }
+            } else {
+                // Użytkownik niezalogowany
+                loginBtn.classList.remove("hidden");
+                userPanel.classList.add("hidden");
+            }
+        }
+
+        // Funkcja wylogowania
+        window.logout = async () => {
+            try {
+                await signOut(auth);
+                // Zamknij menu po wylogowaniu
+                const userMenu = document.getElementById("user-menu");
+                if (userMenu) {
+                    userMenu.classList.add("hidden");
+                }
+            } catch (error) {
+                console.error("Logout error:", error);
+            }
+        };
+
+        // Monitorowanie stanu logowania
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            updateUserInterface(user);
+        });
+
         // Funkcja logowania aktywności (przygotowana na przyszłość)
         async function logActivity(type, userId, userName, details, timestamp = null) {
             try {
@@ -42,14 +227,5 @@
         // Globalna funkcja dla przyszłych funkcji blogu
         window.logActivity = logActivity;
     </script>
-</head>
-<body>
-    <div style="display: flex; justify-content: center; align-items: center; height: 65vh; background: linear-gradient(rgba(10,10,10,0.1) 0%, rgba(10,10,10,0.4) 50%, #0a0a0a 100%), url('https://strzelca.pl/tlo.png'); background-size: cover; background-position: top center;">
-        <div style="text-align: center;">
-            <h1 style="font-size: 2rem; margin-bottom: 1rem;">Recenzje wkrótce dostępne</h1>
-            <p style="color: #e5e5e5;">Sekcja recenzji jest w trakcie rozwoju.</p>
-            <a href="https://strzelca.pl" style="color: #C19A6B; text-decoration: none; margin-top: 2rem; display: inline-block;">← Powrót do Centrum Dowodzenia</a>
-        </div>
-    </div>
 </body>
 </html>
