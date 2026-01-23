@@ -38,7 +38,8 @@
       }
 
       /* Reset domyślnych ramek inputów/textarea/select i zostaw tylko własne zaokrąglone obramowanie */
-      input,
+      /* Wykluczamy checkboxy i radio z globalnych stylów */
+      input:not([type="checkbox"]):not([type="radio"]),
       select,
       textarea {
         -webkit-appearance: none;
@@ -54,7 +55,7 @@
         box-shadow: 0 0 0 1px #222; /* pseudo-border, który podlega zaokrągleniu */
         transition: 0.3s;
       }
-      input:focus,
+      input:not([type="checkbox"]):not([type="radio"]):focus,
       select:focus,
       textarea:focus {
         outline: none;
@@ -78,10 +79,34 @@
 
       .radio-option input[type="radio"],
       .checkbox-group input[type="checkbox"] {
-        width: 16px;
-        height: 16px;
+        width: 18px !important;
+        height: 18px !important;
+        min-width: 18px !important;
+        min-height: 18px !important;
         cursor: pointer;
         accent-color: var(--coyote);
+        /* Resetuj style z globalnych inputów */
+        appearance: auto !important;
+        -webkit-appearance: checkbox !important;
+        -moz-appearance: checkbox !important;
+        background: transparent !important;
+        padding: 0 !important;
+        border: 2px solid #444 !important;
+        border-radius: 4px !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        flex-shrink: 0;
+      }
+      
+      .checkbox-group input[type="checkbox"]:checked {
+        background-color: var(--coyote) !important;
+        border-color: var(--coyote) !important;
+      }
+      
+      .checkbox-group input[type="checkbox"]:focus {
+        outline: 2px solid var(--coyote) !important;
+        outline-offset: 2px !important;
+        box-shadow: none !important;
       }
 
       .gender-selection {
@@ -272,7 +297,18 @@
 
       .validation-success {
         border-color: #10b981 !important;
-        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3) !important;
+      }
+      
+      /* Upewnij się, że wszystkie pola z validation-success mają ten sam kolor */
+      input.validation-success,
+      textarea.validation-success,
+      select.validation-success,
+      .strzelec-input-container.validation-success input,
+      .strzelec-input-container.validation-success textarea,
+      .strzelec-input-container.validation-success select {
+        border-color: #10b981 !important;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3) !important;
       }
 
       .validation-error {
@@ -718,16 +754,40 @@
       // Ustaw trwałość sesji na LOCAL dla wszystkich stron wymagających logowania
       await auth.setPersistence(browserLocalPersistence);
 
+      // Flaga do kontroli przekierowania podczas rejestracji
+      let isRegistering = false;
+
       // Listener stanu autoryzacji - jeśli użytkownik już jest zalogowany, przekieruj do profilu
       const { onAuthStateChanged } =
         await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
       onAuthStateChanged(auth, (user) => {
+        // Nie przekierowuj podczas procesu rejestracji
+        if (isRegistering) {
+          console.log("Proces rejestracji w toku, pomijam przekierowanie");
+          return;
+        }
+        
         if (user) {
-          // Użytkownik już jest zalogowany - przekieruj do profilu
-          console.log(
-            "Użytkownik już zalogowany, przekierowanie do profil.html",
-          );
-          window.location.href = "profil.html";
+          // Sprawdź czy profil istnieje przed przekierowaniem
+          getDoc(doc(db, "userProfiles", user.uid))
+            .then((profileDoc) => {
+              if (profileDoc.exists()) {
+                // Użytkownik już jest zalogowany i ma profil - przekieruj do profilu
+                console.log(
+                  "Użytkownik już zalogowany, przekierowanie do profil.html",
+                );
+                window.location.href = "profil.html";
+              } else {
+                // Użytkownik zalogowany, ale brak profilu - przekieruj do strony aktywacji
+                console.log("Użytkownik zalogowany, ale brak profilu - przekierowanie do po.rejestracji.html");
+                window.location.href = "po.rejestracji.html";
+              }
+            })
+            .catch((error) => {
+              console.error("Błąd sprawdzania profilu:", error);
+              // W przypadku błędu, przekieruj do strony aktywacji
+              window.location.href = "po.rejestracji.html";
+            });
         } else {
           // Użytkownik niezalogowany - pozwól mu się zarejestrować
           console.log("Użytkownik niezalogowany, można się zarejestrować");
@@ -912,6 +972,9 @@
           registerBtn.innerHTML =
             '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Tworzenie konta...';
 
+          // Ustaw flagę rejestracji
+          isRegistering = true;
+
           try {
             const formData = {
               gender: document.querySelector('input[name="gender"]:checked')
@@ -1007,11 +1070,32 @@
             await setDoc(doc(db, "userProfiles", user.uid), profileData);
 
             // Zapisz nazwę użytkownika w kolekcji displayNames (dla sprawdzania dostępności)
-            await setDoc(doc(db, "displayNames", formData.displayName.toLowerCase()), {
-              displayName: formData.displayName,
-              userId: user.uid,
-              createdAt: new Date(),
-            });
+            // Używamy lowercase jako ID dokumentu, aby uniknąć duplikatów typu 'Jan' i 'jan'
+            try {
+              await setDoc(doc(db, "displayNames", formData.displayName.toLowerCase()), {
+                displayName: formData.displayName, // Oryginalna nazwa (zachowuje wielkość liter)
+                userId: user.uid,
+                createdAt: new Date(),
+              });
+              console.log(`Nazwa "${formData.displayName}" została zarejestrowana w displayNames`);
+            } catch (displayNameError) {
+              console.error("Błąd zapisu do displayNames:", displayNameError);
+
+              // Jeśli zapis do displayNames się nie powiedzie, usuń utworzony profil i konto
+              try {
+                await db.collection("userProfiles").doc(user.uid).delete();
+                console.log("Profil użytkownika został usunięty z powodu błędu displayNames");
+
+                // Wyloguj użytkownika
+                const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+                await signOut(auth);
+
+              } catch (cleanupError) {
+                console.error("Błąd podczas czyszczenia po nieudanym zapisie displayNames:", cleanupError);
+              }
+
+              throw new Error("Nie udało się zarejestrować nazwy użytkownika. Spróbuj ponownie.");
+            }
 
             // 4. Jeśli użytkownik zgodził się na newsletter, dodaj do mailing list
             if (formData.newsletter) {
@@ -1024,25 +1108,63 @@
             }
 
             // Przekieruj do strony po rejestracji
+            isRegistering = false; // Reset flagi przed przekierowaniem
             window.location.href = "./po.rejestracji.html";
           } catch (error) {
             console.error("Registration error:", error);
 
+            // Reset flagi rejestracji
+            isRegistering = false;
+
+            // Jeśli użytkownik został utworzony, ale wystąpił błąd przy zapisie profilu,
+            // wyloguj użytkownika (konto można usunąć później ręcznie)
+            const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+            const currentUser = auth.currentUser;
+            
+            if (currentUser) {
+              try {
+                // Sprawdź czy profil został utworzony
+                const profileDoc = await getDoc(doc(db, "userProfiles", currentUser.uid));
+                
+                if (!profileDoc.exists()) {
+                  // Profil nie został utworzony - wyloguj użytkownika
+                  // (konto można usunąć później ręcznie przez admina lub użytkownik może spróbować ponownie)
+                  console.log("Profil nie został utworzony, wylogowywanie użytkownika...");
+                  await signOut(auth);
+                } else {
+                  // Profil istnieje, ale wystąpił inny błąd - tylko wyloguj
+                  await signOut(auth);
+                }
+              } catch (cleanupError) {
+                console.error("Błąd podczas czyszczenia:", cleanupError);
+                // Spróbuj przynajmniej wylogować
+                try {
+                  await signOut(auth);
+                } catch (signOutError) {
+                  console.error("Błąd wylogowania:", signOutError);
+                }
+              }
+            }
+
             let errorMessage = "Wystąpił błąd podczas rejestracji.";
 
             if (error.code === "auth/email-already-in-use") {
-              errorMessage = "Konto z tym adresem email już istnieje.";
+              errorMessage = "Konto z tym adresem email już istnieje. Jeśli nie pamiętasz hasła, użyj opcji 'Przypomnij hasło'.";
             } else if (error.code === "auth/weak-password") {
-              errorMessage = "Hasło jest zbyt słabe.";
+              errorMessage = "Hasło jest zbyt słabe. Użyj co najmniej 8 znaków.";
             } else if (error.code === "auth/invalid-email") {
               errorMessage = "Nieprawidłowy adres email.";
+            } else if (error.code === "auth/network-request-failed") {
+              errorMessage = "Błąd połączenia z serwerem. Sprawdź połączenie internetowe i spróbuj ponownie.";
+            } else if (error.message) {
+              errorMessage = `Błąd: ${error.message}`;
             }
 
             alert(errorMessage);
           } finally {
             registerBtn.disabled = false;
             registerBtn.innerHTML =
-              '<i class="fa-solid fa-user-plus mr-2"></i>Utwórz konto';
+              '<i class="fa-solid fa-user-plus mr-2"></i>Utwórz STRZELCA';
           }
         });
 

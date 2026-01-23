@@ -100,16 +100,33 @@ module.exports = async (req, res) => {
     return;
   }
 
-  // Normalizacja taka jak w kliencie (docId = lowercase)
+  // Normalizacja - zawsze używamy lowercase jako ID dokumentu
   const docId = name.toLowerCase();
 
   try {
     initAdmin();
     const db = admin.firestore();
 
+    // Rygorystycznie sprawdź, czy dokument już istnieje
     const snap = await db.collection("displayNames").doc(docId).get();
 
     if (snap.exists) {
+      // Dokument już istnieje - nazwa jest zajęta
+      const existingData = snap.data();
+      console.log(`Nazwa "${name}" jest już zajęta przez użytkownika ${existingData.userId}`);
+      res.json({ success: true, available: false, reason: "Ta nazwa jest już zajęta" });
+      return;
+    }
+
+    // Dodatkowo sprawdź, czy nie istnieje dokument z taką samą wartością displayName (case-sensitive)
+    // To dodatkowa weryfikacja na wypadek niespójności danych
+    const displayNameQuery = await db.collection("displayNames")
+      .where("displayName", "==", name)
+      .limit(1)
+      .get();
+
+    if (!displayNameQuery.empty) {
+      console.log(`Nazwa "${name}" znaleziona przez query (case-sensitive)`);
       res.json({ success: true, available: false, reason: "Ta nazwa jest już zajęta" });
       return;
     }
