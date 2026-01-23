@@ -37,22 +37,28 @@
         font-family: "Orbitron";
       }
 
+      /* Reset domyślnych ramek inputów/textarea/select i zostaw tylko własne zaokrąglone obramowanie */
       input,
       select,
       textarea {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
         background: #111 !important;
-        border: 1px solid #222 !important;
+        border: none; /* usuwa natywny border (prostokątny) */
         color: white !important;
         padding: 16px 20px !important;
         border-radius: 12px;
         width: 100%;
-        outline: none;
+        outline: none; /* usuwa prostokątny outline przeglądarki */
+        box-shadow: 0 0 0 1px #222; /* pseudo-border, który podlega zaokrągleniu */
         transition: 0.3s;
       }
       input:focus,
       select:focus,
       textarea:focus {
-        border-color: var(--coyote) !important;
+        outline: none;
+        box-shadow: 0 0 0 2px var(--coyote); /* tylko zaokrąglone obramowanie przy focus */
         background: #161616 !important;
       }
 
@@ -710,8 +716,8 @@
         }
       });
 
-      // Lista zabronionych nazw
-      const forbiddenNames = [
+      // Lista zabronionych słów (nazwa zawierająca którekolwiek z tych słów jest zabroniona)
+      const forbiddenWords = [
         "admin",
         "administrator",
         "mod",
@@ -734,64 +740,44 @@
         "site",
       ];
 
+      // Funkcja sprawdzająca czy nazwa zawiera zabronione słowa
+      function containsForbiddenWord(displayName) {
+        const nameLower = displayName.toLowerCase();
+        return forbiddenWords.some(word => nameLower.includes(word));
+      }
+
       // Funkcja sprawdzania dostępności nazwy strzelca
       async function checkDisplayNameAvailability(displayName) {
         try {
-          // Sprawdź czy nazwa nie jest zabroniona
-          if (forbiddenNames.includes(displayName.toLowerCase())) {
+          // Sprawdź czy nazwa zawiera zabronione słowa
+          if (containsForbiddenWord(displayName)) {
             return {
               available: false,
               reason: "Ta nazwa jest zarezerwowana",
             };
           }
 
-          // Sprawdź czy nazwa już istnieje w kolekcji displayNames
-          // Używamy query z polem displayName (case-insensitive sprawdzenie)
-          // Sprawdzamy zarówno oryginalną nazwę jak i lowercase
-          const displayNameQuery = query(
-            collection(db, "displayNames"),
-            where("displayName", "==", displayName)
+          // Sprawdzenie po stronie serwera (Vercel /api) – omija problemy z regułami/AppCheck
+          const resp = await fetch(
+            `/api/display-name?name=${encodeURIComponent(displayName)}`,
+            { method: "GET" },
           );
-          const querySnapshot = await getDocs(displayNameQuery);
+          const data = await resp.json().catch(() => null);
 
-          if (!querySnapshot.empty) {
+          if (!resp.ok || !data || data.success !== true) {
             return {
               available: false,
-              reason: "Ta nazwa jest już zajęta",
+              reason: "Błąd sprawdzania dostępności nazwy",
             };
           }
 
-          // Sprawdź również po ID dokumentu (dla kompatybilności z istniejącymi danymi)
-          // ID dokumentu to displayName.toLowerCase()
-          try {
-            const displayNameLower = displayName.toLowerCase();
-            const displayNameRef = doc(db, "displayNames", displayNameLower);
-            const displayNameDoc = await getDoc(displayNameRef);
-            
-            if (displayNameDoc.exists()) {
-              return {
-                available: false,
-                reason: "Ta nazwa jest już zajęta",
-              };
-            }
-          } catch (docError) {
-            // Jeśli getDoc() nie działa z powodu uprawnień, ignoruj błąd
-            // (query powinno wystarczyć)
-            if (docError.code !== 'permission-denied') {
-              console.warn("Could not check document by ID:", docError);
-            }
+          if (data.available === false) {
+            return { available: false, reason: data.reason || "Ta nazwa jest już zajęta" };
           }
 
           return { available: true };
         } catch (error) {
           console.error("Error checking display name:", error);
-          // Jeśli błąd to permission-denied, zwróć bardziej szczegółowy komunikat
-          if (error.code === 'permission-denied') {
-            return {
-              available: false,
-              reason: "Błąd uprawnień - skontaktuj się z administratorem",
-            };
-          }
           return {
             available: false,
             reason: "Błąd sprawdzania dostępności nazwy",
@@ -843,7 +829,7 @@
             "Nazwa użytkownika może zawierać tylko litery, cyfry oraz znaki: -, _, .",
           );
           isValid = false;
-        } else if (forbiddenNames.includes(displayName.toLowerCase())) {
+        } else if (containsForbiddenWord(displayName)) {
           showError("display-name-error", "Ta nazwa jest zarezerwowana");
           isValid = false;
         } else {
@@ -1093,7 +1079,7 @@
           }
 
           // Sprawdź czy nazwa nie jest zabroniona (lokalne sprawdzenie bez Firebase)
-          if (forbiddenNames.includes(displayName.toLowerCase())) {
+          if (containsForbiddenWord(displayName)) {
             e.target
               .closest(".strzelec-input-container")
               .classList.add("validation-error");

@@ -11,8 +11,16 @@ if (!admin.apps.length) {
   // W środowisku produkcyjnym użyj zmiennych środowiskowych Vercel
   // W development użyj service account key jeśli dostępny
   try {
+    // Kod będzie szukał klucza najpierw w jednej, potem w drugiej zmiennej
+    let serviceAccount = null;
+
     if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+      serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+    }
+    
+    if (serviceAccount) {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
         projectId: process.env.FIREBASE_PROJECT_ID || 'strzelca-pl'
@@ -24,7 +32,7 @@ if (!admin.apps.length) {
       });
     } else {
       // Fallback dla developmentu - wymagane skonfigurowanie credentials
-      console.warn('Firebase credentials not found. Please set FIREBASE_SERVICE_ACCOUNT_KEY or GOOGLE_APPLICATION_CREDENTIALS');
+      console.warn('Firebase credentials not found. Please set FIREBASE_SERVICE_ACCOUNT_KEY, GOOGLE_APPLICATION_CREDENTIALS_JSON, or GOOGLE_APPLICATION_CREDENTIALS');
       admin.initializeApp({
         projectId: process.env.FIREBASE_PROJECT_ID || 'strzelca-pl'
       });
