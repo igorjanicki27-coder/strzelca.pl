@@ -746,18 +746,52 @@
           }
 
           // Sprawdź czy nazwa już istnieje w kolekcji displayNames
-          const displayNameDoc = await getDoc(doc(db, "displayNames", displayName.toLowerCase()));
+          // Używamy query z polem displayName (case-insensitive sprawdzenie)
+          // Sprawdzamy zarówno oryginalną nazwę jak i lowercase
+          const displayNameQuery = query(
+            collection(db, "displayNames"),
+            where("displayName", "==", displayName)
+          );
+          const querySnapshot = await getDocs(displayNameQuery);
 
-          if (displayNameDoc.exists()) {
+          if (!querySnapshot.empty) {
             return {
               available: false,
               reason: "Ta nazwa jest już zajęta",
             };
           }
 
+          // Sprawdź również po ID dokumentu (dla kompatybilności z istniejącymi danymi)
+          // ID dokumentu to displayName.toLowerCase()
+          try {
+            const displayNameLower = displayName.toLowerCase();
+            const displayNameRef = doc(db, "displayNames", displayNameLower);
+            const displayNameDoc = await getDoc(displayNameRef);
+            
+            if (displayNameDoc.exists()) {
+              return {
+                available: false,
+                reason: "Ta nazwa jest już zajęta",
+              };
+            }
+          } catch (docError) {
+            // Jeśli getDoc() nie działa z powodu uprawnień, ignoruj błąd
+            // (query powinno wystarczyć)
+            if (docError.code !== 'permission-denied') {
+              console.warn("Could not check document by ID:", docError);
+            }
+          }
+
           return { available: true };
         } catch (error) {
           console.error("Error checking display name:", error);
+          // Jeśli błąd to permission-denied, zwróć bardziej szczegółowy komunikat
+          if (error.code === 'permission-denied') {
+            return {
+              available: false,
+              reason: "Błąd uprawnień - skontaktuj się z administratorem",
+            };
+          }
           return {
             available: false,
             reason: "Błąd sprawdzania dostępności nazwy",
