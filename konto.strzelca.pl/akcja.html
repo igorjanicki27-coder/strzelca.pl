@@ -86,7 +86,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, applyActionCode, confirmPasswordReset, verifyPasswordResetCode } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getAuth, applyActionCode, confirmPasswordReset, verifyPasswordResetCode, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
@@ -314,8 +314,33 @@
                     .then(async () => {
                         console.log('applyActionCode zakończone sukcesem');
 
-                        // Odśwież dane użytkownika, żeby Firebase zaktualizował emailVerified
-                        const currentUser = auth.currentUser;
+                        // Po applyActionCode użytkownik może nie być automatycznie zalogowany
+                        // Poczekaj chwilę i sprawdź czy Firebase zaktualizował stan
+                        await new Promise(resolve => setTimeout(resolve, 500));
+
+                        // Sprawdź czy użytkownik jest teraz zalogowany
+                        let currentUser = auth.currentUser;
+                        
+                        // Jeśli nie ma currentUser, poczekaj na onAuthStateChanged
+                        if (!currentUser) {
+                            console.log('Brak currentUser bezpośrednio po applyActionCode - czekam na synchronizację...');
+                            
+                            // Poczekaj na zmianę stanu autoryzacji (max 3 sekundy)
+                            const authStatePromise = new Promise((resolve) => {
+                                const unsubscribe = onAuthStateChanged(auth, (user) => {
+                                    unsubscribe();
+                                    resolve(user);
+                                });
+                                setTimeout(() => {
+                                    unsubscribe();
+                                    resolve(null);
+                                }, 3000);
+                            });
+                            
+                            currentUser = await authStatePromise;
+                            console.log('Po oczekiwaniu na auth state, currentUser:', currentUser ? currentUser.email : 'none');
+                        }
+
                         if (currentUser) {
                             try {
                                 await currentUser.reload();
@@ -368,8 +393,21 @@
                                 }, 3000);
                             }
                         } else {
-                            console.error('Brak currentUser po weryfikacji');
-                            showError('Wystąpił błąd podczas weryfikacji. Spróbuj zalogować się ponownie.');
+                            console.warn('Brak currentUser po weryfikacji - weryfikacja może się udała, ale użytkownik nie jest zalogowany');
+                            // Weryfikacja się udała, ale użytkownik nie jest zalogowany
+                            // To jest normalne - użytkownik musi się zalogować ręcznie
+                            document.getElementById('action-content').innerHTML = `
+                                <div class="checkmark"></div>
+                                <h1 class="text-2xl md:text-3xl font-bold coyote-text uppercase italic font-[Orbitron] mb-4">
+                                    WERYFIKACJA STRZELCA
+                                </h1>
+                                <p class="text-lg mb-8 text-zinc-300">
+                                    Email został pomyślnie zweryfikowany! Możesz się teraz zalogować do swojego konta.
+                                </p>
+                                <a href="./login.html" class="btn-primary inline-block mt-4">
+                                    Przejdź do logowania
+                                </a>
+                            `;
                         }
                     })
                     .catch((error) => {
