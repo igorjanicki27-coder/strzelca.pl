@@ -302,6 +302,13 @@
 
             case 'verifyEmail':
                 console.log('Rozpoczynam proces weryfikacji emaila...');
+                console.log('Action Code length:', actionCode.length);
+                console.log('Action Code preview:', actionCode.substring(0, 20) + '...');
+
+                // Sprawdź czy użytkownik jest zalogowany
+                const currentUser = auth.currentUser;
+                console.log('Current user:', currentUser ? currentUser.email : 'none');
+
                 // Weryfikacja emaila
                 applyActionCode(auth, actionCode)
                     .then(async () => {
@@ -367,15 +374,46 @@
                     })
                     .catch((error) => {
                         console.error('Email verification error:', error);
-                        let errorMessage = 'Link wygasł lub jest nieprawidłowy.';
+                        let errorMessage = 'Wystąpił błąd podczas weryfikacji emaila.';
+                        let redirectUrl = './login.html';
+                        let redirectText = 'Przejdź do logowania';
+
                         if (error.code === 'auth/expired-action-code') {
-                            errorMessage = 'Link weryfikacyjny wygasł. Zarejestruj się ponownie.';
+                            errorMessage = 'Link weryfikacyjny wygasł (ważny 24 godziny). Zarejestruj się ponownie lub poproś o nowy link.';
                         } else if (error.code === 'auth/invalid-action-code') {
-                            errorMessage = 'Link weryfikacyjny jest nieprawidłowy.';
+                            errorMessage = 'Link weryfikacyjny jest nieprawidłowy lub został już użyty. Spróbuj zalogować się ponownie.';
                         } else if (error.code === 'auth/user-disabled') {
-                            errorMessage = 'Konto zostało zablokowane.';
+                            errorMessage = 'Konto zostało zablokowane. Skontaktuj się z administratorem.';
+                        } else if (error.code === 'auth/user-not-found') {
+                            errorMessage = 'Nie znaleziono użytkownika. Spróbuj zarejestrować się ponownie.';
+                        } else if (error.code === 'auth/network-request-failed') {
+                            errorMessage = 'Błąd połączenia z serwerem. Sprawdź połączenie internetowe i spróbuj ponownie.';
+                            redirectUrl = './akcja.html' + window.location.search; // Ponów próbę z tym samym linkiem
+                            redirectText = 'Spróbuj ponownie';
                         }
+
+                        // Sprawdź czy może email jest już zweryfikowany
+                        if (currentUser) {
+                            currentUser.reload().then(() => {
+                                if (currentUser.emailVerified) {
+                                    console.log('Email został zweryfikowany mimo błędu API');
+                                    showSuccess('Email został pomyślnie zweryfikowany! Przenoszę do Strefy Strzelca.', 'https://strzelca.pl/index.html', 'Przejdź do Strefy Strzelca');
+                                    setTimeout(() => {
+                                        window.location.href = 'https://strzelca.pl/index.html';
+                                    }, 3000);
+                                    return;
+                                }
+                            }).catch(reloadError => {
+                                console.warn('Błąd sprawdzania statusu po nieudanej weryfikacji:', reloadError);
+                            });
+                        }
+
                         showError(errorMessage);
+
+                        // Automatyczne przekierowanie po 5 sekundach
+                        setTimeout(() => {
+                            window.location.href = redirectUrl;
+                        }, 5000);
                     });
                 break;
 

@@ -22,6 +22,20 @@
         background-color: #0a0a0a;
         color: #e5e5e5;
         margin: 0;
+        overflow-x: hidden;
+      }
+      .main-wrapper {
+        min-height: 100vh;
+        width: 100%;
+        background:
+          linear-gradient(rgba(10,10,10,0.1) 0%, rgba(10,10,10,0.4) 50%, #0a0a0a 100%),
+          url("https://strzelca.pl/tlo.png");
+        background-size: cover;
+        background-position: top center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
       }
       .coyote-text {
         color: var(--coyote);
@@ -196,7 +210,8 @@
     </script>
   </head>
   <body>
-    <nav
+    <div class="main-wrapper">
+      <nav
       class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative"
     >
       <a
@@ -300,6 +315,33 @@
     <!-- Session Manager -->
 
     <script type="module">
+      // Dodaj globalną obsługę błędów CORS (ignoruj błędy Firebase internal)
+      window.addEventListener('error', function(e) {
+        // Ignoruj błędy CORS związane z Firebase/Firestore
+        if (e.message && (
+          e.message.includes('access control checks') ||
+          e.message.includes('CORS') ||
+          e.message.includes('firestore.googleapis.com')
+        )) {
+          console.warn('Ignored Firebase CORS error in login:', e.message);
+          e.preventDefault();
+          return false;
+        }
+      });
+
+      // Dodaj obsługę błędów dla fetch API
+      window.addEventListener('unhandledrejection', function(e) {
+        if (e.reason && e.reason.message && (
+          e.reason.message.includes('access control checks') ||
+          e.reason.message.includes('CORS') ||
+          e.reason.message.includes('firestore.googleapis.com')
+        )) {
+          console.warn('Ignored Firebase CORS promise rejection in login:', e.reason.message);
+          e.preventDefault();
+          return false;
+        }
+      });
+
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
       import {
         getAuth,
@@ -329,22 +371,23 @@
         console.log("Firebase Auth persistence ustawiona na browserLocalPersistence");
       } catch (persistenceError) {
         console.warn("Błąd ustawiania persistence:", persistenceError);
-        // Spróbuj z session persistence jako fallback
-        try {
-          await setPersistence(auth, browserSessionPersistence);
-          console.log("Fallback: użyto browserSessionPersistence");
-        } catch (fallbackError) {
-          console.warn("Błąd ustawiania fallback persistence:", fallbackError);
-          // Kontynuuj bez ustawiania persistence
-        }
+        // W przypadku problemów z persistence, spróbuj bez niego
+        console.log("Kontynuacja bez ustawiania persistence");
       }
 
       // Listener stanu autoryzacji - jeśli użytkownik już jest zalogowany, przekieruj na stronę główną
-      onAuthStateChanged(auth, (user) => {
+      onAuthStateChanged(auth, async (user) => {
         console.log("Auth state changed:", user ? "logged in" : "logged out", user?.email || "");
 
         if (user) {
-          // Użytkownik już jest zalogowany - przekieruj na stronę główną
+          // Użytkownik już jest zalogowany - odśwież jego dane i przekieruj na stronę główną
+          try {
+            await user.reload();
+            console.log("User data reloaded on login page, emailVerified:", user.emailVerified);
+          } catch (reloadError) {
+            console.warn("Błąd odświeżania danych na stronie logowania:", reloadError);
+          }
+
           console.log("Użytkownik już zalogowany, przekierowanie na stronę główną");
           window.location.href = "https://strzelca.pl/index.html";
         } else {
@@ -528,5 +571,6 @@
           }
         });
     </script>
+    </div>
   </body>
 </html>
