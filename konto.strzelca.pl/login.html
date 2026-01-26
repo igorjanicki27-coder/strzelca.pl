@@ -375,8 +375,17 @@
         console.log("Kontynuacja bez ustawiania persistence");
       }
 
+      // Flaga zapobiegająca wielokrotnemu wylogowaniu
+      let isSigningOut = false;
+
       // Listener stanu autoryzacji - jeśli użytkownik już jest zalogowany, sprawdź weryfikację
       onAuthStateChanged(auth, async (user) => {
+        // Ignoruj zmiany stanu podczas wylogowywania
+        if (isSigningOut) {
+          console.log("Ignoruję zmianę stanu podczas wylogowywania");
+          return;
+        }
+
         console.log("Auth state changed:", user ? "logged in" : "logged out", user?.email || "");
 
         if (user) {
@@ -388,12 +397,15 @@
             // Jeśli użytkownik jest niezweryfikowany, wyloguj go i pozwól na logowanie
             if (!user.emailVerified) {
               console.log("Użytkownik niezweryfikowany - wylogowanie i pozostanie na stronie logowania");
+              isSigningOut = true;
               try {
                 const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
                 await signOut(auth);
                 console.log("Niezweryfikowany użytkownik został wylogowany");
+                isSigningOut = false;
               } catch (signOutError) {
                 console.warn("Błąd wylogowania niezweryfikowanego użytkownika:", signOutError);
+                isSigningOut = false;
               }
               return; // Pozostaw użytkownika na stronie logowania
             }
@@ -404,11 +416,14 @@
           } catch (reloadError) {
             console.warn("Błąd odświeżania danych na stronie logowania:", reloadError);
             // W przypadku błędu, wyloguj użytkownika dla bezpieczeństwa
+            isSigningOut = true;
             try {
               const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
               await signOut(auth);
+              isSigningOut = false;
             } catch (signOutError) {
               console.warn("Błąd wylogowania po błędzie reload:", signOutError);
+              isSigningOut = false;
             }
           }
         } else {
