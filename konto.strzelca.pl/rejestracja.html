@@ -1349,25 +1349,42 @@
         });
 
       // Obsługa głównego checkboxa zgód
-      document
-        .getElementById("all-consents")
-        .addEventListener("change", (e) => {
+      const allConsentsCheckbox = document.getElementById("all-consents");
+      if (allConsentsCheckbox) {
+        allConsentsCheckbox.addEventListener("change", (e) => {
           const isChecked = e.target.checked;
-          document.getElementById("age-confirm").checked = isChecked;
-          document.getElementById("terms-privacy-accept").checked = isChecked;
-          document.getElementById("newsletter").checked = isChecked;
+          const ageConfirm = document.getElementById("age-confirm");
+          const termsAccept = document.getElementById("terms-privacy-accept");
+          const newsletter = document.getElementById("newsletter");
+
+          if (ageConfirm) ageConfirm.checked = isChecked;
+          if (termsAccept) termsAccept.checked = isChecked;
+          if (newsletter) newsletter.checked = isChecked;
+
+          console.log("All consents changed:", isChecked);
         });
+      }
 
       // Aktualizacja głównego checkboxa gdy zmienia się którykolwiek z podrzędnych
       ["age-confirm", "terms-privacy-accept", "newsletter"].forEach((id) => {
-        document.getElementById(id).addEventListener("change", () => {
-          const allChecked = [
-            "age-confirm",
-            "terms-privacy-accept",
-            "newsletter",
-          ].every((id) => document.getElementById(id).checked);
-          document.getElementById("all-consents").checked = allChecked;
-        });
+        const checkbox = document.getElementById(id);
+        if (checkbox) {
+          checkbox.addEventListener("change", () => {
+            const allChecked = [
+              "age-confirm",
+              "terms-privacy-accept",
+              "newsletter",
+            ].every((checkboxId) => {
+              const cb = document.getElementById(checkboxId);
+              return cb && cb.checked;
+            });
+            const allConsents = document.getElementById("all-consents");
+            if (allConsents) {
+              allConsents.checked = allChecked;
+            }
+            console.log(`Checkbox ${id} changed, all checked:`, allChecked);
+          });
+        }
       });
 
       // Obsługa tooltipów

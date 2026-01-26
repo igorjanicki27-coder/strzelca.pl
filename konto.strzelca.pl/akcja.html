@@ -304,8 +304,21 @@
                 console.log('Rozpoczynam proces weryfikacji emaila...');
                 // Weryfikacja emaila
                 applyActionCode(auth, actionCode)
-                    .then(() => {
+                    .then(async () => {
                         console.log('Email został pomyślnie zweryfikowany');
+
+                        // Odśwież dane użytkownika, żeby Firebase zaktualizował emailVerified
+                        const currentUser = auth.currentUser;
+                        if (currentUser) {
+                            try {
+                                await currentUser.reload();
+                                console.log('Dane użytkownika zostały odświeżone, emailVerified:', currentUser.emailVerified);
+                            } catch (reloadError) {
+                                console.warn('Błąd odświeżania danych użytkownika:', reloadError);
+                                // Kontynuuj mimo błędu - Firebase może sam odświeżyć stan
+                            }
+                        }
+
                         document.getElementById('action-content').innerHTML = `
                             <div class="checkmark"></div>
                             <h1 class="text-2xl md:text-3xl font-bold coyote-text uppercase italic font-[Orbitron] mb-4">
@@ -315,7 +328,10 @@
                                 Email został pomyślnie zweryfikowany! Przenoszę do Strefy Strzelca.
                             </p>
                         `;
-                        startCountdown();
+                        // Dodaj dodatkową synchronizację - poczekaj chwilę na odświeżenie stanu
+                        setTimeout(() => {
+                            startCountdown();
+                        }, 2000); // Dodatkowe 2 sekundy na synchronizację
                     })
                     .catch((error) => {
                         console.error('Email verification error:', error);

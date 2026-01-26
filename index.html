@@ -424,6 +424,7 @@
         signOut,
         setPersistence,
         browserLocalPersistence,
+        sendEmailVerification,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
       const firebaseConfig = {
@@ -550,8 +551,9 @@
 
           // Sprawdź czy użytkownik ma zweryfikowany email
           if (!user.emailVerified) {
-            console.log("Użytkownik ma niezweryfikowany email, może być automatycznie wylogowany");
-            // Nie wylogowujemy użytkownika, tylko pokazujemy ostrzeżenie
+            console.log("Użytkownik ma niezweryfikowany email");
+            // Pokaż komunikat o konieczności weryfikacji
+            showEmailVerificationNotice();
           }
 
           // Pobierz awatar z profilu użytkownika
@@ -599,6 +601,71 @@
         const userMenu = document.getElementById("user-menu");
         if (userMenu) {
           userMenu.classList.toggle("hidden");
+        }
+      };
+
+      // Funkcja wyświetlająca komunikat o weryfikacji emaila
+      function showEmailVerificationNotice() {
+        // Sprawdź czy komunikat już istnieje
+        if (document.getElementById('email-verification-notice')) {
+          return;
+        }
+
+        const notice = document.createElement('div');
+        notice.id = 'email-verification-notice';
+        notice.className = 'fixed top-4 right-4 bg-yellow-500 text-black px-4 py-3 rounded-lg shadow-lg z-50 max-w-md';
+        notice.innerHTML = `
+          <div class="flex items-start">
+            <div class="flex-shrink-0">
+              <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium">
+                Email nie został jeszcze zweryfikowany
+              </p>
+              <p class="text-sm mt-1">
+                Sprawdź swoją skrzynkę email i kliknij link aktywacyjny, aby móc korzystać z pełnej funkcjonalności systemu.
+              </p>
+              <div class="mt-2">
+                <button onclick="resendVerificationEmail()" class="text-black underline text-sm hover:no-underline">
+                  Wyślij ponownie link aktywacyjny
+                </button>
+                <button onclick="dismissVerificationNotice()" class="ml-4 text-black underline text-sm hover:no-underline">
+                  Zamknij
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.body.appendChild(notice);
+
+        // Auto-ukrycie po 30 sekundach
+        setTimeout(() => {
+          dismissVerificationNotice();
+        }, 30000);
+      }
+
+      // Funkcja wysyłająca ponownie email weryfikacyjny
+      window.resendVerificationEmail = async () => {
+        if (!currentUser) return;
+
+        try {
+          await sendEmailVerification(currentUser, {
+            url: window.location.origin + '/index.html'
+          });
+          alert('Link aktywacyjny został wysłany ponownie na Twój adres email.');
+        } catch (error) {
+          console.error('Błąd wysyłania emaila weryfikacyjnego:', error);
+          alert('Wystąpił błąd podczas wysyłania emaila. Spróbuj ponownie później.');
+        }
+      };
+
+      // Funkcja ukrywająca komunikat
+      window.dismissVerificationNotice = () => {
+        const notice = document.getElementById('email-verification-notice');
+        if (notice) {
+          notice.remove();
         }
       };
 

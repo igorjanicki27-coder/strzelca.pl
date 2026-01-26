@@ -427,16 +427,21 @@
 
             const user = userCredential.user;
 
-            // Sprawdź czy email jest zweryfikowany i pokaż ostrzeżenie jeśli nie
+            // Sprawdź czy email jest zweryfikowany
             if (!user.emailVerified) {
               showStatus(
-                "Zalogowano pomyślnie! Pamiętaj o zweryfikowaniu adresu email - sprawdź swoją skrzynkę pocztową.",
-                false, // nie błąd, tylko ostrzeżenie
+                "Konto nie zostało jeszcze aktywowane. Sprawdź swoją skrzynkę email i kliknij link aktywacyjny.",
+                true, // błąd
               );
 
-              // Przekieruj po krótkiej chwili (żeby użytkownik zobaczył komunikat)
-              setTimeout(() => {
-                window.location.href = "https://strzelca.pl/index.html";
+              // Wyloguj użytkownika i przekieruj na stronę aktywacji
+              setTimeout(async () => {
+                try {
+                  await auth.signOut();
+                } catch (signOutError) {
+                  console.warn("Błąd wylogowania:", signOutError);
+                }
+                window.location.href = "./po.rejestracji.html";
               }, 3000);
               return;
             }
