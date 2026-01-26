@@ -725,6 +725,7 @@
         doc,
         setDoc,
         getDoc,
+        deleteDoc,
         collection,
         query,
         where,
@@ -1066,45 +1067,70 @@
               status: "active", // active, blocked, suspended
             };
 
-            // Zapisz dane profilu w Firestore
-            await setDoc(doc(db, "userProfiles", user.uid), profileData);
-
             // Zapisz nazwę użytkownika w kolekcji displayNames (dla sprawdzania dostępności)
-            // Używamy lowercase jako ID dokumentu, aby uniknąć duplikatów typu 'Jan' i 'jan'
+            // Najpierw zapisujemy nazwę, żeby uniknąć wyścigu - jeśli się nie powiedzie, konto jeszcze nie zostało utworzone
+            let displayNameSaved = false;
             try {
               await setDoc(doc(db, "displayNames", formData.displayName.toLowerCase()), {
                 displayName: formData.displayName, // Oryginalna nazwa (zachowuje wielkość liter)
                 userId: user.uid,
                 createdAt: new Date(),
               });
+              displayNameSaved = true;
               console.log(`Nazwa "${formData.displayName}" została zarejestrowana w displayNames`);
             } catch (displayNameError) {
               console.error("Błąd zapisu do displayNames:", displayNameError);
 
-              // Jeśli zapis do displayNames się nie powiedzie, usuń utworzony profil i konto
+              // Jeśli zapis do displayNames się nie powiedzie, usuń konto Firebase Auth
               try {
-                await db.collection("userProfiles").doc(user.uid).delete();
-                console.log("Profil użytkownika został usunięty z powodu błędu displayNames");
-
-                // Wyloguj użytkownika
-                const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-                await signOut(auth);
-
-              } catch (cleanupError) {
-                console.error("Błąd podczas czyszczenia po nieudanym zapisie displayNames:", cleanupError);
+                await user.delete();
+                console.log("Konto Firebase Auth zostało usunięte z powodu błędu displayNames");
+              } catch (deleteError) {
+                console.error("Błąd podczas usuwania konta Firebase Auth:", deleteError);
               }
 
               throw new Error("Nie udało się zarejestrować nazwy użytkownika. Spróbuj ponownie.");
             }
 
+            // Zapisz dane profilu w Firestore
+            try {
+              await setDoc(doc(db, "userProfiles", user.uid), profileData);
+            } catch (profileError) {
+              console.error("Błąd zapisu profilu:", profileError);
+
+              // Jeśli zapis profilu się nie powiedzie, wyczyść wszystko
+              try {
+                // Usuń nazwę z displayNames
+                if (displayNameSaved) {
+                  await deleteDoc(doc(db, "displayNames", formData.displayName.toLowerCase()));
+                  console.log("Nazwa została usunięta z displayNames z powodu błędu profilu");
+                }
+
+                // Usuń konto Firebase Auth
+                await user.delete();
+                console.log("Konto Firebase Auth zostało usunięte z powodu błędu profilu");
+
+              } catch (cleanupError) {
+                console.error("Błąd podczas czyszczenia po nieudanym zapisie profilu:", cleanupError);
+              }
+
+              throw new Error("Nie udało się utworzyć profilu użytkownika. Spróbuj ponownie.");
+            }
+
             // 4. Jeśli użytkownik zgodził się na newsletter, dodaj do mailing list
             if (formData.newsletter) {
-              await setDoc(doc(db, "mailingList", formData.email), {
-                email: formData.email,
-                subscribedAt: new Date(),
-                active: true,
-                source: "registration",
-              });
+              try {
+                await setDoc(doc(db, "mailingList", formData.email), {
+                  email: formData.email,
+                  subscribedAt: new Date(),
+                  active: true,
+                  source: "registration",
+                });
+              } catch (mailingListError) {
+                console.error("Błąd zapisu do mailing list:", mailingListError);
+                // Nie przerywamy rejestracji z powodu błędu mailing list
+                // To nie jest krytyczna operacja
+              }
             }
 
             // Przekieruj do strony po rejestracji
@@ -1144,27 +1170,59 @@
             // Reset flagi rejestracji
             isRegistering = false;
 
-            // Jeśli użytkownik został utworzony, ale wystąpił błąd przy zapisie profilu,
-            // wyloguj użytkownika (konto można usunąć później ręcznie)
+            // Jeśli użytkownik został utworzony, ale wystąpił błąd przy zapisie danych,
+            // wyczyść wszystkie utworzone dane
             const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
             const currentUser = auth.currentUser;
-            
+
             if (currentUser) {
               try {
-                // Sprawdź czy profil został utworzony
-                const profileDoc = await getDoc(doc(db, "userProfiles", currentUser.uid));
-                
-                if (!profileDoc.exists()) {
-                  // Profil nie został utworzony - wyloguj użytkownika
-                  // (konto można usunąć później ręcznie przez admina lub użytkownik może spróbować ponownie)
-                  console.log("Profil nie został utworzony, wylogowywanie użytkownika...");
-                  await signOut(auth);
-                } else {
-                  // Profil istnieje, ale wystąpił inny błąd - tylko wyloguj
-                  await signOut(auth);
+                // Sprawdź czy poszczególne dane zostały utworzone i wyczyść je
+                const cleanupPromises = [];
+
+                // Sprawdź czy profil istnieje
+                try {
+                  const profileDoc = await getDoc(doc(db, "userProfiles", currentUser.uid));
+                  if (profileDoc.exists()) {
+                    cleanupPromises.push(deleteDoc(doc(db, "userProfiles", currentUser.uid)));
+                  }
+                } catch (e) {
+                  console.warn("Nie udało się sprawdzić profilu podczas czyszczenia:", e);
                 }
+
+                // Sprawdź czy nazwa została zapisana w displayNames
+                try {
+                  const displayNameDoc = await getDoc(doc(db, "displayNames", formData.displayName.toLowerCase()));
+                  if (displayNameDoc.exists()) {
+                    cleanupPromises.push(deleteDoc(doc(db, "displayNames", formData.displayName.toLowerCase())));
+                  }
+                } catch (e) {
+                  console.warn("Nie udało się sprawdzić displayNames podczas czyszczenia:", e);
+                }
+
+                // Sprawdź czy zapis do mailing list się udał
+                if (formData.newsletter) {
+                  try {
+                    const mailingDoc = await getDoc(doc(db, "mailingList", formData.email));
+                    if (mailingDoc.exists()) {
+                      cleanupPromises.push(deleteDoc(doc(db, "mailingList", formData.email)));
+                    }
+                  } catch (e) {
+                    console.warn("Nie udało się sprawdzić mailing list podczas czyszczenia:", e);
+                  }
+                }
+
+                // Wykonaj wszystkie operacje czyszczenia
+                if (cleanupPromises.length > 0) {
+                  await Promise.all(cleanupPromises);
+                  console.log("Dane użytkownika zostały wyczyszczone po nieudanej rejestracji");
+                }
+
+                // Wyloguj użytkownika
+                await signOut(auth);
+
               } catch (cleanupError) {
-                console.error("Błąd podczas czyszczenia:", cleanupError);
+                console.error("Błąd podczas czyszczenia po nieudanej rejestracji:", cleanupError);
                 // Spróbuj przynajmniej wylogować
                 try {
                   await signOut(auth);
