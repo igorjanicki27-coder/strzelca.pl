@@ -305,8 +305,8 @@
         getAuth,
         signInWithEmailAndPassword,
         setPersistence,
-        browserSessionPersistence,
         browserLocalPersistence,
+        browserSessionPersistence,
         onAuthStateChanged,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
@@ -324,15 +324,28 @@
       const auth = getAuth(app);
 
       // Ustaw trwałość sesji na LOCAL dla wszystkich stron wymagających logowania
-      await setPersistence(auth, browserLocalPersistence);
+      try {
+        await setPersistence(auth, browserLocalPersistence);
+        console.log("Firebase Auth persistence ustawiona na browserLocalPersistence");
+      } catch (persistenceError) {
+        console.warn("Błąd ustawiania persistence:", persistenceError);
+        // Spróbuj z session persistence jako fallback
+        try {
+          await setPersistence(auth, browserSessionPersistence);
+          console.log("Fallback: użyto browserSessionPersistence");
+        } catch (fallbackError) {
+          console.warn("Błąd ustawiania fallback persistence:", fallbackError);
+          // Kontynuuj bez ustawiania persistence
+        }
+      }
 
       // Listener stanu autoryzacji - jeśli użytkownik już jest zalogowany, przekieruj na stronę główną
       onAuthStateChanged(auth, (user) => {
+        console.log("Auth state changed:", user ? "logged in" : "logged out", user?.email || "");
+
         if (user) {
           // Użytkownik już jest zalogowany - przekieruj na stronę główną
-          console.log(
-            "Użytkownik już zalogowany, przekierowanie na stronę główną",
-          );
+          console.log("Użytkownik już zalogowany, przekierowanie na stronę główną");
           window.location.href = "https://strzelca.pl/index.html";
         } else {
           // Użytkownik niezalogowany - pozwól mu się zalogować
@@ -415,17 +428,24 @@
             '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Logowanie...';
 
           try {
-            // Ustaw trwałość sesji na session (użytkownik nie jest pamiętany)
-            await setPersistence(auth, browserSessionPersistence);
-
-            // Zaloguj użytkownika
+            // Zaloguj użytkownika (zachowaj obecną persistence)
+            console.log("Próba logowania użytkownika...");
             const userCredential = await signInWithEmailAndPassword(
               auth,
               document.getElementById("email").value.trim(),
               document.getElementById("password").value,
             );
+            console.log("Logowanie zakończone sukcesem");
 
             const user = userCredential.user;
+
+            // Odśwież dane użytkownika przed sprawdzeniem weryfikacji
+            try {
+              await user.reload();
+              console.log("Dane użytkownika odświeżone przy logowaniu, emailVerified:", user.emailVerified);
+            } catch (reloadError) {
+              console.warn("Błąd odświeżania danych przy logowaniu:", reloadError);
+            }
 
             // Sprawdź czy email jest zweryfikowany
             if (!user.emailVerified) {
@@ -487,6 +507,17 @@
             } else if (error.code === "auth/too-many-requests") {
               errorMessage =
                 "Zbyt wiele prób logowania. Spróbuj ponownie później.";
+            } else if (error.code === "auth/network-request-failed") {
+              errorMessage =
+                "Błąd połączenia z serwerem. Sprawdź połączenie internetowe i spróbuj ponownie.";
+            } else if (error.message && error.message.includes("accounts:lookup")) {
+              errorMessage =
+                "Błąd autoryzacji Firebase. Spróbuj odświeżyć stronę lub wyczyść cache przeglądarki.";
+            } else if (error.code === "auth/app-check-failed") {
+              errorMessage =
+                "Błąd weryfikacji aplikacji. Odśwież stronę i spróbuj ponownie.";
+            } else if (error.code) {
+              errorMessage = `Błąd autoryzacji (${error.code}). Spróbuj ponownie.`;
             }
 
             showStatus(errorMessage, true);

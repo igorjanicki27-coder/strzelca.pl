@@ -499,9 +499,21 @@
         );
 
         // Jeśli użytkownik jest zalogowany ale nie ma zweryfikowanego emaila,
-        // może być automatycznie wylogowany przez Firebase
+        // sprawdź czy może trzeba odświeżyć jego dane
         if (user && !user.emailVerified) {
-          console.warn("Użytkownik zalogowany, ale email nie zweryfikowany - może być wylogowany przez Firebase");
+          console.warn("Użytkownik zalogowany, ale email nie zweryfikowany");
+
+          // Spróbuj odświeżyć dane użytkownika - może weryfikacja się udała niedawno
+          try {
+            await user.reload();
+            console.log("Dane użytkownika odświeżone po logowaniu, emailVerified:", user.emailVerified);
+
+            if (user.emailVerified) {
+              console.log("Email został zweryfikowany - użytkownik może korzystać z systemu");
+            }
+          } catch (reloadError) {
+            console.warn("Błąd odświeżania danych użytkownika po logowaniu:", reloadError);
+          }
 
           // Sprawdź czy użytkownik ma prawidłowy profil w Firestore
           try {

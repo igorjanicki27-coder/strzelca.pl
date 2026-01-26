@@ -42,6 +42,10 @@
       input:not([type="checkbox"]):not([type="radio"]),
       select,
       textarea {
+        /* Zapewnij widoczność wszystkich pól formularza */
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
         -webkit-appearance: none;
         -moz-appearance: none;
         appearance: none;
@@ -96,6 +100,10 @@
         box-shadow: none !important;
         margin: 0 !important;
         flex-shrink: 0;
+        /* Zapewnij widoczność */
+        display: inline-block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
       }
       
       .checkbox-group input[type="checkbox"]:checked {
@@ -640,7 +648,7 @@
 
               <!-- Wiek -->
               <div class="checkbox-group">
-                <input type="checkbox" id="age-confirm" required />
+                <input type="checkbox" id="age-confirm" />
                 <label for="age-confirm" class="text-sm">
                   Potwierdzam, że mam ukończone 18 lat
                   <span class="text-red-500">*</span>
@@ -649,7 +657,7 @@
 
               <!-- Regulamin i RODO -->
               <div class="checkbox-group">
-                <input type="checkbox" id="terms-privacy-accept" required />
+                <input type="checkbox" id="terms-privacy-accept" />
                 <label for="terms-privacy-accept" class="text-sm">
                   Akceptuję
                   <a
@@ -964,7 +972,22 @@
         .addEventListener("submit", async (e) => {
           e.preventDefault();
 
+          console.log("Formularz wysyłany - sprawdzanie checkboxów:");
+          console.log("age-confirm:", document.getElementById("age-confirm")?.checked, document.getElementById("age-confirm")?.style.display);
+          console.log("terms-privacy-accept:", document.getElementById("terms-privacy-accept")?.checked, document.getElementById("terms-privacy-accept")?.style.display);
+          console.log("newsletter:", document.getElementById("newsletter")?.checked, document.getElementById("newsletter")?.style.display);
+
           if (!validateForm()) {
+            console.log("Walidacja formularza nie przeszła");
+
+            // Sprawdź ponownie widoczność checkboxów po walidacji
+            setTimeout(() => {
+              console.log("Po walidacji - checkboxy:");
+              console.log("age-confirm visible:", document.getElementById("age-confirm")?.offsetParent !== null);
+              console.log("terms-privacy-accept visible:", document.getElementById("terms-privacy-accept")?.offsetParent !== null);
+              console.log("newsletter visible:", document.getElementById("newsletter")?.offsetParent !== null);
+            }, 100);
+
             return;
           }
 
@@ -1131,6 +1154,16 @@
                 // Nie przerywamy rejestracji z powodu błędu mailing list
                 // To nie jest krytyczna operacja
               }
+            }
+
+            // Wyloguj użytkownika, żeby mógł przejść przez proces logowania
+            // (kontrola weryfikacji emaila jest w login.html)
+            try {
+              const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+              await signOut(auth);
+              console.log("Użytkownik został wylogowany po rejestracji");
+            } catch (signOutError) {
+              console.warn("Błąd wylogowania po rejestracji:", signOutError);
             }
 
             // Przekieruj do strony po rejestracji
