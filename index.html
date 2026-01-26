@@ -491,8 +491,32 @@
         console.warn("Firebase Auth state check failed:", error);
       }
 
+      // Sprawdź aktualnego użytkownika przed ustawieniem listenera
+      const checkCurrentUserOnIndex = async () => {
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          try {
+            await currentUser.reload();
+            console.log("Sprawdzanie aktualnego użytkownika na stronie głównej, emailVerified:", currentUser.emailVerified);
+            
+            // Jeśli użytkownik jest niezweryfikowany, wyloguj go
+            if (!currentUser.emailVerified) {
+              console.log("Aktualny użytkownik niezweryfikowany na stronie głównej - wylogowanie");
+              await signOut(auth);
+              window.location.href = "https://konto.strzelca.pl/po.rejestracji.html";
+            }
+          } catch (error) {
+            console.warn("Błąd sprawdzania aktualnego użytkownika na stronie głównej:", error);
+          }
+        }
+      };
+
+      // Sprawdź przed ustawieniem listenera
+      await checkCurrentUserOnIndex();
+
       // Flaga zapobiegająca wielokrotnemu wylogowaniu
       let isSigningOut = false;
+      let initialAuthCheck = true; // Flaga dla pierwszego wywołania
 
       onAuthStateChanged(auth, async (user) => {
         // Ignoruj zmiany stanu podczas wylogowywania
@@ -500,6 +524,15 @@
           console.log("Ignoruję zmianę stanu podczas wylogowywania");
           return;
         }
+
+        // Ignoruj pierwsze wywołanie z user = null (to jest normalne przy inicjalizacji)
+        if (initialAuthCheck && !user) {
+          console.log("Początkowe wywołanie onAuthStateChanged z user = null - ignoruję");
+          initialAuthCheck = false;
+          return;
+        }
+        initialAuthCheck = false;
+
         console.log(
           "Auth state changed:",
           user ? "logged in" : "logged out",
@@ -510,7 +543,10 @@
         // Jeśli użytkownik jest zalogowany ale nie ma zweryfikowanego emaila,
         // wyloguj go i przekieruj na stronę aktywacji
         if (user && !user.emailVerified) {
-          console.warn("Użytkownik zalogowany, ale email nie zweryfikowany - wylogowanie");
+          console.warn("Użytkownik zalogowany, ale email nie zweryfikowany - sprawdzanie...");
+
+          // Poczekaj chwilę na synchronizację Firebase (może być opóźnienie po przekierowaniu)
+          await new Promise(resolve => setTimeout(resolve, 1000));
 
           // Spróbuj odświeżyć dane użytkownika - może weryfikacja się udała niedawno
           try {
@@ -537,15 +573,20 @@
             }
           } catch (reloadError) {
             console.warn("Błąd odświeżania danych użytkownika po logowaniu:", reloadError);
-            // W przypadku błędu, wyloguj użytkownika dla bezpieczeństwa
-            isSigningOut = true;
-            try {
-              await signOut(auth);
-              window.location.href = "https://konto.strzelca.pl/po.rejestracji.html";
-            } catch (signOutError) {
-              console.error("Błąd wylogowania po błędzie reload:", signOutError);
-              isSigningOut = false;
-            }
+            // W przypadku błędu, nie wylogowuj od razu - może być problem z siecią
+            // Poczekaj chwilę i spróbuj ponownie
+            setTimeout(async () => {
+              try {
+                await user.reload();
+                if (!user.emailVerified) {
+                  isSigningOut = true;
+                  await signOut(auth);
+                  window.location.href = "https://konto.strzelca.pl/po.rejestracji.html";
+                }
+              } catch (retryError) {
+                console.warn("Błąd ponownej próby sprawdzenia weryfikacji:", retryError);
+              }
+            }, 2000);
             return;
           }
         }

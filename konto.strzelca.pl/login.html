@@ -375,6 +375,33 @@
         console.log("Kontynuacja bez ustawiania persistence");
       }
 
+      // Sprawdź aktualnego użytkownika przed ustawieniem listenera
+      const checkCurrentUser = async () => {
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          try {
+            await currentUser.reload();
+            console.log("Sprawdzanie aktualnego użytkownika, emailVerified:", currentUser.emailVerified);
+            
+            if (!currentUser.emailVerified) {
+              console.log("Aktualny użytkownik niezweryfikowany - wylogowanie");
+              const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+              await signOut(auth);
+              console.log("Niezweryfikowany użytkownik został wylogowany przed ustawieniem listenera");
+            } else {
+              // Użytkownik zweryfikowany - przekieruj
+              console.log("Użytkownik zweryfikowany, przekierowanie na stronę główną");
+              window.location.href = "https://strzelca.pl/index.html";
+            }
+          } catch (error) {
+            console.warn("Błąd sprawdzania aktualnego użytkownika:", error);
+          }
+        }
+      };
+
+      // Sprawdź przed ustawieniem listenera
+      await checkCurrentUser();
+
       // Flaga zapobiegająca wielokrotnemu wylogowaniu
       let isSigningOut = false;
 
@@ -402,7 +429,10 @@
                 const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
                 await signOut(auth);
                 console.log("Niezweryfikowany użytkownik został wylogowany");
-                isSigningOut = false;
+                // Nie resetuj flagi od razu - poczekaj na następną zmianę stanu
+                setTimeout(() => {
+                  isSigningOut = false;
+                }, 1000);
               } catch (signOutError) {
                 console.warn("Błąd wylogowania niezweryfikowanego użytkownika:", signOutError);
                 isSigningOut = false;
@@ -420,7 +450,9 @@
             try {
               const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
               await signOut(auth);
-              isSigningOut = false;
+              setTimeout(() => {
+                isSigningOut = false;
+              }, 1000);
             } catch (signOutError) {
               console.warn("Błąd wylogowania po błędzie reload:", signOutError);
               isSigningOut = false;
@@ -429,6 +461,7 @@
         } else {
           // Użytkownik niezalogowany - pozwól mu się zalogować
           console.log("Użytkownik niezalogowany, można się zalogować");
+          isSigningOut = false; // Reset flagi gdy użytkownik jest wylogowany
         }
       });
 

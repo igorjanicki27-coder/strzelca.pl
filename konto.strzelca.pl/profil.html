@@ -657,6 +657,33 @@
     <!-- Session Manager -->
 
     <script type="module">
+      // Dodaj globalną obsługę błędów CORS (ignoruj błędy Firebase internal)
+      window.addEventListener('error', function(e) {
+        // Ignoruj błędy CORS związane z Firebase/Firestore
+        if (e.message && (
+          e.message.includes('access control checks') ||
+          e.message.includes('CORS') ||
+          e.message.includes('firestore.googleapis.com')
+        )) {
+          console.warn('Ignored Firebase CORS error in profile:', e.message);
+          e.preventDefault();
+          return false;
+        }
+      });
+
+      // Dodaj obsługę błędów dla fetch API
+      window.addEventListener('unhandledrejection', function(e) {
+        if (e.reason && e.reason.message && (
+          e.reason.message.includes('access control checks') ||
+          e.reason.message.includes('CORS') ||
+          e.reason.message.includes('firestore.googleapis.com')
+        )) {
+          console.warn('Ignored Firebase CORS promise rejection in profile:', e.reason.message);
+          e.preventDefault();
+          return false;
+        }
+      });
+
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
       import {
         getFirestore,
@@ -682,6 +709,7 @@
         reauthenticateWithCredential,
         setPersistence,
         browserLocalPersistence,
+        signOut,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
       const firebaseConfig = {
@@ -707,15 +735,41 @@
       // Listener stanu autoryzacji z logiką przekierowań
       onAuthStateChanged(auth, async (user) => {
         if (user) {
-          // Użytkownik jest zalogowany - pozwól mu zostać na stronie
-          currentUser = user;
-          console.log("Użytkownik zalogowany:", user.email);
+          // Odśwież dane użytkownika przed sprawdzeniem weryfikacji
+          try {
+            await user.reload();
+            console.log("Użytkownik zalogowany:", user.email, "emailVerified:", user.emailVerified);
 
-          // Pobierz dane użytkownika z bazy dla kolorów przycisków
-          await loadUserProfile(user.uid);
+            // Jeśli użytkownik jest niezweryfikowany, wyloguj go i przekieruj
+            if (!user.emailVerified) {
+              console.log("Użytkownik niezweryfikowany - wylogowanie i przekierowanie");
+              try {
+                await signOut(auth);
+                window.location.href = "./po.rejestracji.html";
+              } catch (signOutError) {
+                console.warn("Błąd wylogowania niezweryfikowanego użytkownika:", signOutError);
+              }
+              return;
+            }
 
-          // Załaduj profil użytkownika
-          await loadProfile();
+            // Użytkownik jest zalogowany i zweryfikowany - pozwól mu zostać na stronie
+            currentUser = user;
+
+            // Pobierz dane użytkownika z bazy dla kolorów przycisków
+            await loadUserProfile(user.uid);
+
+            // Załaduj profil użytkownika
+            await loadProfile();
+          } catch (reloadError) {
+            console.warn("Błąd odświeżania danych użytkownika:", reloadError);
+            // W przypadku błędu, wyloguj dla bezpieczeństwa
+            try {
+              await signOut(auth);
+              window.location.href = "./login.html";
+            } catch (signOutError) {
+              console.error("Błąd wylogowania po błędzie reload:", signOutError);
+            }
+          }
         } else {
           // Użytkownik nie jest zalogowany - przekieruj do strony logowania
           console.log("Użytkownik niezalogowany, przekierowanie do login.html");
@@ -924,6 +978,9 @@
               decryptedProfile.parcelLocker || "";
             document.getElementById("edit-newsletter").checked =
               decryptedProfile.newsletter || false;
+
+            // Aktualizuj status weryfikacji emaila
+            await updateVerificationStatus();
 
             // Załaduj opinie użytkownika
             loadUserReviews();
@@ -1235,6 +1292,7 @@
       // Ładowanie opinii użytkownika
       async function loadUserReviews() {
         try {
+          // Zapytanie wymaga indeksu - użyj prostszego zapytania lub obsłuż błąd
           const reviewsQuery = query(
             collection(db, "userReviews"),
             where("ratedId", "==", currentUser.uid),
@@ -1252,6 +1310,35 @@
           updateAverageRating(reviews);
         } catch (error) {
           console.error("Błąd ładowania opinii:", error);
+          // Jeśli błąd to brak indeksu, użyj prostszego zapytania
+          if (error.code === "failed-precondition") {
+            try {
+              console.log("Próba prostszego zapytania bez orderBy");
+              const simpleQuery = query(
+                collection(db, "userReviews"),
+                where("ratedId", "==", currentUser.uid),
+                where("status", "==", "approved"),
+              );
+              const simpleSnapshot = await getDocs(simpleQuery);
+              const reviews = simpleSnapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+              }));
+              // Sortuj ręcznie
+              reviews.sort((a, b) => {
+                const aTime = a.timestamp?.toDate?.() || new Date(a.timestamp || 0);
+                const bTime = b.timestamp?.toDate?.() || new Date(b.timestamp || 0);
+                return bTime - aTime;
+              });
+              displayReviews(reviews);
+              updateAverageRating(reviews);
+            } catch (simpleError) {
+              console.error("Błąd prostszego zapytania:", simpleError);
+              displayReviews([]);
+            }
+          } else {
+            displayReviews([]);
+          }
         }
       }
 
