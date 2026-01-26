@@ -375,21 +375,42 @@
         console.log("Kontynuacja bez ustawiania persistence");
       }
 
-      // Listener stanu autoryzacji - jeśli użytkownik już jest zalogowany, przekieruj na stronę główną
+      // Listener stanu autoryzacji - jeśli użytkownik już jest zalogowany, sprawdź weryfikację
       onAuthStateChanged(auth, async (user) => {
         console.log("Auth state changed:", user ? "logged in" : "logged out", user?.email || "");
 
         if (user) {
-          // Użytkownik już jest zalogowany - odśwież jego dane i przekieruj na stronę główną
+          // Użytkownik już jest zalogowany - odśwież jego dane i sprawdź weryfikację
           try {
             await user.reload();
             console.log("User data reloaded on login page, emailVerified:", user.emailVerified);
+
+            // Jeśli użytkownik jest niezweryfikowany, wyloguj go i pozwól na logowanie
+            if (!user.emailVerified) {
+              console.log("Użytkownik niezweryfikowany - wylogowanie i pozostanie na stronie logowania");
+              try {
+                const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+                await signOut(auth);
+                console.log("Niezweryfikowany użytkownik został wylogowany");
+              } catch (signOutError) {
+                console.warn("Błąd wylogowania niezweryfikowanego użytkownika:", signOutError);
+              }
+              return; // Pozostaw użytkownika na stronie logowania
+            }
+
+            // Użytkownik zweryfikowany - przekieruj na stronę główną
+            console.log("Użytkownik zweryfikowany, przekierowanie na stronę główną");
+            window.location.href = "https://strzelca.pl/index.html";
           } catch (reloadError) {
             console.warn("Błąd odświeżania danych na stronie logowania:", reloadError);
+            // W przypadku błędu, wyloguj użytkownika dla bezpieczeństwa
+            try {
+              const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+              await signOut(auth);
+            } catch (signOutError) {
+              console.warn("Błąd wylogowania po błędzie reload:", signOutError);
+            }
           }
-
-          console.log("Użytkownik już zalogowany, przekierowanie na stronę główną");
-          window.location.href = "https://strzelca.pl/index.html";
         } else {
           // Użytkownik niezalogowany - pozwól mu się zalogować
           console.log("Użytkownik niezalogowany, można się zalogować");
