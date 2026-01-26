@@ -451,15 +451,78 @@
       let conversationsList = [];
       let currentConversationId = null;
 
+      // Dodaj globalną obsługę błędów CORS (ignoruj błędy Firebase internal)
+      window.addEventListener('error', function(e) {
+        // Ignoruj błędy CORS związane z Firebase/Firestore
+        if (e.message && (
+          e.message.includes('access control checks') ||
+          e.message.includes('CORS') ||
+          e.message.includes('firestore.googleapis.com')
+        )) {
+          console.warn('Ignored Firebase CORS error:', e.message);
+          e.preventDefault();
+          return false;
+        }
+      });
+
+      // Dodaj obsługę błędów dla fetch API
+      window.addEventListener('unhandledrejection', function(e) {
+        if (e.reason && e.reason.message && (
+          e.reason.message.includes('access control checks') ||
+          e.reason.message.includes('CORS') ||
+          e.reason.message.includes('firestore.googleapis.com')
+        )) {
+          console.warn('Ignored Firebase CORS promise rejection:', e.reason.message);
+          e.preventDefault();
+          return false;
+        }
+      });
+
       // --- MONITOROWANIE STANU ZALOGOWANIA ---
       console.log("Firebase Auth initialized, checking current user...");
 
-      onAuthStateChanged(auth, (user) => {
+      // Sprawdź czy użytkownik może być zalogowany (odśwież token jeśli potrzebne)
+      try {
+        await auth.authStateReady();
+        console.log("Firebase Auth state ready");
+      } catch (error) {
+        console.warn("Firebase Auth state check failed:", error);
+      }
+
+      onAuthStateChanged(auth, async (user) => {
         console.log(
           "Auth state changed:",
           user ? "logged in" : "logged out",
           user?.email || "",
+          user?.emailVerified ? "(verified)" : "(not verified)"
         );
+
+        // Jeśli użytkownik jest zalogowany ale nie ma zweryfikowanego emaila,
+        // może być automatycznie wylogowany przez Firebase
+        if (user && !user.emailVerified) {
+          console.warn("Użytkownik zalogowany, ale email nie zweryfikowany - może być wylogowany przez Firebase");
+
+          // Sprawdź czy użytkownik ma prawidłowy profil w Firestore
+          try {
+            const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
+            if (!profileDoc.exists()) {
+              console.error("Użytkownik ma niezweryfikowany email I brak profilu - może być problem z rejestracją");
+            } else {
+              console.log("Użytkownik ma profil w Firestore pomimo niezweryfikowanego emaila");
+            }
+          } catch (error) {
+            if (error.message && (
+              error.message.includes('access control checks') ||
+              error.message.includes('CORS') ||
+              error.message.includes('firestore.googleapis.com')
+            )) {
+              console.warn("Nie można sprawdzić profilu z powodu błędów CORS");
+            } else {
+              console.error("Błąd sprawdzania profilu:", error);
+            }
+          }
+        }
+
         currentUser = user;
         updateUserInterface(user);
       });
@@ -485,11 +548,19 @@
           const displayName = user.displayName || user.email.split("@")[0];
           userDisplayName.textContent = displayName;
 
+          // Sprawdź czy użytkownik ma zweryfikowany email
+          if (!user.emailVerified) {
+            console.log("Użytkownik ma niezweryfikowany email, może być automatycznie wylogowany");
+            // Nie wylogowujemy użytkownika, tylko pokazujemy ostrzeżenie
+          }
+
           // Pobierz awatar z profilu użytkownika
           try {
             const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
             if (profileDoc.exists()) {
               const userProfile = profileDoc.data();
+              console.log("Profil użytkownika istnieje:", userProfile.displayName);
+
               if (userProfile.avatar) {
                 // Jeśli użytkownik ma awatar, wyświetl go
                 userAvatar.innerHTML = `<img src="${userProfile.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
@@ -498,11 +569,22 @@
                 userAvatar.innerHTML = getDefaultAvatar(userProfile.gender);
               }
             } else {
-              // Jeśli profil nie istnieje, użyj domyślnego awatara
+              // Jeśli profil nie istnieje, użyj domyślnego awatara i pokaż ostrzeżenie
+              console.warn("Profil użytkownika nie istnieje w Firestore, ale użytkownik jest zalogowany");
               userAvatar.innerHTML = getDefaultAvatar();
             }
           } catch (error) {
-            console.error("Error loading user profile:", error);
+            // Ignoruj błędy CORS i problemy z połączeniem do Firestore
+            if (error.message && (
+              error.message.includes('access control checks') ||
+              error.message.includes('CORS') ||
+              error.message.includes('firestore.googleapis.com') ||
+              error.message.includes('network-request-failed')
+            )) {
+              console.warn("Ignored Firestore connection error in user interface update:", error.message);
+            } else {
+              console.error("Error loading user profile:", error);
+            }
             userAvatar.innerHTML = getDefaultAvatar();
           }
         } else {

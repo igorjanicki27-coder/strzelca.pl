@@ -101,16 +101,13 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const mode = urlParams.get('mode');
-        const actionCode = urlParams.get('oobCode');
-
-        // Debug - sprawdź parametry
-        console.log('Mode:', mode);
-        console.log('Action Code:', actionCode);
-
         function showError(message) {
-            document.getElementById('action-content').innerHTML = `
+            const actionContent = document.getElementById('action-content');
+            if (!actionContent) {
+                console.error('Element action-content nie znaleziony w showError');
+                return;
+            }
+            actionContent.innerHTML = `
                 <i class="fa-solid fa-exclamation-triangle text-6xl text-red-500 mb-6"></i>
                 <h1 class="text-2xl md:text-3xl font-bold text-red-500 uppercase italic font-[Orbitron] mb-4">
                     Błąd
@@ -123,7 +120,12 @@
         }
 
         function showSuccess(message, redirectUrl = './login.html', redirectText = 'Powrót do logowania') {
-            document.getElementById('action-content').innerHTML = `
+            const actionContent = document.getElementById('action-content');
+            if (!actionContent) {
+                console.error('Element action-content nie znaleziony w showSuccess');
+                return;
+            }
+            actionContent.innerHTML = `
                 <div class="checkmark"></div>
                 <h1 class="text-2xl md:text-3xl font-bold coyote-text uppercase italic font-[Orbitron] mb-4">
                     SUKCES
@@ -136,7 +138,12 @@
         }
 
         function showPasswordResetForm(email) {
-            document.getElementById('action-content').innerHTML = `
+            const actionContent = document.getElementById('action-content');
+            if (!actionContent) {
+                console.error('Element action-content nie znaleziony w showPasswordResetForm');
+                return;
+            }
+            actionContent.innerHTML = `
                 <h1 class="text-2xl md:text-3xl font-bold coyote-text uppercase italic font-[Orbitron] mb-4">
                     RESET HASŁA
                 </h1>
@@ -214,11 +221,17 @@
         }
 
         function startCountdown() {
+            const actionContent = document.getElementById('action-content');
+            if (!actionContent) {
+                console.error('Element action-content nie znaleziony w startCountdown');
+                return;
+            }
+
             let countdown = 5;
             const countdownElement = document.createElement('p');
             countdownElement.className = 'text-sm text-zinc-400 mt-4 cursor-pointer hover:text-coyote hover:underline transition-colors';
             countdownElement.textContent = `Przekierowanie za ${countdown} sekund...`;
-            document.getElementById('action-content').appendChild(countdownElement);
+            actionContent.appendChild(countdownElement);
 
             const timer = setInterval(() => {
                 countdownElement.textContent = `Przekierowanie za ${countdown} sekund...`;
@@ -236,18 +249,35 @@
             });
         }
 
-        // Główna logika rozpoznawania akcji
-        if (!actionCode) {
-            console.error('Brak kodu akcji (oobCode) w URL');
-            showError('Brak kodu akcji. Sprawdź link.');
-            return;
-        }
+        // Główna funkcja obsługi akcji
+        async function handleAction() {
+            // Sprawdź czy element DOM istnieje
+            const actionContent = document.getElementById('action-content');
+            if (!actionContent) {
+                console.error('Element action-content nie znaleziony');
+                return;
+            }
 
-        if (!mode) {
-            console.error('Brak parametru mode w URL');
-            showError('Brak parametru akcji. Sprawdź link.');
-            return;
-        }
+            const urlParams = new URLSearchParams(window.location.search);
+            const mode = urlParams.get('mode');
+            const actionCode = urlParams.get('oobCode');
+
+            // Debug - sprawdź parametry
+            console.log('Mode:', mode);
+            console.log('Action Code:', actionCode);
+
+            // Główna logika rozpoznawania akcji
+            if (!actionCode) {
+                console.error('Brak kodu akcji (oobCode) w URL');
+                showError('Brak kodu akcji. Sprawdź link.');
+                return;
+            }
+
+            if (!mode) {
+                console.error('Brak parametru mode w URL');
+                showError('Brak parametru akcji. Sprawdź link.');
+                return;
+            }
 
         switch (mode) {
             case 'resetPassword':
@@ -305,6 +335,17 @@
                 console.error('Nieznana akcja:', mode);
                 showError('Nieznana akcja. Sprawdź link.');
                 break;
+            }
+        }
+
+        // Wywołaj funkcję obsługi akcji po załadowaniu strony
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                handleAction();
+            });
+        } else {
+            // DOM już załadowany
+            handleAction();
         }
     </script>
 </body>

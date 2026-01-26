@@ -1109,6 +1109,34 @@
 
             // Przekieruj do strony po rejestracji
             isRegistering = false; // Reset flagi przed przekierowaniem
+
+            // Dodaj obsługę błędów CORS (ignoruj błędy Firebase internal)
+            window.addEventListener('error', function(e) {
+              // Ignoruj błędy CORS związane z Firebase/Firestore
+              if (e.message && (
+                e.message.includes('access control checks') ||
+                e.message.includes('CORS') ||
+                e.message.includes('firestore.googleapis.com')
+              )) {
+                console.warn('Ignored Firebase CORS error:', e.message);
+                e.preventDefault();
+                return false;
+              }
+            });
+
+            // Dodaj obsługę błędów dla fetch API
+            window.addEventListener('unhandledrejection', function(e) {
+              if (e.reason && e.reason.message && (
+                e.reason.message.includes('access control checks') ||
+                e.reason.message.includes('CORS') ||
+                e.reason.message.includes('firestore.googleapis.com')
+              )) {
+                console.warn('Ignored Firebase CORS promise rejection:', e.reason.message);
+                e.preventDefault();
+                return false;
+              }
+            });
+
             window.location.href = "./po.rejestracji.html";
           } catch (error) {
             console.error("Registration error:", error);
