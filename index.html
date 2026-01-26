@@ -504,15 +504,21 @@
               console.log("Aktualny użytkownik niezweryfikowany na stronie głównej - wylogowanie");
               await signOut(auth);
               window.location.href = "https://konto.strzelca.pl/po.rejestracji.html";
+              return true; // Zwróć true jeśli wylogowano
             }
           } catch (error) {
             console.warn("Błąd sprawdzania aktualnego użytkownika na stronie głównej:", error);
           }
         }
+        return false; // Zwróć false jeśli nie wylogowano
       };
 
       // Sprawdź przed ustawieniem listenera
-      await checkCurrentUserOnIndex();
+      const wasSignedOut = await checkCurrentUserOnIndex();
+      if (wasSignedOut) {
+        // Jeśli użytkownik został wylogowany, nie ustawiaj listenera
+        return;
+      }
 
       // Flaga zapobiegająca wielokrotnemu wylogowaniu
       let isSigningOut = false;
@@ -525,11 +531,40 @@
           return;
         }
 
-        // Ignoruj pierwsze wywołanie z user = null (to jest normalne przy inicjalizacji)
+        // Ignoruj pierwsze wywołanie z user = null TYLKO jeśli nie ma aktualnego użytkownika
+        // i to jest rzeczywiście początkowe załadowanie strony (nie po przekierowaniu)
         if (initialAuthCheck && !user) {
-          console.log("Początkowe wywołanie onAuthStateChanged z user = null - ignoruję");
-          initialAuthCheck = false;
-          return;
+          const currentUser = auth.currentUser;
+          if (!currentUser) {
+            console.log("Początkowe wywołanie onAuthStateChanged z user = null - ignoruję (brak aktualnego użytkownika)");
+            initialAuthCheck = false;
+            return;
+          } else {
+            // Jest aktualny użytkownik, więc to nie jest początkowe wywołanie
+            // Może być to po przekierowaniu z login.html
+            console.log("Wywołanie z user = null, ale jest aktualny użytkownik - kontynuuję (może być po przekierowaniu)");
+            // Nie ignoruj - użytkownik może być zalogowany, ale Firebase jeszcze nie zsynchronizował stanu
+            initialAuthCheck = false;
+            // Sprawdź aktualnego użytkownika
+            try {
+              await currentUser.reload();
+              if (currentUser.emailVerified) {
+                console.log("Aktualny użytkownik jest zweryfikowany - kontynuuj normalnie");
+                // Ustaw user na currentUser, aby kontynuować normalnie
+                user = currentUser;
+              } else {
+                console.log("Aktualny użytkownik niezweryfikowany - wylogowanie");
+                isSigningOut = true;
+                await signOut(auth);
+                window.location.href = "https://konto.strzelca.pl/po.rejestracji.html";
+                return;
+              }
+            } catch (reloadError) {
+              console.warn("Błąd sprawdzania aktualnego użytkownika:", reloadError);
+              initialAuthCheck = false;
+              return;
+            }
+          }
         }
         initialAuthCheck = false;
 
