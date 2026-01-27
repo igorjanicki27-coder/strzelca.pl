@@ -902,6 +902,31 @@
         return date.toLocaleDateString("pl-PL");
       }
 
+      // Status weryfikacji emaila w UI
+      async function updateVerificationStatus() {
+        try {
+          if (!currentUser) return;
+
+          // Upewnij się, że status jest aktualny (best-effort)
+          try {
+            await currentUser.reload();
+          } catch {}
+
+          const el = document.getElementById("verification-status");
+          if (!el) return;
+
+          if (currentUser.emailVerified) {
+            el.textContent = "Email zweryfikowany";
+            el.className = "bg-green-800 px-3 py-1 rounded-full";
+          } else {
+            el.textContent = "Email niezweryfikowany";
+            el.className = "bg-yellow-800 px-3 py-1 rounded-full";
+          }
+        } catch (e) {
+          console.warn("updateVerificationStatus failed (ignored):", e?.message || e);
+        }
+      }
+
       // Ładowanie danych profilu
       async function loadProfile() {
         if (!currentUser) {
