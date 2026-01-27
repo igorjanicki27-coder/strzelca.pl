@@ -134,6 +134,7 @@
                         class="text-white font-semibold text-sm mb-3 pb-3 border-b border-zinc-700"
                     ></div>
                     <a
+                        id="profile-link"
                         href="https://konto.strzelca.pl/profil.html"
                         class="block text-zinc-300 hover:text-[#C19A6B] transition text-sm"
                     >
@@ -985,6 +986,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs";
 
         const firebaseConfig = {
             apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
@@ -1002,6 +1004,13 @@
 
         // Ustaw trwałość sesji na browserLocalPersistence dla wszystkich subdomen
         await setPersistence(auth, browserLocalPersistence);
+
+        // SSO między subdomenami: jeśli tu nie ma usera, spróbuj zalogować z cookie (.strzelca.pl)
+        try {
+            await ensureFirebaseSSO(auth);
+        } catch (e) {
+            console.warn("SSO ensure failed (ignored):", e?.message || e);
+        }
 
         let currentUser = null;
 
@@ -1039,6 +1048,7 @@
             const userPanel = document.getElementById("user-panel");
             const userDisplayName = document.getElementById("user-display-name");
             const userAvatar = document.getElementById("user-avatar");
+            const profileLink = document.getElementById("profile-link");
 
             if (user) {
                 // Użytkownik zalogowany
@@ -1049,6 +1059,13 @@
                 const displayName = user.displayName || user.email.split("@")[0];
                 if (userDisplayName) {
                     userDisplayName.textContent = displayName;
+                }
+
+                // Tryb ograniczony dla niezweryfikowanych: profil -> po rejestracji
+                if (profileLink) {
+                    profileLink.href = user.emailVerified
+                        ? "https://konto.strzelca.pl/profil.html"
+                        : "https://konto.strzelca.pl/po.rejestracji.html";
                 }
 
                 // Pobierz awatar z profilu użytkownika
@@ -1090,6 +1107,15 @@
         // Funkcja wylogowania
         window.logout = async () => {
             try {
+                // SSO: wyczyść cookie wspólnej sesji
+                try {
+                    await fetch("https://strzelca.pl/api/sso-session-logout", {
+                        method: "POST",
+                        credentials: "include",
+                    });
+                } catch (e) {
+                    console.warn("SSO logout failed (ignored):", e?.message || e);
+                }
                 await signOut(auth);
                 // Zamknij menu po wylogowaniu
                 const userMenu = document.getElementById("user-menu");

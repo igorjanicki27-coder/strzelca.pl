@@ -348,6 +348,7 @@
         browserSessionPersistence,
         onAuthStateChanged,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+      import { ensureFirebaseSSO, syncSessionCookieFromFirebaseUser } from "https://strzelca.pl/sso-client.mjs";
 
       const firebaseConfig = {
         apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
@@ -372,6 +373,13 @@
         console.log("Kontynuacja bez ustawiania persistence");
       }
 
+      // SSO: jeśli użytkownik jest zalogowany w innej subdomenie, dologuj go tutaj z cookie
+      try {
+        await ensureFirebaseSSO(auth);
+      } catch (e) {
+        console.warn("SSO ensure failed (ignored):", e?.message || e);
+      }
+
       // Sprawdź aktualnego użytkownika przed ustawieniem listenera
       const checkCurrentUser = async () => {
         const currentUser = auth.currentUser;
@@ -381,11 +389,11 @@
             console.log("Sprawdzanie aktualnego użytkownika, emailVerified:", currentUser.emailVerified);
             
             if (!currentUser.emailVerified) {
-              console.log("Aktualny użytkownik niezweryfikowany - wylogowanie");
-              const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-              await signOut(auth);
-              console.log("Niezweryfikowany użytkownik został wylogowany przed ustawieniem listenera");
+              // Tryb ograniczony: zostaje zalogowany, ale prowadzi na stronę po rejestracji
+              window.location.href = "./po.rejestracji.html";
             } else {
+              // odśwież cookie SSO (best-effort)
+              try { await syncSessionCookieFromFirebaseUser(auth); } catch {}
               // Użytkownik zweryfikowany - przekieruj do profilu (ta sama domena co logowanie)
               console.log("Użytkownik zweryfikowany, przekierowanie do profil.html");
               window.location.href = "./profil.html";
@@ -418,42 +426,22 @@
             await user.reload();
             console.log("User data reloaded on login page, emailVerified:", user.emailVerified);
 
-            // Jeśli użytkownik jest niezweryfikowany, wyloguj go i pozwól na logowanie
+            // Jeśli użytkownik jest niezweryfikowany: tryb ograniczony (bez wylogowania)
             if (!user.emailVerified) {
-              console.log("Użytkownik niezweryfikowany - wylogowanie i pozostanie na stronie logowania");
-              isSigningOut = true;
-              try {
-                const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-                await signOut(auth);
-                console.log("Niezweryfikowany użytkownik został wylogowany");
-                // Nie resetuj flagi od razu - poczekaj na następną zmianę stanu
-                setTimeout(() => {
-                  isSigningOut = false;
-                }, 1000);
-              } catch (signOutError) {
-                console.warn("Błąd wylogowania niezweryfikowanego użytkownika:", signOutError);
-                isSigningOut = false;
-              }
-              return; // Pozostaw użytkownika na stronie logowania
+              window.location.href = "./po.rejestracji.html";
+              return;
             }
+
+            // odśwież cookie SSO (best-effort)
+            try { await syncSessionCookieFromFirebaseUser(auth); } catch {}
 
             // Użytkownik zweryfikowany - przekieruj do profilu (ta sama domena co logowanie)
             console.log("Użytkownik zweryfikowany, przekierowanie do profil.html");
             window.location.href = "./profil.html";
           } catch (reloadError) {
             console.warn("Błąd odświeżania danych na stronie logowania:", reloadError);
-            // W przypadku błędu, wyloguj użytkownika dla bezpieczeństwa
-            isSigningOut = true;
-            try {
-              const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-              await signOut(auth);
-              setTimeout(() => {
-                isSigningOut = false;
-              }, 1000);
-            } catch (signOutError) {
-              console.warn("Błąd wylogowania po błędzie reload:", signOutError);
-              isSigningOut = false;
-            }
+            // Nie wylogowuj agresywnie - pozwól na ponowną próbę / logowanie
+            isSigningOut = false;
           }
         } else {
           // Użytkownik niezalogowany - pozwól mu się zalogować
@@ -546,22 +534,29 @@
               console.warn("Błąd odświeżania danych przy logowaniu:", reloadError);
             }
 
-            // Sprawdź czy email jest zweryfikowany
+            // SSO: ustaw cookie na `.strzelca.pl`, żeby inne subdomeny mogły się zalogować
+            try {
+              const idToken = await user.getIdToken(true);
+              await fetch("https://strzelca.pl/api/sso-session-login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ idToken }),
+              });
+            } catch (ssoErr) {
+              console.warn("SSO session-login failed (ignored):", ssoErr?.message || ssoErr);
+            }
+
+            // Jeśli email niezweryfikowany: NIE wylogowujemy (tryb ograniczony),
+            // ale przekierowujemy na stronę po rejestracji.
             if (!user.emailVerified) {
               showStatus(
                 "Konto nie zostało jeszcze aktywowane. Sprawdź swoją skrzynkę email i kliknij link aktywacyjny.",
-                true, // błąd
+                true,
               );
-
-              // Wyloguj użytkownika i przekieruj na stronę aktywacji
-              setTimeout(async () => {
-                try {
-                  await auth.signOut();
-                } catch (signOutError) {
-                  console.warn("Błąd wylogowania:", signOutError);
-                }
+              setTimeout(() => {
                 window.location.href = "./po.rejestracji.html";
-              }, 3000);
+              }, 1500);
               return;
             }
 

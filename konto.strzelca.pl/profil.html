@@ -711,6 +711,7 @@
         browserLocalPersistence,
         signOut,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+      import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs";
 
       const firebaseConfig = {
         apiKey: "AIzaSyD_gXFh3a4NW9Hzzsr5IQuDADM2GVpPMVc",
@@ -729,6 +730,13 @@
       // Ustaw trwałość sesji na LOCAL dla wszystkich stron wymagających logowania
       await setPersistence(auth, browserLocalPersistence);
 
+      // SSO: jeśli użytkownik jest zalogowany w innej subdomenie, dologuj go tutaj z cookie
+      try {
+        await ensureFirebaseSSO(auth);
+      } catch (e) {
+        console.warn("SSO ensure failed (ignored):", e?.message || e);
+      }
+
       let currentUser = null;
       let userProfile = null;
 
@@ -740,15 +748,9 @@
             await user.reload();
             console.log("Użytkownik zalogowany:", user.email, "emailVerified:", user.emailVerified);
 
-            // Jeśli użytkownik jest niezweryfikowany, wyloguj go i przekieruj
+            // Jeśli użytkownik jest niezweryfikowany: tryb ograniczony (bez wylogowania) -> strona po rejestracji
             if (!user.emailVerified) {
-              console.log("Użytkownik niezweryfikowany - wylogowanie i przekierowanie");
-              try {
-                await signOut(auth);
-                window.location.href = "./po.rejestracji.html";
-              } catch (signOutError) {
-                console.warn("Błąd wylogowania niezweryfikowanego użytkownika:", signOutError);
-              }
+              window.location.href = "./po.rejestracji.html";
               return;
             }
 
@@ -1242,6 +1244,15 @@
       // Wylogowanie
       window.logout = async () => {
         try {
+          // SSO: wyczyść cookie wspólnej sesji
+          try {
+            await fetch("https://strzelca.pl/api/sso-session-logout", {
+              method: "POST",
+              credentials: "include",
+            });
+          } catch (e) {
+            console.warn("SSO logout failed (ignored):", e?.message || e);
+          }
           await signOut(auth);
           // Wyczyść ewentualne dane w localStorage (preferencje kolorów itp.)
           localStorage.clear();

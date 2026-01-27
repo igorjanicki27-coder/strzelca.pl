@@ -185,6 +185,7 @@
                 class="text-white font-semibold text-sm mb-3 pb-3 border-b border-zinc-700"
               ></div>
               <a
+                id="profile-link"
                 href="https://konto.strzelca.pl/profil.html"
                 class="block text-zinc-300 hover:text-coyote transition text-sm"
               >
@@ -483,6 +484,14 @@
       // --- MONITOROWANIE STANU ZALOGOWANIA ---
       console.log("Firebase Auth initialized, checking current user...");
 
+      // SSO między subdomenami: jeśli w tej subdomenie nie ma usera, spróbuj zalogować z cookie (.strzelca.pl)
+      try {
+        const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs");
+        await ensureFirebaseSSO(auth);
+      } catch (e) {
+        console.warn("SSO ensure failed (ignored):", e?.message || e);
+      }
+
       // Sprawdź czy użytkownik może być zalogowany (odśwież token jeśli potrzebne)
       try {
         await auth.authStateReady();
@@ -497,20 +506,15 @@
         if (currentUser) {
           try {
             await currentUser.reload();
-            console.log("Sprawdzanie aktualnego użytkownika na stronie głównej, emailVerified:", currentUser.emailVerified);
-            
-            // Jeśli użytkownik jest niezweryfikowany, wyloguj go
-            if (!currentUser.emailVerified) {
-              console.log("Aktualny użytkownik niezweryfikowany na stronie głównej - wylogowanie");
-              await signOut(auth);
-              window.location.href = "https://konto.strzelca.pl/po.rejestracji.html";
-              return true; // Zwróć true jeśli wylogowano
-            }
+            console.log(
+              "Sprawdzanie aktualnego użytkownika na stronie głównej, emailVerified:",
+              currentUser.emailVerified
+            );
           } catch (error) {
             console.warn("Błąd sprawdzania aktualnego użytkownika na stronie głównej:", error);
           }
         }
-        return false; // Zwróć false jeśli nie wylogowano
+        return false;
       };
 
       // Sprawdź przed ustawieniem listenera
@@ -573,55 +577,10 @@
           user?.emailVerified ? "(verified)" : "(not verified)"
         );
 
-        // Jeśli użytkownik jest zalogowany ale nie ma zweryfikowanego emaila,
-        // wyloguj go i przekieruj na stronę aktywacji
+        // Jeśli email niezweryfikowany: NIE wylogowujemy (tryb ograniczony).
+        // Kliknięcie "profil" ma prowadzić do strony po rejestracji.
         if (user && !user.emailVerified) {
-          console.warn("Użytkownik zalogowany, ale email nie zweryfikowany - sprawdzanie...");
-
-          // Poczekaj chwilę na synchronizację Firebase (może być opóźnienie po przekierowaniu)
-          await new Promise(resolve => setTimeout(resolve, 1000));
-
-          // Spróbuj odświeżyć dane użytkownika - może weryfikacja się udała niedawno
-          try {
-            await user.reload();
-            console.log("Dane użytkownika odświeżone, emailVerified:", user.emailVerified);
-
-            if (user.emailVerified) {
-              console.log("Email został zweryfikowany - użytkownik może korzystać z systemu");
-              // Kontynuuj normalnie - użytkownik jest zweryfikowany
-            } else {
-              // Email nadal niezweryfikowany - wyloguj użytkownika
-              console.log("Email nadal niezweryfikowany - wylogowanie użytkownika");
-              isSigningOut = true;
-              try {
-                await signOut(auth);
-                console.log("Niezweryfikowany użytkownik został wylogowany");
-                // Przekieruj na stronę aktywacji
-                window.location.href = "https://konto.strzelca.pl/po.rejestracji.html";
-              } catch (signOutError) {
-                console.error("Błąd wylogowania niezweryfikowanego użytkownika:", signOutError);
-                isSigningOut = false;
-              }
-              return; // Nie kontynuuj dalej
-            }
-          } catch (reloadError) {
-            console.warn("Błąd odświeżania danych użytkownika po logowaniu:", reloadError);
-            // W przypadku błędu, nie wylogowuj od razu - może być problem z siecią
-            // Poczekaj chwilę i spróbuj ponownie
-            setTimeout(async () => {
-              try {
-                await user.reload();
-                if (!user.emailVerified) {
-                  isSigningOut = true;
-                  await signOut(auth);
-                  window.location.href = "https://konto.strzelca.pl/po.rejestracji.html";
-                }
-              } catch (retryError) {
-                console.warn("Błąd ponownej próby sprawdzenia weryfikacji:", retryError);
-              }
-            }, 2000);
-            return;
-          }
+          console.warn("Użytkownik zalogowany, ale email niezweryfikowany (tryb ograniczony)");
         }
 
         currentUser = user;
@@ -650,10 +609,15 @@
           const displayName = user.displayName || user.email.split("@")[0];
           userDisplayName.textContent = displayName;
 
-          // Sprawdź czy użytkownik ma zweryfikowany email
+          // Sprawdź czy użytkownik ma zweryfikowany email (tryb ograniczony, bez wylogowania)
+          const profileLink = document.getElementById("profile-link");
+          if (profileLink) {
+            profileLink.href = user.emailVerified
+              ? "https://konto.strzelca.pl/profil.html"
+              : "https://konto.strzelca.pl/po.rejestracji.html";
+          }
           if (!user.emailVerified) {
-            console.log("Użytkownik ma niezweryfikowany email");
-            // Pokaż komunikat o konieczności weryfikacji
+            console.log("Użytkownik ma niezweryfikowany email (tryb ograniczony)");
             showEmailVerificationNotice();
           }
 
@@ -789,6 +753,15 @@
       // Funkcja wylogowania
       window.logout = async () => {
         try {
+          // SSO: wyczyść cookie wspólnej sesji
+          try {
+            await fetch("https://strzelca.pl/api/sso-session-logout", {
+              method: "POST",
+              credentials: "include",
+            });
+          } catch (e) {
+            console.warn("SSO logout failed (ignored):", e?.message || e);
+          }
           await signOut(auth);
           // Zamknij menu po wylogowaniu
           const userMenu = document.getElementById("user-menu");
