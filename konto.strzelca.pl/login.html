@@ -380,6 +380,10 @@
         console.warn("SSO ensure failed (ignored):", e?.message || e);
       }
 
+      // Flagi, żeby nie przerywać logowania/przekierowania zanim ustawimy cookie SSO
+      let isLoginFlowInProgress = false;
+      let isNavigatingAway = false;
+
       // Sprawdź aktualnego użytkownika przed ustawieniem listenera
       const checkCurrentUser = async () => {
         const currentUser = auth.currentUser;
@@ -390,12 +394,19 @@
             
             if (!currentUser.emailVerified) {
               // Tryb ograniczony: zostaje zalogowany, ale prowadzi na stronę po rejestracji
+              isNavigatingAway = true;
               window.location.href = "./po.rejestracji.html";
             } else {
-              // odśwież cookie SSO (best-effort)
-              try { await syncSessionCookieFromFirebaseUser(auth); } catch {}
+              // odśwież cookie SSO (best-effort) zanim przejdziemy na inną subdomenę
+              try {
+                const sso = await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 });
+                console.log("SSO session-login (auto) result:", sso);
+              } catch (e) {
+                console.warn("SSO session-login (auto) failed (ignored):", e?.message || e);
+              }
               // Użytkownik zweryfikowany - przekieruj do profilu (ta sama domena co logowanie)
               console.log("Użytkownik zweryfikowany, przekierowanie do profil.html");
+              isNavigatingAway = true;
               window.location.href = "./profil.html";
             }
           } catch (error) {
@@ -412,6 +423,9 @@
 
       // Listener stanu autoryzacji - jeśli użytkownik już jest zalogowany, sprawdź weryfikację
       onAuthStateChanged(auth, async (user) => {
+        // Nie rób redirectów, jeśli jesteśmy w trakcie logowania lub już nawigujemy
+        if (isLoginFlowInProgress || isNavigatingAway) return;
+
         // Ignoruj zmiany stanu podczas wylogowywania
         if (isSigningOut) {
           console.log("Ignoruję zmianę stanu podczas wylogowywania");
@@ -428,15 +442,22 @@
 
             // Jeśli użytkownik jest niezweryfikowany: tryb ograniczony (bez wylogowania)
             if (!user.emailVerified) {
+              isNavigatingAway = true;
               window.location.href = "./po.rejestracji.html";
               return;
             }
 
-            // odśwież cookie SSO (best-effort)
-            try { await syncSessionCookieFromFirebaseUser(auth); } catch {}
+            // odśwież cookie SSO (best-effort) zanim przejdziemy na inną subdomenę
+            try {
+              const sso = await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 });
+              console.log("SSO session-login (state) result:", sso);
+            } catch (e) {
+              console.warn("SSO session-login (state) failed (ignored):", e?.message || e);
+            }
 
             // Użytkownik zweryfikowany - przekieruj do profilu (ta sama domena co logowanie)
             console.log("Użytkownik zweryfikowany, przekierowanie do profil.html");
+            isNavigatingAway = true;
             window.location.href = "./profil.html";
           } catch (reloadError) {
             console.warn("Błąd odświeżania danych na stronie logowania:", reloadError);
@@ -517,6 +538,7 @@
           try {
             // Zaloguj użytkownika (zachowaj obecną persistence)
             console.log("Próba logowania użytkownika...");
+            isLoginFlowInProgress = true;
             const userCredential = await signInWithEmailAndPassword(
               auth,
               document.getElementById("email").value.trim(),
@@ -534,17 +556,12 @@
               console.warn("Błąd odświeżania danych przy logowaniu:", reloadError);
             }
 
-            // SSO: ustaw cookie na `.strzelca.pl`, żeby inne subdomeny mogły się zalogować
+            // SSO: ustaw cookie na `.strzelca.pl` zanim nastąpi jakikolwiek redirect
             try {
-              const idToken = await user.getIdToken(true);
-              await fetch("https://strzelca.pl/api/sso-session-login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({ idToken }),
-              });
+              const sso = await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 });
+              console.log("SSO session-login (submit) result:", sso);
             } catch (ssoErr) {
-              console.warn("SSO session-login failed (ignored):", ssoErr?.message || ssoErr);
+              console.warn("SSO session-login (submit) failed (ignored):", ssoErr?.message || ssoErr);
             }
 
             // Jeśli email niezweryfikowany: NIE wylogowujemy (tryb ograniczony),
@@ -555,6 +572,7 @@
                 true,
               );
               setTimeout(() => {
+                isNavigatingAway = true;
                 window.location.href = "./po.rejestracji.html";
               }, 1500);
               return;
@@ -583,6 +601,7 @@
 
             // Przekieruj do profilu (ta sama domena co logowanie, żeby sesja działała)
             setTimeout(() => {
+              isNavigatingAway = true;
               window.location.href = "./profil.html";
             }, 1000);
           } catch (error) {
@@ -616,6 +635,7 @@
 
             showStatus(errorMessage, true);
           } finally {
+            isLoginFlowInProgress = false;
             loginBtn.disabled = false;
             loginBtn.innerHTML =
               '<i class="fa-solid fa-sign-in-alt mr-2"></i>Zaloguj się';

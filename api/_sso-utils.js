@@ -106,11 +106,11 @@ function setSessionCookie(res, value) {
   const domain = getCookieDomain();
   const maxAge = getCookieMaxAgeSeconds();
 
-  // SameSite=None pozwala na wysyłanie cookie przy fetch() cross-origin (z credentials)
-  // Secure jest wymagane dla SameSite=None
+  // Subdomeny (*.strzelca.pl) są "same-site", więc SameSite=Lax jest wystarczające
+  // i mniej podatne na blokady third‑party cookies.
   res.setHeader(
     "Set-Cookie",
-    `${name}=${encodeURIComponent(value)}; Path=/; Domain=${domain}; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=None`
+    `${name}=${encodeURIComponent(value)}; Path=/; Domain=${domain}; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`
   );
 }
 
@@ -119,7 +119,7 @@ function clearSessionCookie(res) {
   const domain = getCookieDomain();
   res.setHeader(
     "Set-Cookie",
-    `${name}=; Path=/; Domain=${domain}; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=None`
+    `${name}=; Path=/; Domain=${domain}; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax`
   );
 }
 

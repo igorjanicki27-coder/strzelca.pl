@@ -51,7 +51,7 @@ module.exports = async (req, res) => {
     res.status(200).json({
       success: false,
       error: "Invalid token",
-      code: e?.code || null,
+      code: e?.code || e?.errorInfo?.code || null,
     });
   }
 };
