@@ -21,7 +21,8 @@ async function apiFetch(path, options = {}) {
       ...(options.headers || {}),
     },
   });
-  return res.json().catch(() => ({}));
+  const json = await res.json().catch(() => ({}));
+  return { __ok: res.ok, __status: res.status, ...json };
 }
 
 export async function ensureFirebaseSSO(auth) {
@@ -96,6 +97,13 @@ export async function syncSessionCookieFromFirebaseUser(auth, { minIntervalMinut
       method: "POST",
       body: JSON.stringify({ idToken }),
     });
+    // Jeśli backend nie potwierdzi sukcesu, nie udawaj że refresh się udał
+    if (!data || data.success !== true) {
+      // Mimo błędu ustaw timestamp, żeby nie spamować requestami przy każdym wejściu
+      setLastSyncMs(t);
+      return { status: "error", error: data?.error || `HTTP ${data?.__status || "?"}` };
+    }
+
     setLastSyncMs(t);
     return { status: "ok", emailVerified: data.emailVerified === true };
   } catch (e) {

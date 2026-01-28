@@ -46,7 +46,13 @@ module.exports = async (req, res) => {
     });
   } catch (e) {
     console.error("sso-session-login error:", e);
-    res.status(401).json({ success: false, error: "Invalid token" });
+    // Nie zwracaj 401, bo przeglądarka spamuje "Failed to load resource" w konsoli.
+    // To odświeżanie cookie jest best-effort.
+    res.status(200).json({
+      success: false,
+      error: "Invalid token",
+      code: e?.code || null,
+    });
   }
 };
 

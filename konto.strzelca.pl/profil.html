@@ -383,7 +383,6 @@
                 <input
                   type="tel"
                   id="edit-phone"
-                  required
                   placeholder="np. 555 444 333"
                 />
               </div>
@@ -1136,40 +1135,82 @@
             '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Zapisywanie...';
 
           try {
-            // Zaszyfruj wrażliwe dane przed zapisaniem
-            // NIE zapisujemy: displayName, firstName, lastName, email - są zablokowane
-            const updatedProfile = {
-              phone: btoa(document.getElementById("edit-phone").value.trim()),
-              address: {
-                street: btoa(
-                  document.getElementById("edit-street").value.trim(),
-                ),
-                buildingNumber: btoa(
-                  document.getElementById("edit-building-number").value.trim(),
-                ),
-                postalCode: btoa(
-                  document.getElementById("edit-postal-code").value.trim(),
-                ),
-                city: btoa(document.getElementById("edit-city").value.trim()),
-              },
-              parcelLocker: btoa(
-                document.getElementById("edit-parcel-locker").value.trim(),
-              ),
-              newsletter: document.getElementById("edit-newsletter").checked,
-              // Aktualizuj mailing list jeśli zmieniła się zgoda na newsletter
-              newsletterChanged:
-                document.getElementById("edit-newsletter").checked !==
-                userProfile.newsletter,
+            // Zapisujemy TYLKO zmienione pola (żeby np. zapis avatara nie wymuszał zmian w telefonie)
+            const getDec = (v) => {
+              try { return v ? atob(v) : ""; } catch { return ""; }
             };
 
-            await updateDoc(
-              doc(db, "userProfiles", currentUser.uid),
-              updatedProfile,
-            );
+            const oldDecrypted = {
+              phone: getDec(userProfile.phone),
+              parcelLocker: getDec(userProfile.parcelLocker),
+              address: {
+                street: getDec(userProfile.address?.street),
+                buildingNumber: getDec(userProfile.address?.buildingNumber),
+                postalCode: getDec(userProfile.address?.postalCode),
+                city: getDec(userProfile.address?.city),
+              },
+              newsletter: !!userProfile.newsletter,
+            };
+
+            const newDecrypted = {
+              phone: (document.getElementById("edit-phone").value || "").trim(),
+              parcelLocker: (document.getElementById("edit-parcel-locker").value || "").trim(),
+              address: {
+                street: (document.getElementById("edit-street").value || "").trim(),
+                buildingNumber: (document.getElementById("edit-building-number").value || "").trim(),
+                postalCode: (document.getElementById("edit-postal-code").value || "").trim(),
+                city: (document.getElementById("edit-city").value || "").trim(),
+              },
+              newsletter: document.getElementById("edit-newsletter").checked,
+            };
+
+            const updatedProfile = {};
+
+            if (newDecrypted.phone !== oldDecrypted.phone) {
+              updatedProfile.phone = btoa(newDecrypted.phone);
+            }
+
+            if (newDecrypted.parcelLocker !== oldDecrypted.parcelLocker) {
+              updatedProfile.parcelLocker = btoa(newDecrypted.parcelLocker);
+            }
+
+            const addrChanged =
+              newDecrypted.address.street !== oldDecrypted.address.street ||
+              newDecrypted.address.buildingNumber !== oldDecrypted.address.buildingNumber ||
+              newDecrypted.address.postalCode !== oldDecrypted.address.postalCode ||
+              newDecrypted.address.city !== oldDecrypted.address.city;
+
+            if (addrChanged) {
+              updatedProfile.address = {
+                street: btoa(newDecrypted.address.street),
+                buildingNumber: btoa(newDecrypted.address.buildingNumber),
+                postalCode: btoa(newDecrypted.address.postalCode),
+                city: btoa(newDecrypted.address.city),
+              };
+            }
+
+            if (newDecrypted.newsletter !== oldDecrypted.newsletter) {
+              updatedProfile.newsletter = newDecrypted.newsletter;
+              updatedProfile.newsletterChanged = true;
+            } else {
+              updatedProfile.newsletterChanged = false;
+            }
+
+            const keysToWrite = Object.keys(updatedProfile).filter(k => k !== "newsletterChanged");
+            if (keysToWrite.length === 0 && updatedProfile.newsletterChanged === false) {
+              alert("Brak zmian do zapisania.");
+              return;
+            }
+
+            // Usuń pole pomocnicze przed zapisem do userProfiles
+            const { newsletterChanged, ...docUpdate } = updatedProfile;
+            if (Object.keys(docUpdate).length > 0) {
+              await updateDoc(doc(db, "userProfiles", currentUser.uid), docUpdate);
+            }
 
             // Aktualizuj mailing list jeśli zmieniła się zgoda na newsletter
-            if (updatedProfile.newsletterChanged !== undefined) {
-              if (updatedProfile.newsletter) {
+            if (updatedProfile.newsletterChanged === true) {
+              if (newDecrypted.newsletter) {
                 // Dodaj do mailing list
                 await setDoc(doc(db, "mailingList", currentUser.email), {
                   email: currentUser.email,
@@ -1184,8 +1225,8 @@
             }
 
             alert("Profil został zaktualizowany!");
-            userProfile = { ...userProfile, ...updatedProfile };
-            delete userProfile.newsletterChanged; // Usuń tymczasowe pole
+            // Zaktualizuj lokalną kopię profilu (bez pola pomocniczego)
+            userProfile = { ...userProfile, ...docUpdate };
             loadProfile(); // Odśwież wyświetlane dane
           } catch (error) {
             console.error("Error updating profile:", error);
