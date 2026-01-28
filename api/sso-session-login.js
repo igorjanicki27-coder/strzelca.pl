@@ -1,6 +1,7 @@
 const {
   initAdmin,
   admin,
+  getAdminProjectInfo,
   setCors,
   readJsonBody,
   setSessionCookie,
@@ -74,6 +75,7 @@ module.exports = async (req, res) => {
       code: e?.code || e?.errorInfo?.code || null,
       message: (e?.message || "").slice(0, 200) || null,
       debug: safeDecodeJwtDebug(idToken),
+      project: getAdminProjectInfo ? getAdminProjectInfo() : null,
     });
   }
 };

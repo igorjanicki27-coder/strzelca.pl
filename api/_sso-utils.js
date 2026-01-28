@@ -1,5 +1,7 @@
 const admin = require("firebase-admin");
 
+let __ssoProjectInfo = null;
+
 function initAdmin() {
   if (admin.apps.length) return;
 
@@ -11,6 +13,10 @@ function initAdmin() {
   }
 
   if (serviceAccount) {
+    __ssoProjectInfo = {
+      configuredProjectId: process.env.FIREBASE_PROJECT_ID || "strzelca-pl",
+      credentialProjectId: serviceAccount.project_id || null,
+    };
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
       projectId: process.env.FIREBASE_PROJECT_ID || "strzelca-pl",
@@ -19,6 +25,10 @@ function initAdmin() {
   }
 
   if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    __ssoProjectInfo = {
+      configuredProjectId: process.env.FIREBASE_PROJECT_ID || "strzelca-pl",
+      credentialProjectId: null,
+    };
     admin.initializeApp({
       credential: admin.credential.applicationDefault(),
       projectId: process.env.FIREBASE_PROJECT_ID || "strzelca-pl",
@@ -27,9 +37,17 @@ function initAdmin() {
   }
 
   // Fallback (dev) - bez credentials verifyIdToken/verifySessionCookie nie zadziała
+  __ssoProjectInfo = {
+    configuredProjectId: process.env.FIREBASE_PROJECT_ID || "strzelca-pl",
+    credentialProjectId: null,
+  };
   admin.initializeApp({
     projectId: process.env.FIREBASE_PROJECT_ID || "strzelca-pl",
   });
+}
+
+function getAdminProjectInfo() {
+  return __ssoProjectInfo;
 }
 
 function isAllowedOrigin(origin) {
@@ -126,6 +144,7 @@ function clearSessionCookie(res) {
 module.exports = {
   admin,
   initAdmin,
+  getAdminProjectInfo,
   setCors,
   readJsonBody,
   parseCookies,
