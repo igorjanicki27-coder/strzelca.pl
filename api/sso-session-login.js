@@ -30,6 +30,7 @@ function safeDecodeJwtDebug(idToken) {
 
 module.exports = async (req, res) => {
   setCors(req, res, { methods: "POST, OPTIONS" });
+  res.setHeader("Cache-Control", "no-store");
 
   if (req.method === "OPTIONS") {
     res.status(200).end();

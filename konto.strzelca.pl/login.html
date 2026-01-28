@@ -401,6 +401,17 @@
               try {
                 const sso = await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 });
                 console.log("SSO session-login (auto) result (json):", JSON.stringify(sso));
+                if (sso?.status === "error") {
+                  try {
+                    const dbg = await fetch("https://strzelca.pl/api/sso-debug", {
+                      method: "GET",
+                      credentials: "include",
+                    }).then((r) => r.json());
+                    console.log("SSO DEBUG (strzelca.pl/api/sso-debug):", JSON.stringify(dbg));
+                  } catch (e) {
+                    console.warn("SSO DEBUG fetch failed (ignored):", e?.message || e);
+                  }
+                }
               } catch (e) {
                 console.warn("SSO session-login (auto) failed (ignored):", e?.message || e);
               }
