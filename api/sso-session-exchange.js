@@ -43,7 +43,12 @@ module.exports = async (req, res) => {
     });
   } catch (e) {
     console.warn("sso-session-exchange failed:", e?.message || e);
-    res.status(200).json({ success: true, authenticated: false });
+    // Best-effort: zwróć powód do debugowania (bez wycieku danych)
+    res.status(200).json({
+      success: true,
+      authenticated: false,
+      reason: e?.code || e?.message || "unknown",
+    });
   }
 };
 
