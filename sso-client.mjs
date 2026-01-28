@@ -101,7 +101,13 @@ export async function syncSessionCookieFromFirebaseUser(auth, { minIntervalMinut
     if (!data || data.success !== true) {
       // Mimo błędu ustaw timestamp, żeby nie spamować requestami przy każdym wejściu
       setLastSyncMs(t);
-      return { status: "error", error: data?.error || `HTTP ${data?.__status || "?"}` };
+      return {
+        status: "error",
+        error: data?.error || `HTTP ${data?.__status || "?"}`,
+        code: data?.code || null,
+        message: data?.message || null,
+        debug: data?.debug || null,
+      };
     }
 
     setLastSyncMs(t);

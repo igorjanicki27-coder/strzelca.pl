@@ -7,6 +7,26 @@ const {
   getCookieMaxAgeSeconds,
 } = require("./_sso-utils");
 
+function safeDecodeJwtDebug(idToken) {
+  try {
+    const parts = idToken.split(".");
+    if (parts.length < 2) return null;
+    const payloadB64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const pad = payloadB64.length % 4 === 0 ? "" : "=".repeat(4 - (payloadB64.length % 4));
+    const json = Buffer.from(payloadB64 + pad, "base64").toString("utf8");
+    const payload = JSON.parse(json);
+    // Zwracamy tylko bezpieczne pola diagnostyczne (bez uid/email)
+    return {
+      aud: payload.aud || null,
+      iss: payload.iss || null,
+      iat: payload.iat || null,
+      exp: payload.exp || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 module.exports = async (req, res) => {
   setCors(req, res, { methods: "POST, OPTIONS" });
 
@@ -52,6 +72,8 @@ module.exports = async (req, res) => {
       success: false,
       error: "Invalid token",
       code: e?.code || e?.errorInfo?.code || null,
+      message: (e?.message || "").slice(0, 200) || null,
+      debug: safeDecodeJwtDebug(idToken),
     });
   }
 };
