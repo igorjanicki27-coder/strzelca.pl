@@ -2,10 +2,11 @@ const {
   initAdmin,
   admin,
   getAdminProjectInfo,
+  getCookieMaxAgeSeconds,
+  signLocalSessionJwt,
   setCors,
   readJsonBody,
   setSessionCookie,
-  getCookieMaxAgeSeconds,
 } = require("./_sso-utils");
 
 function safeDecodeJwtDebug(idToken) {
@@ -55,10 +56,19 @@ module.exports = async (req, res) => {
 
     const decoded = await admin.auth().verifyIdToken(idToken);
 
-    const expiresIn = getCookieMaxAgeSeconds() * 1000; // ms
-    const sessionCookie = await admin.auth().createSessionCookie(idToken, { expiresIn });
+    // NIE używamy admin.createSessionCookie() (u Ciebie wali 403 IAM).
+    // Zamiast tego wystawiamy własny, lokalnie podpisany JWT w cookie HttpOnly.
+    const maxAgeSec = getCookieMaxAgeSeconds();
+    const nowSec = Math.floor(Date.now() / 1000);
+    const localSession = signLocalSessionJwt({
+      v: 1,
+      uid: decoded.uid,
+      emailVerified: decoded.email_verified === true,
+      iat: nowSec,
+      exp: nowSec + maxAgeSec,
+    });
 
-    setSessionCookie(res, sessionCookie);
+    setSessionCookie(res, localSession);
 
     res.status(200).json({
       success: true,

@@ -4,6 +4,7 @@ const {
   setCors,
   parseCookies,
   getCookieName,
+  verifyLocalSessionJwt,
 } = require("./_sso-utils");
 
 module.exports = async (req, res) => {
@@ -30,15 +31,16 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const decoded = await admin.auth().verifySessionCookie(sessionCookie, false);
+    // Lokalna weryfikacja podpisanego cookie SSO
+    const decoded = verifyLocalSessionJwt(sessionCookie);
     const customToken = await admin.auth().createCustomToken(decoded.uid);
 
     res.status(200).json({
       success: true,
       authenticated: true,
       uid: decoded.uid,
-      email: decoded.email || null,
-      emailVerified: decoded.email_verified === true,
+      email: null,
+      emailVerified: decoded.emailVerified === true,
       customToken,
     });
   } catch (e) {
