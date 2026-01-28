@@ -710,6 +710,12 @@
         setPersistence,
         browserLocalPersistence,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+      import {
+        getStorage,
+        ref as storageRef,
+        uploadString,
+        getDownloadURL,
+      } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
       import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs";
 
       const firebaseConfig = {
@@ -725,6 +731,7 @@
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       const auth = getAuth(app);
+      const storage = getStorage(app);
 
       // Ustaw trwałość sesji na LOCAL dla wszystkich stron wymagających logowania
       await setPersistence(auth, browserLocalPersistence);
@@ -900,6 +907,38 @@
           ? timestamp.toDate()
           : new Date(timestamp);
         return date.toLocaleDateString("pl-PL");
+      }
+
+      async function compressImageToDataUrl(file, { maxSide = 512, quality = 0.85 } = {}) {
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = () => reject(new Error("Nie udało się odczytać pliku."));
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(file);
+        });
+
+        const img = await new Promise((resolve, reject) => {
+          const i = new Image();
+          i.onload = () => resolve(i);
+          i.onerror = () => reject(new Error("Nie udało się wczytać obrazu."));
+          i.src = dataUrl;
+        });
+
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        const scale = Math.min(1, maxSide / Math.max(w, h));
+        const targetW = Math.max(1, Math.round(w * scale));
+        const targetH = Math.max(1, Math.round(h * scale));
+
+        const canvas = document.createElement("canvas");
+        canvas.width = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Brak wsparcia canvas w przeglądarce.");
+        ctx.drawImage(img, 0, 0, targetW, targetH);
+
+        // JPEG dla mniejszego rozmiaru
+        return canvas.toDataURL("image/jpeg", quality);
       }
 
       // Status weryfikacji emaila w UI
@@ -1306,19 +1345,61 @@
           }
 
           try {
-            // Tutaj można dodać kompresję i upload do Firebase Storage
-            // Na razie tylko pokazujemy podgląd
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              document.getElementById("avatar-display").innerHTML =
-                `<img src="${e.target.result}" alt="Avatar" class="avatar">`;
-            };
-            reader.readAsDataURL(file);
+            if (!currentUser) {
+              alert("Musisz być zalogowany, aby zmienić avatar.");
+              return;
+            }
 
-            alert("Funkcja uploadu avatara zostanie zaimplementowana wkrótce.");
+            // Tryb ograniczony: niezweryfikowane konto nie może uploadować avatara
+            if (!currentUser.emailVerified) {
+              alert("Aby ustawić avatar, aktywuj konto (zweryfikuj email).");
+              window.location.href = "./po.rejestracji.html";
+              return;
+            }
+
+            // Podgląd + kompresja
+            const avatarDisplay = document.getElementById("avatar-display");
+            if (avatarDisplay) {
+              avatarDisplay.innerHTML = `<div class="text-zinc-400 text-sm">Wysyłanie avatara...</div>`;
+            }
+
+            const dataUrl = await compressImageToDataUrl(file, { maxSide: 512, quality: 0.85 });
+
+            // Upload do Firebase Storage (nadpisuje poprzedni avatar)
+            const path = `avatars/${currentUser.uid}.jpg`;
+            const refObj = storageRef(storage, path);
+            await uploadString(refObj, dataUrl, "data_url", {
+              contentType: "image/jpeg",
+              customMetadata: {
+                uid: currentUser.uid,
+              },
+            });
+
+            const url = await getDownloadURL(refObj);
+
+            // Zapisz URL w profilu użytkownika
+            await updateDoc(doc(db, "userProfiles", currentUser.uid), {
+              avatar: url,
+              avatarUpdatedAt: new Date(),
+            });
+
+            // Odśwież UI
+            if (avatarDisplay) {
+              avatarDisplay.innerHTML = `<img src="${url}" alt="Avatar" class="avatar">`;
+            }
+
+            alert("Avatar został zapisany.");
           } catch (error) {
             console.error("Error uploading avatar:", error);
-            alert("Błąd podczas uploadu avatara.");
+            // Typowy przypadek: brak reguł Storage / brak włączonego Storage
+            if (error?.code === "storage/unauthorized" || error?.code === "storage/unknown") {
+              alert(
+                "Nie mogę zapisać avatara w Storage (brak uprawnień lub Storage nie jest skonfigurowany). " +
+                "Jeśli chcesz, podam gotowe reguły Storage dla avatarów."
+              );
+              return;
+            }
+            alert("Błąd podczas uploadu avatara. Spróbuj ponownie.");
           }
         });
 
@@ -1348,17 +1429,18 @@
           // Jeśli błąd to brak indeksu, użyj prostszego zapytania
           if (error.code === "failed-precondition") {
             try {
-              console.log("Próba prostszego zapytania bez orderBy");
+              console.log("Próba prostszego zapytania bez indeksu (1 filtr + sortowanie po stronie klienta)");
               const simpleQuery = query(
                 collection(db, "userReviews"),
                 where("ratedId", "==", currentUser.uid),
-                where("status", "==", "approved"),
               );
               const simpleSnapshot = await getDocs(simpleQuery);
-              const reviews = simpleSnapshot.docs.map((doc) => ({
+              let reviews = simpleSnapshot.docs.map((doc) => ({
                 id: doc.id,
                 ...doc.data(),
               }));
+              // Filtruj ręcznie (żeby nie wymagać indeksu kompozytowego)
+              reviews = reviews.filter((r) => r.status === "approved");
               // Sortuj ręcznie
               reviews.sort((a, b) => {
                 const aTime = a.timestamp?.toDate?.() || new Date(a.timestamp || 0);
