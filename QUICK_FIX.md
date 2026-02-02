@@ -63,3 +63,17 @@ Błąd CORS z Firestore zwykle znika po:
 - Opublikowaniu reguł bezpieczeństwa
 - Odświeżeniu strony
 - Sprawdzeniu czy domena jest autoryzowana w Firebase Console → Authentication → Settings → Authorized domains
+
+## Uwaga: alert Google o publicznym kluczu API (Firebase Web)
+
+Google potrafi wysyłać alerty, gdy wykryje w publicznym repo klucz w formacie `AIza...`.
+W aplikacjach opartych o **Firebase Web SDK** ten klucz **nie jest tajnym sekretem** (musi trafić do przeglądarki),
+ale powinien być **ograniczony** i najlepiej **nie trzymany w publicznym kodzie źródłowym**.
+
+W tym repo klucz jest teraz pobierany dynamicznie z endpointu:
+- `GET /api/firebase-config`
+
+### Wymagane ENV (Vercel / produkcja)
+- `FIREBASE_WEB_API_KEY` — klucz Web API dla Firebase
+
+Po ustawieniu ENV na Vercel wdrożenie nie będzie już zawierało klucza w plikach HTML w repo.
