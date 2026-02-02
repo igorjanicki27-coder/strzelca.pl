@@ -288,7 +288,7 @@
             } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
             import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-01-28-1";
             import {
-                getFirestore,
+                initializeFirestore,
                 collection,
                 getDocs,
                 doc,
@@ -308,7 +308,11 @@
             };
 
             const app = initializeApp(firebaseConfig);
-            const db = getFirestore(app);
+            const db = initializeFirestore(app, {
+                experimentalAutoDetectLongPolling: true,
+                experimentalForceLongPolling: true,
+                useFetchStreams: false,
+            });
             const auth = getAuth(app);
 
             // Ustaw trwałość sesji na browserLocalPersistence dla wszystkich subdomen

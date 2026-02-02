@@ -191,6 +191,12 @@
               >
                 <i class="fa-solid fa-user mr-2"></i>Mój profil
               </a>
+              <button
+                onclick="logout()"
+                class="block w-full text-left text-zinc-300 hover:text-red-400 transition text-sm"
+              >
+                <i class="fa-solid fa-sign-out-alt mr-2"></i>Wyloguj się
+              </button>
             </div>
           </div>
         </div>
@@ -407,7 +413,7 @@
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
       import {
-        getFirestore,
+        initializeFirestore,
         doc,
         setDoc,
         getDoc,
@@ -440,7 +446,11 @@
       };
 
       const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
+      const db = initializeFirestore(app, {
+        experimentalAutoDetectLongPolling: true,
+        experimentalForceLongPolling: true,
+        useFetchStreams: false,
+      });
       const auth = getAuth(app);
 
       // Ustaw trwałość sesji na browserLocalPersistence dla wszystkich subdomen
