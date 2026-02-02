@@ -758,8 +758,30 @@
         browserLocalPersistence,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-      const firebaseConfig = {
-        apiKey: (await (await fetch("/api/firebase-config")).json()).apiKey,
+      
+      async function getFirebaseApiKey() {
+        const urls = [
+          "/api/firebase-config",
+          "https://strzelca.pl/api/firebase-config",
+        ];
+
+        for (const url of urls) {
+          try {
+            const res = await fetch(url, { cache: "no-store" });
+            if (!res.ok) continue;
+            const data = await res.json().catch(() => null);
+            if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
+              return data.apiKey;
+            }
+          } catch (_) {
+            // ignore and try next url
+          }
+        }
+
+        throw new Error("Nie udało się pobrać FIREBASE_WEB_API_KEY z /api/firebase-config");
+      }
+const firebaseConfig = {
+        apiKey: await getFirebaseApiKey(),
         authDomain: "strzelca-pl.firebaseapp.com",
         projectId: "strzelca-pl",
         storageBucket: "strzelca-pl.firebasestorage.app",
@@ -796,11 +818,11 @@
           getDoc(doc(db, "userProfiles", user.uid))
             .then((profileDoc) => {
               if (profileDoc.exists()) {
-                // Użytkownik już jest zalogowany i ma profil - przekieruj do profilu
+                // Użytkownik już jest zalogowany i ma profil - przekieruj do strony głównej
                 console.log(
-                  "Użytkownik już zalogowany, przekierowanie do profil.html",
+                  "Użytkownik już zalogowany, przekierowanie do strony głównej: https://strzelca.pl/",
                 );
-                window.location.href = "profil.html";
+                window.location.href = "https://strzelca.pl/";
               } else {
                 // Użytkownik zalogowany, ale brak profilu - przekieruj do strony aktywacji
                 console.log("Użytkownik zalogowany, ale brak profilu - przekierowanie do po.rejestracji.html");
@@ -1717,5 +1739,9 @@
       // Inicjalizuj tooltips po załadowaniu strony.
       initTooltips();
     </script>
+    <script
+      type="module"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-02-02-1"
+    ></script>
   </body>
 </html>

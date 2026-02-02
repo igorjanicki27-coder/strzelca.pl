@@ -11,6 +11,26 @@
  */
 module.exports = (req, res) => {
   try {
+    // --- CORS (allow strzelca.pl + any subdomain of strzelca.pl) ---
+    const origin = req.headers?.origin;
+    const allowed =
+      origin === "https://strzelca.pl" ||
+      (typeof origin === "string" && /^https:\/\/[a-z0-9-]+\.strzelca\.pl$/i.test(origin));
+
+    if (allowed) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Vary", "Origin");
+      res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    }
+
+    if (req.method === "OPTIONS") {
+      // Preflight
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
+
     const apiKey = process.env.FIREBASE_WEB_API_KEY;
 
     if (!apiKey) {

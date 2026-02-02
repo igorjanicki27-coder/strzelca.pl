@@ -87,8 +87,30 @@
         import { initializeFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-01-28-1";
 
-        const firebaseConfig = {
-            apiKey: (await (await fetch("/api/firebase-config")).json()).apiKey,
+        
+      async function getFirebaseApiKey() {
+        const urls = [
+          "/api/firebase-config",
+          "https://strzelca.pl/api/firebase-config",
+        ];
+
+        for (const url of urls) {
+          try {
+            const res = await fetch(url, { cache: "no-store" });
+            if (!res.ok) continue;
+            const data = await res.json().catch(() => null);
+            if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
+              return data.apiKey;
+            }
+          } catch (_) {
+            // ignore and try next url
+          }
+        }
+
+        throw new Error("Nie udało się pobrać FIREBASE_WEB_API_KEY z /api/firebase-config");
+      }
+const firebaseConfig = {
+            apiKey: await getFirebaseApiKey(),
             authDomain: "strzelca-pl.firebaseapp.com",
             projectId: "strzelca-pl",
             storageBucket: "strzelca-pl.firebasestorage.app",
@@ -256,5 +278,9 @@
         // Globalna funkcja dla przyszłych funkcji blogu
         window.logActivity = logActivity;
     </script>
-</body>
+    <script
+      type="module"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-02-02-1"
+    ></script>
+  </body>
 </html>
