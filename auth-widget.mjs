@@ -127,6 +127,16 @@ function renderLoggedIn(root, { avatarUrl, displayName, emailVerified }) {
       </a>
     </div>
   `;
+
+  // Bootstrapping widgetu wiadomości (tylko po zalogowaniu)
+  try {
+    if (!window.__strzelcaMessagesWidgetBootstrap) {
+      window.__strzelcaMessagesWidgetBootstrap = true;
+      import("https://strzelca.pl/messages-widget.mjs?v=2026-02-05-5").catch(() => {});
+    }
+  } catch {
+    // ignore
+  }
 }
 
 async function fetchMeWithTimeout(ms = 4500) {

@@ -1,16 +1,24 @@
-// Używamy RELATYWNEGO /api, żeby uniknąć CORS/preflight między subdomenami.
-// Wszystkie subdomeny wskazują na ten sam deployment, a cookie SSO ma domenę `.strzelca.pl`.
-const API_BASE = "/api";
-const LOGIN_URL = "https://konto.strzelca.pl/login.html";
+// Realtime Messages Widget (Firestore) - Strzelca.pl
+// - floating button (prawy dolny róg) widoczny po zalogowaniu
+// - lista konwersacji po lewej, czat po prawej
+// - realtime (onSnapshot), bez serverless API => brak 401/500 z /api/*
+
 const PROFILE_URL = "https://konto.strzelca.pl/profil.html";
+const SUPPORT_UID = "nCMUz2fc8MM9WhhMVBLZ1pdR7O43"; // pinned "Obsługa"
 
 const STORAGE_KEY_OPEN = "__strzelca_messages_widget_open";
-const STORAGE_KEY_SELECTED = "__strzelca_messages_widget_selected"; // json: { type, peerId }
+const STORAGE_KEY_SELECTED = "__strzelca_messages_widget_selected"; // json: { peerId }
 
 function clamp(n, min, max) {
   const x = Number(n);
   if (!Number.isFinite(x)) return min;
   return Math.max(min, Math.min(max, x));
+}
+
+function firstLetter(name) {
+  const s = (name || "").toString().trim();
+  if (!s) return "U";
+  return s[0].toUpperCase();
 }
 
 function formatTime(ts) {
@@ -24,12 +32,6 @@ function formatTime(ts) {
   } catch {
     return "";
   }
-}
-
-function firstLetter(name) {
-  const s = (name || "").toString().trim();
-  if (!s) return "U";
-  return s[0].toUpperCase();
 }
 
 function getStoredOpen() {
@@ -46,135 +48,41 @@ function setStoredOpen(v) {
   } catch {}
 }
 
-function getStoredSelected() {
+function getStoredSelectedPeerId() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_SELECTED);
     if (!raw) return null;
     const j = JSON.parse(raw);
-    if (!j || typeof j !== "object") return null;
-    if (j.type !== "support" && j.type !== "dm") return null;
-    if (j.type === "dm" && (!j.peerId || typeof j.peerId !== "string")) return null;
-    return j;
+    const peerId = j?.peerId;
+    return typeof peerId === "string" && peerId.length > 8 ? peerId : null;
   } catch {
     return null;
   }
 }
 
-function setStoredSelected(sel) {
+function setStoredSelectedPeerId(peerId) {
   try {
-    localStorage.setItem(STORAGE_KEY_SELECTED, JSON.stringify(sel));
+    localStorage.setItem(STORAGE_KEY_SELECTED, JSON.stringify({ peerId }));
   } catch {}
 }
 
-async function apiFetch(path, { method = "GET", body, timeoutMs = 9000 } = {}) {
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    // Uwaga: ustawianie Content-Type przy GET powoduje CORS preflight (OPTIONS).
-    // Dla odczytów nie wysyłamy żadnych niestandardowych nagłówków.
-    const headers = {};
-    if (body !== undefined) headers["Content-Type"] = "application/json";
+function conversationIdFor(a, b) {
+  return [String(a || ""), String(b || "")].sort().join("_");
+}
 
-    const res = await fetch(`${API_BASE}${path}`, {
-      method,
-      credentials: "include",
-      cache: "no-store",
-      signal: controller.signal,
-      headers: Object.keys(headers).length ? headers : undefined,
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-    const json = await res.json().catch(() => null);
-    return { ok: res.ok, status: res.status, json };
-  } finally {
-    clearTimeout(t);
+async function getFirebaseApiKey() {
+  const urls = ["/api/firebase-config", "https://strzelca.pl/api/firebase-config"];
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { cache: "no-store", credentials: "include" });
+      if (!res.ok) continue;
+      const data = await res.json().catch(() => null);
+      if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) return data.apiKey;
+    } catch {
+      // ignore
+    }
   }
-}
-
-async function fetchMe() {
-  const { ok, json } = await apiFetch("/me", { method: "GET" });
-  if (!ok || !json) return { authenticated: false };
-  return json;
-}
-
-async function fetchSupportThread(limit = 150) {
-  const lim = clamp(limit, 1, 200);
-  const { ok, json } = await apiFetch(`/messages/thread?peerId=admin&limit=${lim}`, { method: "GET" });
-  if (!ok || !json?.success) return [];
-  return Array.isArray(json?.data?.messages) ? json.data.messages : [];
-}
-
-async function fetchDmConversations(limit = 40) {
-  const lim = clamp(limit, 1, 60);
-  const { ok, json } = await apiFetch(`/private-messages/conversations?limit=${lim}`, { method: "GET" });
-  if (!ok || !json?.success) return [];
-  return Array.isArray(json?.data?.conversations) ? json.data.conversations : [];
-}
-
-async function fetchDmThread(peerId, limit = 200) {
-  const lim = clamp(limit, 1, 200);
-  const { ok, json } = await apiFetch(
-    `/private-messages/thread?peerId=${encodeURIComponent(peerId)}&limit=${lim}`,
-    { method: "GET" }
-  );
-  if (!ok || !json?.success) return { conversationId: null, messages: [] };
-  return {
-    conversationId: json?.data?.conversationId || null,
-    messages: Array.isArray(json?.data?.messages) ? json.data.messages : [],
-  };
-}
-
-async function fetchSupportUnreadCount(uid) {
-  if (!uid) return 0;
-  const { ok, json } = await apiFetch(
-    `/messages?recipientId=${encodeURIComponent(uid)}&isRead=false&limit=1`,
-    { method: "GET", timeoutMs: 6000 }
-  );
-  if (!ok || !json?.success) return 0;
-  const total = Number(json?.data?.total || 0);
-  return Number.isFinite(total) ? total : 0;
-}
-
-async function sendSupportMessage(content) {
-  const { ok, json } = await apiFetch("/messages", { method: "POST", body: { content } });
-  return ok && json?.success === true;
-}
-
-async function sendDmMessage(peerId, content) {
-  const { ok, json } = await apiFetch("/private-messages", {
-    method: "POST",
-    body: { recipientId: peerId, content },
-  });
-  return ok && json?.success === true;
-}
-
-async function markSupportRead(id) {
-  if (!id) return false;
-  const { ok, json } = await apiFetch(`/messages/${encodeURIComponent(id)}/read`, { method: "PUT", body: {} });
-  return ok && json?.success === true;
-}
-
-async function markDmConversationRead(conversationId) {
-  if (!conversationId) return false;
-  const { ok, json } = await apiFetch(`/private-messages/conversation/${encodeURIComponent(conversationId)}/read`, {
-    method: "PUT",
-    body: {},
-  });
-  return ok && json?.success === true;
-}
-
-async function searchUsers(q, limit = 10) {
-  const qs = (q || "").toString().trim();
-  if (qs.length < 2) return [];
-  const lim = clamp(limit, 1, 20);
-  const { ok, json } = await apiFetch(`/users?q=${encodeURIComponent(qs)}&limit=${lim}`, { method: "GET" });
-  if (!ok || !json?.success) return [];
-  return Array.isArray(json?.data?.users) ? json.data.users : [];
-}
-
-function scrollToBottom(el) {
-  try {
-    el.scrollTop = el.scrollHeight;
-  } catch {}
+  throw new Error("Nie udało się pobrać firebase-config");
 }
 
 function makeStyles() {
@@ -246,7 +154,6 @@ function makeStyles() {
       border-bottom: 1px solid rgba(255,255,255,0.10);
       gap: 10px;
     }
-    .hdrLeft { display: flex; align-items: center; gap: 10px; min-width: 0; }
     .hdrTitle {
       font-weight: 900;
       letter-spacing: 0.01em;
@@ -257,13 +164,7 @@ function makeStyles() {
       min-width: 0;
     }
     .hdrTitleText { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      background: #22c55e;
-      box-shadow: 0 0 0 3px rgba(34,197,94,0.12);
-    }
+    .dot { width: 10px; height: 10px; border-radius: 999px; background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.12); }
     .hdrBtns { display: flex; gap: 10px; align-items: center; }
     .ghost {
       border: 1px solid rgba(255,255,255,0.14);
@@ -346,13 +247,7 @@ function makeStyles() {
     }
     .convSub { font-size: 12px; color: rgba(229,229,229,0.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
     .right { display: grid; grid-template-rows: 1fr auto; min-width: 0; }
-    .msgs {
-      overflow: auto;
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
+    .msgs { overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
     .bubbleRow { display: flex; }
     .bubbleRow.me { justify-content: flex-end; }
     .bubble {
@@ -367,13 +262,7 @@ function makeStyles() {
     }
     .bubble.me { background: rgba(193,154,107,0.18); border-color: rgba(193,154,107,0.28); }
     .meta { margin-top: 6px; font-size: 11px; color: rgba(229,229,229,0.55); text-align: right; }
-    .composer {
-      border-top: 1px solid rgba(255,255,255,0.10);
-      padding: 10px;
-      display: flex;
-      gap: 10px;
-      align-items: flex-end;
-    }
+    .composer { border-top: 1px solid rgba(255,255,255,0.10); padding: 10px; display: flex; gap: 10px; align-items: flex-end; }
     textarea {
       flex: 1 1 auto;
       min-height: 44px;
@@ -401,7 +290,6 @@ function makeStyles() {
     }
     .send:disabled { opacity: 0.45; cursor: not-allowed; }
     .empty { color: rgba(229,229,229,0.70); font-size: 13px; padding: 18px; }
-
     @media (max-width: 900px) { .grid { grid-template-columns: 260px 1fr; } }
     @media (max-width: 640px) {
       .panel { width: min(96vw, 900px); height: min(84vh, 600px); }
@@ -444,15 +332,89 @@ function setBadgeEl(badgeEl, n) {
   badgeEl.textContent = count > 99 ? "99+" : String(count);
 }
 
+function scrollToBottom(el) {
+  try {
+    el.scrollTop = el.scrollHeight;
+  } catch {}
+}
+
 async function main() {
   if (!document?.body) return;
 
-  const me = await fetchMe().catch(() => ({ authenticated: false }));
-  if (!me || me.success !== true || me.authenticated !== true || !me.uid) return;
+  // Firebase dynamic imports
+  const [{ initializeApp, getApps }, authMod, fsMod] = await Promise.all([
+    import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"),
+    import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"),
+    import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"),
+  ]);
 
-  const uid = me.uid;
+  const {
+    getAuth,
+    onAuthStateChanged,
+    setPersistence,
+    browserLocalPersistence,
+  } = authMod;
 
-  // Root/shadow
+  const {
+    initializeFirestore,
+    collection,
+    doc,
+    query,
+    where,
+    orderBy,
+    limit,
+    onSnapshot,
+    runTransaction,
+    serverTimestamp,
+    writeBatch,
+    getDocs,
+    getDoc,
+    FieldPath,
+  } = fsMod;
+
+  const firebaseConfig = {
+    apiKey: await getFirebaseApiKey(),
+    authDomain: "strzelca-pl.firebaseapp.com",
+    projectId: "strzelca-pl",
+    storageBucket: "strzelca-pl.firebasestorage.app",
+    messagingSenderId: "511362047688",
+    appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
+    measurementId: "G-9EJ2R3JPVD",
+  };
+
+  const APP_NAME = "__strzelca_messages_widget";
+  const existing = getApps().find((a) => a.name === APP_NAME);
+  const app = existing || initializeApp(firebaseConfig, APP_NAME);
+  const db = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+    useFetchStreams: false,
+  });
+  const auth = getAuth(app);
+  await setPersistence(auth, browserLocalPersistence).catch(() => {});
+
+  // ensure user (best-effort)
+  const waitForAuth = () =>
+    new Promise((resolve) => {
+      const unsub = onAuthStateChanged(auth, (u) => {
+        unsub();
+        resolve(u || null);
+      });
+    });
+
+  let user = auth.currentUser || (await waitForAuth());
+  if (!user) {
+    // best-effort SSO exchange
+    try {
+      const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-05-1");
+      await ensureFirebaseSSO(auth);
+    } catch {}
+    user = auth.currentUser || (await waitForAuth());
+  }
+  if (!user) return;
+
+  const uid = user.uid;
+
+  // UI
   const host = document.createElement("div");
   host.id = "strzelca-messages-widget";
   document.body.appendChild(host);
@@ -477,12 +439,8 @@ async function main() {
   panel.setAttribute("role", "dialog");
   panel.setAttribute("aria-label", "Wiadomości");
 
-  // Header
   const hdr = document.createElement("div");
   hdr.className = "hdr";
-
-  const hdrLeft = document.createElement("div");
-  hdrLeft.className = "hdrLeft";
 
   const hdrTitle = document.createElement("div");
   hdrTitle.className = "hdrTitle";
@@ -493,11 +451,9 @@ async function main() {
   titleText.textContent = "Wiadomości";
   hdrTitle.appendChild(dot);
   hdrTitle.appendChild(titleText);
-  hdrLeft.appendChild(hdrTitle);
 
   const hdrBtns = document.createElement("div");
   hdrBtns.className = "hdrBtns";
-
   const profileBtn = document.createElement("a");
   profileBtn.className = "ghost";
   profileBtn.textContent = "Profil";
@@ -508,15 +464,16 @@ async function main() {
   const closeBtn = document.createElement("button");
   closeBtn.className = "ghost";
   closeBtn.type = "button";
-  closeBtn.textContent = "Zamknij";
-
+  closeBtn.textContent = "×";
+  closeBtn.setAttribute("aria-label", "Zamknij");
+  closeBtn.style.fontSize = "18px";
+  closeBtn.style.lineHeight = "1";
   hdrBtns.appendChild(profileBtn);
   hdrBtns.appendChild(closeBtn);
 
-  hdr.appendChild(hdrLeft);
+  hdr.appendChild(hdrTitle);
   hdr.appendChild(hdrBtns);
 
-  // Grid
   const grid = document.createElement("div");
   grid.className = "grid";
 
@@ -527,22 +484,24 @@ async function main() {
   leftTop.className = "leftTop";
   const searchInput = document.createElement("input");
   searchInput.className = "search";
-  searchInput.placeholder = "Szukaj po nicku (min. 2 znaki)…";
+  searchInput.placeholder = "Szukaj (rozmowy + nick)…";
   const hint = document.createElement("div");
   hint.className = "smallHint";
-  hint.textContent = "Filtruje na żywo: najpierw Twoje rozmowy, poniżej użytkownicy.";
+  hint.textContent = "Filtruje na żywo: rozmowy, a niżej użytkownicy.";
   leftTop.appendChild(searchInput);
   leftTop.appendChild(hint);
 
   const convList = document.createElement("div");
-
   left.appendChild(leftTop);
   left.appendChild(convList);
 
   const right = document.createElement("div");
   right.className = "right";
+
   const msgs = document.createElement("div");
   msgs.className = "msgs";
+  msgs.innerHTML = `<div class="empty">Wybierz rozmowę…</div>`;
+
   const composer = document.createElement("div");
   composer.className = "composer";
   const ta = document.createElement("textarea");
@@ -554,6 +513,7 @@ async function main() {
   sendBtn.textContent = "Wyślij";
   composer.appendChild(ta);
   composer.appendChild(sendBtn);
+
   right.appendChild(msgs);
   right.appendChild(composer);
 
@@ -566,50 +526,40 @@ async function main() {
   wrap.appendChild(btn);
   shadow.appendChild(wrap);
 
+  // State + subscriptions
   let isOpen = getStoredOpen();
-  let pollTimer = null;
-  let unreadTimer = null;
+  let convUnsub = null;
+  let threadUnsub = null;
 
   let state = {
-    selected: getStoredSelected() || { type: "support" },
-    dmConversations: [],
-    supportUnread: 0,
-    dmUnreadTotal: 0,
-    activeConversationId: null, // dla dm
-    activePeerProfile: null, // {uid, displayName, avatar}
-    searchResults: [],
-    searchQuery: "",
+    conversations: [], // { id, peerId, peerName, peerAvatar, lastText, unread }
+    searchUsers: [],
+    q: "",
+    selectedPeerId: getStoredSelectedPeerId() || SUPPORT_UID,
+    selectedConversationId: null,
+    unreadTotal: 0,
   };
 
-  function updateHeaderTitle() {
-    if (state.selected?.type === "support") {
-      titleText.textContent = "Obsługa Strzelca.pl";
-      return;
-    }
-    const name = state.activePeerProfile?.displayName || "Rozmowa";
-    titleText.textContent = name;
-  }
-
-  function renderAvatar(el, { displayName, avatar, fallbackLetter }) {
+  function renderAvatar(el, name, avatarUrl) {
     el.innerHTML = "";
-    if (avatar) {
+    if (avatarUrl) {
       const img = document.createElement("img");
-      img.src = avatar;
+      img.src = avatarUrl;
       img.alt = "Avatar";
       el.appendChild(img);
       return;
     }
-    el.textContent = fallbackLetter || firstLetter(displayName);
+    el.textContent = firstLetter(name);
   }
 
-  function renderConvItem({ key, active, name, sub, unreadCount, avatar, letter, onClick }) {
+  function renderConvItem({ key, active, name, sub, unread, avatar, letter, onClick }) {
     const conv = document.createElement("div");
     conv.className = `conv ${active ? "active" : ""}`;
     conv.dataset.key = key;
 
     const av = document.createElement("div");
     av.className = "avatar";
-    renderAvatar(av, { displayName: name, avatar, fallbackLetter: letter });
+    renderAvatar(av, name || letter, avatar || null);
 
     const text = document.createElement("div");
     text.className = "convText";
@@ -623,7 +573,7 @@ async function main() {
 
     const badgeEl = document.createElement("div");
     badgeEl.className = "convBadge";
-    setBadgeEl(badgeEl, unreadCount || 0);
+    setBadgeEl(badgeEl, unread || 0);
 
     nameRow.appendChild(nameEl);
     nameRow.appendChild(badgeEl);
@@ -641,56 +591,57 @@ async function main() {
     return conv;
   }
 
-  function renderConversationList() {
-    convList.innerHTML = "";
-    const q = (state.searchQuery || "").toString().trim().toLowerCase();
-
-    // pinned support
-    const supportItem = renderConvItem({
-      key: "support",
-      active: state.selected?.type === "support",
-      name: "Obsługa Strzelca.pl",
-      sub: "Pomoc / zgłoszenia",
-      unreadCount: state.supportUnread || 0,
-      avatar: null,
-      letter: "S",
-      onClick: () => selectSupport(),
+  function filteredConversations() {
+    const q = (state.q || "").toString().trim().toLowerCase();
+    if (!q) return state.conversations;
+    return state.conversations.filter((c) => {
+      const n = (c.peerName || "").toLowerCase();
+      const l = (c.lastText || "").toLowerCase();
+      return n.includes(q) || l.includes(q);
     });
-    convList.appendChild(supportItem);
+  }
 
-    const dm = state.dmConversations || [];
-    const filteredDm = q
-      ? dm.filter((c) => {
-          const peer = c.peerProfile || {};
-          const name = (peer.displayName || "").toString().toLowerCase();
-          const last = (c.lastMessage?.content || "").toString().toLowerCase();
-          return name.includes(q) || last.includes(q);
+  function renderList() {
+    convList.innerHTML = "";
+    const q = (state.q || "").toString().trim().toLowerCase();
+
+    // pinned support always on top
+    const supportName = "Obsługa Strzelca.pl";
+    const supportUnread =
+      state.conversations.find((c) => c.peerId === SUPPORT_UID)?.unread || 0;
+    convList.appendChild(
+      renderConvItem({
+        key: "support",
+        active: state.selectedPeerId === SUPPORT_UID,
+        name: supportName,
+        sub: "Pomoc / zgłoszenia",
+        unread: supportUnread,
+        avatar: null,
+        letter: "S",
+        onClick: () => selectPeer(SUPPORT_UID, supportName),
+      })
+    );
+
+    const dm = filteredConversations().filter((c) => c.peerId !== SUPPORT_UID);
+    for (const c of dm) {
+      convList.appendChild(
+        renderConvItem({
+          key: `dm:${c.peerId}`,
+          active: state.selectedPeerId === c.peerId,
+          name: c.peerName || "Użytkownik",
+          sub: c.lastText || "Brak wiadomości",
+          unread: c.unread || 0,
+          avatar: c.peerAvatar || null,
+          letter: firstLetter(c.peerName || "U"),
+          onClick: () => selectPeer(c.peerId, c.peerName || "Rozmowa"),
         })
-      : dm;
-
-    const shownPeerIds = new Set();
-
-    for (const c of filteredDm) {
-      const peer = c.peerProfile || {};
-      const name = peer.displayName || "Użytkownik";
-      const preview = c.lastMessage?.content ? String(c.lastMessage.content).slice(0, 70) : "Brak wiadomości";
-      const el = renderConvItem({
-        key: `dm:${c.peerId}`,
-        active: state.selected?.type === "dm" && state.selected?.peerId === c.peerId,
-        name,
-        sub: preview,
-        unreadCount: c.unreadCount || 0,
-        avatar: peer.avatar || null,
-        letter: firstLetter(name),
-        onClick: () => selectDm(c.peerId, peer),
-      });
-      convList.appendChild(el);
-      if (c.peerId) shownPeerIds.add(c.peerId);
+      );
     }
 
-    // Pod spodem: użytkownicy z API (tylko jeśli jest query)
-    if (q && q.length >= 2) {
-      const users = (state.searchResults || []).filter((u) => u && u.uid && !shownPeerIds.has(u.uid));
+    const shown = new Set(dm.map((x) => x.peerId));
+
+    if (q.length >= 2) {
+      const users = (state.searchUsers || []).filter((u) => u?.uid && !shown.has(u.uid) && u.uid !== uid);
       if (users.length) {
         const label = document.createElement("div");
         label.className = "sectionLabel";
@@ -699,42 +650,32 @@ async function main() {
       }
       for (const u of users) {
         const name = u.displayName || "Użytkownik";
-        const el = renderConvItem({
-          key: `u:${u.uid}`,
-          active: state.selected?.type === "dm" && state.selected?.peerId === u.uid,
-          name,
-          sub: "Kliknij, aby rozpocząć rozmowę",
-          unreadCount: 0,
-          avatar: u.avatar || null,
-          letter: firstLetter(name),
-          onClick: () => selectDm(u.uid, { uid: u.uid, displayName: name, avatar: u.avatar || null }),
-        });
-        convList.appendChild(el);
+        convList.appendChild(
+          renderConvItem({
+            key: `u:${u.uid}`,
+            active: state.selectedPeerId === u.uid,
+            name,
+            sub: "Kliknij, aby rozpocząć rozmowę",
+            unread: 0,
+            avatar: u.avatar || null,
+            letter: firstLetter(name),
+            onClick: () => selectPeer(u.uid, name),
+          })
+        );
       }
-    }
-
-    // Jeśli nic nie pasuje (poza support), pokaż hint
-    if (q && q.length >= 2 && filteredDm.length === 0 && (state.searchResults || []).length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "empty";
-      empty.textContent = "Brak dopasowań.";
-      convList.appendChild(empty);
     }
   }
 
-  function renderMessages(items, { isSupport }) {
+  function renderMessages(items) {
     msgs.innerHTML = "";
     if (!items || items.length === 0) {
       const empty = document.createElement("div");
       empty.className = "empty";
-      empty.textContent = isSupport
-        ? "Napisz do obsługi — odpowiemy najszybciej jak się da."
-        : "Brak wiadomości. Napisz pierwszą wiadomość.";
+      empty.textContent = "Brak wiadomości. Napisz pierwszą wiadomość.";
       msgs.appendChild(empty);
       return;
     }
 
-    const toMarkSupportRead = [];
     for (const m of items) {
       const isMe = m.senderId === uid;
       const row = document.createElement("div");
@@ -744,137 +685,279 @@ async function main() {
       b.textContent = (m.content || "").toString();
       const meta = document.createElement("div");
       meta.className = "meta";
-      meta.textContent = formatTime(m.timestamp);
+      meta.textContent = formatTime(m.timestampMs || Date.now());
       b.appendChild(meta);
       row.appendChild(b);
       msgs.appendChild(row);
-
-      if (isSupport && !isMe && m.recipientId === uid && m.isRead === false && m.id) {
-        toMarkSupportRead.push(m.id);
-      }
     }
-
     queueMicrotask(() => scrollToBottom(msgs));
-
-    if (isSupport && toMarkSupportRead.length) {
-      (async () => {
-        for (const id of toMarkSupportRead.slice(0, 25)) {
-          await markSupportRead(id).catch(() => false);
-        }
-        await refreshUnread();
-      })();
-    }
   }
 
-  async function refreshUnread() {
-    const [supportUnread, dmConvs] = await Promise.all([
-      fetchSupportUnreadCount(uid).catch(() => 0),
-      fetchDmConversations(40).catch(() => []),
-    ]);
-    state.supportUnread = supportUnread;
-    state.dmConversations = dmConvs;
-    state.dmUnreadTotal = (dmConvs || []).reduce((acc, x) => acc + (Number(x.unreadCount || 0) || 0), 0);
+  async function searchUsersByPrefix(prefix) {
+    const qRaw = (prefix || "").toString().trim().toLowerCase();
+    if (qRaw.length < 2) return [];
+    const end = `${qRaw}\uf8ff`;
 
-    const total = state.supportUnread + state.dmUnreadTotal;
-    setBadgeEl(badge, total);
-    renderConversationList();
+    const snap = await getDocs(
+      query(
+        collection(db, "displayNames"),
+        where(FieldPath.documentId(), ">=", qRaw),
+        where(FieldPath.documentId(), "<=", end),
+        limit(10)
+      )
+    );
+
+    const hits = snap.docs
+      .map((d) => ({ ...(d.data() || {}), __id: d.id }))
+      .filter((x) => x && typeof x.userId === "string")
+      .map((x) => ({
+        uid: x.userId,
+        displayName: typeof x.displayName === "string" ? x.displayName : null,
+      }))
+      .filter((x) => x.uid !== uid);
+
+    const profs = await Promise.all(
+      hits.map((h) => getDoc(doc(db, "publicProfiles", h.uid)).catch(() => null))
+    );
+
+    return hits.map((h, i) => {
+      const ps = profs[i];
+      const d = ps && ps.exists() ? ps.data() : null;
+      return {
+        uid: h.uid,
+        displayName: h.displayName || (typeof d?.displayName === "string" ? d.displayName : null),
+        avatar: typeof d?.avatar === "string" ? d.avatar : null,
+      };
+    });
   }
 
-  async function selectSupport() {
-    state.selected = { type: "support" };
-    setStoredSelected(state.selected);
-    state.activeConversationId = null;
-    state.activePeerProfile = { uid: "admin", displayName: "Obsługa Strzelca.pl", avatar: null };
-    updateHeaderTitle();
-    msgs.innerHTML = `<div class="empty">Ładowanie…</div>`;
-    const items = await fetchSupportThread(160).catch(() => []);
-    renderMessages(items, { isSupport: true });
-    await refreshUnread();
-  }
+  async function markConversationRead(conversationId) {
+    try {
+      const convRef = doc(db, "privateConversations", conversationId);
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(convRef);
+        if (!snap.exists()) return;
+        const d = snap.data() || {};
+        const unread = (d.unreadCounts && typeof d.unreadCounts === "object") ? d.unreadCounts : {};
+        tx.set(convRef, { unreadCounts: { ...unread, [uid]: 0 } }, { merge: true });
+      });
 
-  async function selectDm(peerId, peerProfile) {
-    state.selected = { type: "dm", peerId };
-    setStoredSelected(state.selected);
-    state.activePeerProfile = peerProfile || { uid: peerId, displayName: null, avatar: null };
-    updateHeaderTitle();
-    msgs.innerHTML = `<div class="empty">Ładowanie…</div>`;
-    const { conversationId, messages } = await fetchDmThread(peerId, 200).catch(() => ({
-      conversationId: null,
-      messages: [],
-    }));
-    state.activeConversationId = conversationId;
-    renderMessages(messages, { isSupport: false });
-
-    // Best-effort: oznacz całą konwersację jako przeczytaną (czyści liczniki)
-    if (conversationId) {
-      await markDmConversationRead(conversationId).catch(() => false);
-    }
-    await refreshUnread();
-  }
-
-  async function refreshActiveThread() {
-    if (state.selected?.type === "support") {
-      const items = await fetchSupportThread(160).catch(() => []);
-      renderMessages(items, { isSupport: true });
-      return;
-    }
-    if (state.selected?.type === "dm" && state.selected?.peerId) {
-      const { conversationId, messages } = await fetchDmThread(state.selected.peerId, 200).catch(() => ({
-        conversationId: state.activeConversationId,
-        messages: [],
-      }));
-      state.activeConversationId = conversationId || state.activeConversationId;
-      renderMessages(messages, { isSupport: false });
-      if (state.activeConversationId) {
-        await markDmConversationRead(state.activeConversationId).catch(() => false);
+      // batch set isRead = true for up to 200
+      const mSnap = await getDocs(
+        query(
+          collection(db, "privateMessages"),
+          where("conversationId", "==", conversationId),
+          where("recipientId", "==", uid),
+          where("isRead", "==", false),
+          limit(200)
+        )
+      );
+      if (!mSnap.empty) {
+        const batch = writeBatch(db);
+        mSnap.docs.forEach((d) => batch.update(d.ref, { isRead: true }));
+        await batch.commit();
       }
+    } catch (e) {
+      console.warn("markConversationRead failed:", e?.message || e);
     }
   }
+
+  async function sendMessageTo(peerId, content) {
+    const text = (content || "").toString().trim().slice(0, 4000);
+    if (!text) return;
+    if (!peerId || peerId === uid) return;
+
+    const conversationId = conversationIdFor(uid, peerId);
+    const convRef = doc(db, "privateConversations", conversationId);
+    const msgRef = doc(collection(db, "privateMessages"));
+
+    // best-effort names/avatars
+    const [myPub, peerPub] = await Promise.all([
+      getDoc(doc(db, "publicProfiles", uid)).catch(() => null),
+      getDoc(doc(db, "publicProfiles", peerId)).catch(() => null),
+    ]);
+    const myDisplayName = myPub?.exists?.() ? myPub.data()?.displayName : null;
+    const peerDisplayName = peerPub?.exists?.() ? peerPub.data()?.displayName : null;
+    const peerAvatar = peerPub?.exists?.() ? peerPub.data()?.avatar : null;
+
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(convRef);
+      const d = snap.exists() ? snap.data() : {};
+      const unread = (d?.unreadCounts && typeof d.unreadCounts === "object") ? d.unreadCounts : {};
+      const cur = Number(unread?.[peerId] || 0) || 0;
+
+      tx.set(
+        convRef,
+        {
+          participants: [uid, peerId].sort(),
+          participantNames: { ...(d?.participantNames || {}), [uid]: myDisplayName || null, [peerId]: peerDisplayName || null },
+          participantAvatars: { ...(d?.participantAvatars || {}), [peerId]: peerAvatar || null },
+          updatedAt: serverTimestamp(),
+          lastMessage: { content: text, senderId: uid, timestamp: serverTimestamp() },
+          unreadCounts: { ...unread, [peerId]: cur + 1 },
+          createdAt: d?.createdAt || serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      tx.set(msgRef, {
+        conversationId,
+        content: text,
+        senderId: uid,
+        recipientId: peerId,
+        isRead: false,
+        timestamp: serverTimestamp(),
+      });
+    });
+  }
+
+  function subscribeConversations() {
+    if (convUnsub) convUnsub();
+    const q = query(
+      collection(db, "privateConversations"),
+      where("participants", "array-contains", uid),
+      orderBy("updatedAt", "desc"),
+      limit(40)
+    );
+
+    convUnsub = onSnapshot(
+      q,
+      (snap) => {
+        const list = [];
+        let totalUnread = 0;
+        snap.docs.forEach((d) => {
+          const data = d.data() || {};
+          const participants = Array.isArray(data.participants) ? data.participants : [];
+          const peerId = participants.find((p) => p && p !== uid) || null;
+          if (!peerId) return;
+          const names = data.participantNames || {};
+          const avatars = data.participantAvatars || {};
+          const peerName =
+            (peerId === SUPPORT_UID ? "Obsługa Strzelca.pl" : null) ||
+            (typeof names?.[peerId] === "string" ? names[peerId] : null) ||
+            "Użytkownik";
+          const peerAvatar = typeof avatars?.[peerId] === "string" ? avatars[peerId] : null;
+          const unread = Number((data.unreadCounts || {})[uid] || 0) || 0;
+          totalUnread += unread;
+          const lastText = data.lastMessage?.content ? String(data.lastMessage.content).slice(0, 70) : "";
+          list.push({
+            id: d.id,
+            peerId,
+            peerName,
+            peerAvatar,
+            lastText,
+            unread,
+          });
+        });
+
+        // ensure support exists even if no conversation doc yet
+        if (!list.some((x) => x.peerId === SUPPORT_UID)) {
+          list.unshift({
+            id: conversationIdFor(uid, SUPPORT_UID),
+            peerId: SUPPORT_UID,
+            peerName: "Obsługa Strzelca.pl",
+            peerAvatar: null,
+            lastText: "Pomoc / zgłoszenia",
+            unread: 0,
+          });
+        } else {
+          // move support to top
+          list.sort((a, b) => (a.peerId === SUPPORT_UID ? -1 : b.peerId === SUPPORT_UID ? 1 : 0));
+        }
+
+        state.conversations = list;
+        state.unreadTotal = totalUnread;
+        setBadgeEl(badge, totalUnread);
+        renderList();
+      },
+      (err) => {
+        console.warn("conversations snapshot error:", err?.message || err);
+      }
+    );
+  }
+
+  function subscribeThread(peerId) {
+    if (threadUnsub) threadUnsub();
+    const conversationId = conversationIdFor(uid, peerId);
+    state.selectedConversationId = conversationId;
+
+    const q = query(
+      collection(db, "privateMessages"),
+      where("conversationId", "==", conversationId),
+      orderBy("timestamp", "asc"),
+      limit(200)
+    );
+
+    threadUnsub = onSnapshot(
+      q,
+      async (snap) => {
+        const items = snap.docs.map((d) => {
+          const data = d.data() || {};
+          const ts = data.timestamp;
+          const timestampMs =
+            typeof ts?.toMillis === "function" ? ts.toMillis() : typeof ts === "number" ? ts : Date.now();
+          return {
+            id: d.id,
+            content: data.content || "",
+            senderId: data.senderId || null,
+            recipientId: data.recipientId || null,
+            isRead: data.isRead === true,
+            timestampMs,
+          };
+        });
+
+        renderMessages(items);
+
+        // mark read best-effort when open and selected
+        if (isOpen) {
+          await markConversationRead(conversationId);
+        }
+      },
+      (err) => {
+        console.warn("thread snapshot error:", err?.message || err);
+      }
+    );
+  }
+
+  function selectPeer(peerId, labelName) {
+    state.selectedPeerId = peerId;
+    setStoredSelectedPeerId(peerId);
+    titleText.textContent = labelName || "Wiadomości";
+    renderList();
+    msgs.innerHTML = `<div class="empty">Ładowanie…</div>`;
+    subscribeThread(peerId);
+  }
+
+  // Search: live filter + users below
+  let searchTimer = null;
+  searchInput.addEventListener("input", () => {
+    state.q = searchInput.value || "";
+    renderList();
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(async () => {
+      try {
+        state.searchUsers = await searchUsersByPrefix(state.q);
+      } catch (e) {
+        state.searchUsers = [];
+      }
+      renderList();
+    }, 250);
+  });
 
   async function doSend() {
     const content = (ta.value || "").toString().trim();
     if (!content) return;
     sendBtn.disabled = true;
     try {
-      if (state.selected?.type === "support") {
-        const ok = await sendSupportMessage(content);
-        if (!ok) {
-          window.location.href = LOGIN_URL;
-          return;
-        }
-      } else if (state.selected?.type === "dm" && state.selected?.peerId) {
-        const ok = await sendDmMessage(state.selected.peerId, content);
-        if (!ok) {
-          window.location.href = LOGIN_URL;
-          return;
-        }
-      } else {
-        return;
-      }
+      await sendMessageTo(state.selectedPeerId, content);
       ta.value = "";
-      await refreshActiveThread();
-      await refreshUnread();
+      ta.focus();
+    } catch (e) {
+      console.warn("send failed:", e?.message || e);
     } finally {
       sendBtn.disabled = false;
-      ta.focus();
     }
   }
-
-  // Search debounce
-  let searchTimer = null;
-  searchInput.addEventListener("input", () => {
-    const q = searchInput.value || "";
-    state.searchQuery = q;
-    // natychmiastowe filtrowanie rozmów
-    renderConversationList();
-
-    if (searchTimer) clearTimeout(searchTimer);
-    searchTimer = setTimeout(async () => {
-      // dopiero potem dobieramy użytkowników z API
-      state.searchResults = await searchUsers(q, 10).catch(() => []);
-      renderConversationList();
-    }, 250);
-  });
 
   btn.addEventListener("click", () => {
     if (isOpen) closePanel();
@@ -892,7 +975,6 @@ async function main() {
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && isOpen) closePanel();
   });
-
   document.addEventListener("click", (e) => {
     if (!isOpen) return;
     const path = e.composedPath ? e.composedPath() : [];
@@ -904,49 +986,35 @@ async function main() {
     isOpen = true;
     setStoredOpen(true);
     panel.style.display = "block";
-
-    // refresh lists + open selected
-    refreshUnread().catch(() => {});
-
-    const sel = state.selected || { type: "support" };
-    if (sel.type === "dm" && sel.peerId) {
-      selectDm(sel.peerId, state.activePeerProfile).catch(() => selectSupport());
-    } else {
-      selectSupport();
-    }
-
-    if (pollTimer) clearInterval(pollTimer);
-    pollTimer = setInterval(() => {
-      refreshActiveThread().catch(() => {});
-    }, 5000);
+    subscribeConversations();
+    selectPeer(state.selectedPeerId, state.selectedPeerId === SUPPORT_UID ? "Obsługa Strzelca.pl" : "Wiadomości");
   }
 
   function closePanel() {
     isOpen = false;
     setStoredOpen(false);
     panel.style.display = "none";
-    if (pollTimer) clearInterval(pollTimer);
-    pollTimer = null;
+    if (threadUnsub) threadUnsub();
+    threadUnsub = null;
   }
 
   // init
-  msgs.innerHTML = `<div class="empty">Ładowanie…</div>`;
-  // convo list renderuje też pusty stan
-  await refreshUnread().catch(() => {});
-
-  if (unreadTimer) clearInterval(unreadTimer);
-  unreadTimer = setInterval(() => {
-    if (!isOpen) refreshUnread().catch(() => {});
-  }, 20000);
-
+  subscribeConversations();
+  renderList();
   if (isOpen) openPanel();
 }
 
-if (typeof document !== "undefined") {
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", main, { once: true });
-  } else {
-    main();
+if (typeof window !== "undefined") {
+  // Guard przed podwójnym uruchomieniem, jeśli widget zostanie dołączony 2x.
+  if (!window.__strzelcaMessagesWidgetLoaded) {
+    window.__strzelcaMessagesWidgetLoaded = true;
+    if (typeof document !== "undefined") {
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", main, { once: true });
+      } else {
+        main();
+      }
+    }
   }
 }
 
