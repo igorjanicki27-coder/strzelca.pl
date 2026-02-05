@@ -316,7 +316,7 @@
               >
             </div>
 
-            <div class="mt-6 flex justify-center md:justify-start">
+            <div class="mt-6 flex flex-wrap justify-center md:justify-start gap-3">
               <button
                 type="button"
                 id="open-profile-data-btn"
@@ -324,6 +324,22 @@
               >
                 <i class="fa-solid fa-id-card mr-2"></i>
                 Dane profilu
+              </button>
+              <button
+                type="button"
+                onclick="window.changePassword && window.changePassword()"
+                class="px-5 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 hover:bg-zinc-900/40 transition"
+              >
+                <i class="fa-solid fa-key mr-2"></i>
+                Zmień hasło
+              </button>
+              <button
+                type="button"
+                onclick="window.logout && window.logout()"
+                class="px-5 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest border border-red-900 text-red-200 hover:text-white hover:border-red-700 hover:bg-red-900/20 transition"
+              >
+                <i class="fa-solid fa-right-from-bracket mr-2"></i>
+                Wyloguj się
               </button>
             </div>
           </div>
@@ -510,22 +526,6 @@
               <i class="fa-solid fa-xmark mr-2"></i>
               Wyjdź
             </button>
-            <button
-              type="button"
-              onclick="changePassword()"
-              class="bg-zinc-700 text-white px-6 py-3 rounded-lg hover:bg-zinc-600 transition"
-            >
-              <i class="fa-solid fa-key mr-2"></i>
-              Zmień hasło
-            </button>
-            <button
-              type="button"
-              onclick="logout()"
-              class="bg-red-900 text-white px-6 py-3 rounded-lg hover:bg-red-800 transition border border-red-700"
-            >
-              <i class="fa-solid fa-right-from-bracket mr-2"></i>
-              Wyloguj się
-            </button>
           </div>
           </form>
         </div>
@@ -605,21 +605,72 @@
           <h3 class="text-sm font-black uppercase tracking-widest text-zinc-500 mb-3">
             Strefa niebezpieczna
           </h3>
-          <p class="text-xs text-zinc-500 mb-4">
-            Usunięcie konta jest operacją nieodwracalną. Funkcja jest obecnie wyłączona.
-          </p>
           <button
             type="button"
-            disabled
-            class="w-full sm:w-auto bg-zinc-800 text-zinc-500 px-6 py-3 rounded-lg border border-zinc-700 cursor-not-allowed opacity-60"
-            title="Funkcja wyłączona"
+            id="open-delete-account-btn"
+            class="text-[11px] text-zinc-600 hover:text-red-300 transition font-bold uppercase tracking-widest"
+            title="Usuń konto"
           >
-            <i class="fa-solid fa-trash mr-2"></i>
             Usuń konto
           </button>
         </div>
       </div>
     </main>
+
+    <!-- Modal: Usuwanie konta -->
+    <div id="delete-account-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="text-xl font-bold text-red-200">Usuwanie konta</h3>
+          <button class="modal-close" onclick="closeDeleteAccountModal()">
+            &times;
+          </button>
+        </div>
+
+        <div class="text-sm text-zinc-300 space-y-3">
+          <p class="text-zinc-400">
+            Ta operacja jest <span class="text-red-200 font-bold">nieodwracalna</span>.
+          </p>
+          <p class="text-zinc-400">
+            Usunięcie konta spowoduje utratę dostępu oraz próbę usunięcia Twoich danych (m.in. profilu),
+            a także powiązanych treści, takich jak: opinie, oferty, konwersacje i wiadomości.
+          </p>
+          <p class="text-zinc-400">
+            Aby odblokować przycisk usunięcia, przepisz dokładnie:
+            <span class="text-white font-black">Usuń konto</span>
+          </p>
+        </div>
+
+        <div class="mt-5">
+          <input
+            id="delete-account-confirm-input"
+            type="text"
+            placeholder='Wpisz: "Usuń konto"'
+          />
+          <p class="mt-2 text-[11px] text-zinc-500">
+            Tekst musi zgadzać się 1:1 (wielkość liter i spacje).
+          </p>
+        </div>
+
+        <div class="flex gap-4 mt-6">
+          <button
+            type="button"
+            onclick="closeDeleteAccountModal()"
+            class="bg-zinc-700 text-white px-6 py-3 rounded-lg hover:bg-zinc-600 transition flex-1"
+          >
+            Anuluj
+          </button>
+          <button
+            type="button"
+            id="confirm-delete-account-btn"
+            disabled
+            class="bg-red-900 text-white px-6 py-3 rounded-lg border border-red-700 opacity-50 cursor-not-allowed transition flex-1"
+          >
+            Usuń konto
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Modal dodawania opinii -->
     <div id="add-review-modal" class="modal">
@@ -1347,72 +1398,40 @@ const firebaseConfig = {
       window.deleteAccount = async () => {
         if (!currentUser) return;
 
-        // Potwierdzenie usunięcia konta
-        const confirmMessage = `Czy na pewno chcesz usunąć swoje konto?\n\nTa operacja jest nieodwracalna i spowoduje:\n- Usunięcie wszystkich danych profilu\n- Usunięcie konta użytkownika\n- Utratę dostępu do wszystkich funkcji\n\nAby potwierdzić, wpisz "USUŃ" w poniższym oknie:`;
-
-        const confirmation = prompt(confirmMessage);
-        if (confirmation !== "USUŃ") {
-          alert("Anulowano usuwanie konta.");
-          return;
-        }
-
-        // Ostateczne potwierdzenie
-        const finalConfirm = confirm(
-          "To jest ostatnie ostrzeżenie. Czy na pewno chcesz usunąć konto?",
-        );
-        if (!finalConfirm) {
-          alert("Anulowano usuwanie konta.");
-          return;
-        }
-
         try {
-          // Usuń dane profilu z Firestore
-          await deleteDoc(doc(db, "userProfiles", currentUser.uid));
-
-          // Usuń nazwę użytkownika z kolekcji displayNames
-          if (userProfile && userProfile.displayName) {
-            try {
-              await deleteDoc(
-                doc(db, "displayNames", userProfile.displayName.toLowerCase()),
-              );
-            } catch (error) {
-              console.error("Error deleting display name:", error);
-            }
-          }
-
-          // Usuń z mailing list
+          // najpierw zamknij modal (jeśli otwarty)
           try {
-            await deleteDoc(doc(db, "mailingList", currentUser.email));
-          } catch (error) {
-            console.error("Error deleting from mailing list:", error);
+            window.closeDeleteAccountModal?.();
+          } catch {}
+
+          const idToken = await currentUser.getIdToken(true);
+          const res = await fetch("https://strzelca.pl/api/delete-account", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken }),
+            credentials: "include",
+          });
+
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data?.success !== true) {
+            console.error("Delete account API failed:", res.status, data);
+            alert(
+              "Nie udało się usunąć konta automatycznie. Jeśli problem się powtarza, skontaktuj się z administratorem.",
+            );
+            return;
           }
 
-          // Usuń konto użytkownika z Firebase Auth
-          // Uwaga: deleteUser wymaga reautentykacji, więc najpierw wylogujmy użytkownika
-          // i przekierujmy na stronę logowania z informacją o konieczności kontaktu z administratorem
-          await signOut(auth);
+          // Wyczyść localStorage i wyloguj się (czyści też cookie SSO)
+          try {
+            localStorage.clear();
+          } catch {}
 
-          // Zaloguj zdarzenie usunięcia konta
-          await logUserEvent(
-            "ACCOUNT_DELETION",
-            currentUser.uid,
-            userProfile?.displayName || currentUser.email,
-            "Użytkownik usunął swoje konto",
-            null,
-            null,
-            {
-              email: currentUser.email,
-              deletedAt: new Date().toISOString(),
-            },
-          );
-
-          // Wyczyść localStorage
-          localStorage.clear();
-
-          alert(
-            "Twoje konto zostało usunięte. Zostaniesz przekierowany na stronę główną.",
-          );
-          window.location.href = "https://strzelca.pl/index.html";
+          alert("Konto zostało usunięte. Zostaniesz wylogowany.");
+          try {
+            await window.logout();
+          } catch {
+            window.location.href = "https://strzelca.pl/index.html";
+          }
         } catch (error) {
           console.error("Error deleting account:", error);
           alert(
@@ -1735,6 +1754,59 @@ const firebaseConfig = {
       document.getElementById("profile-data-modal")?.addEventListener("click", (e) => {
         if (e.target?.id === "profile-data-modal") {
           window.closeProfileModal();
+        }
+      });
+
+      // ===== MODAL: USUWANIE KONTA =====
+      window.openDeleteAccountModal = function openDeleteAccountModal() {
+        document.getElementById("delete-account-modal")?.classList.add("show");
+        const input = document.getElementById("delete-account-confirm-input");
+        const btn = document.getElementById("confirm-delete-account-btn");
+        if (input) input.value = "";
+        if (btn) {
+          btn.disabled = true;
+          btn.classList.add("opacity-50", "cursor-not-allowed");
+        }
+      };
+      window.closeDeleteAccountModal = function closeDeleteAccountModal() {
+        document.getElementById("delete-account-modal")?.classList.remove("show");
+      };
+
+      document.getElementById("open-delete-account-btn")?.addEventListener("click", () => {
+        window.openDeleteAccountModal();
+      });
+
+      document.getElementById("delete-account-modal")?.addEventListener("click", (e) => {
+        if (e.target?.id === "delete-account-modal") {
+          window.closeDeleteAccountModal();
+        }
+      });
+
+      const deleteConfirmInput = document.getElementById("delete-account-confirm-input");
+      const deleteConfirmBtn = document.getElementById("confirm-delete-account-btn");
+      const requiredPhrase = "Usuń konto";
+
+      function updateDeleteButtonState() {
+        if (!deleteConfirmInput || !deleteConfirmBtn) return;
+        const ok = deleteConfirmInput.value === requiredPhrase;
+        deleteConfirmBtn.disabled = !ok;
+        deleteConfirmBtn.classList.toggle("opacity-50", !ok);
+        deleteConfirmBtn.classList.toggle("cursor-not-allowed", !ok);
+      }
+
+      deleteConfirmInput?.addEventListener("input", updateDeleteButtonState);
+
+      deleteConfirmBtn?.addEventListener("click", async () => {
+        try {
+          deleteConfirmBtn.disabled = true;
+          deleteConfirmBtn.classList.add("opacity-50", "cursor-not-allowed");
+          deleteConfirmBtn.textContent = "Usuwanie...";
+
+          await window.deleteAccount();
+        } finally {
+          // jeśli coś pójdzie nie tak, przywróć stan przycisku (zależnie od inputu)
+          deleteConfirmBtn.textContent = "Usuń konto";
+          updateDeleteButtonState();
         }
       });
 
