@@ -1,4 +1,6 @@
-const API_BASE = "https://strzelca.pl/api";
+// Używamy RELATYWNEGO /api, żeby uniknąć CORS/preflight między subdomenami.
+// Wszystkie subdomeny wskazują na ten sam deployment, a cookie SSO ma domenę `.strzelca.pl`.
+const API_BASE = "/api";
 const LOGIN_URL = "https://konto.strzelca.pl/login.html";
 const PROFILE_URL = "https://konto.strzelca.pl/profil.html";
 
@@ -68,12 +70,17 @@ async function apiFetch(path, { method = "GET", body, timeoutMs = 9000 } = {}) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    // Uwaga: ustawianie Content-Type przy GET powoduje CORS preflight (OPTIONS).
+    // Dla odczytów nie wysyłamy żadnych niestandardowych nagłówków.
+    const headers = {};
+    if (body !== undefined) headers["Content-Type"] = "application/json";
+
     const res = await fetch(`${API_BASE}${path}`, {
       method,
       credentials: "include",
       cache: "no-store",
       signal: controller.signal,
-      headers: { "Content-Type": "application/json" },
+      headers: Object.keys(headers).length ? headers : undefined,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const json = await res.json().catch(() => null);

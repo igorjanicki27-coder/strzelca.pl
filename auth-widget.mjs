@@ -31,6 +31,15 @@ function ensureStyles() {
       padding: 8px 12px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.35);
     }
+    /* Logged-in state: show ONLY avatar (no frame/pill) */
+    .strzelca-auth-pill--avatar-only {
+      background: transparent;
+      border: none;
+      padding: 0;
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
     .strzelca-auth-text {
       font-size: 14px;
       font-weight: 700;
@@ -112,7 +121,7 @@ function renderLoggedIn(root, { avatarUrl, displayName, emailVerified }) {
     : `<span class="strzelca-auth-avatar" aria-hidden="true">${letter}</span>`;
 
   root.innerHTML = `
-    <div class="strzelca-auth-pill">
+    <div class="strzelca-auth-pill strzelca-auth-pill--avatar-only">
       <a href="${href}" aria-label="Otwórz profil">
         ${avatar}
       </a>
