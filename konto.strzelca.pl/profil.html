@@ -186,6 +186,20 @@
         margin-top: 8px;
       }
 
+      /* Email verification highlight (replaces badges) */
+      .email-status {
+        display: inline-block;
+        transition: 0.2s;
+      }
+      .email-status-verified {
+        color: #34d399; /* emerald-400 */
+        text-shadow: 0 0 10px rgba(52, 211, 153, 0.35);
+      }
+      .email-status-unverified {
+        color: #f87171; /* red-400 */
+        text-shadow: 0 0 10px rgba(248, 113, 113, 0.35);
+      }
+
       /* Modal */
       .modal {
         display: none;
@@ -301,20 +315,11 @@
             <h1 id="display-name" class="text-3xl font-bold text-white mb-2">
               Ładowanie...
             </h1>
-            <p id="user-email" class="text-zinc-400 mb-4"></p>
-            <div
-              class="flex flex-wrap justify-center md:justify-start gap-4 text-sm"
-            >
-              <span
-                id="member-since"
-                class="bg-zinc-800 px-3 py-1 rounded-full"
-              ></span>
-              <span
-                id="verification-status"
-                class="bg-green-800 px-3 py-1 rounded-full"
-                >Email zweryfikowany</span
-              >
-            </div>
+            <p
+              id="user-email"
+              class="email-status text-zinc-400 mb-4 font-semibold cursor-help"
+              title=""
+            ></p>
 
             <div class="mt-6 flex flex-wrap justify-center md:justify-start gap-3">
               <button
@@ -863,6 +868,7 @@ const firebaseConfig = {
 
       let currentUser = null;
       let userProfile = null;
+      let memberSinceLabel = "";
       let profileFormSnapshot = null;
 
       function captureProfileFormSnapshot() {
@@ -1127,16 +1133,16 @@ const firebaseConfig = {
             await currentUser.reload();
           } catch {}
 
-          const el = document.getElementById("verification-status");
-          if (!el) return;
+          const emailEl = document.getElementById("user-email");
+          if (!emailEl) return;
 
-          if (currentUser.emailVerified) {
-            el.textContent = "Email zweryfikowany";
-            el.className = "bg-green-800 px-3 py-1 rounded-full";
-          } else {
-            el.textContent = "Email niezweryfikowany";
-            el.className = "bg-yellow-800 px-3 py-1 rounded-full";
-          }
+          const verified = currentUser.emailVerified === true;
+          emailEl.classList.remove("email-status-verified", "email-status-unverified");
+          emailEl.classList.add(verified ? "email-status-verified" : "email-status-unverified");
+
+          const statusText = verified ? "Email zweryfikowany" : "Email niezweryfikowany";
+          const memberText = memberSinceLabel ? `Członek od: ${memberSinceLabel}` : "";
+          emailEl.title = memberText ? `${statusText}\n${memberText}` : statusText;
         } catch (e) {
           console.warn("updateVerificationStatus failed (ignored):", e?.message || e);
         }
@@ -1162,8 +1168,7 @@ const firebaseConfig = {
               userProfile.displayName;
             document.getElementById("user-email").textContent =
               userProfile.email;
-            document.getElementById("member-since").textContent =
-              `Członek od ${formatDate(userProfile.createdAt)}`;
+            memberSinceLabel = formatDate(userProfile.createdAt);
 
             // Ustaw avatar
             const avatarDisplay = document.getElementById("avatar-display");
