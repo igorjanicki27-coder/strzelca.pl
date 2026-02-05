@@ -317,16 +317,11 @@
             </div>
             <div
               class="avatar-upload"
-              onclick="document.getElementById('avatar-input').click()"
+              onclick="window.openAvatarPicker && window.openAvatarPicker()"
+              title="Wybierz avatar"
             >
               <i class="fa-solid fa-camera text-black text-sm"></i>
             </div>
-            <input
-              type="file"
-              id="avatar-input"
-              accept="image/*"
-              style="display: none"
-            />
           </div>
 
           <!-- Informacje podstawowe -->
@@ -635,6 +630,50 @@
       </div>
     </main>
 
+    <!-- Modal: Wybór avatara (lokalne pliki z /avatary/) -->
+    <div id="avatar-picker-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] hidden">
+      <div class="min-h-full flex items-center justify-center p-4">
+        <div class="w-full max-w-2xl rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-zinc-900">
+            <div>
+              <h3 class="text-lg font-black text-white uppercase tracking-widest">Wybierz avatar</h3>
+              <p class="text-xs text-zinc-400 mt-1">
+                Dostępne avatary są ładowane z <span class="text-zinc-200">/avatary/</span>.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="text-zinc-400 hover:text-white text-2xl leading-none"
+              onclick="window.closeAvatarPicker && window.closeAvatarPicker()"
+              aria-label="Zamknij"
+            >
+              &times;
+            </button>
+          </div>
+
+          <div class="px-6 py-5">
+            <div id="avatar-picker-status" class="text-sm text-zinc-400">
+              Ładowanie listy avatarów...
+            </div>
+            <div
+              id="avatar-picker-grid"
+              class="mt-4 grid grid-cols-4 sm:grid-cols-6 gap-3"
+            ></div>
+          </div>
+
+          <div class="px-6 py-4 border-t border-zinc-900 flex justify-end gap-3">
+            <button
+              type="button"
+              class="px-5 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 hover:bg-zinc-900/40 transition"
+              onclick="window.closeAvatarPicker && window.closeAvatarPicker()"
+            >
+              Zamknij
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal: Usuwanie konta -->
     <div id="delete-account-modal" class="modal">
       <div class="modal-content">
@@ -827,20 +866,11 @@
         setPersistence,
         browserLocalPersistence,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-      import {
-        getStorage,
-        ref as storageRef,
-        uploadString,
-        getDownloadURL,
-      } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
       import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-01-28-1";
 
       
       async function getFirebaseApiKey() {
-        const urls = [
-          "https://strzelca.pl/api/firebase-config",
-          "/api/firebase-config",
-        ];
+        const urls = ["/api/firebase-config"];
 
         for (const url of urls) {
           try {
@@ -873,7 +903,6 @@ const firebaseConfig = {
         useFetchStreams: false,
       });
       const auth = getAuth(app);
-      const storage = getStorage(app);
 
       // Ustaw trwałość sesji na LOCAL dla wszystkich stron wymagających logowania
       await setPersistence(auth, browserLocalPersistence);
@@ -1177,36 +1206,182 @@ const firebaseConfig = {
         return date.toLocaleDateString("pl-PL");
       }
 
-      async function compressImageToDataUrl(file, { maxSide = 512, quality = 0.85 } = {}) {
-        const dataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onerror = () => reject(new Error("Nie udało się odczytać pliku."));
-          reader.onload = () => resolve(reader.result);
-          reader.readAsDataURL(file);
-        });
+      // ===== AVATARY (wybór z lokalnego katalogu /avatary/) =====
+      const AVATAR_PUBLIC_ORIGIN = "https://konto.strzelca.pl";
+      const AVATAR_BASE_PATH = "/avatary/";
+      const AVATAR_MAX_INDEX = 60; // ile pozycji sprawdzamy (01..60)
+      const AVATAR_EXTS = ["webp", "png", "jpg", "jpeg"];
+      let _availableAvatarsCache = null;
 
-        const img = await new Promise((resolve, reject) => {
-          const i = new Image();
-          i.onload = () => resolve(i);
-          i.onerror = () => reject(new Error("Nie udało się wczytać obrazu."));
-          i.src = dataUrl;
-        });
+      function pad2(n) {
+        return String(n).padStart(2, "0");
+      }
 
-        const w = img.naturalWidth || img.width;
-        const h = img.naturalHeight || img.height;
-        const scale = Math.min(1, maxSide / Math.max(w, h));
-        const targetW = Math.max(1, Math.round(w * scale));
-        const targetH = Math.max(1, Math.round(h * scale));
+      function avatarUrlForFile(fileName) {
+        // zapisujemy absolutny URL, żeby działało w każdej subdomenie (publicProfiles, widgety itd.)
+        return `${AVATAR_PUBLIC_ORIGIN}${AVATAR_BASE_PATH}${encodeURIComponent(fileName)}`;
+      }
 
-        const canvas = document.createElement("canvas");
-        canvas.width = targetW;
-        canvas.height = targetH;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("Brak wsparcia canvas w przeglądarce.");
-        ctx.drawImage(img, 0, 0, targetW, targetH);
+      function getAvatarModalEls() {
+        return {
+          modal: document.getElementById("avatar-picker-modal"),
+          grid: document.getElementById("avatar-picker-grid"),
+          status: document.getElementById("avatar-picker-status"),
+        };
+      }
 
-        // JPEG dla mniejszego rozmiaru
-        return canvas.toDataURL("image/jpeg", quality);
+      async function listAvailableAvatarFiles() {
+        if (_availableAvatarsCache) return _availableAvatarsCache;
+
+        const candidates = [];
+        for (let i = 1; i <= AVATAR_MAX_INDEX; i++) {
+          for (const ext of AVATAR_EXTS) {
+            candidates.push(`${pad2(i)}.${ext}`);
+          }
+        }
+
+        const checks = await Promise.all(
+          candidates.map(async (file) => {
+            const url = `${AVATAR_BASE_PATH}${file}`;
+            try {
+              const res = await fetch(url, { method: "HEAD", cache: "no-store" });
+              return res.ok ? file : null;
+            } catch {
+              return null;
+            }
+          }),
+        );
+
+        const available = checks.filter(Boolean);
+        // unikalne + deterministycznie (dla stabilnego UI)
+        _availableAvatarsCache = Array.from(new Set(available)).sort((a, b) => a.localeCompare(b));
+        return _availableAvatarsCache;
+      }
+
+      function renderAvatarPicker(files) {
+        const { grid, status } = getAvatarModalEls();
+        if (!grid || !status) return;
+
+        grid.innerHTML = "";
+
+        if (!files || files.length === 0) {
+          status.textContent =
+            "Nie znaleziono avatarów. Dodaj pliki do katalogu /konto.strzelca.pl/avatary/ (np. 01.webp, 02.webp...) i odśwież stronę.";
+          return;
+        }
+
+        status.textContent = `Dostępne avatary: ${files.length}`;
+
+        for (const file of files) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className =
+            "rounded-xl border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/70 hover:border-coyote transition p-1";
+          btn.title = file;
+
+          const img = document.createElement("img");
+          img.src = `${AVATAR_BASE_PATH}${file}`;
+          img.alt = "Avatar";
+          img.className = "w-full aspect-square object-cover rounded-lg";
+          img.loading = "lazy";
+
+          btn.appendChild(img);
+          btn.addEventListener("click", async () => {
+            await setAvatarFromCatalog(file);
+          });
+
+          grid.appendChild(btn);
+        }
+      }
+
+      window.openAvatarPicker = async () => {
+        try {
+          if (!currentUser) {
+            alert("Musisz być zalogowany, aby zmienić avatar.");
+            return;
+          }
+          if (!isViewingOwnProfile) return;
+
+          // (opcjonalnie) wymóg weryfikacji emaila – zostawiamy jak wcześniej
+          if (!currentUser.emailVerified) {
+            alert("Aby ustawić avatar, aktywuj konto (zweryfikuj email).");
+            window.location.href = "./po.rejestracji.html";
+            return;
+          }
+
+          const { modal, status } = getAvatarModalEls();
+          if (!modal) return;
+          modal.classList.remove("hidden");
+          if (status) status.textContent = "Ładowanie listy avatarów...";
+
+          const files = await listAvailableAvatarFiles();
+          renderAvatarPicker(files);
+        } catch (e) {
+          console.error("openAvatarPicker failed:", e);
+          alert("Nie udało się otworzyć wyboru avatara.");
+        }
+      };
+
+      window.closeAvatarPicker = () => {
+        const { modal } = getAvatarModalEls();
+        if (modal) modal.classList.add("hidden");
+      };
+
+      async function setAvatarFromCatalog(file) {
+        const avatarDisplay = document.getElementById("avatar-display");
+        try {
+          if (!currentUser) {
+            alert("Musisz być zalogowany, aby zmienić avatar.");
+            return;
+          }
+          if (!isViewingOwnProfile) return;
+
+          const url = avatarUrlForFile(file);
+
+          if (avatarDisplay) {
+            avatarDisplay.innerHTML = `<div class="text-zinc-400 text-sm">Zapisywanie avatara...</div>`;
+          }
+
+          await updateDoc(doc(db, "userProfiles", currentUser.uid), {
+            avatar: url,
+            avatarFile: file,
+            avatarSource: "catalog",
+            avatarUpdatedAt: new Date(),
+          });
+
+          // Best-effort: publiczny profil (nick + avatar)
+          try {
+            await setDoc(
+              doc(db, "publicProfiles", currentUser.uid),
+              {
+                displayName: String(userProfile?.displayName || "").trim(),
+                avatar: url,
+                updatedAt: new Date(),
+              },
+              { merge: true },
+            );
+          } catch (e) {
+            console.warn("Public profile avatar sync failed (ignored):", e?.message || e);
+          }
+
+          if (avatarDisplay) {
+            avatarDisplay.innerHTML = `<img src="${url}" alt="Avatar" class="avatar">`;
+          }
+
+          // aktualizuj stan lokalny, jeśli był już wczytany
+          if (userProfile) userProfile.avatar = url;
+
+          window.closeAvatarPicker && window.closeAvatarPicker();
+          alert("Avatar został ustawiony.");
+        } catch (error) {
+          console.error("Error setting avatar:", error);
+          if (avatarDisplay) {
+            avatarDisplay.innerHTML = userProfile?.avatar
+              ? `<img src="${userProfile.avatar}" alt="Avatar" class="avatar">`
+              : getDefaultAvatar(userProfile?.gender);
+          }
+          alert("Nie udało się ustawić avatara. Spróbuj ponownie.");
+        }
       }
 
       // Status weryfikacji emaila w UI
@@ -1634,98 +1809,7 @@ const firebaseConfig = {
         }
       };
 
-      // Obsługa zmiany avatara
-      document
-        .getElementById("avatar-input")
-        .addEventListener("change", async (e) => {
-          const file = e.target.files[0];
-          if (!file) return;
-
-          // Sprawdź rozmiar pliku (max 2MB)
-          if (file.size > 2 * 1024 * 1024) {
-            alert("Plik jest zbyt duży. Maksymalny rozmiar to 2MB.");
-            return;
-          }
-
-          // Sprawdź typ pliku
-          if (!file.type.startsWith("image/")) {
-            alert("Wybierz plik graficzny.");
-            return;
-          }
-
-          try {
-            if (!currentUser) {
-              alert("Musisz być zalogowany, aby zmienić avatar.");
-              return;
-            }
-
-            // Tryb ograniczony: niezweryfikowane konto nie może uploadować avatara
-            if (!currentUser.emailVerified) {
-              alert("Aby ustawić avatar, aktywuj konto (zweryfikuj email).");
-              window.location.href = "./po.rejestracji.html";
-              return;
-            }
-
-            // Podgląd + kompresja
-            const avatarDisplay = document.getElementById("avatar-display");
-            if (avatarDisplay) {
-              avatarDisplay.innerHTML = `<div class="text-zinc-400 text-sm">Wysyłanie avatara...</div>`;
-            }
-
-            const dataUrl = await compressImageToDataUrl(file, { maxSide: 512, quality: 0.85 });
-
-            // Upload do Firebase Storage (nadpisuje poprzedni avatar)
-            const path = `avatars/${currentUser.uid}.jpg`;
-            const refObj = storageRef(storage, path);
-            await uploadString(refObj, dataUrl, "data_url", {
-              contentType: "image/jpeg",
-              customMetadata: {
-                uid: currentUser.uid,
-              },
-            });
-
-            const url = await getDownloadURL(refObj);
-
-            // Zapisz URL w profilu użytkownika
-            await updateDoc(doc(db, "userProfiles", currentUser.uid), {
-              avatar: url,
-              avatarUpdatedAt: new Date(),
-            });
-
-            // Best-effort: zaktualizuj publiczny profil (nick + avatar)
-            try {
-              await setDoc(
-                doc(db, "publicProfiles", currentUser.uid),
-                {
-                  displayName: String(userProfile?.displayName || "").trim(),
-                  avatar: url,
-                  updatedAt: new Date(),
-                },
-                { merge: true },
-              );
-            } catch (e) {
-              console.warn("Public profile avatar sync failed (ignored):", e?.message || e);
-            }
-
-            // Odśwież UI
-            if (avatarDisplay) {
-              avatarDisplay.innerHTML = `<img src="${url}" alt="Avatar" class="avatar">`;
-            }
-
-            alert("Avatar został zapisany.");
-          } catch (error) {
-            console.error("Error uploading avatar:", error);
-            // Typowy przypadek: brak reguł Storage / brak włączonego Storage
-            if (error?.code === "storage/unauthorized" || error?.code === "storage/unknown") {
-              alert(
-                "Nie mogę zapisać avatara w Storage (brak uprawnień lub Storage nie jest skonfigurowany). " +
-                "Jeśli chcesz, podam gotowe reguły Storage dla avatarów."
-              );
-              return;
-            }
-            alert("Błąd podczas uploadu avatara. Spróbuj ponownie.");
-          }
-        });
+      // Avatary są wybierane z lokalnego katalogu /avatary/ (zob. openAvatarPicker / setAvatarFromCatalog)
 
       // ===== FUNKCJE DO OBSŁUGI OPINII =====
 
@@ -2112,7 +2196,7 @@ const firebaseConfig = {
     ></script>
     <script
       type="module"
-      src="https://strzelca.pl/messages-widget.mjs?v=2026-02-05-12"
+      src="https://strzelca.pl/messages-widget.mjs?v=2026-02-05-13"
     ></script>
   </body>
 </html>

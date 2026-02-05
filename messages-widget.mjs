@@ -71,7 +71,7 @@ function conversationIdFor(a, b) {
 }
 
 async function getFirebaseApiKey() {
-  const urls = ["/api/firebase-config", "https://strzelca.pl/api/firebase-config"];
+  const urls = ["/api/firebase-config"];
   for (const url of urls) {
     try {
       // API key nie jest sekretem — nie wysyłamy cookies/credentials, żeby uniknąć CORS (ACACredentials).
@@ -795,7 +795,7 @@ async function main() {
     });
   }
 
-  async function markConversationRead(conversationId) {
+  async function markConversationRead({ conversationId, peerId }) {
     try {
       const convRef = doc(db, "privateConversations", conversationId);
       // Zakładamy, że dokument konwersacji istnieje (ensureConversation robi to wcześniej),
@@ -806,7 +806,7 @@ async function main() {
       const mSnap = await getDocs(
         query(
           collection(db, "privateMessages"),
-          where("conversationId", "==", conversationId),
+          where("senderId", "==", peerId),
           where("recipientId", "==", uid),
           where("isRead", "==", false),
           limit(200)
@@ -976,42 +976,60 @@ async function main() {
     const conversationId = conversationIdFor(uid, peerId);
     state.selectedConversationId = conversationId;
 
-    const q = query(
+    // Bezpieczniej niż query po conversationId (jeden "zły" dokument potrafi zablokować całą konwersację).
+    // Robimy 2 query: uid->peer i peer->uid, a potem łączymy i sortujemy.
+    const qA = query(
       collection(db, "privateMessages"),
-      where("conversationId", "==", conversationId),
+      where("senderId", "==", uid),
+      where("recipientId", "==", peerId),
+      orderBy("timestamp", "asc"),
+      limit(200)
+    );
+    const qB = query(
+      collection(db, "privateMessages"),
+      where("senderId", "==", peerId),
+      where("recipientId", "==", uid),
       orderBy("timestamp", "asc"),
       limit(200)
     );
 
-    threadUnsub = onSnapshot(
-      q,
+    let aDocs = [];
+    let bDocs = [];
+
+    function mapDocs(docs) {
+      return docs.map((d) => {
+        const data = d.data() || {};
+        const ts = data.timestamp;
+        const timestampMs =
+          typeof ts?.toMillis === "function" ? ts.toMillis() : typeof ts === "number" ? ts : Date.now();
+        return {
+          id: d.id,
+          content: data.content || "",
+          senderId: data.senderId || null,
+          recipientId: data.recipientId || null,
+          isRead: data.isRead === true,
+          timestampMs,
+        };
+      });
+    }
+
+    async function recompute() {
+      const merged = [...mapDocs(aDocs), ...mapDocs(bDocs)].sort((x, y) => (x.timestampMs || 0) - (y.timestampMs || 0));
+      renderMessages(merged);
+      if (isOpen) {
+        await markConversationRead({ conversationId, peerId });
+      }
+    }
+
+    const unsubA = onSnapshot(
+      qA,
       async (snap) => {
-        const items = snap.docs.map((d) => {
-          const data = d.data() || {};
-          const ts = data.timestamp;
-          const timestampMs =
-            typeof ts?.toMillis === "function" ? ts.toMillis() : typeof ts === "number" ? ts : Date.now();
-          return {
-            id: d.id,
-            content: data.content || "",
-            senderId: data.senderId || null,
-            recipientId: data.recipientId || null,
-            isRead: data.isRead === true,
-            timestampMs,
-          };
-        });
-
-        renderMessages(items);
-
-        // mark read best-effort when open and selected
-        if (isOpen) {
-          await markConversationRead(conversationId);
-        }
+        aDocs = snap.docs;
+        await recompute();
       },
       (err) => {
         const msg = (err?.message || "").toString();
         console.warn("thread snapshot error:", msg || err);
-        // Pokaż czytelny komunikat w UI
         try {
           msgs.innerHTML = `<div class="empty">${
             msg.includes("Missing or insufficient permissions")
@@ -1021,6 +1039,30 @@ async function main() {
         } catch {}
       }
     );
+
+    const unsubB = onSnapshot(
+      qB,
+      async (snap) => {
+        bDocs = snap.docs;
+        await recompute();
+      },
+      (err) => {
+        const msg = (err?.message || "").toString();
+        console.warn("thread snapshot error:", msg || err);
+        try {
+          msgs.innerHTML = `<div class="empty">${
+            msg.includes("Missing or insufficient permissions")
+              ? "Brak uprawnień do tej rozmowy. Odśwież stronę i upewnij się, że jesteś zalogowany."
+              : "Nie udało się załadować rozmowy. Spróbuj odświeżyć."
+          }</div>`;
+        } catch {}
+      }
+    );
+
+    threadUnsub = () => {
+      try { unsubA(); } catch {}
+      try { unsubB(); } catch {}
+    };
   }
 
   function selectPeer(peerId, labelName) {

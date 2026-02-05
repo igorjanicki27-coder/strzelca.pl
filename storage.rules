@@ -1,0 +1,23 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Avatary użytkowników: zapis tylko właściciel, odczyt publiczny (downloadURL i tak jest publiczny przez token).
+    match /avatars/{uid}.jpg {
+      allow read: if true;
+      allow write: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Domyślnie blokuj wszystko inne.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
