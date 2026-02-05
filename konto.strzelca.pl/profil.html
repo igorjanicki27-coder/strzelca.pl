@@ -872,6 +872,31 @@ const firebaseConfig = {
       let currentUser = null;
       let userProfile = null;
 
+      // Base64 helpers that support UTF-8 (btoa/atob fail on Polish chars like ą,ę,ł)
+      function b64EncodeUtf8(str) {
+        try {
+          const bytes = new TextEncoder().encode(String(str ?? ""));
+          let bin = "";
+          for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+          return btoa(bin);
+        } catch (e) {
+          console.error("b64EncodeUtf8 failed:", e);
+          return "";
+        }
+      }
+
+      function b64DecodeUtf8(b64) {
+        try {
+          if (!b64) return "";
+          const bin = atob(String(b64));
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          return new TextDecoder().decode(bytes);
+        } catch {
+          return "";
+        }
+      }
+
       // Listener stanu autoryzacji z logiką przekierowań
       onAuthStateChanged(auth, async (user) => {
         if (user) {
@@ -1126,22 +1151,22 @@ const firebaseConfig = {
             // Odszyfruj dane wrażliwe
             const decryptedProfile = {
               ...userProfile,
-              phone: userProfile.phone ? atob(userProfile.phone) : "",
+              phone: userProfile.phone ? b64DecodeUtf8(userProfile.phone) : "",
               parcelLocker: userProfile.parcelLocker
-                ? atob(userProfile.parcelLocker)
+                ? b64DecodeUtf8(userProfile.parcelLocker)
                 : "",
               address: {
                 street: userProfile.address?.street
-                  ? atob(userProfile.address.street)
+                  ? b64DecodeUtf8(userProfile.address.street)
                   : "",
                 buildingNumber: userProfile.address?.buildingNumber
-                  ? atob(userProfile.address.buildingNumber)
+                  ? b64DecodeUtf8(userProfile.address.buildingNumber)
                   : "",
                 postalCode: userProfile.address?.postalCode
-                  ? atob(userProfile.address.postalCode)
+                  ? b64DecodeUtf8(userProfile.address.postalCode)
                   : "",
                 city: userProfile.address?.city
-                  ? atob(userProfile.address.city)
+                  ? b64DecodeUtf8(userProfile.address.city)
                   : "",
               },
             };
@@ -1264,7 +1289,7 @@ const firebaseConfig = {
           try {
             // Zapisujemy TYLKO zmienione pola (żeby np. zapis avatara nie wymuszał zmian w telefonie)
             const getDec = (v) => {
-              try { return v ? atob(v) : ""; } catch { return ""; }
+              return b64DecodeUtf8(v);
             };
 
             const oldDecrypted = {
@@ -1294,11 +1319,11 @@ const firebaseConfig = {
             const updatedProfile = {};
 
             if (newDecrypted.phone !== oldDecrypted.phone) {
-              updatedProfile.phone = btoa(newDecrypted.phone);
+              updatedProfile.phone = b64EncodeUtf8(newDecrypted.phone);
             }
 
             if (newDecrypted.parcelLocker !== oldDecrypted.parcelLocker) {
-              updatedProfile.parcelLocker = btoa(newDecrypted.parcelLocker);
+              updatedProfile.parcelLocker = b64EncodeUtf8(newDecrypted.parcelLocker);
             }
 
             const addrChanged =
@@ -1309,10 +1334,10 @@ const firebaseConfig = {
 
             if (addrChanged) {
               updatedProfile.address = {
-                street: btoa(newDecrypted.address.street),
-                buildingNumber: btoa(newDecrypted.address.buildingNumber),
-                postalCode: btoa(newDecrypted.address.postalCode),
-                city: btoa(newDecrypted.address.city),
+                street: b64EncodeUtf8(newDecrypted.address.street),
+                buildingNumber: b64EncodeUtf8(newDecrypted.address.buildingNumber),
+                postalCode: b64EncodeUtf8(newDecrypted.address.postalCode),
+                city: b64EncodeUtf8(newDecrypted.address.city),
               };
             }
 
