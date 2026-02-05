@@ -74,7 +74,11 @@ async function getFirebaseApiKey() {
   const urls = ["/api/firebase-config", "https://strzelca.pl/api/firebase-config"];
   for (const url of urls) {
     try {
-      const res = await fetch(url, { cache: "no-store", credentials: "include" });
+      // API key nie jest sekretem — nie wysyłamy cookies/credentials, żeby uniknąć CORS (ACACredentials).
+      const res = await fetch(url, {
+        cache: "no-store",
+        credentials: url.startsWith("http") ? "omit" : "same-origin",
+      });
       if (!res.ok) continue;
       const data = await res.json().catch(() => null);
       if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) return data.apiKey;
