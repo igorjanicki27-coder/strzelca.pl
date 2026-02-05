@@ -1209,13 +1209,7 @@ const firebaseConfig = {
       // ===== AVATARY (wybór z lokalnego katalogu /avatary/) =====
       const AVATAR_PUBLIC_ORIGIN = "https://konto.strzelca.pl";
       const AVATAR_BASE_PATH = "/avatary/";
-      const AVATAR_MAX_INDEX = 60; // ile pozycji sprawdzamy (01..60)
-      const AVATAR_EXTS = ["webp", "png", "jpg", "jpeg"];
       let _availableAvatarsCache = null;
-
-      function pad2(n) {
-        return String(n).padStart(2, "0");
-      }
 
       function avatarUrlForFile(fileName) {
         // zapisujemy absolutny URL, żeby działało w każdej subdomenie (publicProfiles, widgety itd.)
@@ -1233,29 +1227,20 @@ const firebaseConfig = {
       async function listAvailableAvatarFiles() {
         if (_availableAvatarsCache) return _availableAvatarsCache;
 
-        const candidates = [];
-        for (let i = 1; i <= AVATAR_MAX_INDEX; i++) {
-          for (const ext of AVATAR_EXTS) {
-            candidates.push(`${pad2(i)}.${ext}`);
-          }
+        // Preferuj listowanie po stronie serwera (działa dla dowolnych nazw plików).
+        try {
+          const res = await fetch("/api/avatars", { cache: "no-store" });
+          const data = await res.json().catch(() => null);
+          const files = Array.isArray(data?.files) ? data.files : [];
+          _availableAvatarsCache = files
+            .filter((x) => typeof x === "string" && x.length > 0)
+            .sort((a, b) => a.localeCompare(b, "pl"));
+          return _availableAvatarsCache;
+        } catch {
+          // fallback: brak listowania (zwróć pustą listę)
+          _availableAvatarsCache = [];
+          return _availableAvatarsCache;
         }
-
-        const checks = await Promise.all(
-          candidates.map(async (file) => {
-            const url = `${AVATAR_BASE_PATH}${file}`;
-            try {
-              const res = await fetch(url, { method: "HEAD", cache: "no-store" });
-              return res.ok ? file : null;
-            } catch {
-              return null;
-            }
-          }),
-        );
-
-        const available = checks.filter(Boolean);
-        // unikalne + deterministycznie (dla stabilnego UI)
-        _availableAvatarsCache = Array.from(new Set(available)).sort((a, b) => a.localeCompare(b));
-        return _availableAvatarsCache;
       }
 
       function renderAvatarPicker(files) {
