@@ -43,6 +43,13 @@ function getQuery(req, urlObj) {
   return out;
 }
 
+function getRoutedSegments({ urlObj, queryObj }) {
+  // Vercel rewrite: /api/messages/<path> -> /api/messages?__path=<path>
+  const raw = (queryObj?.__path ?? urlObj.searchParams.get('__path') ?? '').toString().trim();
+  if (!raw) return normalizePathSegments(urlObj.pathname);
+  return raw.split('/').filter(Boolean);
+}
+
 function getSessionUser(req) {
   try {
     initAdmin();
@@ -97,8 +104,8 @@ module.exports = async (req, res) => {
     const db = await initDatabase();
 
     const url = new URL(req.url, `http://${req.headers.host}`);
-    const segs = normalizePathSegments(url.pathname);
     const query = getQuery(req, url);
+    const segs = getRoutedSegments({ urlObj: url, queryObj: query });
     const sessionUser = getSessionUser(req);
     const requesterUid = sessionUser?.uid || null;
     const requesterIsAdmin = await isAdminOrSuperAdmin(requesterUid);

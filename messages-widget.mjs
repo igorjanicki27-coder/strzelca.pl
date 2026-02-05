@@ -523,26 +523,13 @@ async function main() {
   searchInput.placeholder = "Szukaj po nicku (min. 2 znaki)…";
   const hint = document.createElement("div");
   hint.className = "smallHint";
-  hint.textContent = "Wyniki pokazują się poniżej. Kliknij, aby otworzyć rozmowę.";
+  hint.textContent = "Filtruje na żywo: najpierw Twoje rozmowy, poniżej użytkownicy.";
   leftTop.appendChild(searchInput);
   leftTop.appendChild(hint);
-
-  const resultsLabel = document.createElement("div");
-  resultsLabel.className = "sectionLabel";
-  resultsLabel.textContent = "Wyniki";
-
-  const resultsList = document.createElement("div");
-
-  const convLabel = document.createElement("div");
-  convLabel.className = "sectionLabel";
-  convLabel.textContent = "Konwersacje";
 
   const convList = document.createElement("div");
 
   left.appendChild(leftTop);
-  left.appendChild(resultsLabel);
-  left.appendChild(resultsList);
-  left.appendChild(convLabel);
   left.appendChild(convList);
 
   const right = document.createElement("div");
@@ -584,6 +571,7 @@ async function main() {
     activeConversationId: null, // dla dm
     activePeerProfile: null, // {uid, displayName, avatar}
     searchResults: [],
+    searchQuery: "",
   };
 
   function updateHeaderTitle() {
@@ -646,35 +634,9 @@ async function main() {
     return conv;
   }
 
-  function renderSearchResults() {
-    resultsList.innerHTML = "";
-    const items = state.searchResults || [];
-    if (!items.length) {
-      const empty = document.createElement("div");
-      empty.className = "empty";
-      empty.textContent = "Brak wyników.";
-      resultsList.appendChild(empty);
-      return;
-    }
-
-    for (const u of items) {
-      const name = u.displayName || "Użytkownik";
-      const el = renderConvItem({
-        key: `sr:${u.uid}`,
-        active: state.selected?.type === "dm" && state.selected?.peerId === u.uid,
-        name,
-        sub: "Kliknij, aby otworzyć rozmowę",
-        unreadCount: 0,
-        avatar: u.avatar || null,
-        letter: firstLetter(name),
-        onClick: () => selectDm(u.uid, { uid: u.uid, displayName: name, avatar: u.avatar || null }),
-      });
-      resultsList.appendChild(el);
-    }
-  }
-
   function renderConversationList() {
     convList.innerHTML = "";
+    const q = (state.searchQuery || "").toString().trim().toLowerCase();
 
     // pinned support
     const supportItem = renderConvItem({
@@ -689,7 +651,19 @@ async function main() {
     });
     convList.appendChild(supportItem);
 
-    for (const c of state.dmConversations || []) {
+    const dm = state.dmConversations || [];
+    const filteredDm = q
+      ? dm.filter((c) => {
+          const peer = c.peerProfile || {};
+          const name = (peer.displayName || "").toString().toLowerCase();
+          const last = (c.lastMessage?.content || "").toString().toLowerCase();
+          return name.includes(q) || last.includes(q);
+        })
+      : dm;
+
+    const shownPeerIds = new Set();
+
+    for (const c of filteredDm) {
       const peer = c.peerProfile || {};
       const name = peer.displayName || "Użytkownik";
       const preview = c.lastMessage?.content ? String(c.lastMessage.content).slice(0, 70) : "Brak wiadomości";
@@ -704,6 +678,40 @@ async function main() {
         onClick: () => selectDm(c.peerId, peer),
       });
       convList.appendChild(el);
+      if (c.peerId) shownPeerIds.add(c.peerId);
+    }
+
+    // Pod spodem: użytkownicy z API (tylko jeśli jest query)
+    if (q && q.length >= 2) {
+      const users = (state.searchResults || []).filter((u) => u && u.uid && !shownPeerIds.has(u.uid));
+      if (users.length) {
+        const label = document.createElement("div");
+        label.className = "sectionLabel";
+        label.textContent = "Użytkownicy";
+        convList.appendChild(label);
+      }
+      for (const u of users) {
+        const name = u.displayName || "Użytkownik";
+        const el = renderConvItem({
+          key: `u:${u.uid}`,
+          active: state.selected?.type === "dm" && state.selected?.peerId === u.uid,
+          name,
+          sub: "Kliknij, aby rozpocząć rozmowę",
+          unreadCount: 0,
+          avatar: u.avatar || null,
+          letter: firstLetter(name),
+          onClick: () => selectDm(u.uid, { uid: u.uid, displayName: name, avatar: u.avatar || null }),
+        });
+        convList.appendChild(el);
+      }
+    }
+
+    // Jeśli nic nie pasuje (poza support), pokaż hint
+    if (q && q.length >= 2 && filteredDm.length === 0 && (state.searchResults || []).length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "Brak dopasowań.";
+      convList.appendChild(empty);
     }
   }
 
@@ -849,10 +857,15 @@ async function main() {
   let searchTimer = null;
   searchInput.addEventListener("input", () => {
     const q = searchInput.value || "";
+    state.searchQuery = q;
+    // natychmiastowe filtrowanie rozmów
+    renderConversationList();
+
     if (searchTimer) clearTimeout(searchTimer);
     searchTimer = setTimeout(async () => {
+      // dopiero potem dobieramy użytkowników z API
       state.searchResults = await searchUsers(q, 10).catch(() => []);
-      renderSearchResults();
+      renderConversationList();
     }, 250);
   });
 
@@ -911,7 +924,7 @@ async function main() {
 
   // init
   msgs.innerHTML = `<div class="empty">Ładowanie…</div>`;
-  resultsList.innerHTML = `<div class="empty">Wpisz nick, aby wyszukać…</div>`;
+  // convo list renderuje też pusty stan
   await refreshUnread().catch(() => {});
 
   if (unreadTimer) clearInterval(unreadTimer);

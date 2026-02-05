@@ -289,17 +289,24 @@ module.exports = async (req, res) => {
   const db = admin.firestore();
 
   const url = new URL(req.url, `http://${req.headers.host}`);
-  const pathname = url.pathname || "";
-  let segs = pathname.split("/").filter(Boolean);
-  if (segs[0] === "api") segs = segs.slice(1);
-  if (segs[0] === "private-messages") segs = segs.slice(1);
-
   const query = (() => {
     if (req.query && typeof req.query === "object") return req.query;
     const out = {};
     for (const [k, v] of url.searchParams.entries()) out[k] = v;
     return out;
   })();
+
+  // Vercel rewrite: /api/private-messages/<path> -> /api/private-messages?__path=<path>
+  const rawPath = (query?.__path ?? url.searchParams.get("__path") ?? "").toString().trim();
+  let segs = [];
+  if (rawPath) {
+    segs = rawPath.split("/").filter(Boolean);
+  } else {
+    const pathname = url.pathname || "";
+    segs = pathname.split("/").filter(Boolean);
+    if (segs[0] === "api") segs = segs.slice(1);
+    if (segs[0] === "private-messages") segs = segs.slice(1);
+  }
 
   try {
     if (req.method === "GET" && segs.length === 1 && segs[0] === "conversations") {
