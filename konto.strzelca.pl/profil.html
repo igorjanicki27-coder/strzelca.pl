@@ -868,13 +868,24 @@
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
       import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-01-28-1";
 
+      ;(async () => {
+      try {
+      
       
       async function getFirebaseApiKey() {
-        const urls = ["/api/firebase-config"];
+        // Na części domen / subdomen endpoint /api/* może nie być podpięty.
+        // Dlatego mamy fallback do głównej domeny.
+        const isMain = (window.location?.hostname || "") === "strzelca.pl";
+        const urls = isMain
+          ? ["/api/firebase-config", "https://strzelca.pl/api/firebase-config"]
+          : ["https://strzelca.pl/api/firebase-config", "/api/firebase-config"];
 
         for (const url of urls) {
           try {
-            const res = await fetch(url, { cache: "no-store" });
+            const res = await fetch(url, {
+              cache: "no-store",
+              credentials: url.startsWith("http") ? "omit" : "same-origin",
+            });
             if (!res.ok) continue;
             const data = await res.json().catch(() => null);
             if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
@@ -885,10 +896,21 @@
           }
         }
 
-        throw new Error("Nie udało się pobrać FIREBASE_WEB_API_KEY z /api/firebase-config");
+        return null;
       }
+
+      const apiKey = await getFirebaseApiKey();
+      if (!apiKey) {
+        console.error("Nie udało się pobrać FIREBASE_WEB_API_KEY z /api/firebase-config (ani z fallbacku).");
+        alert(
+          "Błąd konfiguracji: nie działa /api/firebase-config. " +
+          "Jeśli hostujesz stronę bez funkcji Vercel, musimy podać klucz Firebase inaczej."
+        );
+        return;
+      }
+
 const firebaseConfig = {
-        apiKey: await getFirebaseApiKey(),
+        apiKey,
         authDomain: "strzelca-pl.firebaseapp.com",
         projectId: "strzelca-pl",
         storageBucket: "strzelca-pl.appspot.com",
@@ -2252,6 +2274,12 @@ const firebaseConfig = {
           window.location.href = "./login.html";
         }
       });
+      
+      } catch (e) {
+        console.error("Profile boot failed:", e);
+        alert("Nie udało się uruchomić profilu (błąd konfiguracji).");
+      }
+      })();
     </script>
     <script
       type="module"

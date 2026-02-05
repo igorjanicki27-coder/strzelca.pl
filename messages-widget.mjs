@@ -71,7 +71,10 @@ function conversationIdFor(a, b) {
 }
 
 async function getFirebaseApiKey() {
-  const urls = ["/api/firebase-config"];
+  const isMain = (window.location?.hostname || "") === "strzelca.pl";
+  const urls = isMain
+    ? ["/api/firebase-config", "https://strzelca.pl/api/firebase-config"]
+    : ["https://strzelca.pl/api/firebase-config", "/api/firebase-config"];
   for (const url of urls) {
     try {
       // API key nie jest sekretem — nie wysyłamy cookies/credentials, żeby uniknąć CORS (ACACredentials).
@@ -86,7 +89,7 @@ async function getFirebaseApiKey() {
       // ignore
     }
   }
-  throw new Error("Nie udało się pobrać firebase-config");
+  return null;
 }
 
 function makeStyles() {
@@ -423,8 +426,14 @@ async function main() {
     FieldPath,
   } = fsMod;
 
+  const apiKey = await getFirebaseApiKey();
+  if (!apiKey) {
+    console.warn("messages-widget: /api/firebase-config niedostępne — widget wyłączony.");
+    return;
+  }
+
   const firebaseConfig = {
-    apiKey: await getFirebaseApiKey(),
+    apiKey,
     authDomain: "strzelca-pl.firebaseapp.com",
     projectId: "strzelca-pl",
     storageBucket: "strzelca-pl.appspot.com",
