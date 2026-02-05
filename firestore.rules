@@ -117,8 +117,24 @@ service cloud.firestore {
         resource.data.recipientId == request.auth.uid
       ));
 
+      // Create: tylko uczestnicy i spójny conversationId (żeby nikt nie mógł "zatruć" cudzej konwersacji)
       allow create: if isAuthenticated() &&
-        request.resource.data.senderId == request.auth.uid;
+        request.resource.data.senderId == request.auth.uid &&
+        request.resource.data.recipientId is string &&
+        request.resource.data.recipientId.size() >= 10 &&
+        request.resource.data.recipientId != request.auth.uid &&
+        request.resource.data.content is string &&
+        request.resource.data.content.size() >= 1 &&
+        request.resource.data.content.size() <= 4000 &&
+        request.resource.data.isRead == false &&
+        request.resource.data.timestamp is timestamp &&
+        request.resource.data.conversationId is string &&
+        (
+          request.resource.data.conversationId ==
+            (request.resource.data.senderId + "_" + request.resource.data.recipientId) ||
+          request.resource.data.conversationId ==
+            (request.resource.data.recipientId + "_" + request.resource.data.senderId)
+        );
 
       // Update: pozwalamy tylko na oznaczenie wiadomości jako przeczytanej (`isRead=true`)
       // przez nadawcę lub odbiorcę, bez możliwości edycji treści / uczestników.
@@ -143,7 +159,18 @@ service cloud.firestore {
       allow create: if isAuthenticated() &&
         request.resource.data.participants is list &&
         request.resource.data.participants.size() == 2 &&
-        request.auth.uid in request.resource.data.participants;
+        request.auth.uid in request.resource.data.participants &&
+        request.resource.data.participants[0] is string &&
+        request.resource.data.participants[1] is string &&
+        request.resource.data.participants[0] != request.resource.data.participants[1] &&
+        request.resource.data.unreadCounts is map &&
+        request.resource.data.unreadCounts[request.auth.uid] == 0 &&
+        (
+          conversationId ==
+            (request.resource.data.participants[0] + "_" + request.resource.data.participants[1]) ||
+          conversationId ==
+            (request.resource.data.participants[1] + "_" + request.resource.data.participants[0])
+        );
 
       // Aktualizacja: tylko uczestnicy i bez zmiany participants
       allow update: if isAuthenticated() &&

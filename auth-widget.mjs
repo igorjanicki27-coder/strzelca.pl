@@ -132,7 +132,7 @@ function renderLoggedIn(root, { avatarUrl, displayName, emailVerified }) {
   try {
     if (!window.__strzelcaMessagesWidgetBootstrap) {
       window.__strzelcaMessagesWidgetBootstrap = true;
-      import("https://strzelca.pl/messages-widget.mjs?v=2026-02-05-8").catch(() => {});
+      import("https://strzelca.pl/messages-widget.mjs?v=2026-02-05-10").catch(() => {});
     }
   } catch {
     // ignore

@@ -419,6 +419,7 @@ async function main() {
     writeBatch,
     getDocs,
     getDoc,
+    setLogLevel,
     FieldPath,
   } = fsMod;
 
@@ -432,10 +433,10 @@ async function main() {
     measurementId: "G-9EJ2R3JPVD",
   };
 
-  // Jeśli strona już ma Firebase (większość Twoich stron), reuse'ujemy to — wtedy auth jest już zalogowany.
-  // Jeśli nie ma, inicjujemy własną instancję.
-  const apps = getApps();
-  const app = apps.length ? apps[0] : initializeApp(firebaseConfig);
+  // Używamy nazwanej instancji aplikacji, żeby nie ryzykować kolizji z inicjalizacją na stronie.
+  const APP_NAME = "__strzelca_messages_widget";
+  const existingApp = getApps().find((a) => a.name === APP_NAME);
+  const app = existingApp || initializeApp(firebaseConfig, APP_NAME);
 
   let db;
   try {
@@ -446,6 +447,11 @@ async function main() {
   } catch {
     db = getFirestore(app);
   }
+
+  // Wycisz logi Firestore (w tym szum WebChannel/Listen w konsoli).
+  try {
+    setLogLevel("silent");
+  } catch {}
   const auth = getAuth(app);
   await setPersistence(auth, browserLocalPersistence).catch(() => {});
 
@@ -458,13 +464,14 @@ async function main() {
       });
     });
 
+  // Zawsze spróbuj SSO (cookie -> custom token) dla tej instancji auth.
+  try {
+    const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-05-1");
+    await ensureFirebaseSSO(auth);
+  } catch {}
+
   let user = auth.currentUser || (await waitForAuth());
   if (!user) {
-    // best-effort SSO exchange
-    try {
-      const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-05-1");
-      await ensureFirebaseSSO(auth);
-    } catch {}
     user = auth.currentUser || (await waitForAuth());
   }
   if (!user) return;
@@ -587,6 +594,7 @@ async function main() {
   let isOpen = getStoredOpen();
   let convUnsub = null;
   let threadUnsub = null;
+  let badgeTimer = null;
 
   let state = {
     conversations: [], // { id, peerId, peerName, peerAvatar, lastText, unread }
@@ -941,6 +949,29 @@ async function main() {
     return conversationId;
   }
 
+  async function refreshUnreadBadgeOnce() {
+    try {
+      const snap = await getDocs(
+        query(
+          collection(db, "privateConversations"),
+          where("participants", "array-contains", uid),
+          orderBy("updatedAt", "desc"),
+          limit(40)
+        )
+      );
+      let totalUnread = 0;
+      snap.docs.forEach((d) => {
+        const data = d.data() || {};
+        const unread = Number((data.unreadCounts || {})[uid] || 0) || 0;
+        totalUnread += unread;
+      });
+      setBadgeEl(badge, totalUnread);
+    } catch {
+      // jeśli nie ma indeksu / permissions, nie spamuj konsoli
+      setBadgeEl(badge, 0);
+    }
+  }
+
   function subscribeThread(peerId) {
     if (threadUnsub) threadUnsub();
     const conversationId = conversationIdFor(uid, peerId);
@@ -1055,8 +1086,12 @@ async function main() {
     isOpen = true;
     setStoredOpen(true);
     panel.style.display = "block";
+    // realtime uruchamiamy dopiero po otwarciu okna (żeby nie generować Listen na każdej stronie)
     subscribeConversations();
     selectPeer(state.selectedPeerId, state.selectedPeerId === SUPPORT_UID ? "Obsługa Strzelca.pl" : "Wiadomości");
+
+    if (badgeTimer) clearInterval(badgeTimer);
+    badgeTimer = null;
   }
 
   function closePanel() {
@@ -1065,11 +1100,23 @@ async function main() {
     panel.style.display = "none";
     if (threadUnsub) threadUnsub();
     threadUnsub = null;
+    if (convUnsub) convUnsub();
+    convUnsub = null;
+
+    // gdy zamknięte: odśwież badge co jakiś czas bez Listen
+    if (badgeTimer) clearInterval(badgeTimer);
+    badgeTimer = setInterval(() => {
+      if (!isOpen) refreshUnreadBadgeOnce().catch(() => {});
+    }, 30000);
   }
 
   // init
-  subscribeConversations();
   renderList();
+  // Bez Listen na starcie: tylko badge (best-effort)
+  refreshUnreadBadgeOnce().catch(() => {});
+  badgeTimer = setInterval(() => {
+    if (!isOpen) refreshUnreadBadgeOnce().catch(() => {});
+  }, 30000);
   if (isOpen) openPanel();
 }
 
