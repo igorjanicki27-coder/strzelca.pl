@@ -201,6 +201,20 @@ service cloud.firestore {
       // Only admins can read, update, and delete contact forms
       allow read, update, delete: if isAdminOrSuperAdmin();
     }
+
+    // =============================================================================
+    // MAILING LIST (newsletter subscriptions)
+    // =============================================================================
+    // DocID = user email (np. "jan.kowalski@example.com")
+    match /mailingList/{email} {
+      // Użytkownik może zapisać/zmienić/usunąć wyłącznie swój wpis (po emailu z tokena)
+      allow create, update, delete: if isAuthenticated() &&
+        request.auth.token.email != null &&
+        request.auth.token.email == email;
+
+      // Admin może czytać/zarządzać całą listą
+      allow read, create, update, delete: if isAdminOrSuperAdmin();
+    }
     
     // =============================================================================
     // PRODUCTS

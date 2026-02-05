@@ -351,7 +351,7 @@
         <div class="modal-content modal-content--wide">
           <div class="modal-header">
             <h3 class="text-xl font-bold coyote-text">Dane profilu</h3>
-            <button class="modal-close" onclick="closeProfileModal()">
+            <button type="button" class="modal-close" onclick="closeProfileModal(event)">
               &times;
             </button>
           </div>
@@ -520,7 +520,7 @@
             </button>
             <button
               type="button"
-              onclick="closeProfileModal()"
+              onclick="closeProfileModal(event)"
               class="bg-zinc-700 text-white px-6 py-3 rounded-lg hover:bg-zinc-600 transition"
             >
               <i class="fa-solid fa-xmark mr-2"></i>
@@ -599,22 +599,14 @@
         </div>
       </div>
 
-      <!-- Strefa niebezpieczna (celowo na samym dole) -->
-      <div class="mt-12">
-        <div class="bg-zinc-900/30 p-6 rounded-2xl border border-zinc-800">
-          <h3 class="text-sm font-black uppercase tracking-widest text-zinc-500 mb-3">
-            Strefa niebezpieczna
-          </h3>
-          <button
-            type="button"
-            id="open-delete-account-btn"
-            class="text-[11px] text-zinc-600 hover:text-red-300 transition font-bold uppercase tracking-widest"
-            title="Usuń konto"
-          >
-            Usuń konto
-          </button>
-        </div>
-      </div>
+      <button
+        type="button"
+        id="open-delete-account-btn"
+        class="mt-12 text-[11px] text-zinc-600 hover:text-red-300 transition font-bold uppercase tracking-widest"
+        title="Usuń konto"
+      >
+        Usuń konto
+      </button>
     </main>
 
     <!-- Modal: Usuwanie konta -->
@@ -871,6 +863,39 @@ const firebaseConfig = {
 
       let currentUser = null;
       let userProfile = null;
+      let profileFormSnapshot = null;
+
+      function captureProfileFormSnapshot() {
+        try {
+          profileFormSnapshot = {
+            phone: (document.getElementById("edit-phone")?.value || ""),
+            parcelLocker: (document.getElementById("edit-parcel-locker")?.value || ""),
+            street: (document.getElementById("edit-street")?.value || ""),
+            buildingNumber: (document.getElementById("edit-building-number")?.value || ""),
+            postalCode: (document.getElementById("edit-postal-code")?.value || ""),
+            city: (document.getElementById("edit-city")?.value || ""),
+            newsletter: !!document.getElementById("edit-newsletter")?.checked,
+          };
+        } catch {
+          profileFormSnapshot = null;
+        }
+      }
+
+      function restoreProfileFormSnapshot() {
+        if (!profileFormSnapshot) return;
+        const setVal = (id, v) => {
+          const el = document.getElementById(id);
+          if (el) el.value = v ?? "";
+        };
+        setVal("edit-phone", profileFormSnapshot.phone);
+        setVal("edit-parcel-locker", profileFormSnapshot.parcelLocker);
+        setVal("edit-street", profileFormSnapshot.street);
+        setVal("edit-building-number", profileFormSnapshot.buildingNumber);
+        setVal("edit-postal-code", profileFormSnapshot.postalCode);
+        setVal("edit-city", profileFormSnapshot.city);
+        const n = document.getElementById("edit-newsletter");
+        if (n) n.checked = !!profileFormSnapshot.newsletter;
+      }
 
       // Base64 helpers that support UTF-8 (btoa/atob fail on Polish chars like ą,ę,ł)
       function b64EncodeUtf8(str) {
@@ -1194,6 +1219,9 @@ const firebaseConfig = {
               decryptedProfile.parcelLocker || "";
             document.getElementById("edit-newsletter").checked =
               decryptedProfile.newsletter || false;
+
+            // Zapisz snapshot wartości formularza, żeby "Wyjdź" mógł przywrócić stan bez zapisywania
+            captureProfileFormSnapshot();
 
             // Aktualizuj status weryfikacji emaila
             await updateVerificationStatus();
@@ -1764,9 +1792,14 @@ const firebaseConfig = {
 
       // ===== MODAL: DANE PROFILU =====
       window.openProfileModal = function openProfileModal() {
+        // Przy otwieraniu odrzuć niezapisane zmiany w polach
+        restoreProfileFormSnapshot();
         document.getElementById("profile-data-modal")?.classList.add("show");
       };
-      window.closeProfileModal = function closeProfileModal() {
+      window.closeProfileModal = function closeProfileModal(e) {
+        try { e?.preventDefault?.(); e?.stopPropagation?.(); } catch {}
+        // Przy zamknięciu odrzuć niezapisane zmiany
+        restoreProfileFormSnapshot();
         document.getElementById("profile-data-modal")?.classList.remove("show");
       };
 
