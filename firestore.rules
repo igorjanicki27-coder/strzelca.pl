@@ -282,12 +282,11 @@ service cloud.firestore {
       allow read: if true;
       
       // Authenticated users can create reviews
-      allow create: if isAuthenticated() && 
-        request.resource.data.userId == request.auth.uid;
-      
-      // Users can update their own reviews
-      allow update: if isAuthenticated() && 
-        resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() &&
+        // autor opinii = zalogowany user
+        request.resource.data.raterId == request.auth.uid &&
+        // nie wolno wystawić opinii samemu sobie
+        request.resource.data.ratedId != request.auth.uid;
       
       // Admins can update and delete all reviews
       allow update, delete: if isAdminOrSuperAdmin();

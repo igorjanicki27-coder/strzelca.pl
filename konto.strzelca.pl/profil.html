@@ -189,6 +189,8 @@
       /* Email verification highlight (replaces badges) */
       .email-status {
         display: inline-block;
+        position: relative;
+        color: #9ca3af; /* zinc-400 base */
         transition: 0.2s;
       }
       .email-status-verified {
@@ -198,6 +200,23 @@
       .email-status-unverified {
         color: #f87171; /* red-400 */
         text-shadow: 0 0 10px rgba(248, 113, 113, 0.35);
+      }
+      .email-status[data-tooltip]:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: 0;
+        top: calc(100% + 8px);
+        background: rgba(0, 0, 0, 0.92);
+        border: 1px solid #333;
+        color: #e5e7eb;
+        font-size: 12px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        white-space: pre;
+        z-index: 2000;
+        min-width: 240px;
+        max-width: min(520px, 90vw);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
       }
 
       /* Modal */
@@ -317,7 +336,7 @@
             </h1>
             <p
               id="user-email"
-              class="email-status text-zinc-400 mb-4 font-semibold cursor-help"
+              class="email-status mb-4 font-semibold cursor-help"
               title=""
             ></p>
 
@@ -674,7 +693,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <h3 class="text-xl font-bold coyote-text">Dodaj opinię</h3>
-          <button class="modal-close" onclick="closeReviewModal()">
+          <button type="button" class="modal-close" onclick="closeReviewModal()">
             &times;
           </button>
         </div>
@@ -1142,7 +1161,9 @@ const firebaseConfig = {
 
           const statusText = verified ? "Email zweryfikowany" : "Email niezweryfikowany";
           const memberText = memberSinceLabel ? `Członek od: ${memberSinceLabel}` : "";
-          emailEl.title = memberText ? `${statusText}\n${memberText}` : statusText;
+          const tooltip = memberText ? `${statusText}\n${memberText}` : statusText;
+          emailEl.title = tooltip;
+          emailEl.dataset.tooltip = tooltip;
         } catch (e) {
           console.warn("updateVerificationStatus failed (ignored):", e?.message || e);
         }
@@ -1786,6 +1807,10 @@ const firebaseConfig = {
         resetReviewForm();
       }
 
+      // Inline onclick handlers in HTML need globals (module scope isn't on window)
+      window.openReviewModal = openReviewModal;
+      window.closeReviewModal = closeReviewModal;
+
       // Reset formularza opinii
       function resetReviewForm() {
         document.getElementById("review-form").reset();
@@ -1883,6 +1908,12 @@ const firebaseConfig = {
 
         if (!ratedUserId) {
           alert("Wybierz użytkownika do oceny.");
+          return;
+        }
+
+        // Twarda blokada: nie można dodać opinii samemu sobie (nawet jeśli ktoś zmanipuluje DOM)
+        if (ratedUserId === currentUser.uid) {
+          alert("Nie możesz dodać opinii samemu sobie.");
           return;
         }
 
