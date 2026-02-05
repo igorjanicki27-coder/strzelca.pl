@@ -1249,6 +1249,30 @@ const firebaseConfig = {
 
         grid.innerHTML = "";
 
+        // Kafelek: domyślny (czyści avatar)
+        const defaultBtn = document.createElement("button");
+        defaultBtn.type = "button";
+        defaultBtn.className =
+          "rounded-xl border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/70 hover:border-coyote transition p-3 flex flex-col items-center justify-center gap-2";
+        defaultBtn.title = "Ustaw domyślny avatar";
+
+        const defaultIcon = document.createElement("div");
+        defaultIcon.className =
+          "w-full aspect-square rounded-lg bg-zinc-800/50 flex items-center justify-center text-zinc-200";
+        defaultIcon.innerHTML = '<i class="fa-solid fa-user text-xl"></i>';
+
+        const defaultLabel = document.createElement("div");
+        defaultLabel.className = "text-[10px] font-black uppercase tracking-widest text-zinc-300";
+        defaultLabel.textContent = "Domyślny";
+
+        defaultBtn.appendChild(defaultIcon);
+        defaultBtn.appendChild(defaultLabel);
+        defaultBtn.addEventListener("click", async () => {
+          await resetAvatarToDefault();
+        });
+
+        grid.appendChild(defaultBtn);
+
         if (!files || files.length === 0) {
           status.textContent =
             "Nie znaleziono avatarów. Dodaj pliki do katalogu /konto.strzelca.pl/avatary/ (np. 01.webp, 02.webp...) i odśwież stronę.";
@@ -1366,6 +1390,60 @@ const firebaseConfig = {
               : getDefaultAvatar(userProfile?.gender);
           }
           alert("Nie udało się ustawić avatara. Spróbuj ponownie.");
+        }
+      }
+
+      async function resetAvatarToDefault() {
+        const avatarDisplay = document.getElementById("avatar-display");
+        try {
+          if (!currentUser) {
+            alert("Musisz być zalogowany, aby zmienić avatar.");
+            return;
+          }
+          if (!isViewingOwnProfile) return;
+
+          if (avatarDisplay) {
+            avatarDisplay.innerHTML = `<div class="text-zinc-400 text-sm">Przywracanie domyślnego avatara...</div>`;
+          }
+
+          // Pierwotnie (przy rejestracji) avatar jest pusty ("") — UI pokazuje placeholder.
+          await updateDoc(doc(db, "userProfiles", currentUser.uid), {
+            avatar: "",
+            avatarFile: "",
+            avatarSource: "default",
+            avatarUpdatedAt: new Date(),
+          });
+
+          // Best-effort: publiczny profil (nick + avatar)
+          try {
+            await setDoc(
+              doc(db, "publicProfiles", currentUser.uid),
+              {
+                displayName: String(userProfile?.displayName || "").trim(),
+                avatar: "",
+                updatedAt: new Date(),
+              },
+              { merge: true },
+            );
+          } catch (e) {
+            console.warn("Public profile avatar sync failed (ignored):", e?.message || e);
+          }
+
+          if (userProfile) userProfile.avatar = "";
+          if (avatarDisplay) {
+            avatarDisplay.innerHTML = getDefaultAvatar(userProfile?.gender);
+          }
+
+          window.closeAvatarPicker && window.closeAvatarPicker();
+          alert("Przywrócono domyślny avatar.");
+        } catch (error) {
+          console.error("resetAvatarToDefault failed:", error);
+          if (avatarDisplay) {
+            avatarDisplay.innerHTML = userProfile?.avatar
+              ? `<img src="${userProfile.avatar}" alt="Avatar" class="avatar">`
+              : getDefaultAvatar(userProfile?.gender);
+          }
+          alert("Nie udało się przywrócić domyślnego avatara.");
         }
       }
 
