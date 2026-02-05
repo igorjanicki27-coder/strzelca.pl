@@ -427,16 +427,16 @@ async function main() {
     apiKey: await getFirebaseApiKey(),
     authDomain: "strzelca-pl.firebaseapp.com",
     projectId: "strzelca-pl",
-    storageBucket: "strzelca-pl.firebasestorage.app",
+    storageBucket: "strzelca-pl.appspot.com",
     messagingSenderId: "511362047688",
     appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
     measurementId: "G-9EJ2R3JPVD",
   };
 
-  // Używamy nazwanej instancji aplikacji, żeby nie ryzykować kolizji z inicjalizacją na stronie.
-  const APP_NAME = "__strzelca_messages_widget";
-  const existingApp = getApps().find((a) => a.name === APP_NAME);
-  const app = existingApp || initializeApp(firebaseConfig, APP_NAME);
+  // Jeśli strona ma już Firebase (większość Twoich podstron), reuse'ujemy istniejącą instancję.
+  // To jest kluczowe, bo wtedy widget dziedziczy ten sam stan Firebase Auth (unikamy permission-denied).
+  const existingApps = getApps();
+  const app = existingApps.length ? existingApps[0] : initializeApp(firebaseConfig);
 
   let db;
   try {
@@ -464,14 +464,13 @@ async function main() {
       });
     });
 
-  // Zawsze spróbuj SSO (cookie -> custom token) dla tej instancji auth.
-  try {
-    const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-05-1");
-    await ensureFirebaseSSO(auth);
-  } catch {}
-
   let user = auth.currentUser || (await waitForAuth());
   if (!user) {
+    // Jeśli nie mamy usera, spróbuj SSO (cookie -> custom token) dla tej instancji auth.
+    try {
+      const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-05-1");
+      await ensureFirebaseSSO(auth);
+    } catch {}
     user = auth.currentUser || (await waitForAuth());
   }
   if (!user) return;
@@ -1010,7 +1009,16 @@ async function main() {
         }
       },
       (err) => {
-        console.warn("thread snapshot error:", err?.message || err);
+        const msg = (err?.message || "").toString();
+        console.warn("thread snapshot error:", msg || err);
+        // Pokaż czytelny komunikat w UI
+        try {
+          msgs.innerHTML = `<div class="empty">${
+            msg.includes("Missing or insufficient permissions")
+              ? "Brak uprawnień do tej rozmowy. Odśwież stronę i upewnij się, że jesteś zalogowany."
+              : "Nie udało się załadować rozmowy. Spróbuj odświeżyć."
+          }</div>`;
+        } catch {}
       }
     );
   }
