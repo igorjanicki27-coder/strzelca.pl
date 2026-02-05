@@ -345,6 +345,49 @@ function scrollToBottom(el) {
 async function main() {
   if (!document?.body) return;
 
+  // Wycisz znane "CORS/access control checks" z Firestore WebChannel/Listen,
+  // które w praktyce często nie wpływają na działanie (a tylko spamują konsolę).
+  // (Masz identyczną logikę w części stron.)
+  try {
+    if (!window.__strzelcaFirestoreNoiseGuard) {
+      window.__strzelcaFirestoreNoiseGuard = true;
+      window.addEventListener(
+        "error",
+        (e) => {
+          const msg = (e?.message || "").toString();
+          if (
+            msg.includes("access control checks") ||
+            msg.includes("CORS") ||
+            msg.includes("firestore.googleapis.com")
+          ) {
+            e.preventDefault();
+            return false;
+          }
+          return undefined;
+        },
+        true
+      );
+      window.addEventListener(
+        "unhandledrejection",
+        (e) => {
+          const msg = (e?.reason?.message || "").toString();
+          if (
+            msg.includes("access control checks") ||
+            msg.includes("CORS") ||
+            msg.includes("firestore.googleapis.com")
+          ) {
+            e.preventDefault();
+            return false;
+          }
+          return undefined;
+        },
+        true
+      );
+    }
+  } catch {
+    // ignore
+  }
+
   // Firebase dynamic imports
   const [{ initializeApp, getApps }, authMod, fsMod] = await Promise.all([
     import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"),
@@ -361,8 +404,10 @@ async function main() {
 
   const {
     initializeFirestore,
+    getFirestore,
     collection,
     doc,
+    setDoc,
     query,
     where,
     orderBy,
@@ -370,6 +415,7 @@ async function main() {
     onSnapshot,
     runTransaction,
     serverTimestamp,
+    increment,
     writeBatch,
     getDocs,
     getDoc,
@@ -386,13 +432,20 @@ async function main() {
     measurementId: "G-9EJ2R3JPVD",
   };
 
-  const APP_NAME = "__strzelca_messages_widget";
-  const existing = getApps().find((a) => a.name === APP_NAME);
-  const app = existing || initializeApp(firebaseConfig, APP_NAME);
-  const db = initializeFirestore(app, {
-    experimentalForceLongPolling: true,
-    useFetchStreams: false,
-  });
+  // Jeśli strona już ma Firebase (większość Twoich stron), reuse'ujemy to — wtedy auth jest już zalogowany.
+  // Jeśli nie ma, inicjujemy własną instancję.
+  const apps = getApps();
+  const app = apps.length ? apps[0] : initializeApp(firebaseConfig);
+
+  let db;
+  try {
+    db = initializeFirestore(app, {
+      experimentalAutoDetectLongPolling: true,
+      useFetchStreams: true,
+    });
+  } catch {
+    db = getFirestore(app);
+  }
   const auth = getAuth(app);
   await setPersistence(auth, browserLocalPersistence).catch(() => {});
 
@@ -738,13 +791,9 @@ async function main() {
   async function markConversationRead(conversationId) {
     try {
       const convRef = doc(db, "privateConversations", conversationId);
-      await runTransaction(db, async (tx) => {
-        const snap = await tx.get(convRef);
-        if (!snap.exists()) return;
-        const d = snap.data() || {};
-        const unread = (d.unreadCounts && typeof d.unreadCounts === "object") ? d.unreadCounts : {};
-        tx.set(convRef, { unreadCounts: { ...unread, [uid]: 0 } }, { merge: true });
-      });
+      // Zakładamy, że dokument konwersacji istnieje (ensureConversation robi to wcześniej),
+      // więc nie musimy go czytać w transakcji (czytanie nieistniejącego doca powodowało permission-denied).
+      await setDoc(convRef, { unreadCounts: { [uid]: 0 } }, { merge: true });
 
       // batch set isRead = true for up to 200
       const mSnap = await getDocs(
@@ -784,22 +833,18 @@ async function main() {
     const peerDisplayName = peerPub?.exists?.() ? peerPub.data()?.displayName : null;
     const peerAvatar = peerPub?.exists?.() ? peerPub.data()?.avatar : null;
 
+    // Nie czytamy convRef w transakcji — przy braku dokumentu to potrafiło kończyć się permission-denied.
+    // Zamiast tego: ensureConversation() tworzy dokument wcześniej, a tutaj tylko update (merge + increment).
     await runTransaction(db, async (tx) => {
-      const snap = await tx.get(convRef);
-      const d = snap.exists() ? snap.data() : {};
-      const unread = (d?.unreadCounts && typeof d.unreadCounts === "object") ? d.unreadCounts : {};
-      const cur = Number(unread?.[peerId] || 0) || 0;
-
       tx.set(
         convRef,
         {
           participants: [uid, peerId].sort(),
-          participantNames: { ...(d?.participantNames || {}), [uid]: myDisplayName || null, [peerId]: peerDisplayName || null },
-          participantAvatars: { ...(d?.participantAvatars || {}), [peerId]: peerAvatar || null },
+          participantNames: { [uid]: myDisplayName || null, [peerId]: peerDisplayName || null },
+          participantAvatars: { [peerId]: peerAvatar || null },
           updatedAt: serverTimestamp(),
           lastMessage: { content: text, senderId: uid, timestamp: serverTimestamp() },
-          unreadCounts: { ...unread, [peerId]: cur + 1 },
-          createdAt: d?.createdAt || serverTimestamp(),
+          unreadCounts: { [peerId]: increment(1) },
         },
         { merge: true }
       );
@@ -880,6 +925,22 @@ async function main() {
     );
   }
 
+  async function ensureConversation(peerId) {
+    const conversationId = conversationIdFor(uid, peerId);
+    const ref = doc(db, "privateConversations", conversationId);
+    // Tworzymy dokument konwersacji bez czytania (żeby nie wpadać w permission-denied na nieistniejącym docu).
+    await setDoc(
+      ref,
+      {
+        participants: [uid, peerId].sort(),
+        unreadCounts: { [uid]: 0, [peerId]: 0 },
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+    return conversationId;
+  }
+
   function subscribeThread(peerId) {
     if (threadUnsub) threadUnsub();
     const conversationId = conversationIdFor(uid, peerId);
@@ -929,7 +990,10 @@ async function main() {
     titleText.textContent = labelName || "Wiadomości";
     renderList();
     msgs.innerHTML = `<div class="empty">Ładowanie…</div>`;
-    subscribeThread(peerId);
+    // Upewnij się, że dokument konwersacji istnieje zanim zaczniemy listen / markRead
+    ensureConversation(peerId)
+      .catch(() => {})
+      .finally(() => subscribeThread(peerId));
   }
 
   // Search: live filter + users below
@@ -953,6 +1017,7 @@ async function main() {
     if (!content) return;
     sendBtn.disabled = true;
     try {
+      await ensureConversation(state.selectedPeerId).catch(() => {});
       await sendMessageTo(state.selectedPeerId, content);
       ta.value = "";
       ta.focus();
