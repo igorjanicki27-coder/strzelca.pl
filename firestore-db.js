@@ -114,6 +114,10 @@ class FirestoreDatabaseManager {
         query = query.where('recipientId', '==', options.recipientId);
       }
 
+      if (options.senderId) {
+        query = query.where('senderId', '==', options.senderId);
+      }
+
       if (options.status) {
         query = query.where('status', '==', options.status);
       }
@@ -122,8 +126,22 @@ class FirestoreDatabaseManager {
         query = query.where('categoryId', '==', options.categoryId);
       }
 
-      if (options.senderId) {
-        query = query.where('senderId', '==', options.senderId);
+      if (typeof options.isRead === 'boolean') {
+        query = query.where('isRead', '==', options.isRead);
+      }
+
+      // Zakres dat (timestamp jest Firestore Timestamp)
+      if (options.dateFrom) {
+        const fromMs = typeof options.dateFrom === 'string' ? Date.parse(options.dateFrom) : Number(options.dateFrom);
+        if (Number.isFinite(fromMs)) {
+          query = query.where('timestamp', '>=', admin.firestore.Timestamp.fromDate(new Date(fromMs)));
+        }
+      }
+      if (options.dateTo) {
+        const toMs = typeof options.dateTo === 'string' ? Date.parse(options.dateTo) : Number(options.dateTo);
+        if (Number.isFinite(toMs)) {
+          query = query.where('timestamp', '<=', admin.firestore.Timestamp.fromDate(new Date(toMs)));
+        }
       }
 
       // Sortowanie i paginacja
@@ -149,11 +167,29 @@ class FirestoreDatabaseManager {
       if (options.recipientId) {
         countQuery = countQuery.where('recipientId', '==', options.recipientId);
       }
+      if (options.senderId) {
+        countQuery = countQuery.where('senderId', '==', options.senderId);
+      }
       if (options.status) {
         countQuery = countQuery.where('status', '==', options.status);
       }
       if (options.categoryId) {
         countQuery = countQuery.where('categoryId', '==', options.categoryId);
+      }
+      if (typeof options.isRead === 'boolean') {
+        countQuery = countQuery.where('isRead', '==', options.isRead);
+      }
+      if (options.dateFrom) {
+        const fromMs = typeof options.dateFrom === 'string' ? Date.parse(options.dateFrom) : Number(options.dateFrom);
+        if (Number.isFinite(fromMs)) {
+          countQuery = countQuery.where('timestamp', '>=', admin.firestore.Timestamp.fromDate(new Date(fromMs)));
+        }
+      }
+      if (options.dateTo) {
+        const toMs = typeof options.dateTo === 'string' ? Date.parse(options.dateTo) : Number(options.dateTo);
+        if (Number.isFinite(toMs)) {
+          countQuery = countQuery.where('timestamp', '<=', admin.firestore.Timestamp.fromDate(new Date(toMs)));
+        }
       }
 
       const countSnapshot = await countQuery.count().get();

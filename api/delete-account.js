@@ -66,6 +66,7 @@ module.exports = async (req, res) => {
     // Delete single-doc collections (best-effort)
     const singleDeletes = [];
     singleDeletes.push(db.collection("userProfiles").doc(uid).delete().catch(() => null));
+    singleDeletes.push(db.collection("publicProfiles").doc(uid).delete().catch(() => null));
     singleDeletes.push(db.collection("conversations").doc(uid).delete().catch(() => null));
     if (email) singleDeletes.push(db.collection("mailingList").doc(email).delete().catch(() => null));
     if (displayNameLower) singleDeletes.push(db.collection("displayNames").doc(displayNameLower).delete().catch(() => null));
@@ -76,7 +77,9 @@ module.exports = async (req, res) => {
     counts.activityLogs = await deleteDocsByQuery(db, "activityLogs", "userId", "==", uid).catch(() => 0);
     counts.trainingAccess = await deleteDocsByQuery(db, "trainingAccess", "userId", "==", uid).catch(() => 0);
     counts.messages = await deleteDocsByQuery(db, "messages", "senderId", "==", uid).catch(() => 0);
-    counts.privateMessages = await deleteDocsByQuery(db, "privateMessages", "senderId", "==", uid).catch(() => 0);
+    counts.privateMessagesSent = await deleteDocsByQuery(db, "privateMessages", "senderId", "==", uid).catch(() => 0);
+    counts.privateMessagesReceived = await deleteDocsByQuery(db, "privateMessages", "recipientId", "==", uid).catch(() => 0);
+    counts.privateConversations = await deleteDocsByQuery(db, "privateConversations", "participants", "array-contains", uid).catch(() => 0);
     counts.userReviewsAsRater = await deleteDocsByQuery(db, "userReviews", "raterId", "==", uid).catch(() => 0);
     counts.userReviewsAsRated = await deleteDocsByQuery(db, "userReviews", "ratedId", "==", uid).catch(() => 0);
     if (email) {

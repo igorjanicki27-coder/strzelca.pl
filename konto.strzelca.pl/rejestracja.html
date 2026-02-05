@@ -1152,7 +1152,7 @@ const firebaseConfig = {
               throw new Error("Nie udało się zarejestrować nazwy użytkownika. Spróbuj ponownie.");
             }
 
-            // Zapisz dane profilu w Firestore
+            // Zapisz dane profilu w Firestore (prywatne)
             try {
               await setDoc(doc(db, "userProfiles", user.uid), profileData);
             } catch (profileError) {
@@ -1175,6 +1175,17 @@ const firebaseConfig = {
               }
 
               throw new Error("Nie udało się utworzyć profilu użytkownika. Spróbuj ponownie.");
+            }
+
+            // Zapisz publiczny profil (tylko nick + avatar) do podglądu
+            try {
+              await setDoc(doc(db, "publicProfiles", user.uid), {
+                displayName: formData.displayName,
+                avatar: "",
+                updatedAt: new Date(),
+              });
+            } catch (publicProfileError) {
+              console.warn("Błąd zapisu publicznego profilu (ignorowany):", publicProfileError);
             }
 
             // 4. Jeśli użytkownik zgodził się na newsletter, dodaj do mailing list
@@ -1259,6 +1270,16 @@ const firebaseConfig = {
                   }
                 } catch (e) {
                   console.warn("Nie udało się sprawdzić profilu podczas czyszczenia:", e);
+                }
+
+                // Spróbuj usunąć publiczny profil
+                try {
+                  const pubDoc = await getDoc(doc(db, "publicProfiles", currentUser.uid));
+                  if (pubDoc.exists()) {
+                    cleanupPromises.push(deleteDoc(doc(db, "publicProfiles", currentUser.uid)));
+                  }
+                } catch (e) {
+                  console.warn("Nie udało się sprawdzić publicProfiles podczas czyszczenia:", e);
                 }
 
                 // Sprawdź czy nazwa została zapisana w displayNames
@@ -1742,6 +1763,10 @@ const firebaseConfig = {
     <script
       type="module"
       src="https://strzelca.pl/auth-widget.mjs?v=2026-02-02-1"
+    ></script>
+    <script
+      type="module"
+      src="https://strzelca.pl/messages-widget.mjs?v=2026-02-05-1"
     ></script>
   </body>
 </html>

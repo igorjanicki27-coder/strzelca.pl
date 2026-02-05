@@ -344,7 +344,7 @@
               <button
                 type="button"
                 id="open-profile-data-btn"
-                class="px-5 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest border border-zinc-700 text-zinc-300 hover:text-white hover:border-coyote hover:bg-zinc-900/40 transition"
+                class="px-7 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest border border-zinc-700 text-zinc-300 hover:text-white hover:border-coyote hover:bg-zinc-900/40 transition"
               >
                 <i class="fa-solid fa-id-card mr-2"></i>
                 Dane profilu
@@ -702,14 +702,12 @@
 
         <form id="review-form">
           <div class="mb-4">
-            <label
-              class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
-              >Wybierz użytkownika do oceny</label
-            >
-            <select id="rated-user-select" required class="w-full">
-              <option value="">Wybierz użytkownika...</option>
-              <!-- Użytkownicy będą ładowani dynamicznie -->
-            </select>
+            <div class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">
+              Wystawiasz opinię użytkownikowi
+            </div>
+            <div class="text-sm text-zinc-200 font-bold ml-2" id="review-target-name">
+              —
+            </div>
           </div>
 
           <div class="mb-4">
@@ -889,8 +887,68 @@ const firebaseConfig = {
 
       let currentUser = null;
       let userProfile = null;
+      let selfPrivateProfile = null;
       let memberSinceLabel = "";
       let profileFormSnapshot = null;
+      let viewedProfileUid = null;
+      let isViewingOwnProfile = true;
+      let reviewTargetUid = null;
+      let reviewTargetDisplayName = "";
+
+      async function syncPublicProfileFromPrivate() {
+        if (!currentUser || !isViewingOwnProfile || !userProfile) return;
+        try {
+          // publiczny profil zawiera tylko nick + avatar
+          const publicDoc = {
+            displayName: String(userProfile.displayName || "").trim(),
+            avatar: userProfile.avatar || "",
+            updatedAt: new Date(),
+          };
+          if (!publicDoc.displayName) return;
+          await setDoc(doc(db, "publicProfiles", currentUser.uid), publicDoc, { merge: true });
+        } catch (e) {
+          console.warn("syncPublicProfileFromPrivate failed (ignored):", e?.message || e);
+        }
+      }
+
+      function getViewedProfileUidFromUrl() {
+        try {
+          const url = new URL(window.location.href);
+          const q =
+            url.searchParams.get("profile") ||
+            url.searchParams.get("uid") ||
+            url.searchParams.get("u");
+          if (q) return q;
+
+          const m = window.location.pathname.match(/\/profil\/([^\/?#]+)/);
+          return m ? decodeURIComponent(m[1]) : null;
+        } catch {
+          return null;
+        }
+      }
+
+      function applyProfileViewMode() {
+        const openDataBtn = document.getElementById("open-profile-data-btn");
+        const avatarUploadBtn = document.querySelector(".avatar-upload");
+        const avatarInput = document.getElementById("avatar-input");
+        const deleteBtnWrapper = document.getElementById("open-delete-account-btn")?.closest("div") || null;
+
+        // Dane profilu (edytowalne) tylko dla właściciela
+        if (openDataBtn) openDataBtn.style.display = isViewingOwnProfile ? "" : "none";
+
+        // Upload avatara tylko dla właściciela
+        if (avatarUploadBtn) avatarUploadBtn.style.display = isViewingOwnProfile ? "" : "none";
+        if (avatarInput) avatarInput.disabled = !isViewingOwnProfile;
+
+        // Usuwanie konta tylko dla właściciela
+        if (deleteBtnWrapper) deleteBtnWrapper.style.display = isViewingOwnProfile ? "" : "none";
+
+        // Przycisk opinii: nie pokazuj na własnym profilu
+        const addReviewBtn = document.getElementById("add-review-btn");
+        if (addReviewBtn) {
+          addReviewBtn.style.display = isViewingOwnProfile ? "none" : "";
+        }
+      }
 
       function captureProfileFormSnapshot() {
         try {
@@ -963,14 +1021,18 @@ const firebaseConfig = {
               return;
             }
 
-            // Użytkownik jest zalogowany i zweryfikowany - pozwól mu zostać na stronie
             currentUser = user;
 
-            // Pobierz dane użytkownika z bazy dla kolorów przycisków
+            // Jaki profil oglądamy?
+            viewedProfileUid = getViewedProfileUidFromUrl() || currentUser.uid;
+            isViewingOwnProfile = viewedProfileUid === currentUser.uid;
+            applyProfileViewMode();
+
+            // Pobierz dane użytkownika (zalogowanego) z bazy (kolory/ustawienia)
             await loadUserProfile(user.uid);
 
-            // Załaduj profil użytkownika
-            await loadProfile();
+            // Załaduj profil, który oglądamy
+            await loadProfile(viewedProfileUid);
           } catch (reloadError) {
             console.warn("Błąd odświeżania danych użytkownika:", reloadError);
             // W przypadku błędu, wyloguj dla bezpieczeństwa
@@ -993,8 +1055,11 @@ const firebaseConfig = {
         try {
           const profileDoc = await getDoc(doc(db, "userProfiles", uid));
           if (profileDoc.exists()) {
-            userProfile = profileDoc.data();
-            console.log("Dane użytkownika załadowane:", userProfile);
+            // uwaga: to są dane zalogowanego użytkownika (prywatne). Nie mieszaj z danymi oglądanego profilu.
+            // Trzymamy je tylko do ewentualnych ustawień/kolorów. W praktyce większość UI używa loadProfile().
+            // (zostawiamy kompatybilność wstecz)
+            selfPrivateProfile = profileDoc.data();
+            console.log("Dane użytkownika (self) załadowane:", selfPrivateProfile);
 
             // Tutaj można ustawić kolory przycisków na podstawie danych użytkownika
             // Na razie pozostawiam to do implementacji gdy zrozumiem strukturę
@@ -1171,17 +1236,19 @@ const firebaseConfig = {
         }
       }
 
-      // Ładowanie danych profilu
-      async function loadProfile() {
+      // Ładowanie danych profilu (własnego lub cudzego)
+      async function loadProfile(uidToLoad = null) {
         if (!currentUser) {
           window.location.href = "./login.html";
           return;
         }
 
+        const uid = uidToLoad || currentUser.uid;
+
         try {
-          const profileDoc = await getDoc(
-            doc(db, "userProfiles", currentUser.uid),
-          );
+          const profileDoc = isViewingOwnProfile
+            ? await getDoc(doc(db, "userProfiles", uid))
+            : await getDoc(doc(db, "publicProfiles", uid));
 
           if (profileDoc.exists()) {
             userProfile = profileDoc.data();
@@ -1189,9 +1256,21 @@ const firebaseConfig = {
             // Wypełnij nagłówek
             document.getElementById("display-name").textContent =
               userProfile.displayName;
-            document.getElementById("user-email").textContent =
-              userProfile.email;
             memberSinceLabel = formatDate(userProfile.createdAt);
+
+            // target do opinii = oglądany profil
+            reviewTargetUid = uid;
+            reviewTargetDisplayName = userProfile.displayName || "Użytkownik";
+            const reviewTargetEl = document.getElementById("review-target-name");
+            if (reviewTargetEl) reviewTargetEl.textContent = reviewTargetDisplayName;
+
+            // Email pokazujemy tylko właścicielowi (dla cudzych profili nie ujawniamy maila)
+            if (isViewingOwnProfile) {
+              document.getElementById("user-email").textContent =
+                userProfile.email;
+            } else {
+              document.getElementById("user-email").textContent = "";
+            }
 
             // Ustaw avatar
             const avatarDisplay = document.getElementById("avatar-display");
@@ -1201,61 +1280,74 @@ const firebaseConfig = {
               avatarDisplay.innerHTML = getDefaultAvatar(userProfile.gender);
             }
 
-            // Odszyfruj dane wrażliwe
-            const decryptedProfile = {
-              ...userProfile,
-              phone: userProfile.phone ? b64DecodeUtf8(userProfile.phone) : "",
-              parcelLocker: userProfile.parcelLocker
-                ? b64DecodeUtf8(userProfile.parcelLocker)
-                : "",
-              address: {
-                street: userProfile.address?.street
-                  ? b64DecodeUtf8(userProfile.address.street)
-                  : "",
-                buildingNumber: userProfile.address?.buildingNumber
-                  ? b64DecodeUtf8(userProfile.address.buildingNumber)
-                  : "",
-                postalCode: userProfile.address?.postalCode
-                  ? b64DecodeUtf8(userProfile.address.postalCode)
-                  : "",
-                city: userProfile.address?.city
-                  ? b64DecodeUtf8(userProfile.address.city)
-                  : "",
-              },
-            };
+            if (isViewingOwnProfile) {
+              // best-effort: zapewnij publiczny profil do podglądu
+              await syncPublicProfileFromPrivate();
 
-            // Wypełnij formularz (odszyfrowanymi danymi)
-            document.getElementById("edit-display-name").value =
-              decryptedProfile.displayName || "";
-            document.getElementById("edit-email").value =
-              currentUser.email || "";
-            document.getElementById("edit-first-name").value =
-              decryptedProfile.firstName || "";
-            document.getElementById("edit-last-name").value =
-              decryptedProfile.lastName || "";
-            document.getElementById("edit-phone").value =
-              decryptedProfile.phone || "";
-            document.getElementById("edit-street").value =
-              decryptedProfile.address?.street || "";
-            document.getElementById("edit-building-number").value =
-              decryptedProfile.address?.buildingNumber || "";
-            document.getElementById("edit-postal-code").value =
-              decryptedProfile.address?.postalCode || "";
-            document.getElementById("edit-city").value =
-              decryptedProfile.address?.city || "";
-            document.getElementById("edit-parcel-locker").value =
-              decryptedProfile.parcelLocker || "";
-            document.getElementById("edit-newsletter").checked =
-              decryptedProfile.newsletter || false;
+              // Odszyfruj dane wrażliwe
+              const decryptedProfile = {
+                ...userProfile,
+                phone: userProfile.phone ? b64DecodeUtf8(userProfile.phone) : "",
+                parcelLocker: userProfile.parcelLocker
+                  ? b64DecodeUtf8(userProfile.parcelLocker)
+                  : "",
+                address: {
+                  street: userProfile.address?.street
+                    ? b64DecodeUtf8(userProfile.address.street)
+                    : "",
+                  buildingNumber: userProfile.address?.buildingNumber
+                    ? b64DecodeUtf8(userProfile.address.buildingNumber)
+                    : "",
+                  postalCode: userProfile.address?.postalCode
+                    ? b64DecodeUtf8(userProfile.address.postalCode)
+                    : "",
+                  city: userProfile.address?.city
+                    ? b64DecodeUtf8(userProfile.address.city)
+                    : "",
+                },
+              };
 
-            // Zapisz snapshot wartości formularza, żeby "Wyjdź" mógł przywrócić stan bez zapisywania
-            captureProfileFormSnapshot();
+              // Wypełnij formularz (odszyfrowanymi danymi)
+              document.getElementById("edit-display-name").value =
+                decryptedProfile.displayName || "";
+              document.getElementById("edit-email").value =
+                currentUser.email || "";
+              document.getElementById("edit-first-name").value =
+                decryptedProfile.firstName || "";
+              document.getElementById("edit-last-name").value =
+                decryptedProfile.lastName || "";
+              document.getElementById("edit-phone").value =
+                decryptedProfile.phone || "";
+              document.getElementById("edit-street").value =
+                decryptedProfile.address?.street || "";
+              document.getElementById("edit-building-number").value =
+                decryptedProfile.address?.buildingNumber || "";
+              document.getElementById("edit-postal-code").value =
+                decryptedProfile.address?.postalCode || "";
+              document.getElementById("edit-city").value =
+                decryptedProfile.address?.city || "";
+              document.getElementById("edit-parcel-locker").value =
+                decryptedProfile.parcelLocker || "";
+              document.getElementById("edit-newsletter").checked =
+                decryptedProfile.newsletter || false;
 
-            // Aktualizuj status weryfikacji emaila
-            await updateVerificationStatus();
+              // Zapisz snapshot wartości formularza, żeby "Wyjdź" mógł przywrócić stan bez zapisywania
+              captureProfileFormSnapshot();
 
-            // Załaduj opinie użytkownika
-            loadUserReviews();
+              // Aktualizuj status weryfikacji emaila
+              await updateVerificationStatus();
+            } else {
+              // Dla cudzych profili nie pokazujemy statusu weryfikacji emaila zalogowanego usera
+              const emailEl = document.getElementById("user-email");
+              if (emailEl) {
+                emailEl.classList.remove("email-status-verified", "email-status-unverified");
+                emailEl.removeAttribute("data-tooltip");
+                emailEl.title = "";
+              }
+            }
+
+            // Załaduj opinie oglądanego użytkownika
+            loadUserReviews(uid);
           } else {
             alert(
               "Nie znaleziono danych profilu. Skontaktuj się z administratorem.",
@@ -1600,6 +1692,21 @@ const firebaseConfig = {
               avatarUpdatedAt: new Date(),
             });
 
+            // Best-effort: zaktualizuj publiczny profil (nick + avatar)
+            try {
+              await setDoc(
+                doc(db, "publicProfiles", currentUser.uid),
+                {
+                  displayName: String(userProfile?.displayName || "").trim(),
+                  avatar: url,
+                  updatedAt: new Date(),
+                },
+                { merge: true },
+              );
+            } catch (e) {
+              console.warn("Public profile avatar sync failed (ignored):", e?.message || e);
+            }
+
             // Odśwież UI
             if (avatarDisplay) {
               avatarDisplay.innerHTML = `<img src="${url}" alt="Avatar" class="avatar">`;
@@ -1623,12 +1730,14 @@ const firebaseConfig = {
       // ===== FUNKCJE DO OBSŁUGI OPINII =====
 
       // Ładowanie opinii użytkownika
-      async function loadUserReviews() {
+      async function loadUserReviews(ratedUid) {
+        const uid = ratedUid || currentUser?.uid;
+        if (!uid) return;
         try {
           // Zapytanie wymaga indeksu - użyj prostszego zapytania lub obsłuż błąd
           const reviewsQuery = query(
             collection(db, "userReviews"),
-            where("ratedId", "==", currentUser.uid),
+            where("ratedId", "==", uid),
             where("status", "==", "approved"),
             orderBy("timestamp", "desc"),
           );
@@ -1649,7 +1758,7 @@ const firebaseConfig = {
               console.log("Próba prostszego zapytania bez indeksu (1 filtr + sortowanie po stronie klienta)");
               const simpleQuery = query(
                 collection(db, "userReviews"),
-                where("ratedId", "==", currentUser.uid),
+                where("ratedId", "==", uid),
               );
               const simpleSnapshot = await getDocs(simpleQuery);
               let reviews = simpleSnapshot.docs.map((doc) => ({
@@ -1691,7 +1800,11 @@ const firebaseConfig = {
             (review) => `
                 <div class="review-card">
                     <div class="review-header">
-                        <span class="review-author">${review.raterName || "Anonimowy użytkownik"}</span>
+                        ${
+                          review.raterId
+                            ? `<a class="review-author hover:underline" href="https://konto.strzelca.pl/profil/${review.raterId}">${review.raterName || "Anonimowy użytkownik"}</a>`
+                            : `<span class="review-author">${review.raterName || "Anonimowy użytkownik"}</span>`
+                        }
                         <span class="review-date">${formatDate(review.timestamp)}</span>
                     </div>
                     <div class="review-rating">
@@ -1746,32 +1859,8 @@ const firebaseConfig = {
         });
       }
 
-      // Ładowanie listy użytkowników do wyboru
-      async function loadUsersList() {
-        try {
-          const usersQuery = query(collection(db, "userProfiles"));
-          const usersSnapshot = await getDocs(usersQuery);
-
-          const select = document.getElementById("rated-user-select");
-          const currentOptions =
-            '<option value="">Wybierz użytkownika...</option>';
-
-          const users = usersSnapshot.docs
-            .map((doc) => ({ id: doc.id, ...doc.data() }))
-            .filter(
-              (user) => user.id !== currentUser.uid && user.role !== "admin",
-            ) // Wyklucz siebie i adminów
-            .map(
-              (user) =>
-                `<option value="${user.id}">${user.displayName} (${user.email})</option>`,
-            )
-            .join("");
-
-          select.innerHTML = currentOptions + users;
-        } catch (error) {
-          console.error("Błąd ładowania użytkowników:", error);
-        }
-      }
+      // (Wyłączone) Wcześniej był wybór użytkownika do oceny.
+      // Teraz opinia jest zawsze wystawiana użytkownikowi, którego profil oglądasz.
 
       // Obsługa gwiazdek w formularzu
       function initializeStarRating() {
@@ -1798,8 +1887,12 @@ const firebaseConfig = {
 
       // Otwórz modal dodawania opinii
       function openReviewModal() {
+        if (!currentUser || !reviewTargetUid) return;
+        if (reviewTargetUid === currentUser.uid) {
+          alert("Nie możesz dodać opinii samemu sobie.");
+          return;
+        }
         document.getElementById("add-review-modal").classList.add("show");
-        loadUsersList();
         resetReviewForm();
       }
 
@@ -1904,12 +1997,12 @@ const firebaseConfig = {
       async function submitReview(event) {
         event.preventDefault();
 
-        const ratedUserId = document.getElementById("rated-user-select").value;
+        const ratedUserId = reviewTargetUid;
         const rating = parseInt(document.getElementById("rating-value").value);
         const comment = document.getElementById("review-comment").value.trim();
 
         if (!ratedUserId) {
-          alert("Wybierz użytkownika do oceny.");
+          alert("Brak użytkownika do oceny.");
           return;
         }
 
@@ -1932,7 +2025,7 @@ const firebaseConfig = {
         try {
           // Pobierz dane ocenianego użytkownika
           const ratedUserDoc = await getDoc(
-            doc(db, "userProfiles", ratedUserId),
+            doc(db, "publicProfiles", ratedUserId),
           );
           const ratedUser = ratedUserDoc.data();
 
@@ -1954,7 +2047,7 @@ const firebaseConfig = {
             currentUser.uid,
             userProfile.displayName,
             `Ocena użytkownika ${ratedUser.displayName}: ${rating} gwiazdek`,
-            ratedUser.uid,
+            ratedUserId,
             "user",
             {
               rating: rating,
@@ -1967,10 +2060,8 @@ const firebaseConfig = {
           alert("Opinia została dodana pomyślnie!");
           closeReviewModal();
 
-          // Odśwież opinie jeśli jesteśmy na profilu ocenianego użytkownika
-          if (ratedUserId === currentUser.uid) {
-            loadUserReviews();
-          }
+          // Odśwież opinie na aktualnie oglądanym profilu
+          loadUserReviews(ratedUserId);
         } catch (error) {
           console.error("Błąd dodawania opinii:", error);
           alert("Wystąpił błąd podczas dodawania opinii. Spróbuj ponownie.");
@@ -2018,6 +2109,10 @@ const firebaseConfig = {
     <script
       type="module"
       src="https://strzelca.pl/auth-widget.mjs?v=2026-02-02-1"
+    ></script>
+    <script
+      type="module"
+      src="https://strzelca.pl/messages-widget.mjs?v=2026-02-05-1"
     ></script>
   </body>
 </html>

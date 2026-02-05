@@ -32,8 +32,8 @@ service cloud.firestore {
     // USER PROFILES
     // =============================================================================
     match /userProfiles/{userId} {
-      // Pozwalamy na czytanie (get/list), aby umożliwić np. wyszukiwanie użytkowników
-      allow read: if true;
+      // Prywatne dane profilu - tylko właściciel lub admin/superadmin
+      allow read: if isOwner(userId) || isAdminOrSuperAdmin();
 
       // Tworzenie profilu - tylko dla właściciela podczas rejestracji
       allow create: if isOwner(userId) || isAdminOrSuperAdmin();
@@ -45,6 +45,25 @@ service cloud.firestore {
 
       // Usuwanie profilu - tylko admin/superadmin (usuwanie konta robimy przez backend)
       allow delete: if isAdminOrSuperAdmin();
+    }
+
+    // =============================================================================
+    // PUBLIC PROFILES (publiczne: nick + avatar)
+    // =============================================================================
+    match /publicProfiles/{userId} {
+      // Publiczne dane: każdy może odczytać (np. podgląd profilu)
+      allow read: if true;
+
+      // Tworzy/aktualizuje tylko właściciel lub admin (kontrola pól)
+      allow create, update: if (isOwner(userId) || isAdminOrSuperAdmin()) &&
+        request.resource.data.keys().hasOnly(['displayName', 'avatar', 'updatedAt']) &&
+        request.resource.data.displayName is string &&
+        request.resource.data.displayName.size() >= 2 &&
+        request.resource.data.displayName.size() <= 32 &&
+        (!('avatar' in request.resource.data) || request.resource.data.avatar is string);
+
+      // Usuwanie: owner lub admin (np. sprzątanie konta)
+      allow delete: if isOwner(userId) || isAdminOrSuperAdmin();
     }
 
     // =============================================================================
@@ -105,6 +124,20 @@ service cloud.firestore {
         resource.data.senderId == request.auth.uid &&
         request.resource.data.senderId == resource.data.senderId &&
         request.resource.data.recipientId == resource.data.recipientId;
+
+      allow delete: if isAdminOrSuperAdmin();
+    }
+
+    match /privateConversations/{conversationId} {
+      allow read: if isAdminOrSuperAdmin() || (isAuthenticated() && (
+        request.auth.uid in resource.data.participants
+      ));
+
+      // Tworzenie/aktualizacja: tylko uczestnicy (minimalnie)
+      allow create, update: if isAuthenticated() &&
+        request.resource.data.participants is list &&
+        request.resource.data.participants.size() == 2 &&
+        request.auth.uid in request.resource.data.participants;
 
       allow delete: if isAdminOrSuperAdmin();
     }
