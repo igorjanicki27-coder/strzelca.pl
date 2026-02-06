@@ -6,7 +6,9 @@
   var CONSENT_COOKIE = "sc_consent";
   var CONSENT_COOKIE_MAX_AGE_DAYS = 180;
   var CONSENT_VERSION = "v1";
-  var POLICY_URL = "https://dokumenty.strzelca.pl";
+  // Linkujemy bezpośrednio do sekcji cookies w dokumentach.
+  // Dokumenty muszą być czytelne nawet bez podjęcia decyzji cookies.
+  var POLICY_URL = "https://dokumenty.strzelca.pl/#cookies-platformy";
   var LEAVE_URL = "https://strzelca.pl/leave.html";
 
   // Domyślnie blokuj GA na wszelki wypadek (gdyby gdzieś został stary snippet).
@@ -40,6 +42,19 @@
       out[k] = v;
     }
     return out;
+  }
+
+  function isDocsSite() {
+    try {
+      return (window.location.hostname || "").toLowerCase() === "dokumenty.strzelca.pl";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function shouldEnforceConsentWall() {
+    // Pozwól czytać dokumenty/politykę cookies bez zgody (przed akceptacją).
+    return !isDocsSite();
   }
 
   function getConsent() {
@@ -145,11 +160,14 @@
       ".sc-consent-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;max-width:720px;width:calc(100% - 32px);background:rgba(10,10,10,.96);border:1px solid rgba(193,154,107,.35);box-shadow:0 20px 80px rgba(0,0,0,.6);border-radius:18px;color:#e5e5e5;padding:18px 18px 16px;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}" +
       ".sc-consent-title{font-weight:900;letter-spacing:.08em;text-transform:uppercase;font-size:14px;color:#C19A6B;margin:0 0 10px;}" +
       ".sc-consent-text{margin:0 0 10px;font-size:14px;line-height:1.45;color:#cfcfcf;}" +
-      ".sc-consent-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;}" +
+      ".sc-consent-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;align-items:stretch;}" +
       ".sc-consent-btn{appearance:none;border:1px solid #333;background:#121212;color:#fff;padding:12px 14px;border-radius:12px;cursor:pointer;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.06em;}" +
       ".sc-consent-btn:hover{border-color:#C19A6B;}" +
+      ".sc-consent-btn-danger{border-color:rgba(239,68,68,.55);color:#ef4444;}" +
+      ".sc-consent-btn-danger:hover{border-color:#ef4444;}" +
       ".sc-consent-btn-primary{background:#C19A6B;border-color:#C19A6B;color:#000;}" +
       ".sc-consent-btn-primary:hover{filter:brightness(1.05);}" +
+      ".sc-consent-btn-grow{flex:1 1 260px;min-width:220px;}" +
       ".sc-consent-link{color:#C19A6B;text-decoration:none;font-weight:800;}" +
       ".sc-consent-link:hover{text-decoration:underline;}" +
       ".sc-consent-settings{position:fixed;left:14px;bottom:14px;z-index:2147483645;border:1px solid #333;background:rgba(10,10,10,.85);color:#e5e5e5;padding:10px 12px;border-radius:999px;cursor:pointer;font-weight:800;font-size:12px;letter-spacing:.04em;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}" +
@@ -323,7 +341,7 @@
 
     var btnLeave = document.createElement("button");
     btnLeave.type = "button";
-    btnLeave.className = "sc-consent-btn";
+    btnLeave.className = "sc-consent-btn sc-consent-btn-danger";
     btnLeave.textContent = "Opuść stronę";
     btnLeave.addEventListener("click", function () {
       window.location.href = LEAVE_URL;
@@ -343,7 +361,7 @@
 
     var btnAll = document.createElement("button");
     btnAll.type = "button";
-    btnAll.className = "sc-consent-btn sc-consent-btn-primary";
+    btnAll.className = "sc-consent-btn sc-consent-btn-primary sc-consent-btn-grow";
     btnAll.textContent = "Akceptuj wszystkie";
     btnAll.addEventListener("click", function () {
       setConsent("all");
@@ -393,11 +411,29 @@
 
     var consent = getConsent();
     if (!consent) {
-      try {
-        document.documentElement.classList.add("sc-consent-locked");
-      } catch (_) {}
-      createOverlayIfMissing();
-      openConsentModal({ mode: "initial" });
+      // Na stronach dokumentów nie blokujemy treści — użytkownik musi móc
+      // przeczytać politykę cookies przed wyrażeniem zgody.
+      if (shouldEnforceConsentWall()) {
+        try {
+          document.documentElement.classList.add("sc-consent-locked");
+        } catch (_) {}
+        createOverlayIfMissing();
+        openConsentModal({ mode: "initial" });
+        return;
+      }
+
+      // Best-effort: jeżeli ktoś jest na dokumentach bez zgody, nie uruchamiaj analityki.
+      disableAnalyticsBestEffort();
+
+      if (wantSettings) {
+        openConsentModal({ mode: "settings" });
+        try {
+          var u3 = new URL(window.location.href);
+          u3.searchParams.delete("cookies");
+          if ((u3.hash || "").toLowerCase() === "#cookies") u3.hash = "";
+          history.replaceState(null, "", u3.toString());
+        } catch (_) {}
+      }
       return;
     }
 
@@ -429,7 +465,7 @@
   (function start() {
     // Nie czekamy na DOM – lock i overlay dodajemy od razu.
     var consent = getConsent();
-    if (!consent) {
+    if (!consent && shouldEnforceConsentWall()) {
       ensureStyles();
       try {
         document.documentElement.classList.add("sc-consent-locked");

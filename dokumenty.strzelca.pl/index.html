@@ -542,7 +542,7 @@
                                     </div>
 
                                     <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§9. Cookies i technologie śledzące</h4>
+                                        <h4 id="cookies-platformy" class="text-lg font-bold text-zinc-200 mb-3">§9. Cookies i technologie śledzące</h4>
                                         <p class="text-zinc-300 mb-4">
                                             Platforma wykorzystuje pliki cookies oraz podobne technologie (np. localStorage/sessionStorage) w celu zapewnienia prawidłowego funkcjonowania serwisu, bezpieczeństwa oraz — po wyrażeniu zgody — do analizy ruchu.
                                         </p>
@@ -971,6 +971,38 @@
                         });
                     }
                 }, 500);
+            } else if (urlHash && urlHash.length > 1) {
+                // Uniwersalna obsługa hash'a:
+                // - jeśli hash wskazuje na element w środku akordeonu, rozwiń właściwy akordeon
+                // - przewiń do elementu (np. #cookies-platformy)
+                const targetId = urlHash.slice(1);
+                const targetEl = document.getElementById(targetId);
+                if (!targetEl) return;
+
+                // Jeśli hash wskazuje bezpośrednio na akordeon — rozwiń go
+                const directAccordion = targetEl.classList && targetEl.classList.contains('accordion-content');
+                if (directAccordion) {
+                    setTimeout(() => {
+                        toggleAccordion(targetId);
+                        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 200);
+                    return;
+                }
+
+                // W innym przypadku znajdź nadrzędny akordeon i rozwiń
+                const accordionContent = targetEl.closest ? targetEl.closest('.accordion-content') : null;
+                if (accordionContent && accordionContent.id) {
+                    setTimeout(() => {
+                        toggleAccordion(accordionContent.id);
+                        // Po otwarciu przewiń do konkretnego miejsca
+                        setTimeout(() => {
+                            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 150);
+                    }, 200);
+                } else {
+                    // Fallback: po prostu przewiń
+                    targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
             }
         }
 
