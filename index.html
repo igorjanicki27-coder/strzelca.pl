@@ -403,9 +403,7 @@
     </div>
 
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
       import {
-        initializeFirestore,
         doc,
         setDoc,
         getDoc,
@@ -418,13 +416,11 @@
         updateDoc,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
       import {
-        getAuth,
         signInWithEmailAndPassword,
         onAuthStateChanged,
         signOut,
-        setPersistence,
-        browserLocalPersistence,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+      import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-02-06-1";
 
       
       async function getFirebaseApiKey() {
@@ -445,7 +441,8 @@
 
         throw new Error("Nie udało się pobrać FIREBASE_WEB_API_KEY z /api/firebase-config");
       }
-const firebaseConfig = {
+      // OPTYMALIZACJA: Użyj wspólnego modułu inicjalizacji
+      const firebaseConfig = {
         apiKey: await getFirebaseApiKey(),
         authDomain: "strzelca-pl.firebaseapp.com",
         projectId: "strzelca-pl",
@@ -455,18 +452,10 @@ const firebaseConfig = {
         measurementId: "G-9EJ2R3JPVD",
       };
 
-      const app = initializeApp(firebaseConfig);
-      const db = initializeFirestore(app, {
-        // Firestore transport: nie wymuszaj XHR long-pollingu (potrafi generować błędy CORS
-        // na części konfiguracji przeglądarek / rozszerzeń). Pozwól SDK dobrać tryb,
-        // z włączonym auto-detect.
-        experimentalAutoDetectLongPolling: true,
-        useFetchStreams: true,
+      const { auth, db } = await initAuth(firebaseConfig, {
+        logAuthReady: true,
+        logSSO: true,
       });
-      const auth = getAuth(app);
-
-      // Ustaw trwałość sesji na browserLocalPersistence dla wszystkich subdomen
-      await setPersistence(auth, browserLocalPersistence);
       let productsList = [];
       let contactTopics = [];
       let currentMessageFilter = "all";
@@ -504,25 +493,8 @@ const firebaseConfig = {
       });
 
       // --- MONITOROWANIE STANU ZALOGOWANIA ---
+      // OPTYMALIZACJA: Inicjalizacja i SSO są już wykonane w initAuth()
       console.log("Firebase Auth initialized, checking current user...");
-
-      // Sprawdź czy użytkownik może być zalogowany (odśwież token jeśli potrzebne)
-      try {
-        await auth.authStateReady();
-        console.log("Firebase Auth state ready");
-      } catch (error) {
-        console.warn("Firebase Auth state check failed:", error);
-      }
-
-      // SSO między subdomenami: jeśli w tej subdomenie nie ma usera, spróbuj zalogować z cookie (.strzelca.pl)
-      // Uwaga: uruchamiamy po authStateReady, żeby mieć pewność że auth.currentUser jest już ustawiony.
-      try {
-        const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-06-1");
-        const ssoRes = await ensureFirebaseSSO(auth);
-        console.log("SSO ensure result:", ssoRes);
-      } catch (e) {
-        console.warn("SSO ensure failed (ignored):", e?.message || e);
-      }
 
       // Sprawdź aktualnego użytkownika przed ustawieniem listenera
       const checkCurrentUserOnIndex = async () => {
@@ -687,6 +659,15 @@ const firebaseConfig = {
           } catch (e) {
             console.warn("SSO logout failed (ignored):", e?.message || e);
           }
+          
+          // Wyczyść cache SSO (ważne dla synchronizacji między subdomenami)
+          try {
+            const { clearSSOCache } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-06-1");
+            clearSSOCache();
+          } catch (e) {
+            console.warn("SSO cache clear failed (ignored):", e?.message || e);
+          }
+          
           await signOut(auth);
           // Zamknij menu po wylogowaniu
           const userMenu = document.getElementById("user-menu");

@@ -2755,19 +2755,12 @@
     </script>
 
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
       import {
-        getAuth,
         signInWithEmailAndPassword,
         signOut,
         onAuthStateChanged,
-        setPersistence,
-        browserSessionPersistence,
-        browserLocalPersistence,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-      import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
       import {
-        initializeFirestore,
         doc,
         getDoc,
         getDocs,
@@ -2782,6 +2775,7 @@
         addDoc,
         writeBatch,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+      import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-02-06-1";
 
       
       async function getFirebaseApiKey() {
@@ -2802,7 +2796,8 @@
 
         throw new Error("Nie udało się pobrać FIREBASE_WEB_API_KEY z /api/firebase-config");
       }
-const firebaseConfig = {
+      // OPTYMALIZACJA: Użyj wspólnego modułu inicjalizacji
+      const firebaseConfig = {
         apiKey: await getFirebaseApiKey(),
         authDomain: "strzelca-pl.firebaseapp.com",
         projectId: "strzelca-pl",
@@ -2812,37 +2807,9 @@ const firebaseConfig = {
         measurementId: "G-9EJ2R3JPVD",
       };
 
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-
-      // Ustaw persistence na local zaraz po inicjalizacji auth (administrator jest pamiętany między sesjami)
-      setPersistence(auth, browserLocalPersistence).catch(error => {
-        console.error("Error setting persistence:", error);
-      });
-
-      // Poczekaj na gotowość stanu autoryzacji przed dalszymi operacjami
-      try {
-        await auth.authStateReady();
-        console.log("Admin: Firebase Auth state ready");
-      } catch (error) {
-        console.warn("Admin: Firebase Auth state check failed:", error);
-      }
-
-      // SSO: jeśli użytkownik jest zalogowany w innej subdomenie (np. konto.strzelca.pl),
-      // dologuj go tutaj na podstawie wspólnego cookie (__session na .strzelca.pl)
-      try {
-        await ensureFirebaseSSO(auth);
-      } catch (e) {
-        console.warn("Admin SSO ensure failed (ignored):", e?.message || e);
-      }
-
-      // Inicjalizuj Firestore (transport hardening)
-      // - nie wymuszamy XHR long-pollingu, bo na części konfiguracji potrafi to skończyć się
-      //   błędami "access control checks" / CORS w konsoli
-      // - pozwalamy SDK dobrać tryb z auto-detect
-      const db = initializeFirestore(app, {
-        experimentalAutoDetectLongPolling: true,
-        useFetchStreams: true,
+      const { auth, db } = await initAuth(firebaseConfig, {
+        logAuthReady: true,
+        logSSO: true,
       });
 
       let currentUser = null;

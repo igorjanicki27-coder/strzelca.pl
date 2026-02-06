@@ -2033,6 +2033,15 @@ const firebaseConfig = {
           } catch (e) {
             console.warn("SSO logout failed (ignored):", e?.message || e);
           }
+          
+          // Wyczyść cache SSO (ważne dla synchronizacji między subdomenami)
+          try {
+            const { clearSSOCache } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-06-1");
+            clearSSOCache();
+          } catch (e) {
+            console.warn("SSO cache clear failed (ignored):", e?.message || e);
+          }
+          
           await signOut(auth);
           // Wyczyść ewentualne dane w localStorage (preferencje kolorów itp.)
           localStorage.clear();
