@@ -450,8 +450,10 @@ async function main() {
   let db;
   try {
     db = initializeFirestore(app, {
-      experimentalAutoDetectLongPolling: true,
-      useFetchStreams: true,
+      // Safari / restrykcyjne sieci często logują "access control checks" na WebChannel.
+      // Force long polling + bez fetch streams jest najstabilniejsze i redukuje spam w konsoli.
+      experimentalForceLongPolling: true,
+      useFetchStreams: false,
     });
   } catch {
     db = getFirestore(app);
@@ -1041,8 +1043,10 @@ async function main() {
         console.warn("thread snapshot error:", msg || err);
         try {
           msgs.innerHTML = `<div class="empty">${
-            msg.includes("Missing or insufficient permissions")
-              ? "Brak uprawnień do tej rozmowy. Odśwież stronę i upewnij się, że jesteś zalogowany."
+            msg.includes("requires an index") || msg.includes("index is currently building")
+              ? "Indeks Firestore dla wiadomości jest w trakcie budowania. Odczekaj chwilę (czasem kilka minut) i odśwież."
+              : msg.includes("Missing or insufficient permissions")
+                ? "Brak uprawnień do tej rozmowy. Odśwież stronę i upewnij się, że jesteś zalogowany."
               : "Nie udało się załadować rozmowy. Spróbuj odświeżyć."
           }</div>`;
         } catch {}
@@ -1060,8 +1064,10 @@ async function main() {
         console.warn("thread snapshot error:", msg || err);
         try {
           msgs.innerHTML = `<div class="empty">${
-            msg.includes("Missing or insufficient permissions")
-              ? "Brak uprawnień do tej rozmowy. Odśwież stronę i upewnij się, że jesteś zalogowany."
+            msg.includes("requires an index") || msg.includes("index is currently building")
+              ? "Indeks Firestore dla wiadomości jest w trakcie budowania. Odczekaj chwilę (czasem kilka minut) i odśwież."
+              : msg.includes("Missing or insufficient permissions")
+                ? "Brak uprawnień do tej rozmowy. Odśwież stronę i upewnij się, że jesteś zalogowany."
               : "Nie udało się załadować rozmowy. Spróbuj odświeżyć."
           }</div>`;
         } catch {}
