@@ -75,6 +75,38 @@ function ensureStyles() {
       object-fit: cover;
       display: block;
     }
+
+    /* Admin floating button (global) */
+    #strzelca-admin-fab {
+      position: fixed;
+      left: 16px;
+      bottom: 16px;
+      z-index: 2147483647;
+      width: 54px;
+      height: 54px;
+      border-radius: 999px;
+      border: 1px solid rgba(239,68,68,0.35);
+      background: rgba(10, 10, 10, 0.78);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 14px 40px rgba(0,0,0,0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: #fecaca;
+      cursor: pointer;
+      text-decoration: none;
+      font-weight: 900;
+      user-select: none;
+    }
+    #strzelca-admin-fab:hover {
+      border-color: rgba(239,68,68,0.7);
+      color: #fff;
+    }
+    #strzelca-admin-fab span {
+      font-size: 20px;
+      line-height: 1;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -139,6 +171,19 @@ function renderLoggedIn(root, { avatarUrl, displayName, emailVerified }) {
   }
 }
 
+function ensureAdminFab() {
+  let el = document.getElementById("strzelca-admin-fab");
+  if (el) return el;
+  el = document.createElement("a");
+  el.id = "strzelca-admin-fab";
+  el.href = "https://strzelca.pl/admin/index.html";
+  el.setAttribute("aria-label", "Panel administratora");
+  el.title = "Panel administratora";
+  el.innerHTML = `<span>⚙</span>`;
+  document.body.appendChild(el);
+  return el;
+}
+
 async function fetchMeWithTimeout(ms = 4500) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), ms);
@@ -175,11 +220,27 @@ async function main() {
         displayName: data?.profile?.displayName || null,
         emailVerified: data?.emailVerified === true,
       });
+
+      // Admin FAB
+      try {
+        const fab = ensureAdminFab();
+        if (data?.isAdmin === true) fab.style.display = "inline-flex";
+        else fab.style.display = "none";
+      } catch {}
+
       return;
     }
     renderLoggedOut(root);
+    try {
+      const fab = ensureAdminFab();
+      fab.style.display = "none";
+    } catch {}
   } catch {
     renderLoggedOut(root);
+    try {
+      const fab = ensureAdminFab();
+      fab.style.display = "none";
+    } catch {}
   }
 }
 

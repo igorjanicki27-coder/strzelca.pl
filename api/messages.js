@@ -27,6 +27,8 @@ async function initDatabase() {
 }
 
 const SUPERADMIN_UID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
+const SUPPORT_SENDER_ID = 'admin';
+const SUPPORT_SENDER_NAME = 'Pomoc STRZELCA.PL';
 
 function normalizePathSegments(urlPathname) {
   let segs = urlPathname.split('/').filter(Boolean);
@@ -276,10 +278,14 @@ async function handlePostMessage(req, res, db, { requesterUid, requesterIsAdmin 
       // User może pisać tylko do admina (support) w tym endpointcie
       recipientId = 'admin';
     } else if (requesterUid && requesterIsAdmin) {
-      // Admin może wysłać do dowolnego userId (np. odpowiedź)
-      senderId = messageData.senderId || requesterUid;
-      senderName = senderName || (await getDisplayNameForUid(senderId)) || 'Admin';
-      recipientId = recipientId || 'admin';
+      // Admin: zawsze wysyłamy jako wspólna "Pomoc STRZELCA.PL"
+      // (wspólny wątek dla wszystkich adminów + stała nazwa nadawcy)
+      senderId = SUPPORT_SENDER_ID;
+      senderName = SUPPORT_SENDER_NAME;
+      recipientId = (messageData.recipientId || '').toString().trim();
+      if (!recipientId) {
+        return res.status(400).json({ success: false, error: 'Missing required field: recipientId' });
+      }
     } else {
       // Niezalogowany: wymagamy senderName, recipientId zawsze admin, senderId nie może wyglądać jak UID
       if (!senderName || typeof senderName !== 'string' || senderName.trim().length < 2) {

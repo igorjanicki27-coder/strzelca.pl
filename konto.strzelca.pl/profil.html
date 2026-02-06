@@ -37,6 +37,44 @@
         font-family: "Orbitron";
       }
 
+      /* Role colors for display name */
+      .name-role-user {
+        color: #34d399; /* emerald-400 */
+        text-shadow: 0 0 10px rgba(52, 211, 153, 0.25);
+      }
+      .name-role-company {
+        color: #60a5fa; /* blue-400 */
+        text-shadow: 0 0 10px rgba(96, 165, 250, 0.25);
+      }
+      .name-role-admin {
+        color: #f87171; /* red-400 */
+        text-shadow: 0 0 10px rgba(248, 113, 113, 0.25);
+      }
+
+      /* Tooltip on hover (moved from email to display name) */
+      .hover-tooltip {
+        display: inline-block;
+        position: relative;
+        cursor: help;
+      }
+      .hover-tooltip[data-tooltip]:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: 0;
+        top: calc(100% + 8px);
+        background: rgba(0, 0, 0, 0.92);
+        border: 1px solid #333;
+        color: #e5e7eb;
+        font-size: 12px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        white-space: pre;
+        z-index: 2000;
+        min-width: 240px;
+        max-width: min(520px, 90vw);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+      }
+
       .avatar-container {
         position: relative;
         display: inline-block;
@@ -319,12 +357,12 @@
             <div class="flex flex-col md:grid md:grid-cols-[1fr_520px] md:items-start md:gap-10">
               <!-- Lewa kolumna (nick + email) -->
               <div class="text-center md:text-left">
-                <h1 id="display-name" class="text-3xl font-bold text-white mb-2">
+                <h1 id="display-name" class="text-3xl font-bold text-white mb-2 hover-tooltip">
                   Ładowanie...
                 </h1>
                 <p
                   id="user-email"
-                  class="email-status mb-4 font-semibold cursor-help"
+                  class="email-status mb-4 font-semibold"
                   title=""
                 ></p>
               </div>
@@ -878,6 +916,17 @@
       ;(async () => {
       try {
       
+      // Informacja po przekierowaniu (np. próba wejścia do panelu admina bez uprawnień)
+      try {
+        const url = new URL(window.location.href);
+        const notice = url.searchParams.get("notice");
+        if (notice === "admin_only") {
+          alert("Strona dostępna tylko dla uprawnionych użytkowników.");
+          // usuń parametr, żeby alert nie wyskakiwał przy odświeżeniu
+          url.searchParams.delete("notice");
+          window.history.replaceState({}, "", url.toString());
+        }
+      } catch {}
       
       async function getFirebaseApiKey() {
         // Na części domen / subdomen endpoint /api/* może nie być podpięty.
@@ -1096,15 +1145,15 @@ const firebaseConfig = {
             // W przypadku błędu, wyloguj dla bezpieczeństwa
             try {
               await signOut(auth);
-              window.location.href = "./login.html";
+              window.location.href = "./logowanie.html";
             } catch (signOutError) {
               console.error("Błąd wylogowania po błędzie reload:", signOutError);
             }
           }
         } else {
           // Użytkownik nie jest zalogowany - przekieruj do strony logowania
-          console.log("Użytkownik niezalogowany, przekierowanie do login.html");
-          window.location.href = "login.html";
+          console.log("Użytkownik niezalogowany, przekierowanie do logowanie.html");
+          window.location.href = "logowanie.html";
         }
       });
 
@@ -1505,17 +1554,32 @@ const firebaseConfig = {
           } catch {}
 
           const emailEl = document.getElementById("user-email");
-          if (!emailEl) return;
+          const nameEl = document.getElementById("display-name");
+          if (!emailEl || !nameEl) return;
 
           const verified = currentUser.emailVerified === true;
           emailEl.classList.remove("email-status-verified", "email-status-unverified");
-          emailEl.classList.add(verified ? "email-status-verified" : "email-status-unverified");
+          emailEl.classList.add(
+            verified ? "email-status-verified" : "email-status-unverified"
+          );
 
+          // Tooltip przeniesiony na nazwę użytkownika
           const statusText = verified ? "Email zweryfikowany" : "Email niezweryfikowany";
           const memberText = memberSinceLabel ? `Członek od: ${memberSinceLabel}` : "";
-          const tooltip = memberText ? `${statusText}\n${memberText}` : statusText;
-          emailEl.title = tooltip;
-          emailEl.dataset.tooltip = tooltip;
+
+          const role = (userProfile?.role || selfPrivateProfile?.role || "user").toString();
+          const roleLabel =
+            role === "admin" ? "Status: Administrator" :
+            role === "company" ? "Status: Firma" :
+            "Status: Użytkownik";
+
+          const tooltip = [roleLabel, statusText, memberText].filter(Boolean).join("\n");
+          nameEl.title = tooltip;
+          nameEl.dataset.tooltip = tooltip;
+
+          // Email bez tooltipa (info jest na nicku)
+          emailEl.title = "";
+          try { delete emailEl.dataset.tooltip; } catch {}
         } catch (e) {
           console.warn("updateVerificationStatus failed (ignored):", e?.message || e);
         }
@@ -1524,7 +1588,7 @@ const firebaseConfig = {
       // Ładowanie danych profilu (własnego lub cudzego)
       async function loadProfile(uidToLoad = null) {
         if (!currentUser) {
-          window.location.href = "./login.html";
+          window.location.href = "./logowanie.html";
           return;
         }
 
@@ -1539,9 +1603,25 @@ const firebaseConfig = {
             userProfile = profileDoc.data();
 
             // Wypełnij nagłówek
-            document.getElementById("display-name").textContent =
-              userProfile.displayName;
+            const displayNameEl = document.getElementById("display-name");
+            if (displayNameEl) displayNameEl.textContent = userProfile.displayName;
             memberSinceLabel = formatDate(userProfile.createdAt);
+
+            // Koloruj nick wg roli (zielony user, niebieski firma, czerwony admin)
+            try {
+              const role = (userProfile?.role || "user").toString();
+              const el = document.getElementById("display-name");
+              if (el) {
+                el.classList.remove("name-role-user", "name-role-company", "name-role-admin");
+                el.classList.add(
+                  role === "admin"
+                    ? "name-role-admin"
+                    : role === "company"
+                      ? "name-role-company"
+                      : "name-role-user"
+                );
+              }
+            } catch {}
 
             // target do opinii = oglądany profil
             reviewTargetUid = uid;
@@ -1626,8 +1706,8 @@ const firebaseConfig = {
               const emailEl = document.getElementById("user-email");
               if (emailEl) {
                 emailEl.classList.remove("email-status-verified", "email-status-unverified");
-                emailEl.removeAttribute("data-tooltip");
                 emailEl.title = "";
+                try { delete emailEl.dataset.tooltip; } catch {}
               }
             }
 
@@ -2296,7 +2376,7 @@ const firebaseConfig = {
           loadProfile();
           initializeReviewEvents();
         } else {
-          window.location.href = "./login.html";
+          window.location.href = "./logowanie.html";
         }
       });
       

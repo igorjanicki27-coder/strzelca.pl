@@ -28,6 +28,10 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function validRole(role) {
+      return role is string && (role == 'user' || role == 'company' || role == 'admin');
+    }
+
     // =============================================================================
     // USER PROFILES
     // =============================================================================
@@ -56,11 +60,18 @@ service cloud.firestore {
 
       // Tworzy/aktualizuje tylko właściciel lub admin (kontrola pól)
       allow create, update: if (isOwner(userId) || isAdminOrSuperAdmin()) &&
-        request.resource.data.keys().hasOnly(['displayName', 'avatar', 'updatedAt']) &&
+        request.resource.data.keys().hasOnly(['displayName', 'avatar', 'updatedAt', 'role']) &&
         request.resource.data.displayName is string &&
         request.resource.data.displayName.size() >= 2 &&
         request.resource.data.displayName.size() <= 32 &&
-        (!('avatar' in request.resource.data) || request.resource.data.avatar is string);
+        (!('avatar' in request.resource.data) || request.resource.data.avatar is string) &&
+        (
+          // Właściciel nie może zmieniać roli (może najwyżej zachować istniejącą)
+          (isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role == resource.data.role))
+          ||
+          // Admin może ustawić rolę
+          (isAdminOrSuperAdmin() && (!('role' in request.resource.data) || validRole(request.resource.data.role)))
+        );
 
       // Usuwanie: owner lub admin (np. sprzątanie konta)
       allow delete: if isOwner(userId) || isAdminOrSuperAdmin();

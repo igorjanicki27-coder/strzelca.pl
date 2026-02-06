@@ -4,7 +4,7 @@
 // - realtime (onSnapshot), bez serverless API => brak 401/500 z /api/*
 
 const PROFILE_URL = "https://konto.strzelca.pl/profil.html";
-const SUPPORT_UID = "nCMUz2fc8MM9WhhMVBLZ1pdR7O43"; // pinned "Obsługa"
+const SUPPORT_PEER_ID = "admin"; // pinned "Pomoc" (wspólna skrzynka administracji przez /api/messages)
 
 const STORAGE_KEY_OPEN = "__strzelca_messages_widget_open";
 const STORAGE_KEY_SELECTED = "__strzelca_messages_widget_selected"; // json: { peerId }
@@ -610,9 +610,11 @@ async function main() {
     conversations: [], // { id, peerId, peerName, peerAvatar, lastText, unread }
     searchUsers: [],
     q: "",
-    selectedPeerId: getStoredSelectedPeerId() || SUPPORT_UID,
+    selectedPeerId: getStoredSelectedPeerId() || SUPPORT_PEER_ID,
     selectedConversationId: null,
     unreadTotal: 0,
+    supportLastText: "Pomoc / zgłoszenia",
+    supportUnread: 0,
   };
 
   function renderAvatar(el, name, avatarUrl) {
@@ -681,23 +683,22 @@ async function main() {
     const q = (state.q || "").toString().trim().toLowerCase();
 
     // pinned support always on top
-    const supportName = "Obsługa Strzelca.pl";
-    const supportUnread =
-      state.conversations.find((c) => c.peerId === SUPPORT_UID)?.unread || 0;
+    const supportName = "Pomoc STRZELCA.PL";
+    const supportUnread = Number(state.supportUnread || 0) || 0;
     convList.appendChild(
       renderConvItem({
         key: "support",
-        active: state.selectedPeerId === SUPPORT_UID,
+        active: state.selectedPeerId === SUPPORT_PEER_ID,
         name: supportName,
-        sub: "Pomoc / zgłoszenia",
+        sub: state.supportLastText || "Pomoc / zgłoszenia",
         unread: supportUnread,
         avatar: null,
         letter: "S",
-        onClick: () => selectPeer(SUPPORT_UID, supportName),
+        onClick: () => selectPeer(SUPPORT_PEER_ID, supportName),
       })
     );
 
-    const dm = filteredConversations().filter((c) => c.peerId !== SUPPORT_UID);
+    const dm = filteredConversations().filter((c) => c.peerId !== SUPPORT_PEER_ID);
     for (const c of dm) {
       convList.appendChild(
         renderConvItem({
@@ -900,7 +901,6 @@ async function main() {
           const names = data.participantNames || {};
           const avatars = data.participantAvatars || {};
           const peerName =
-            (peerId === SUPPORT_UID ? "Obsługa Strzelca.pl" : null) ||
             (typeof names?.[peerId] === "string" ? names[peerId] : null) ||
             "Użytkownik";
           const peerAvatar = typeof avatars?.[peerId] === "string" ? avatars[peerId] : null;
@@ -916,21 +916,6 @@ async function main() {
             unread,
           });
         });
-
-        // ensure support exists even if no conversation doc yet
-        if (!list.some((x) => x.peerId === SUPPORT_UID)) {
-          list.unshift({
-            id: conversationIdFor(uid, SUPPORT_UID),
-            peerId: SUPPORT_UID,
-            peerName: "Obsługa Strzelca.pl",
-            peerAvatar: null,
-            lastText: "Pomoc / zgłoszenia",
-            unread: 0,
-          });
-        } else {
-          // move support to top
-          list.sort((a, b) => (a.peerId === SUPPORT_UID ? -1 : b.peerId === SUPPORT_UID ? 1 : 0));
-        }
 
         state.conversations = list;
         state.unreadTotal = totalUnread;
@@ -1086,10 +1071,95 @@ async function main() {
     titleText.textContent = labelName || "Wiadomości";
     renderList();
     msgs.innerHTML = `<div class="empty">Ładowanie…</div>`;
-    // Upewnij się, że dokument konwersacji istnieje zanim zaczniemy listen / markRead
-    ensureConversation(peerId)
-      .catch(() => {})
-      .finally(() => subscribeThread(peerId));
+
+    // Support chat (API /api/messages) — wspólna skrzynka administracji
+    if (peerId === SUPPORT_PEER_ID) {
+      subscribeSupportThread();
+      return;
+    }
+
+    // DM (Firestore privateMessages)
+    ensureConversation(peerId).catch(() => {}).finally(() => subscribeThread(peerId));
+  }
+
+  // =========================
+  // SUPPORT CHAT (API)
+  // =========================
+  let supportTimer = null;
+  async function fetchSupportThread() {
+    const res = await fetch(`/api/messages/thread?peerId=admin&limit=200`, {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.success) throw new Error(data?.error || `HTTP ${res.status}`);
+    const items = Array.isArray(data?.data?.messages) ? data.data.messages : [];
+    // update preview + unread for support item
+    try {
+      const last = items[items.length - 1];
+      state.supportLastText = last?.content ? String(last.content).slice(0, 70) : "Pomoc / zgłoszenia";
+      state.supportUnread = items.filter((m) => m && m.senderId === "admin" && m.isRead === false).length;
+      renderList();
+    } catch {}
+    return items;
+  }
+
+  function renderSupportMessages(items) {
+    // map to widget render format
+    const mapped = (items || []).map((m) => ({
+      id: m.id,
+      content: (m.content || "").toString(),
+      senderId: m.senderId || null,
+      recipientId: m.recipientId || null,
+      isRead: m.isRead === true,
+      timestampMs: typeof m.timestamp === "number" ? m.timestamp : Date.now(),
+    }));
+    renderMessages(mapped);
+  }
+
+  async function markSupportRead(items) {
+    // Oznacz jako przeczytane wiadomości od "admin" do usera
+    const toMark = (items || []).filter((m) => m && m.senderId === "admin" && m.isRead === false && m.id);
+    for (const m of toMark.slice(0, 50)) {
+      try {
+        await fetch(`/api/messages/${m.id}/read`, { method: "PUT", credentials: "include" });
+      } catch {}
+    }
+  }
+
+  function subscribeSupportThread() {
+    if (threadUnsub) threadUnsub();
+    if (supportTimer) clearInterval(supportTimer);
+    supportTimer = null;
+
+    const tick = async () => {
+      try {
+        const items = await fetchSupportThread();
+        renderSupportMessages(items);
+        if (isOpen) await markSupportRead(items);
+      } catch (e) {
+        const msg = (e?.message || "").toString();
+        msgs.innerHTML = `<div class="empty">${
+          msg.includes("Not authenticated")
+            ? "Musisz być zalogowany, aby pisać do Pomocy. Zaloguj się i spróbuj ponownie."
+            : "Nie udało się załadować Pomocy. Spróbuj odświeżyć."
+        }</div>`;
+      }
+    };
+
+    tick();
+    supportTimer = setInterval(() => {
+      if (isOpen && state.selectedPeerId === SUPPORT_PEER_ID) tick();
+    }, 3500);
+
+    threadUnsub = () => {
+      try {
+        if (supportTimer) clearInterval(supportTimer);
+      } catch {}
+      supportTimer = null;
+    };
   }
 
   // Search: live filter + users below
@@ -1113,10 +1183,28 @@ async function main() {
     if (!content) return;
     sendBtn.disabled = true;
     try {
-      await ensureConversation(state.selectedPeerId).catch(() => {});
-      await sendMessageTo(state.selectedPeerId, content);
-      ta.value = "";
-      ta.focus();
+      if (state.selectedPeerId === SUPPORT_PEER_ID) {
+        const res = await fetch("/api/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ content, recipientId: "admin", status: "in_progress" }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.success) throw new Error(data?.error || `HTTP ${res.status}`);
+        ta.value = "";
+        ta.focus();
+        // refresh
+        await fetchSupportThread().then((items) => {
+          renderSupportMessages(items);
+          return markSupportRead(items);
+        }).catch(() => {});
+      } else {
+        await ensureConversation(state.selectedPeerId).catch(() => {});
+        await sendMessageTo(state.selectedPeerId, content);
+        ta.value = "";
+        ta.focus();
+      }
     } catch (e) {
       console.warn("send failed:", e?.message || e);
     } finally {

@@ -2771,6 +2771,7 @@
         browserSessionPersistence,
         browserLocalPersistence,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+      import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-05-1";
       import {
         initializeFirestore,
         doc,
@@ -2824,6 +2825,14 @@ const firebaseConfig = {
       setPersistence(auth, browserLocalPersistence).catch(error => {
         console.error("Error setting persistence:", error);
       });
+
+      // SSO: jeśli użytkownik jest zalogowany w innej subdomenie (np. konto.strzelca.pl),
+      // dologuj go tutaj na podstawie wspólnego cookie (__session na .strzelca.pl)
+      try {
+        await ensureFirebaseSSO(auth);
+      } catch (e) {
+        console.warn("Admin SSO ensure failed (ignored):", e?.message || e);
+      }
 
       // Inicjalizuj Firestore (Safari/CORS hardening)
       // - experimentalAutoDetectLongPolling: stabilniej na Safari i w sieciach z restrykcjami
@@ -2890,6 +2899,16 @@ const firebaseConfig = {
             stack: error.stack
           });
           return false;
+        }
+      }
+
+      function redirectNotAuthorized() {
+        try {
+          const url = new URL("https://konto.strzelca.pl/profil.html");
+          url.searchParams.set("notice", "admin_only");
+          window.location.href = url.toString();
+        } catch {
+          window.location.href = "https://konto.strzelca.pl/profil.html?notice=admin_only";
         }
       }
 
@@ -3189,7 +3208,8 @@ const firebaseConfig = {
             const isAdmin = await checkAdminRole(user);
             if (!isAdmin) {
               console.warn('User does not have admin role, signing out');
-              await signOut(auth);
+              // Nie wylogowujemy globalnie użytkownika — po prostu blokujemy panel admina
+              try { await signOut(auth); } catch {}
               // Zaloguj nieudane logowanie - brak uprawnień
               try {
                 await logActivity("system", "ADMIN_LOGIN_FAILED", {
@@ -3206,6 +3226,7 @@ const firebaseConfig = {
                 "<strong style='color: #dc2626; font-weight: bold;'>Brak uprawnień administratora. Sprawdź czy Twoje konto ma rolę 'admin' w systemie.</strong>",
                 true,
               );
+              setTimeout(() => redirectNotAuthorized(), 400);
               return;
             }
 
@@ -3350,8 +3371,9 @@ const firebaseConfig = {
 
           // Jeśli użytkownik nie ma roli admin
           console.warn('User does not have admin role, signing out:', user.uid);
-          await signOut(auth);
-          showStatus('<strong style="color: #dc2626; font-weight: bold;">Brak uprawnień administratora.</strong>', true);
+          try { await signOut(auth); } catch {}
+          showStatus('<strong style="color: #dc2626; font-weight: bold;">Strona dostępna tylko dla uprawnionych użytkowników.</strong>', true);
+          setTimeout(() => redirectNotAuthorized(), 400);
           if (window.sessionInterval) {
             clearInterval(window.sessionInterval);
             window.sessionInterval = null;
@@ -4940,6 +4962,12 @@ const firebaseConfig = {
 
         try {
           await updateDoc(doc(db, "userProfiles", userId), { role: newRole });
+          // Best-effort: zaktualizuj publiczny profil (kolor nicku / status na profilu)
+          try {
+            await setDoc(doc(db, "publicProfiles", userId), { role: newRole, updatedAt: new Date() }, { merge: true });
+          } catch (e) {
+            console.warn("publicProfiles role sync failed (ignored):", e?.message || e);
+          }
 
           // Zaloguj zmianę roli
           await logActivity(userId, "ROLE_CHANGE", {
@@ -8444,20 +8472,39 @@ const firebaseConfig = {
         }
 
         try {
-          // TODO: Implementacja przez Firebase Firestore - dodanie wiadomości do privateMessages
-          showNotification('Funkcja wysyłania wiadomości wymaga implementacji przez Firebase', 'info');
-          return;
+          // Wyślij odpowiedź przez API /api/messages (wspólna "Pomoc STRZELCA.PL")
+          let categoryId = null;
+          try {
+            const latest = await fetch(`/api/messages?senderId=${currentConversationUser.id}&recipientId=admin&limit=1`, {
+              method: 'GET',
+              credentials: 'include',
+              cache: 'no-store',
+            }).then(r => r.json());
+            categoryId = latest?.success && latest?.data?.messages?.[0]?.categoryId ? latest.data.messages[0].categoryId : null;
+          } catch {}
 
-          // Wyczyść input
+          const payload = {
+            recipientId: currentConversationUser.id,
+            content: content,
+            status: 'in_progress',
+          };
+          if (categoryId) payload.categoryId = categoryId;
+
+          const res = await fetch('/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json().catch(() => null);
+          if (!res.ok || !data?.success) {
+            throw new Error(data?.error || `HTTP ${res.status}`);
+          }
+
           input.value = '';
-
-          // Przeładuj konwersację
           await loadConversationMessages(currentConversationUser.id);
-
-          // Odśwież wiadomości
           loadMessagesWithFilters();
           loadMessagesStatus();
-
           showNotification("Wiadomość została wysłana", "success");
 
         } catch (error) {
