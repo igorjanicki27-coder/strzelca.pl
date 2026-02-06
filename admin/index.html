@@ -2105,9 +2105,10 @@
 
     <div
       id="user-details-modal"
-      class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl"
+      class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl overflow-y-auto"
+      onclick="if(event.target.id === 'user-details-modal') closeUserDetails()"
     >
-      <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="admin-card max-w-4xl w-full my-8" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold coyote-text">Szczegóły Użytkownika</h2>
           <div class="flex space-x-2">
@@ -2437,9 +2438,10 @@
     <!-- Modal usuwania użytkownika -->
     <div
       id="user-delete-modal"
-      class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl"
+      class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl overflow-y-auto"
+      onclick="if(event.target.id === 'user-delete-modal') closeUserDelete()"
     >
-      <div class="admin-card max-w-2xl w-full">
+      <div class="admin-card max-w-2xl w-full my-8" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold text-red-400">Usuwanie Użytkownika</h2>
           <button
@@ -2450,7 +2452,7 @@
           </button>
         </div>
 
-        <div id="delete-user-info" class="mb-6 p-4 bg-zinc-800 rounded-lg">
+        <div id="delete-user-info" class="mb-6 p-4 bg-zinc-800 rounded-lg text-white">
           <!-- Informacje o użytkowniku będą ładowane dynamicznie -->
         </div>
 
@@ -3627,11 +3629,10 @@
                 return `
                   <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="showEventDetails ? showEventDetails('${log.id}') : null">
                     <div class="flex justify-between items-start mb-2">
-                      <div class="font-semibold text-white">${log.adminId || log.user || "System"}</div>
+                      <div class="font-semibold text-white">${activityLog.description}</div>
                       <div class="text-xs text-zinc-500">${timeAgo}</div>
                     </div>
-                    <div class="text-sm text-zinc-300">${activityLog.description}</div>
-                    <div class="text-xs text-zinc-500 mt-1">${activityLog.content}</div>
+                    ${activityLog.content ? `<div class="text-xs text-zinc-400 mt-1">${activityLog.content}</div>` : ''}
                   </div>
                 `;
               })
@@ -3765,6 +3766,9 @@
           case "active":
             filteredUsers = usersList.filter((u) => u.status === "active");
             break;
+          case "inactive":
+            filteredUsers = usersList.filter((u) => u.status !== "active" && u.status !== "blocked");
+            break;
           case "blocked":
             filteredUsers = usersList.filter((u) => u.status === "blocked");
             break;
@@ -3832,14 +3836,13 @@
                                 </div>
                             </div>
                             <div class="flex space-x-2 ml-4">
-                                <button onclick="viewUserDetails('${user.id}')" class="text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400 rounded text-xs">Szczegóły</button>
+                                    <button onclick="viewUserDetails('${user.id}')" class="text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400 rounded text-xs">Szczegóły</button>
                                 ${
                                   !isCurrentUser
                                     ? `
                                     <button onclick="toggleUserBlock('${user.id}')" class="text-${status === "blocked" ? "green" : "yellow"}-400 hover:text-${status === "blocked" ? "green" : "yellow"}-300 px-2 py-1 border border-${status === "blocked" ? "green" : "yellow"}-400 rounded text-xs">
                                         ${status === "blocked" ? "Odblokuj" : "Zablokuj"}
                                     </button>
-                                    <button onclick="changeUserRole('${user.id}', '${role}')" class="text-purple-400 hover:text-purple-300 px-2 py-1 border border-purple-400 rounded text-xs">Zmień rolę</button>
                                     <button onclick="resetUserPassword('${user.id}', '${decryptedUser.email}')" class="text-orange-400 hover:text-orange-300 px-2 py-1 border border-orange-400 rounded text-xs">Reset hasła</button>
                                     <button onclick="deleteUser('${user.id}')" class="text-red-400 hover:text-red-300 px-2 py-1 border border-red-400 rounded text-xs">Usuń</button>
                                 `
@@ -4048,81 +4051,60 @@
         };
 
         const detailsHtml = `
-                  <div class="space-y-8">
+                  <div class="space-y-6">
                       <!-- Informacje podstawowe -->
                       <div class="space-y-4">
-                          <h3 class="text-xl font-bold coyote-text pb-2 border-b border-zinc-700">Informacje podstawowe</h3>
+                          <h3 class="text-lg font-bold coyote-text pb-2 border-b border-zinc-700">Dane użytkownika</h3>
                           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                  <div class="text-xs text-zinc-400 mb-1">Nazwa użytkownika</div>
-                                  <div class="text-white font-medium">${decryptedUser.displayName || "Nie podano"}</div>
+                              <div>
+                                  <label class="text-xs text-zinc-400 block mb-1">Nazwa wyświetlana</label>
+                                  <div class="text-white font-medium">${decryptedUser.displayName || "Brak"}</div>
                               </div>
-                              <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                  <div class="text-xs text-zinc-400 mb-1">Email</div>
-                                  <div class="text-white font-medium">${decryptedUser.email || "Nie podano"}</div>
+                              <div>
+                                  <label class="text-xs text-zinc-400 block mb-1">Email</label>
+                                  <div class="text-white font-medium">${decryptedUser.email || "Brak"}</div>
                               </div>
-                              <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                  <div class="text-xs text-zinc-400 mb-1">Imię</div>
-                                  <div class="text-white font-medium">${decryptedUser.firstName || "Nie podano"}</div>
+                              <div>
+                                  <label class="text-xs text-zinc-400 block mb-1">Telefon</label>
+                                  <div class="text-white font-medium">${decryptedUser.phone || "Brak"}</div>
                               </div>
-                              <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                  <div class="text-xs text-zinc-400 mb-1">Nazwisko</div>
-                                  <div class="text-white font-medium">${decryptedUser.lastName || "Nie podano"}</div>
-                              </div>
-                              <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                  <div class="text-xs text-zinc-400 mb-1">Telefon</div>
-                                  <div class="text-white font-medium">${decryptedUser.phone || "Nie podano"}</div>
-                              </div>
-                              <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                  <div class="text-xs text-zinc-400 mb-1">Rola</div>
-                                  <div class="text-white font-medium uppercase">${decryptedUser.role || "user"}</div>
-                              </div>
-                              <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                  <div class="text-xs text-zinc-400 mb-1">Status</div>
-                                  <div class="text-white font-medium uppercase">${decryptedUser.status || "active"}</div>
-                              </div>
-                              <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                  <div class="text-xs text-zinc-400 mb-1">Data rejestracji</div>
-                                  <div class="text-white font-medium">${new Date(decryptedUser.createdAt?.toDate?.() || decryptedUser.createdAt).toLocaleString("pl-PL")}</div>
+                              <div>
+                                  <label class="text-xs text-zinc-400 block mb-1">Data rejestracji</label>
+                                  <div class="text-white font-medium">${new Date(decryptedUser.createdAt?.toDate?.() || decryptedUser.createdAt).toLocaleDateString("pl-PL")}</div>
                               </div>
                           </div>
                       </div>
 
-                      <!-- Adres dostawy -->
-                      <div class="space-y-4 pt-6 border-t border-zinc-700">
-                          <h3 class="text-xl font-bold coyote-text pb-2 border-b border-zinc-700">Adres dostawy</h3>
+                      <!-- Rola i status -->
+                      <div class="space-y-4 pt-4 border-t border-zinc-700">
+                          <h3 class="text-lg font-bold coyote-text pb-2 border-b border-zinc-700">Uprawnienia</h3>
                           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                  <div class="text-xs text-zinc-400 mb-1">Ulica</div>
-                                  <div class="text-white font-medium">${decryptedUser.address.street || "Nie podano"}</div>
+                              <div>
+                                  <label class="text-xs text-zinc-400 block mb-2">Rola użytkownika</label>
+                                  <select id="user-role-select" class="w-full" onchange="changeUserRoleFromDetails('${currentEditingUser.id}', this.value)">
+                                      <option value="user" ${decryptedUser.role === "user" ? "selected" : ""}>Użytkownik</option>
+                                      <option value="company" ${decryptedUser.role === "company" ? "selected" : ""}>Firma</option>
+                                      <option value="admin" ${decryptedUser.role === "admin" ? "selected" : ""}>Administrator</option>
+                                  </select>
                               </div>
-                              <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                  <div class="text-xs text-zinc-400 mb-1">Numer budynku</div>
-                                  <div class="text-white font-medium">${decryptedUser.address.buildingNumber || "Nie podano"}</div>
-                              </div>
-                              <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                  <div class="text-xs text-zinc-400 mb-1">Kod pocztowy</div>
-                                  <div class="text-white font-medium">${decryptedUser.address.postalCode || "Nie podano"}</div>
-                              </div>
-                              <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                  <div class="text-xs text-zinc-400 mb-1">Miasto</div>
-                                  <div class="text-white font-medium">${decryptedUser.address.city || "Nie podano"}</div>
-                              </div>
-                              <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                  <div class="text-xs text-zinc-400 mb-1">Paczkomat</div>
-                                  <div class="text-white font-medium">${decryptedUser.parcelLocker || "Nie podano"}</div>
+                              <div>
+                                  <label class="text-xs text-zinc-400 block mb-1">Status konta</label>
+                                  <div class="text-white font-medium uppercase">
+                                      ${decryptedUser.status === "blocked" ? '<span class="text-red-400">Zablokowane</span>' : 
+                                        decryptedUser.status === "active" ? '<span class="text-green-400">Aktywne</span>' : 
+                                        '<span class="text-yellow-400">Nieaktywne</span>'}
+                                  </div>
                               </div>
                           </div>
                       </div>
 
-                      <!-- Preferencje -->
-                      <div class="space-y-4 pt-6 border-t border-zinc-700">
-                          <h3 class="text-xl font-bold coyote-text pb-2 border-b border-zinc-700">Preferencje</h3>
-                          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                  <div class="text-xs text-zinc-400 mb-1">Newsletter</div>
-                                  <div class="text-white font-medium">${decryptedUser.newsletter ? "Tak" : "Nie"}</div>
-                              </div>
+                      <!-- Adres -->
+                      <div class="space-y-4 pt-4 border-t border-zinc-700">
+                          <h3 class="text-lg font-bold coyote-text pb-2 border-b border-zinc-700">Adres dostawy</h3>
+                          <div class="text-sm text-zinc-300">
+                              ${decryptedUser.address.street || ""} ${decryptedUser.address.buildingNumber || ""}<br>
+                              ${decryptedUser.address.postalCode || ""} ${decryptedUser.address.city || "Brak adresu"}<br>
+                              ${decryptedUser.parcelLocker ? `Paczkomat: ${decryptedUser.parcelLocker}` : ""}
                           </div>
                       </div>
                   </div>
@@ -4982,16 +4964,18 @@
         };
 
         document.getElementById("delete-user-info").innerHTML = `
-          <div class="flex items-center space-x-3 mb-2">
-            <div class="font-bold text-white">${decryptedUser.displayName}</div>
-            <div class="text-sm text-zinc-400">${decryptedUser.email}</div>
-          </div>
-          <div class="text-sm text-zinc-500">
-            ${decryptedUser.address.city ? `Miasto: ${decryptedUser.address.city}` : "Brak adresu"}
-            ${decryptedUser.phone ? ` • Tel: ${decryptedUser.phone}` : ""}
-          </div>
-          <div class="text-sm text-zinc-500 mt-1">
-            Konto utworzone: ${new Date(decryptedUser.createdAt?.toDate?.() || decryptedUser.createdAt).toLocaleDateString("pl-PL")}
+          <div class="space-y-2">
+            <div class="flex items-center space-x-3 mb-2">
+              <div class="font-bold text-lg text-white">${decryptedUser.displayName || "Brak nazwy"}</div>
+            </div>
+            <div class="text-sm text-zinc-300">${decryptedUser.email || "Brak emaila"}</div>
+            <div class="text-sm text-zinc-400">
+              ${decryptedUser.address?.city ? `Miasto: ${decryptedUser.address.city}` : "Brak adresu"}
+              ${decryptedUser.phone ? ` • Tel: ${decryptedUser.phone}` : ""}
+            </div>
+            <div class="text-sm text-zinc-400 mt-2">
+              Konto utworzone: ${new Date(decryptedUser.createdAt?.toDate?.() || decryptedUser.createdAt).toLocaleDateString("pl-PL")}
+            </div>
           </div>
         `;
 
@@ -5029,29 +5013,27 @@
         }
       };
 
-      window.changeUserRole = async (userId, currentRole) => {
-        let newRole;
-        let confirmMessage;
+      window.changeUserRoleFromDetails = async (userId, newRole) => {
+        if (!currentEditingUser) return;
+        
+        const currentRole = currentEditingUser.role || "user";
+        if (currentRole === newRole) return;
 
-        if (currentRole === "user") {
-          newRole = "company";
-          confirmMessage =
-            "Czy na pewno chcesz zmienić rolę tego użytkownika na FIRMA?";
-        } else if (currentRole === "company") {
-          newRole = "admin";
-          confirmMessage =
-            "Czy na pewno chcesz nadać temu użytkownikowi uprawnienia ADMINISTRATORA?";
-        } else if (currentRole === "admin") {
-          newRole = "user";
-          confirmMessage =
-            "Czy na pewno chcesz odebrać temu użytkownikowi uprawnienia administratora?";
+        const roleNames = {
+          user: "Użytkownik",
+          company: "Firma",
+          admin: "Administrator"
+        };
+
+        if (!confirm(`Czy na pewno chcesz zmienić rolę użytkownika z "${roleNames[currentRole]}" na "${roleNames[newRole]}"?`)) {
+          // Przywróć poprzednią wartość w select
+          document.getElementById("user-role-select").value = currentRole;
+          return;
         }
-
-        if (!confirm(confirmMessage)) return;
 
         try {
           await updateDoc(doc(db, "userProfiles", userId), { role: newRole });
-          // Best-effort: zaktualizuj publiczny profil (kolor nicku / status na profilu)
+          // Best-effort: zaktualizuj publiczny profil
           try {
             await setDoc(doc(db, "publicProfiles", userId), { role: newRole, updatedAt: new Date() }, { merge: true });
           } catch (e) {
@@ -5065,13 +5047,17 @@
             changedBy: currentUser.uid,
           });
 
-          showNotification(
-            `Rola użytkownika została zmieniona na: ${newRole === "company" ? "FIRMA" : newRole === "admin" ? "ADMINISTRATOR" : "UŻYTKOWNIK"}.`,
-          );
-          loadUsers();
+          // Zaktualizuj lokalny obiekt użytkownika
+          currentEditingUser.role = newRole;
+
+          showNotification(`Rola użytkownika została zmieniona na: ${roleNames[newRole]}.`);
+          loadUserDetails(); // Odśwież szczegóły
+          loadUsers(); // Odśwież listę
         } catch (error) {
           console.error("Error changing user role:", error);
           showNotification("Błąd zmiany roli użytkownika.", "error");
+          // Przywróć poprzednią wartość w select
+          document.getElementById("user-role-select").value = currentRole;
         }
       };
 
@@ -6741,19 +6727,51 @@
           "USER_UNBLOCKED": "Odblokowanie użytkownika",
           "USER_BLOCKED": "Zablokowanie użytkownika",
           "USER_DELETED": "Usunięcie użytkownika",
+          "USER_CREATED": "Utworzenie użytkownika",
           "PASSWORD_RESET_REQUEST": "Żądanie resetu hasła",
           "ROLE_CHANGE": "Zmiana roli użytkownika",
           "PROFILE_EDITED": "Edycja profilu",
-          "MESSAGE_SENT": "Wysłanie wiadomości",
+          "MESSAGE_SENT": "Wysłanie wiadomości do administracji",
           "LIKE_BLOG": "Polubienie posta",
           "CONTACT_FORM": "Wypełnienie formularza kontaktowego",
           "USER_REGISTER": "Rejestracja użytkownika",
-          "PRODUCT_VIEW": "Przeglądanie produktu"
+          "PRODUCT_VIEW": "Przeglądanie produktu",
+          "PRODUCT_CREATED": "Wystawienie oferty w sklepie",
+          "REVIEW_CREATED": "Wystawienie opinii",
+          "VISIT": "Odwiedzenie strony"
         };
         return actionLabels[action] || action || "Nieznana akcja";
       }
 
       // Funkcja do pobierania nazwy użytkownika
+      async function getUserDisplayNameAsync(event) {
+        if (event.userEmail) {
+          return event.userEmail;
+        }
+        if (event.userId === "system" || event.userId === "anonymous") {
+          return event.userId === "system" ? "System" : "Anonimowy użytkownik";
+        }
+        if (event.userId) {
+          // Jeśli userId jest emailem, użyj go
+          if (event.userId.includes("@")) {
+            return event.userId;
+          }
+          // Spróbuj pobrać z Firestore
+          try {
+            const userDoc = await getDoc(doc(db, "userProfiles", event.userId));
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              return userData.email || userData.displayName || userData.name || event.userId;
+            }
+          } catch (e) {
+            console.warn("Could not fetch user name:", e);
+          }
+          return event.userId;
+        }
+        return "Nieznany użytkownik";
+      }
+
+      // Synchroniczna wersja dla renderowania (używa tylko dostępnych danych)
       function getUserDisplayName(event) {
         if (event.userEmail) {
           return event.userEmail;
@@ -6761,12 +6779,23 @@
         if (event.userId === "system") {
           return "System";
         }
+        if (event.userId === "anonymous") {
+          return "Anonimowy użytkownik";
+        }
         if (event.userId) {
           // Jeśli userId jest emailem, użyj go
           if (event.userId.includes("@")) {
             return event.userId;
           }
-          // W przeciwnym razie użyj userId
+          // Sprawdź czy w details jest email
+          if (event.details && typeof event.details === 'object') {
+            if (event.details.email) return event.details.email;
+            if (event.details.login) return event.details.login;
+          }
+          // W przeciwnym razie użyj userId (ale skróć jeśli jest bardzo długi)
+          if (event.userId.length > 20) {
+            return event.userId.substring(0, 20) + "...";
+          }
           return event.userId;
         }
         return "Nieznany użytkownik";
@@ -6851,6 +6880,26 @@
             description = `${userDisplayName} edytował profil`;
             content = eventDetails.targetUser || userDisplayName;
             details = `Profil użytkownika ${content} został zedytowany${eventDetails.changes ? `. Zmiany: ${typeof eventDetails.changes === 'string' ? eventDetails.changes : JSON.stringify(eventDetails.changes)}` : ""}`;
+            break;
+          case "VISIT":
+            description = `${userDisplayName} odwiedził stronę`;
+            content = eventDetails.page || eventDetails.url || "Strona";
+            details = `Użytkownik ${userDisplayName} odwiedził stronę: ${content}`;
+            break;
+          case "PRODUCT_CREATED":
+            description = `${userDisplayName} wystawił ofertę w sklepie`;
+            content = eventDetails.productName || "Produkt";
+            details = `Użytkownik ${userDisplayName} wystawił nową ofertę: "${content}"`;
+            break;
+          case "REVIEW_CREATED":
+            description = `${userDisplayName} wystawił opinię`;
+            content = eventDetails.productName || eventDetails.target || "Produkt";
+            details = `Użytkownik ${userDisplayName} wystawił opinię dla: ${content}`;
+            break;
+          case "USER_CREATED":
+            description = `Utworzono nowe konto użytkownika`;
+            content = eventDetails.email || eventDetails.userId || "Użytkownik";
+            details = `Nowe konto zostało utworzone dla: ${content}`;
             break;
           default:
             description = `${userDisplayName} wykonał akcję: ${actionLabel}`;
@@ -7050,6 +7099,13 @@
               // Dodanie nowego produktu
               await addDoc(collection(db, "products"), productData);
               showNotification("Produkt został dodany.");
+              // Zaloguj utworzenie produktu
+              if (currentUser) {
+                await logActivity(currentUser.uid, "PRODUCT_CREATED", {
+                  productName: title,
+                  productId: productData.id || "nowy",
+                });
+              }
             }
 
             // Wyczyść formularz

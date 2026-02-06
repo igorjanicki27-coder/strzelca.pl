@@ -2358,7 +2358,7 @@ const firebaseConfig = {
           const ratedUser = ratedUserDoc.data();
 
           // Dodaj opinię do bazy danych
-          await addDoc(collection(db, "userReviews"), {
+          const reviewRef = await addDoc(collection(db, "userReviews"), {
             raterId: currentUser.uid,
             raterName: userProfile.displayName,
             ratedId: ratedUserId,
@@ -2384,6 +2384,26 @@ const firebaseConfig = {
               targetUserName: ratedUser.displayName,
             },
           );
+
+          // Zaloguj do activityLogs w formacie zgodnym z panelem admina
+          try {
+            const { addDoc: addDocActivity, collection: collectionActivity } =
+              await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+            await addDocActivity(collectionActivity(db, "activityLogs"), {
+              userId: currentUser.uid,
+              action: "REVIEW_CREATED",
+              details: {
+                productName: ratedUser.displayName,
+                target: ratedUser.displayName,
+                rating: rating,
+                comment: comment.substring(0, 100) + (comment.length > 100 ? "..." : ""),
+              },
+              timestamp: new Date(),
+              userAgent: navigator.userAgent,
+            });
+          } catch (logError) {
+            console.warn("Błąd logowania opinii do activityLogs:", logError);
+          }
 
           alert("Opinia została dodana pomyślnie!");
           closeReviewModal();
