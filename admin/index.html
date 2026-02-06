@@ -2711,8 +2711,9 @@
         // Przechwyć window.onerror PRZED załadowaniem Firebase
         const originalError = window.onerror;
         window.onerror = function(message, source, lineno, colno, error) {
-          // Ignoruj błędy CORS z Firestore Listen/channel
-          if (typeof message === 'string' && message.includes('firestore.googleapis.com') && message.includes('Listen/channel')) {
+          // Ignoruj błędy CORS z Firestore Listen/channel i Write/channel
+          if (typeof message === 'string' && message.includes('firestore.googleapis.com') && 
+              (message.includes('Listen/channel') || message.includes('Write/channel'))) {
             return true; // Wycisz błąd
           }
           // Dla innych błędów użyj oryginalnego handlera
@@ -2730,7 +2731,8 @@
         };
         const originalXHRSend = XMLHttpRequest.prototype.send;
         XMLHttpRequest.prototype.send = function(...args) {
-          if (this._url && this._url.includes('firestore.googleapis.com') && this._url.includes('Listen/channel')) {
+          if (this._url && this._url.includes('firestore.googleapis.com') && 
+              (this._url.includes('Listen/channel') || this._url.includes('Write/channel'))) {
             // Wycisz błędy dla tego konkretnego endpointu
             this.addEventListener('error', function(e) {
               e.stopPropagation();
@@ -2743,9 +2745,9 @@
         const originalConsoleError = console.error;
         console.error = function(...args) {
           const errorMessage = args.join(' ');
-          // Ignoruj błędy CORS z Firestore Listen/channel
+          // Ignoruj błędy CORS z Firestore Listen/channel i Write/channel
           if (errorMessage.includes('firestore.googleapis.com') && 
-              (errorMessage.includes('Listen/channel') || errorMessage.includes('access control checks'))) {
+              (errorMessage.includes('Listen/channel') || errorMessage.includes('Write/channel') || errorMessage.includes('access control checks'))) {
             return; // Wycisz błąd
           }
           // Dla innych błędów użyj oryginalnego console.error
@@ -2775,7 +2777,7 @@
         addDoc,
         writeBatch,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-      import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-02-06-1";
+      import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-02-06-2";
 
       
       async function getFirebaseApiKey() {
@@ -2846,6 +2848,8 @@
           switchTab("dashboard");
           // Załaduj stats dla SuperAdmin'a
           setTimeout(() => loadDashboardStats(), 100);
+          // Zaloguj odwiedzinę panelu administracyjnego
+          logVisit(user.uid, '/admin');
           return true;
         }
 
@@ -2875,6 +2879,8 @@
               switchTab("dashboard");
               // Opóźnij ładowanie stats, żeby dać czas na zakończenie ładowania profilu
               setTimeout(() => loadDashboardStats(), 100);
+              // Zaloguj odwiedzinę panelu administracyjnego
+              logVisit(user.uid, '/admin');
               return true;
             } else {
               console.warn('User has role:', userData.role, 'but expected admin');
@@ -2974,6 +2980,32 @@
             console.error("Error logging activity:", error);
           }
           // Nie pokazujemy błędu użytkownikowi, żeby nie przeszkadzać w normalnej pracy
+        }
+      }
+
+      // Funkcja logowania odwiedzin
+      async function logVisit(userId = null, page = null) {
+        try {
+          const visitData = {
+            userId: userId || 'anonymous',
+            action: 'VISIT',
+            details: {
+              page: page || window.location.pathname,
+              referrer: document.referrer || null,
+              url: window.location.href,
+            },
+            timestamp: new Date(),
+            adminId: currentUser ? currentUser.uid : null,
+            userAgent: navigator.userAgent,
+          };
+
+          await addDoc(collection(db, "activityLogs"), visitData);
+        } catch (error) {
+          if (error.code === 'permission-denied') {
+            console.warn("Permission denied when logging visit to Firestore - check Firestore security rules");
+          } else {
+            console.error("Error logging visit:", error);
+          }
         }
       }
 
@@ -3270,6 +3302,8 @@
               ip: "unknown",
               userAgent: navigator.userAgent,
             });
+            // Zaloguj odwiedzinę panelu administracyjnego
+            await logVisit(user.uid, '/admin');
 
             showStatus("Logowanie administratora (Firebase) pomyślne.");
           } catch (error) {
@@ -3307,6 +3341,24 @@
       // Wylogowanie administratora
       window.logoutAdmin = async () => {
         try {
+          // Zatrzymaj wszystkie listenery Firestore przed wylogowaniem (zapobiega błędom CORS)
+          try {
+            if (pendingTasksListener) {
+              clearInterval(pendingTasksListener);
+              pendingTasksListener = null;
+            }
+            if (activityLogsListener) {
+              clearInterval(activityLogsListener);
+              activityLogsListener = null;
+            }
+            if (window.sessionInterval) {
+              clearInterval(window.sessionInterval);
+              window.sessionInterval = null;
+            }
+          } catch (e) {
+            // ignore
+          }
+
           // SSO: wyczyść cookie wspólnej sesji (ważne dla synchronizacji między subdomenami)
           try {
             await fetch("https://strzelca.pl/api/sso-session-logout", {
@@ -3317,15 +3369,31 @@
             console.warn("SSO logout failed (ignored):", e?.message || e);
           }
 
-          await signOut(auth);
+          // Wyczyść cache SSO
+          try {
+            const { clearSSOCache } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-06-1");
+            clearSSOCache();
+          } catch (e) {
+            // ignore
+          }
+
+          // Wyloguj z Firebase Auth (ignoruj błędy Firestore CORS)
+          try {
+            await signOut(auth);
+          } catch (error) {
+            // Ignoruj błędy CORS z Firestore przy wylogowaniu
+            if (error?.message && (
+              error.message.includes('access control checks') ||
+              error.message.includes('CORS') ||
+              error.message.includes('firestore.googleapis.com')
+            )) {
+              console.warn("Ignored Firestore CORS error during logout");
+            } else {
+              console.error("Logout error:", error);
+            }
+          }
 
           currentUser = null;
-
-          // Zatrzymaj aktualizację UI sesji
-          if (window.sessionInterval) {
-            clearInterval(window.sessionInterval);
-            window.sessionInterval = null;
-          }
 
           // Wyczyść wszystkie dane sesji z localStorage
           localStorage.clear();
@@ -3336,7 +3404,21 @@
           document.getElementById("login-section").classList.remove("hidden");
           document.getElementById("admin-panel").classList.add("hidden");
         } catch (error) {
-          console.error("Logout error:", error);
+          // Ignoruj błędy CORS przy wylogowaniu
+          if (error?.message && (
+            error.message.includes('access control checks') ||
+            error.message.includes('CORS') ||
+            error.message.includes('firestore.googleapis.com')
+          )) {
+            console.warn("Ignored Firestore CORS error during logout");
+            // Mimo błędu, kontynuuj wylogowanie
+            currentUser = null;
+            localStorage.clear();
+            document.getElementById("login-section")?.classList.remove("hidden");
+            document.getElementById("admin-panel")?.classList.add("hidden");
+          } else {
+            console.error("Logout error:", error);
+          }
         }
       };
 
@@ -3475,6 +3557,9 @@
           // Ładowanie statystyk aktywności
           await loadActivityStats();
           await loadContactFormsCount();
+
+          // Ładowanie dziennika aktywności
+          await loadDashboardActivityLogs();
 
           // Ładowanie statystyk Google Analytics
           await fetchGAStatistics();
@@ -5751,17 +5836,17 @@
 
         async function logSystemEvent(eventType, site, service, details, severity = 'info') {
           const eventData = {
-            type: eventType,
-            site: site,
-            service: service,
-            details: details,
-            severity: severity,
-            timestamp: new Date().toISOString()
+            userId: 'system',
+            action: eventType,
+            details: typeof details === 'string' ? details : { ...details, site, service, severity },
+            timestamp: new Date(),
+            adminId: currentUser ? currentUser.uid : null,
+            userAgent: navigator.userAgent,
           };
 
           try {
-            // Dodaj zdarzenie systemowe bezpośrednio do Firestore
-            const eventsRef = collection(db, 'system_events');
+            // Dodaj zdarzenie systemowe do activityLogs (zgodnie z formatem używanym przez loadEventsLog)
+            const eventsRef = collection(db, 'activityLogs');
             await addDoc(eventsRef, eventData);
             console.log('System event logged to Firestore');
           } catch (error) {
@@ -5776,6 +5861,10 @@
             let localEvents = JSON.parse(localStorage.getItem(localEventsKey) || '[]');
 
             eventData.id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+            // Konwertuj timestamp na ISO string dla localStorage
+            if (eventData.timestamp && eventData.timestamp instanceof Date) {
+              eventData.timestamp = eventData.timestamp.toISOString();
+            }
             localEvents.push(eventData);
 
             // Zachowaj tylko ostatnie 50 zdarzeń lokalnie
@@ -6044,6 +6133,7 @@
             try {
               const todayVisitsQuery = query(
                 collection(db, "activityLogs"),
+                where("action", "==", "VISIT"),
                 where("timestamp", ">=", today)
               );
               const todayVisitsSnapshot = await getDocs(todayVisitsQuery);
@@ -6093,6 +6183,7 @@
             try {
               const weekVisitsQuery = query(
                 collection(db, "activityLogs"),
+                where("action", "==", "VISIT"),
                 where("timestamp", ">=", weekAgo)
               );
               const weekVisitsSnapshot = await getDocs(weekVisitsQuery);
@@ -6109,6 +6200,7 @@
             try {
               const monthVisitsQuery = query(
                 collection(db, "activityLogs"),
+                where("action", "==", "VISIT"),
                 where("timestamp", ">=", monthAgo)
               );
               const monthVisitsSnapshot = await getDocs(monthVisitsQuery);
@@ -6125,6 +6217,7 @@
             try {
               const yearVisitsQuery = query(
                 collection(db, "activityLogs"),
+                where("action", "==", "VISIT"),
                 where("timestamp", ">=", yearAgo)
               );
               const yearVisitsSnapshot = await getDocs(yearVisitsQuery);

@@ -5,7 +5,7 @@
  * - cache i optymalizacja requestów
  * 
  * Użycie:
- *   import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-02-06-1";
+ *   import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-02-06-2";
  *   const { auth, db } = await initAuth(firebaseConfig);
  */
 
@@ -19,7 +19,6 @@ export async function initAuth(firebaseConfig, options = {}) {
     getAuth,
     setPersistence,
     browserLocalPersistence,
-    authStateReady,
   } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
 
   const {
@@ -48,7 +47,7 @@ export async function initAuth(firebaseConfig, options = {}) {
 
   // OPTYMALIZACJA: Zawsze czekaj na authStateReady przed dalszymi operacjami
   try {
-    await authStateReady();
+    await auth.authStateReady();
     if (options.logAuthReady !== false) {
       console.log("Firebase Auth state ready");
     }
