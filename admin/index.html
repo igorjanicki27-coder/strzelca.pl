@@ -6834,33 +6834,6 @@
         return actionLabels[action] || action || "Nieznana akcja";
       }
 
-      // Funkcja do pobierania nazwy użytkownika
-      async function getUserDisplayNameAsync(event) {
-        if (event.userEmail) {
-          return event.userEmail;
-        }
-        if (event.userId === "system" || event.userId === "anonymous") {
-          return event.userId === "system" ? "System" : "Anonimowy użytkownik";
-        }
-        if (event.userId) {
-          // Jeśli userId jest emailem, użyj go
-          if (event.userId.includes("@")) {
-            return event.userId;
-          }
-          // Spróbuj pobrać z Firestore
-          try {
-            const userDoc = await getDoc(doc(db, "userProfiles", event.userId));
-            if (userDoc.exists()) {
-              const userData = userDoc.data();
-              return userData.email || userData.displayName || userData.name || event.userId;
-            }
-          } catch (e) {
-            console.warn("Could not fetch user name:", e);
-          }
-          return event.userId;
-        }
-        return "Nieznany użytkownik";
-      }
 
       // Synchroniczna wersja dla renderowania (używa tylko dostępnych danych)
       function getUserDisplayName(event) {
