@@ -11,6 +11,7 @@
 const API_BASE = "https://strzelca.pl/api";
 const LAST_SYNC_KEY = "__strzelca_sso_last_sync_ms";
 const DEFAULT_MIN_SYNC_MINUTES = 30;
+const UNVERIFIED_LOCK_KEY = "__strzelca_sso_lock_unverified";
 
 async function apiFetch(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -28,35 +29,74 @@ async function apiFetch(path, options = {}) {
 export async function ensureFirebaseSSO(auth) {
   if (!auth) throw new Error("ensureFirebaseSSO: missing auth");
 
-  // Jeśli użytkownik już jest zalogowany w tej subdomenie, nic nie rób
-  if (auth.currentUser) {
-    // Best-effort: odśwież cookie SSO (z throttlingiem)
-    try {
-      await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: DEFAULT_MIN_SYNC_MINUTES });
-    } catch {}
-    return { status: "already-signed-in" };
-  }
+  // Źródło prawdy: wspólna sesja SSO w cookie na `.strzelca.pl`
+  // Zawsze sprawdzamy cookie (nawet jeśli auth.currentUser istnieje),
+  // żeby nie trzymać "starego" użytkownika w danej subdomenie i nie nadpisywać cookie z powrotem.
+  const cookieSession = await apiFetch("/sso-session-exchange", {
+    method: "POST",
+    body: "{}",
+  });
 
-  // Spróbuj wymiany sesji cookie -> custom token
-  const data = await apiFetch("/sso-session-exchange", { method: "POST", body: "{}" });
-  if (!data || data.authenticated !== true || !data.customToken) {
+  const cookieAuthenticated =
+    cookieSession && cookieSession.authenticated === true && typeof cookieSession.uid === "string";
+
+  // Jeśli cookie nie istnieje, a w tej subdomenie mamy usera, to tylko best-effort odśwież cookie.
+  if (!cookieAuthenticated) {
+    if (auth.currentUser) {
+      // Jeśli jesteśmy w stanie "unverified lock" (po nieudanym logowaniu),
+      // to NIE odtwarzaj SSO z lokalnego usera. Zamiast tego wyloguj lokalnie.
+      try {
+        if (sessionStorage?.getItem?.(UNVERIFIED_LOCK_KEY) === "1") {
+          const { signOut } = await import(
+            "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"
+          );
+          try {
+            await signOut(auth);
+          } catch {}
+          return { status: "locked-signed-out" };
+        }
+      } catch {
+        // ignore
+      }
+
+      try {
+        await syncSessionCookieFromFirebaseUser(auth, {
+          minIntervalMinutes: DEFAULT_MIN_SYNC_MINUTES,
+        });
+      } catch {}
+      return { status: "already-signed-in" };
+    }
     return { status: "no-session" };
   }
 
-  // Zaloguj custom tokenem
-  // Importujemy dynamicznie, bo część stron nie importuje signInWithCustomToken
-  const { signInWithCustomToken } = await import(
+  // Mamy cookie sesję - jeśli lokalny user jest inny niż w cookie, przełącz na cookie user.
+  const cookieUid = cookieSession.uid;
+  const needsSwitch = auth.currentUser && auth.currentUser.uid && auth.currentUser.uid !== cookieUid;
+
+  const { signInWithCustomToken, signOut } = await import(
     "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"
   );
 
-  await signInWithCustomToken(auth, data.customToken);
+  if (needsSwitch) {
+    try {
+      await signOut(auth);
+    } catch {}
+  }
+
+  // Jeśli nie ma usera albo był switch, logujemy tokenem z cookie.
+  if (!auth.currentUser || needsSwitch) {
+    if (!cookieSession.customToken) {
+      return { status: "no-session" };
+    }
+    await signInWithCustomToken(auth, cookieSession.customToken);
+  }
 
   // Po zalogowaniu w subdomenie odśwież cookie (żeby wydłużać sesję cross-subdomain)
   try {
     await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 }); // natychmiast
   } catch {}
 
-  return { status: "signed-in" };
+  return needsSwitch ? { status: "switched-to-cookie-user" } : { status: "signed-in" };
 }
 
 function nowMs() {

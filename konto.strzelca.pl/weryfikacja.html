@@ -95,13 +95,13 @@
         </div>
 
         <div class="mt-8 grid grid-cols-1 gap-3">
-          <a
-            id="resend-link"
-            href="./logowanie.html?resend=1"
-            class="w-full py-4 bg-[#C19A6B] text-black text-[11px] uppercase font-black rounded-xl tracking-[0.2em] hover:bg-white transition"
+          <button
+            id="resend-btn"
+            type="button"
+            class="w-full py-4 bg-[#C19A6B] text-black text-[11px] uppercase font-black rounded-xl tracking-[0.2em] hover:bg-white transition disabled:opacity-60 disabled:cursor-not-allowed"
           >
             Wyślij ponownie maila aktywacyjnego
-          </a>
+          </button>
 
           <a
             href="./logowanie.html"
@@ -124,7 +124,38 @@
       </div>
     </main>
 
-    <script>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import {
+        getAuth,
+        setPersistence,
+        browserLocalPersistence,
+        sendEmailVerification,
+        signOut,
+      } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+      const SSO_LOCK_KEY = "__strzelca_sso_lock_unverified";
+
+      async function getFirebaseApiKey() {
+        const urls = ["/api/firebase-config", "https://strzelca.pl/api/firebase-config"];
+        for (const url of urls) {
+          try {
+            const res = await fetch(url, {
+              cache: "no-store",
+              credentials: url.startsWith("http") ? "omit" : "same-origin",
+            });
+            if (!res.ok) continue;
+            const data = await res.json().catch(() => null);
+            if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
+              return data.apiKey;
+            }
+          } catch {
+            // ignore
+          }
+        }
+        return null;
+      }
+
       (function () {
         try {
           const url = new URL(window.location.href);
@@ -135,10 +166,6 @@
             const value = document.getElementById("email-value");
             value.textContent = email;
             box.classList.remove("hidden");
-
-            const resend = document.getElementById("resend-link");
-            resend.href =
-              "./logowanie.html?resend=1&email=" + encodeURIComponent(email);
           }
           if (sent) {
             const sentBox = document.getElementById("sent-box");
@@ -148,6 +175,93 @@
           // ignore
         }
       })();
+
+      async function ssoLogoutBestEffort() {
+        try {
+          await fetch("https://strzelca.pl/api/sso-session-logout", {
+            method: "POST",
+            credentials: "include",
+          });
+        } catch {
+          // ignore
+        }
+      }
+
+      async function boot() {
+        const btn = document.getElementById("resend-btn");
+        const sentBox = document.getElementById("sent-box");
+        if (!btn) return;
+
+        const apiKey = await getFirebaseApiKey();
+        if (!apiKey) {
+          btn.disabled = true;
+          btn.textContent = "Brak konfiguracji (apiKey)";
+          return;
+        }
+
+        const app = initializeApp({
+          apiKey,
+          authDomain: "strzelca-pl.firebaseapp.com",
+          projectId: "strzelca-pl",
+          storageBucket: "strzelca-pl.appspot.com",
+          messagingSenderId: "511362047688",
+          appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
+          measurementId: "G-9EJ2R3JPVD",
+        });
+
+        const auth = getAuth(app);
+        // Persistence zgodne z resztą konta
+        try {
+          await setPersistence(auth, browserLocalPersistence);
+        } catch {}
+
+        btn.addEventListener("click", async () => {
+          btn.disabled = true;
+          const original = btn.textContent;
+          btn.textContent = "Wysyłanie...";
+
+          try {
+            const user = auth.currentUser;
+            if (!user) {
+              btn.textContent = "Brak sesji — przejdź do logowania";
+              // Fallback: użytkownik wszedł tu bez wcześniejszego logowania
+              setTimeout(() => {
+                window.location.href = "./logowanie.html";
+              }, 1200);
+              return;
+            }
+
+            await sendEmailVerification(user, {
+              url: "https://konto.strzelca.pl/akcja.html?mode=verifyEmail",
+              handleCodeInApp: true,
+            });
+
+            if (sentBox) sentBox.classList.remove("hidden");
+
+            // Po wysyłce: wyczyść SSO i wyloguj Firebase, żeby user "pozostał niezalogowany"
+            await ssoLogoutBestEffort();
+            try {
+              await signOut(auth);
+            } catch {}
+            try {
+              sessionStorage.removeItem(SSO_LOCK_KEY);
+            } catch {}
+
+            btn.textContent = "Wysłano";
+          } catch (e) {
+            console.warn("Resend verification failed:", e?.message || e);
+            btn.textContent = "Błąd — spróbuj ponownie";
+            btn.disabled = false;
+          } finally {
+            // jeśli nie ustawiliśmy finalnego tekstu, przywróć
+            if (btn.textContent === "Wysyłanie...") {
+              btn.textContent = original || "Wyślij ponownie";
+            }
+          }
+        });
+      }
+
+      boot();
     </script>
 
     <script

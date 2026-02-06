@@ -400,7 +400,7 @@
       import {
         ensureFirebaseSSO,
         syncSessionCookieFromFirebaseUser,
-      } from "https://strzelca.pl/sso-client.mjs?v=2026-01-28-1";
+      } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
 
       (async () => {
         try {
@@ -459,6 +459,7 @@
           let isSigningOut = false;
           const POST_LOGIN_REDIRECT_URL = "https://strzelca.pl/";
           const UNVERIFIED_REDIRECT_BASE = "./weryfikacja.html";
+          const SSO_LOCK_KEY = "__strzelca_sso_lock_unverified";
           const urlParams = new URLSearchParams(window.location.search || "");
           const isResendMode = urlParams.get("resend") === "1";
 
@@ -530,11 +531,14 @@
                 console.warn("SSO logout failed (ignored):", e?.message || e);
               }
 
-              isSigningOut = true;
-              await signOut(auth);
             } catch (e) {
-              console.warn("SignOut after unverified failed (ignored):", e?.message || e);
+              console.warn("Unverified pre-redirect cleanup failed (ignored):", e?.message || e);
             } finally {
+              // Blokada: jeśli user spróbuje wejść na inną stronę konto.strzelca.pl,
+              // nie pozwól odtworzyć SSO z lokalnego auth.currentUser.
+              try {
+                sessionStorage.setItem(SSO_LOCK_KEY, "1");
+              } catch {}
               isNavigatingAway = true;
               window.location.href = unverifiedRedirectUrl({ email, sent });
             }

@@ -15,7 +15,7 @@
     <meta name="robots" content="index, follow" />
 
     <!-- Open Graph dla Facebook -->
-    <meta property="og:title" content="strzelca.pl | Centrum Dowodzenia" />
+    <meta property="og:title" content="Strefa STRZELCA.PL" />
     <meta
       property="og:description"
       content="Profesjonalne wyposażenie strzeleckie - broń, amunicja, akcesoria. Sklep strzelecki z gwarancją jakości."
@@ -28,7 +28,7 @@
     <link rel="icon" type="image/svg+xml" href="./ikona.svg" />
     <link rel="apple-touch-icon" href="./ikona.svg" />
 
-    <title>strzelca.pl | Centrum Dowodzenia</title>
+    <title>Strefa STRZELCA.PL</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;700&display=swap"
@@ -457,8 +457,11 @@ const firebaseConfig = {
 
       const app = initializeApp(firebaseConfig);
       const db = initializeFirestore(app, {
-        experimentalForceLongPolling: true,
-        useFetchStreams: false,
+        // Firestore transport: nie wymuszaj XHR long-pollingu (potrafi generować błędy CORS
+        // na części konfiguracji przeglądarek / rozszerzeń). Pozwól SDK dobrać tryb,
+        // z włączonym auto-detect.
+        experimentalAutoDetectLongPolling: true,
+        useFetchStreams: true,
       });
       const auth = getAuth(app);
 
@@ -505,7 +508,7 @@ const firebaseConfig = {
 
       // SSO między subdomenami: jeśli w tej subdomenie nie ma usera, spróbuj zalogować z cookie (.strzelca.pl)
       try {
-        const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-01-28-1");
+        const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-06-1");
         const ssoRes = await ensureFirebaseSSO(auth);
         console.log("SSO ensure result:", ssoRes);
       } catch (e) {

@@ -12,7 +12,7 @@
     />
     <link rel="apple-touch-icon" href="https://strzelca.pl/ikona.svg" />
 
-    <title>Panel Administracyjny - strzelca.pl</title>
+    <title>Panel Administracyjny STRZELCA.PL</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;700&display=swap"
@@ -2765,7 +2765,7 @@
         browserSessionPersistence,
         browserLocalPersistence,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-      import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-05-1";
+      import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
       import {
         initializeFirestore,
         doc,
@@ -2828,15 +2828,13 @@ const firebaseConfig = {
         console.warn("Admin SSO ensure failed (ignored):", e?.message || e);
       }
 
-      // Inicjalizuj Firestore (Safari/CORS hardening)
-      // - experimentalAutoDetectLongPolling: stabilniej na Safari i w sieciach z restrykcjami
-      // - useFetchStreams: false usuwa fetch-streamy, które w Safari potrafią logować błędy CORS
-      // Uwaga: Error handler dla CORS jest już ustawiony w osobnym <script> przed importami Firebase
+      // Inicjalizuj Firestore (transport hardening)
+      // - nie wymuszamy XHR long-pollingu, bo na części konfiguracji potrafi to skończyć się
+      //   błędami "access control checks" / CORS w konsoli
+      // - pozwalamy SDK dobrać tryb z auto-detect
       const db = initializeFirestore(app, {
-        // Najbardziej kompatybilny transport dla Safari:
-        // wymuś long-polling (XHR) zamiast streamów.
-        experimentalForceLongPolling: true,
-        useFetchStreams: false,
+        experimentalAutoDetectLongPolling: true,
+        useFetchStreams: true,
       });
 
       let currentUser = null;

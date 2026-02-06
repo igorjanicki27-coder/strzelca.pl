@@ -450,10 +450,10 @@ async function main() {
   let db;
   try {
     db = initializeFirestore(app, {
-      // Safari / restrykcyjne sieci często logują "access control checks" na WebChannel.
-      // Force long polling + bez fetch streams jest najstabilniejsze i redukuje spam w konsoli.
-      experimentalForceLongPolling: true,
-      useFetchStreams: false,
+      // Transport Firestore: nie wymuszaj XHR long-pollingu (na części konfiguracji przeglądarek
+      // potrafi to skończyć się błędami "access control checks"). Pozwól SDK dobrać tryb.
+      experimentalAutoDetectLongPolling: true,
+      useFetchStreams: true,
     });
   } catch {
     db = getFirestore(app);
@@ -479,7 +479,7 @@ async function main() {
   if (!user) {
     // Jeśli nie mamy usera, spróbuj SSO (cookie -> custom token) dla tej instancji auth.
     try {
-      const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-05-1");
+      const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-06-1");
       await ensureFirebaseSSO(auth);
     } catch {}
     user = auth.currentUser || (await waitForAuth());

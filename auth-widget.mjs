@@ -171,6 +171,8 @@ function renderLoggedIn(root, { avatarUrl, displayName }) {
 }
 
 function ensureAdminFab() {
+  // Hardening: na panelu admina w ogóle nie twórz tego elementu
+  if (isAdminPanelPage()) return null;
   let el = document.getElementById("strzelca-admin-fab");
   if (el) return el;
   el = document.createElement("a");
@@ -233,8 +235,8 @@ async function main() {
       // Admin FAB
       try {
         const fab = ensureAdminFab();
-        if (isAdminPanelPage()) {
-          fab.style.display = "none";
+        if (!fab) {
+          // na panelu admina nie tworzymy FAB w ogóle
         } else if (data?.isAdmin === true) {
           fab.style.display = "inline-flex";
         } else {
@@ -247,13 +249,13 @@ async function main() {
     renderLoggedOut(root);
     try {
       const fab = ensureAdminFab();
-      fab.style.display = "none";
+      if (fab) fab.style.display = "none";
     } catch {}
   } catch {
     renderLoggedOut(root);
     try {
       const fab = ensureAdminFab();
-      fab.style.display = "none";
+      if (fab) fab.style.display = "none";
     } catch {}
   }
 }
