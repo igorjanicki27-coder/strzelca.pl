@@ -1250,19 +1250,35 @@ const firebaseConfig = {
         if (_availableAvatarsCache) return _availableAvatarsCache;
 
         // Preferuj listowanie po stronie serwera (działa dla dowolnych nazw plików).
-        try {
-          const res = await fetch("/api/avatars", { cache: "no-store" });
-          const data = await res.json().catch(() => null);
-          const files = Array.isArray(data?.files) ? data.files : [];
-          _availableAvatarsCache = files
-            .filter((x) => typeof x === "string" && x.length > 0)
-            .sort((a, b) => a.localeCompare(b, "pl"));
-          return _availableAvatarsCache;
-        } catch {
-          // fallback: brak listowania (zwróć pustą listę)
-          _availableAvatarsCache = [];
-          return _availableAvatarsCache;
+        const isMain = (window.location?.hostname || "") === "strzelca.pl";
+        const urls = isMain
+          ? ["/api/avatars", "https://strzelca.pl/api/avatars"]
+          : ["https://strzelca.pl/api/avatars", "/api/avatars"];
+
+        let lastStatus = null;
+        for (const url of urls) {
+          try {
+            const res = await fetch(url, {
+              cache: "no-store",
+              credentials: url.startsWith("http") ? "omit" : "same-origin",
+            });
+            lastStatus = res.status;
+            if (!res.ok) continue;
+            const data = await res.json().catch(() => null);
+            const files = Array.isArray(data?.files) ? data.files : [];
+            _availableAvatarsCache = files
+              .filter((x) => typeof x === "string" && x.length > 0)
+              .sort((a, b) => a.localeCompare(b, "pl"));
+            return _availableAvatarsCache;
+          } catch (e) {
+            // ignore and try next url
+          }
         }
+
+        // fallback: brak listowania (zwróć pustą listę) + zapisz status do komunikatu UI
+        _availableAvatarsCache = [];
+        _availableAvatarsCache.__error = lastStatus ? `HTTP ${lastStatus}` : "network";
+        return _availableAvatarsCache;
       }
 
       function renderAvatarPicker(files) {
@@ -1296,8 +1312,10 @@ const firebaseConfig = {
         grid.appendChild(defaultBtn);
 
         if (!files || files.length === 0) {
-          status.textContent =
-            "Nie znaleziono avatarów. Dodaj pliki do katalogu /konto.strzelca.pl/avatary/ (np. 01.webp, 02.webp...) i odśwież stronę.";
+          const err = files && files.__error ? String(files.__error) : "";
+          status.textContent = err
+            ? `Nie mogę pobrać listy avatarów (${err}). Upewnij się, że działa endpoint /api/avatars (na strzelca.pl) i odśwież stronę.`
+            : "Nie znaleziono avatarów. Dodaj pliki do katalogu /konto.strzelca.pl/avatary/ i odśwież stronę.";
           return;
         }
 
