@@ -506,21 +506,22 @@ const firebaseConfig = {
       // --- MONITOROWANIE STANU ZALOGOWANIA ---
       console.log("Firebase Auth initialized, checking current user...");
 
-      // SSO między subdomenami: jeśli w tej subdomenie nie ma usera, spróbuj zalogować z cookie (.strzelca.pl)
-      try {
-        const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-06-1");
-        const ssoRes = await ensureFirebaseSSO(auth);
-        console.log("SSO ensure result:", ssoRes);
-      } catch (e) {
-        console.warn("SSO ensure failed (ignored):", e?.message || e);
-      }
-
       // Sprawdź czy użytkownik może być zalogowany (odśwież token jeśli potrzebne)
       try {
         await auth.authStateReady();
         console.log("Firebase Auth state ready");
       } catch (error) {
         console.warn("Firebase Auth state check failed:", error);
+      }
+
+      // SSO między subdomenami: jeśli w tej subdomenie nie ma usera, spróbuj zalogować z cookie (.strzelca.pl)
+      // Uwaga: uruchamiamy po authStateReady, żeby mieć pewność że auth.currentUser jest już ustawiony.
+      try {
+        const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-06-1");
+        const ssoRes = await ensureFirebaseSSO(auth);
+        console.log("SSO ensure result:", ssoRes);
+      } catch (e) {
+        console.warn("SSO ensure failed (ignored):", e?.message || e);
       }
 
       // Sprawdź aktualnego użytkownika przed ustawieniem listenera
