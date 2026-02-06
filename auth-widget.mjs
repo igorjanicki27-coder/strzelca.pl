@@ -1,6 +1,14 @@
 const API_URL = "https://strzelca.pl/api/me";
 const LOGIN_URL = "https://konto.strzelca.pl/logowanie.html";
 const PROFILE_URL = "https://konto.strzelca.pl/profil.html";
+const FIREBASE_CONFIG_BASE = {
+  authDomain: "strzelca-pl.firebaseapp.com",
+  projectId: "strzelca-pl",
+  storageBucket: "strzelca-pl.appspot.com",
+  messagingSenderId: "511362047688",
+  appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
+  measurementId: "G-9EJ2R3JPVD",
+};
 
 function ensureStyles() {
   if (document.getElementById("strzelca-auth-widget-style")) return;
@@ -118,6 +126,75 @@ function hideLegacyAuthUiIfPresent() {
   }
 }
 
+async function getFirebaseApiKey() {
+  try {
+    const res = await fetch("/api/firebase-config", { cache: "no-store" });
+    if (!res.ok) return null;
+    const data = await res.json().catch(() => null);
+    if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
+      return data.apiKey;
+    }
+  } catch {}
+  return null;
+}
+
+function isAdminRole(role) {
+  const value = String(role || "").toLowerCase();
+  return value === "admin" || value === "administrator" || value === "superadmin";
+}
+
+async function tryGetFirebaseSession() {
+  try {
+    const [{ initializeApp, getApps }, { getAuth, browserLocalPersistence, setPersistence }, { getFirestore, doc, getDoc }] =
+      await Promise.all([
+        import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"),
+        import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"),
+        import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"),
+      ]);
+
+    let app = getApps()[0] || null;
+    if (!app) {
+      const apiKey = await getFirebaseApiKey();
+      if (!apiKey) return null;
+      app = initializeApp({ apiKey, ...FIREBASE_CONFIG_BASE });
+    }
+
+    const auth = getAuth(app);
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+    } catch {}
+
+    try {
+      const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-06-1");
+      await ensureFirebaseSSO(auth);
+    } catch {}
+
+    try {
+      await auth.authStateReady();
+    } catch {}
+
+    const user = auth.currentUser;
+    if (!user) {
+      return { authenticated: false };
+    }
+
+    let profile = null;
+    try {
+      const db = getFirestore(app);
+      const snap = await getDoc(doc(db, "userProfiles", user.uid));
+      if (snap.exists()) profile = snap.data();
+    } catch {}
+
+    return {
+      authenticated: true,
+      user,
+      profile,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function firstLetter(name) {
   const s = (name || "").toString().trim();
   if (!s) return "U";
@@ -225,6 +302,40 @@ async function main() {
   renderLoading(root);
 
   try {
+    const firebase = await tryGetFirebaseSession();
+    if (firebase && firebase.authenticated === true) {
+      const displayName =
+        firebase?.profile?.displayName ||
+        firebase?.user?.displayName ||
+        firebase?.user?.email?.split("@")[0] ||
+        null;
+      const avatarUrl = firebase?.profile?.avatar || null;
+
+      renderLoggedIn(root, { avatarUrl, displayName });
+
+      try {
+        const fab = ensureAdminFab();
+        if (!fab) {
+          // na panelu admina nie tworzymy FAB w ogóle
+        } else if (isAdminRole(firebase?.profile?.role)) {
+          fab.style.display = "inline-flex";
+        } else {
+          fab.style.display = "none";
+        }
+      } catch {}
+
+      return;
+    }
+
+    if (firebase && firebase.authenticated === false) {
+      renderLoggedOut(root);
+      try {
+        const fab = ensureAdminFab();
+        if (fab) fab.style.display = "none";
+      } catch {}
+      return;
+    }
+
     const data = await fetchMeWithTimeout();
     if (data && data.success === true && data.authenticated === true) {
       renderLoggedIn(root, {
@@ -232,7 +343,6 @@ async function main() {
         displayName: data?.profile?.displayName || null,
       });
 
-      // Admin FAB
       try {
         const fab = ensureAdminFab();
         if (!fab) {
@@ -246,6 +356,7 @@ async function main() {
 
       return;
     }
+
     renderLoggedOut(root);
     try {
       const fab = ensureAdminFab();
@@ -265,4 +376,3 @@ if (document.readyState === "loading") {
 } else {
   main();
 }
-

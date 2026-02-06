@@ -2820,6 +2820,14 @@ const firebaseConfig = {
         console.error("Error setting persistence:", error);
       });
 
+      // Poczekaj na gotowość stanu autoryzacji przed dalszymi operacjami
+      try {
+        await auth.authStateReady();
+        console.log("Admin: Firebase Auth state ready");
+      } catch (error) {
+        console.warn("Admin: Firebase Auth state check failed:", error);
+      }
+
       // SSO: jeśli użytkownik jest zalogowany w innej subdomenie (np. konto.strzelca.pl),
       // dologuj go tutaj na podstawie wspólnego cookie (__session na .strzelca.pl)
       try {
@@ -2852,6 +2860,72 @@ const firebaseConfig = {
       // Dźwięk powiadomienia dla nowych wiadomości
       const notificationSound = new Audio('/message.mp3');
       let lastUnreadCount = null;
+
+      // Funkcja sprawdzająca i wyświetlająca panel dla zalogowanego użytkownika
+      async function checkAndShowAdminPanel(user) {
+        if (!user) {
+          return false;
+        }
+
+        // Najpierw sprawdź czy to SuperAdmin (bez sprawdzania Firestore)
+        const superAdminUID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
+        if (user.uid === superAdminUID) {
+          console.log('SuperAdmin login detected:', user.uid);
+          currentUser = user;
+          userFilterColors = {}; // SuperAdmin może nie mieć filtrów
+          updateAdminDisplay(user);
+          document.getElementById("login-section").classList.add("hidden");
+          document.getElementById("admin-panel").classList.remove("hidden");
+          switchTab("dashboard");
+          // Załaduj stats dla SuperAdmin'a
+          setTimeout(() => loadDashboardStats(), 100);
+          return true;
+        }
+
+        // Dla zwykłych użytkowników sprawdź rolę w Firestore
+        try {
+          console.log('Checking admin role in Firestore for user:', user.uid);
+          const userDoc = await getDoc(doc(db, "userProfiles", user.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            console.log('User data from Firestore:', userData);
+
+            if (userData.role === "admin") {
+              console.log('Admin role confirmed for user:', user.uid);
+              currentUser = user;
+
+              // Załaduj kolory filtrów z bazy danych użytkownika
+              if (userData.filterColors) {
+                userFilterColors = userData.filterColors;
+              }
+
+              updateAdminDisplay(user);
+
+              document.getElementById("login-section").classList.add("hidden");
+              document.getElementById("admin-panel").classList.remove("hidden");
+
+              // Załaduj dashboard i stats dopiero po zakończeniu ładowania profilu
+              switchTab("dashboard");
+              // Opóźnij ładowanie stats, żeby dać czas na zakończenie ładowania profilu
+              setTimeout(() => loadDashboardStats(), 100);
+              return true;
+            } else {
+              console.warn('User has role:', userData.role, 'but expected admin');
+            }
+          } else {
+            console.warn('User profile not found in Firestore for UID:', user.uid);
+          }
+        } catch (error) {
+          console.error("Error checking admin role in Firestore:", error);
+          console.error("Error details:", {
+            code: error.code,
+            message: error.message,
+            stack: error.stack
+          });
+        }
+
+        return false;
+      }
 
 
 
@@ -3291,84 +3365,37 @@ const firebaseConfig = {
 
 
 
+      // Sprawdź aktualnego użytkownika od razu po inicjalizacji (przed ustawieniem listenera)
+      (async () => {
+        const initialUser = auth.currentUser;
+        if (initialUser) {
+          console.log('Admin: Checking initial user:', initialUser.uid);
+          const isAdmin = await checkAndShowAdminPanel(initialUser);
+          if (!isAdmin) {
+            // Użytkownik jest zalogowany, ale nie ma roli admin
+            console.warn('Initial user does not have admin role, signing out:', initialUser.uid);
+            try { await signOut(auth); } catch {}
+            showStatus('<strong style="color: #dc2626; font-weight: bold;">Strona dostępna tylko dla uprawnionych użytkowników.</strong>', true);
+            setTimeout(() => redirectNotAuthorized(), 400);
+          }
+        }
+      })();
+
+      // Ustaw listener dla przyszłych zmian stanu autoryzacji
       onAuthStateChanged(auth, async (user) => {
         if (user) {
-
-          // Najpierw sprawdź czy to SuperAdmin (bez sprawdzania Firestore)
-          const superAdminUID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
-          if (user.uid === superAdminUID) {
-            console.log('SuperAdmin login detected:', user.uid);
-            currentUser = user;
-            userFilterColors = {}; // SuperAdmin może nie mieć filtrów
-            updateAdminDisplay(user);
-            document.getElementById("login-section").classList.add("hidden");
-            document.getElementById("admin-panel").classList.remove("hidden");
-            switchTab("dashboard");
-            // Załaduj stats dla SuperAdmin'a
-            setTimeout(() => loadDashboardStats(), 100);
-            return;
+          const isAdmin = await checkAndShowAdminPanel(user);
+          if (!isAdmin) {
+            // Jeśli użytkownik nie ma roli admin
+            console.warn('User does not have admin role, signing out:', user.uid);
+            try { await signOut(auth); } catch {}
+            showStatus('<strong style="color: #dc2626; font-weight: bold;">Strona dostępna tylko dla uprawnionych użytkowników.</strong>', true);
+            setTimeout(() => redirectNotAuthorized(), 400);
+            if (window.sessionInterval) {
+              clearInterval(window.sessionInterval);
+              window.sessionInterval = null;
+            } // Zatrzymaj UI updater
           }
-
-          // Dla zwykłych użytkowników sprawdź rolę w Firestore
-          try {
-            console.log('Checking admin role in Firestore for user:', user.uid);
-            const userDoc = await getDoc(doc(db, "userProfiles", user.uid));
-            if (userDoc.exists()) {
-              const userData = userDoc.data();
-              console.log('User data from Firestore:', userData);
-
-              if (userData.role === "admin") {
-                console.log('Admin role confirmed for user:', user.uid);
-                currentUser = user;
-
-                // Załaduj kolory filtrów z bazy danych użytkownika
-                if (userData.filterColors) {
-                  userFilterColors = userData.filterColors;
-                }
-
-                updateAdminDisplay(user);
-
-                document.getElementById("login-section").classList.add("hidden");
-                document.getElementById("admin-panel").classList.remove("hidden");
-
-                // Załaduj dashboard i stats dopiero po zakończeniu ładowania profilu
-                switchTab("dashboard");
-                // Opóźnij ładowanie stats, żeby dać czas na zakończenie ładowania profilu
-                setTimeout(() => loadDashboardStats(), 100);
-                return;
-              } else {
-                console.warn('User has role:', userData.role, 'but expected admin');
-              }
-            } else {
-              console.warn('User profile not found in Firestore for UID:', user.uid);
-            }
-          } catch (error) {
-            console.error("Error checking admin role in Firestore:", error);
-            console.error("Error details:", {
-              code: error.code,
-              message: error.message,
-              stack: error.stack
-            });
-            // Nie wylogowuj natychmiast - może to być tymczasowy błąd
-            let errorMsg = '<strong style="color: #ffa500; font-weight: bold;">Błąd sprawdzania uprawnień. ';
-            if (error.code === 'permission-denied') {
-              errorMsg += 'Brak uprawnień do odczytu z Firestore. Skontaktuj się z administratorem.</strong>';
-            } else {
-              errorMsg += 'Spróbuj odświeżyć stronę. Jeśli problem się powtarza, skontaktuj się z administratorem.</strong>';
-            }
-            showStatus(errorMsg, true);
-            return;
-          }
-
-          // Jeśli użytkownik nie ma roli admin
-          console.warn('User does not have admin role, signing out:', user.uid);
-          try { await signOut(auth); } catch {}
-          showStatus('<strong style="color: #dc2626; font-weight: bold;">Strona dostępna tylko dla uprawnionych użytkowników.</strong>', true);
-          setTimeout(() => redirectNotAuthorized(), 400);
-          if (window.sessionInterval) {
-            clearInterval(window.sessionInterval);
-            window.sessionInterval = null;
-          } // Zatrzymaj UI updater
         } else {
           currentUser = null;
           document.getElementById("login-section").classList.remove("hidden");
@@ -9081,7 +9108,7 @@ const firebaseConfig = {
     </div>
     <script
       type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-02-05-1"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-02-06-1"
     ></script>
     <script
       type="module"
