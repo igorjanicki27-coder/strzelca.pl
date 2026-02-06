@@ -3340,6 +3340,16 @@ const firebaseConfig = {
       // Wylogowanie administratora
       window.logoutAdmin = async () => {
         try {
+          // SSO: wyczyść cookie wspólnej sesji (ważne dla synchronizacji między subdomenami)
+          try {
+            await fetch("https://strzelca.pl/api/sso-session-logout", {
+              method: "POST",
+              credentials: "include",
+            });
+          } catch (e) {
+            console.warn("SSO logout failed (ignored):", e?.message || e);
+          }
+
           await signOut(auth);
 
           currentUser = null;
