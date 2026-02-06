@@ -2803,6 +2803,7 @@
         limit,
         addDoc,
         writeBatch,
+        serverTimestamp,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
       import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-02-06-2";
 
@@ -2857,6 +2858,105 @@
       const notificationSound = new Audio('/message.mp3');
       let lastUnreadCount = null;
 
+      // ===== SYSTEM ŚLEDZENIA AKTYWNOŚCI ONLINE =====
+      let activityTrackingInterval = null;
+      let lastActivitySync = 0;
+
+      // Funkcja aktualizacji lastSeen w Firestore
+      async function updateLastSeen() {
+        if (!currentUser) return;
+        
+        try {
+          await updateDoc(doc(db, "userProfiles", currentUser.uid), {
+            lastSeen: serverTimestamp()
+          });
+          
+          // Zaktualizuj localStorage
+          const activityData = {
+            lastSeen: Date.now(),
+            synced: true
+          };
+          localStorage.setItem('userActivity', JSON.stringify(activityData));
+          lastActivitySync = Date.now();
+        } catch (error) {
+          console.warn("Could not update lastSeen:", error);
+          // Zapisuj lokalnie nawet jeśli Firestore nie działa
+          const activityData = {
+            lastSeen: Date.now(),
+            synced: false
+          };
+          localStorage.setItem('userActivity', JSON.stringify(activityData));
+        }
+      }
+
+      // Funkcja śledzenia aktywności lokalnie
+      function trackLocalActivity() {
+        const activityData = {
+          lastSeen: Date.now(),
+          synced: false
+        };
+        localStorage.setItem('userActivity', JSON.stringify(activityData));
+      }
+
+      // Funkcja synchronizacji aktywności (co 15 minut)
+      async function syncActivity() {
+        if (!currentUser) return;
+        
+        // Pobierz dane z localStorage
+        const storedActivity = localStorage.getItem('userActivity');
+        if (!storedActivity) {
+          trackLocalActivity();
+          return;
+        }
+        
+        try {
+          const activityData = JSON.parse(storedActivity);
+          const timeSinceLastSeen = Date.now() - activityData.lastSeen;
+          
+          // Synchronizuj tylko jeśli użytkownik był aktywny w ostatnich 30 sekundach
+          // lub jeśli nie synchronizowaliśmy od dłuższego czasu
+          const timeSinceLastSync = Date.now() - lastActivitySync;
+          
+          if (timeSinceLastSeen < 30000 || timeSinceLastSync > 900000) { // 30 sekund lub 15 minut
+            await updateLastSeen();
+          }
+        } catch (error) {
+          console.warn("Error syncing activity:", error);
+        }
+      }
+
+      // Rozpocznij śledzenie aktywności
+      function startActivityTracking() {
+        if (activityTrackingInterval) {
+          clearInterval(activityTrackingInterval);
+        }
+        
+        // Aktualizuj od razu przy starcie
+        updateLastSeen();
+        
+        // Synchronizuj co 15 minut (900000 ms)
+        activityTrackingInterval = setInterval(() => {
+          syncActivity();
+        }, 900000);
+        
+        // Śledź aktywność przy interakcjach użytkownika
+        const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+        events.forEach(event => {
+          document.addEventListener(event, () => {
+            trackLocalActivity();
+          }, { passive: true });
+        });
+      }
+
+      // Zatrzymaj śledzenie aktywności
+      function stopActivityTracking() {
+        if (activityTrackingInterval) {
+          clearInterval(activityTrackingInterval);
+          activityTrackingInterval = null;
+        }
+      }
+      // ===== KONIEC SYSTEMU ŚLEDZENIA AKTYWNOŚCI =====
+
       // Funkcja sprawdzająca i wyświetlająca panel dla zalogowanego użytkownika
       async function checkAndShowAdminPanel(user) {
         if (!user) {
@@ -2872,6 +2972,10 @@
           updateAdminDisplay(user);
           document.getElementById("login-section").classList.add("hidden");
           document.getElementById("admin-panel").classList.remove("hidden");
+          
+          // Rozpocznij śledzenie aktywności
+          startActivityTracking();
+          
           switchTab("dashboard");
           // Załaduj stats dla SuperAdmin'a
           setTimeout(() => loadDashboardStats(), 100);
@@ -2899,6 +3003,9 @@
 
               document.getElementById("login-section").classList.add("hidden");
               document.getElementById("admin-panel").classList.remove("hidden");
+
+              // Rozpocznij śledzenie aktywności
+              startActivityTracking();
 
               // Załaduj dashboard i stats dopiero po zakończeniu ładowania profilu
               switchTab("dashboard");
@@ -3006,6 +3113,42 @@
         }
       }
 
+
+      // Funkcja sprawdzająca czy użytkownik jest online (ostatnie 30 minut)
+      function isUserOnline(user) {
+        if (!user || !user.lastSeen) return false;
+        
+        try {
+          const lastSeen = user.lastSeen.toDate ? user.lastSeen.toDate() : new Date(user.lastSeen);
+          const now = new Date();
+          const diffMinutes = (now - lastSeen) / 1000 / 60;
+          
+          // Użytkownik jest online jeśli był aktywny w ciągu ostatnich 30 minut
+          return diffMinutes < 30;
+        } catch (error) {
+          return false;
+        }
+      }
+
+      // Funkcja formatująca czas ostatniej aktywności
+      function getLastSeenText(user) {
+        if (!user || !user.lastSeen) return "Nigdy";
+        
+        try {
+          const lastSeen = user.lastSeen.toDate ? user.lastSeen.toDate() : new Date(user.lastSeen);
+          const now = new Date();
+          const diffMinutes = Math.floor((now - lastSeen) / 1000 / 60);
+          
+          if (diffMinutes < 1) return "Teraz";
+          if (diffMinutes < 60) return `${diffMinutes} min temu`;
+          const diffHours = Math.floor(diffMinutes / 60);
+          if (diffHours < 24) return `${diffHours} godz. temu`;
+          const diffDays = Math.floor(diffHours / 24);
+          return `${diffDays} dni temu`;
+        } catch (error) {
+          return "Nieznany";
+        }
+      }
 
       // Funkcje pomocnicze
       function showStatus(message, isError = false) {
@@ -3386,6 +3529,20 @@
               console.warn("Ignored Firestore CORS error during logout");
             } else {
               console.error("Logout error:", error);
+            }
+          }
+
+          // Zatrzymaj śledzenie aktywności
+          stopActivityTracking();
+          
+          // Ostatnia aktualizacja przed wylogowaniem
+          if (currentUser) {
+            try {
+              await updateDoc(doc(db, "userProfiles", currentUser.uid), {
+                lastSeen: serverTimestamp()
+              });
+            } catch (e) {
+              // Ignoruj błędy przy wylogowaniu
             }
           }
 
@@ -3812,6 +3969,10 @@
               },
             };
 
+            // Sprawdź czy użytkownik jest online
+            const isOnline = isUserOnline(user);
+            const lastSeenText = getLastSeenText(user);
+
             return `
                     <div class="border-l-4 ${statusClasses[status]} p-4 rounded-r-lg">
                         <div class="flex justify-between items-start mb-2">
@@ -3820,6 +3981,7 @@
                                     <h4 class="text-white font-bold">${decryptedUser.displayName}</h4>
                                     <span class="px-2 py-1 text-xs rounded font-bold ${roleClasses[role]}">${roleDisplay[role] || role.toUpperCase()}</span>
                                     <span class="px-2 py-1 text-xs rounded bg-gray-600 text-white">${status.toUpperCase()}</span>
+                                    ${isOnline ? '<span class="px-2 py-1 text-xs rounded bg-green-500 text-white" title="Online">🟢 ONLINE</span>' : `<span class="px-2 py-1 text-xs rounded bg-gray-500 text-white" title="Ostatnia aktywność: ${lastSeenText}">⚫ OFFLINE</span>`}
                                     ${isCurrentUser ? '<span class="px-2 py-1 text-xs rounded bg-purple-600 text-white">TY</span>' : ""}
                                 </div>
                                 <div class="text-sm text-zinc-400 space-y-1">
@@ -3827,6 +3989,7 @@
                                     <div>📱 ${decryptedUser.phone || "Brak"}</div>
                                     <div>🏠 ${decryptedUser.address.city || "Brak adresu"}</div>
                                     <div>📅 ${new Date(user.createdAt?.toDate?.() || user.createdAt).toLocaleDateString("pl-PL")}</div>
+                                    <div>🕐 Ostatnia aktywność: ${lastSeenText}</div>
                                 </div>
                             </div>
                             <div class="flex space-x-2 ml-4">
