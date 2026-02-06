@@ -291,6 +291,15 @@ const firebaseConfig = {
         } catch (e) {
             console.warn("SSO ensure failed (ignored):", e?.message || e);
         }
+        
+        // Inicjalizuj śledzenie aktywności
+        try {
+            const { initActivityTracker } = await import("https://strzelca.pl/activity-tracker.mjs?v=2026-02-06-1");
+            await initActivityTracker(auth, db);
+        } catch (error) {
+            console.warn("Could not initialize activity tracker:", error);
+        }
+        
         let charityActions = [];
         let currentUser = null;
 

@@ -310,6 +310,14 @@ const firebaseConfig = {
             }
         };
 
+        // Inicjalizuj śledzenie aktywności
+        try {
+            const { initActivityTracker } = await import("https://strzelca.pl/activity-tracker.mjs?v=2026-02-06-1");
+            await initActivityTracker(auth, db);
+        } catch (error) {
+            console.warn("Could not initialize activity tracker:", error);
+        }
+
         // Monitorowanie stanu logowania
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
