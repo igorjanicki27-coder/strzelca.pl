@@ -148,7 +148,7 @@
   // ====== UI / blokada ======
   var overlayEl = null;
   var modalEl = null;
-  var settingsBtnEl = null;
+  // Usunięto pływający przycisk ustawień (zostaje tylko link w stopce/menu).
 
   function ensureStyles() {
     if (document.getElementById("sc-consent-styles")) return;
@@ -169,9 +169,7 @@
       ".sc-consent-btn-primary:hover{filter:brightness(1.05);}" +
       ".sc-consent-btn-grow{flex:1 1 260px;min-width:220px;}" +
       ".sc-consent-link{color:#C19A6B;text-decoration:none;font-weight:800;}" +
-      ".sc-consent-link:hover{text-decoration:underline;}" +
-      ".sc-consent-settings{position:fixed;left:14px;bottom:14px;z-index:2147483645;border:1px solid #333;background:rgba(10,10,10,.85);color:#e5e5e5;padding:10px 12px;border-radius:999px;cursor:pointer;font-weight:800;font-size:12px;letter-spacing:.04em;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}" +
-      ".sc-consent-settings:hover{border-color:#C19A6B;}";
+      ".sc-consent-link:hover{text-decoration:underline;}";
     (document.head || document.documentElement).appendChild(style);
   }
 
@@ -186,18 +184,6 @@
       openConsentModal({ mode: "initial" });
     });
     document.documentElement.appendChild(overlayEl);
-  }
-
-  function createSettingsButtonIfMissing() {
-    if (settingsBtnEl && settingsBtnEl.isConnected) return;
-    settingsBtnEl = document.createElement("button");
-    settingsBtnEl.type = "button";
-    settingsBtnEl.className = "sc-consent-settings";
-    settingsBtnEl.textContent = "Ustawienia cookies";
-    settingsBtnEl.addEventListener("click", function () {
-      openConsentModal({ mode: "settings" });
-    });
-    document.documentElement.appendChild(settingsBtnEl);
   }
 
   function injectSettingsIntoUserMenus() {
@@ -356,7 +342,6 @@
       disableAnalyticsBestEffort();
       closeModal();
       removeLockUI();
-      createSettingsButtonIfMissing();
     });
 
     var btnAll = document.createElement("button");
@@ -368,7 +353,6 @@
       closeModal();
       removeLockUI();
       loadGoogleAnalytics();
-      createSettingsButtonIfMissing();
     });
 
     actions.appendChild(btnLeave);
@@ -397,7 +381,6 @@
 
   function handleEntry() {
     ensureStyles();
-    createSettingsButtonIfMissing();
 
     // Ustawienia przez URL: ?cookies=1 albo #cookies
     var wantSettings = false;
