@@ -22,6 +22,8 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
+    <!-- Wspólne poprawki responsywności -->
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-02-06-1" />
     <style>
       :root {
         --coyote: #c19a6b;
@@ -358,13 +360,13 @@
               <!-- Lewa kolumna (nick + email) -->
               <div class="text-center md:text-left">
                 <h1 id="display-name" class="text-3xl font-bold text-white mb-2 hover-tooltip">
-                  Ładowanie...
-                </h1>
-                <p
-                  id="user-email"
+              Ładowanie...
+            </h1>
+            <p
+              id="user-email"
                   class="email-status mb-4 font-semibold"
-                  title=""
-                ></p>
+              title=""
+            ></p>
               </div>
 
               <!-- Prawa kolumna (przyciski) - wyrównana do góry na desktop -->
@@ -372,34 +374,34 @@
                 <div class="flex justify-center md:justify-end">
                   <div class="w-full">
                     <div class="flex flex-col gap-3 w-full">
-                      <button
-                        type="button"
-                        id="open-profile-data-btn"
+              <button
+                type="button"
+                id="open-profile-data-btn"
                         class="h-11 w-full px-6 rounded-lg text-[11px] font-black uppercase tracking-widest border border-zinc-700 text-zinc-200 hover:text-white hover:border-coyote hover:bg-zinc-900/40 transition inline-flex items-center justify-center"
-                      >
-                        <i class="fa-solid fa-id-card mr-2"></i>
+              >
+                <i class="fa-solid fa-id-card mr-2"></i>
                         Dane konta
-                      </button>
+              </button>
 
                       <div class="flex gap-3 w-full">
-                        <button
-                          type="button"
-                          onclick="window.changePassword && window.changePassword()"
+              <button
+                type="button"
+                onclick="window.changePassword && window.changePassword()"
                           class="h-11 w-1/2 px-6 rounded-lg text-[11px] font-black uppercase tracking-widest border border-zinc-700 text-zinc-200 hover:text-white hover:border-zinc-500 hover:bg-zinc-900/40 transition inline-flex items-center justify-center"
-                        >
-                          <i class="fa-solid fa-key mr-2"></i>
-                          Zmień hasło
-                        </button>
+              >
+                <i class="fa-solid fa-key mr-2"></i>
+                Zmień hasło
+              </button>
 
-                        <button
-                          type="button"
-                          onclick="window.logout && window.logout()"
+              <button
+                type="button"
+                onclick="window.logout && window.logout()"
                           class="h-11 w-1/2 px-6 rounded-lg text-[11px] font-black uppercase tracking-widest border border-red-900 text-red-200 hover:text-white hover:border-red-700 hover:bg-red-900/20 transition inline-flex items-center justify-center"
                           title="Wyloguj się"
-                        >
-                          <i class="fa-solid fa-right-from-bracket mr-2"></i>
-                          Wyloguj się
-                        </button>
+              >
+                <i class="fa-solid fa-right-from-bracket mr-2"></i>
+                Wyloguj się
+              </button>
                       </div>
                     </div>
                   </div>
@@ -1002,13 +1004,19 @@ const firebaseConfig = {
       let reviewTargetUid = null;
       let reviewTargetDisplayName = "";
 
+      // Stały avatar dla administratorów (w repo jest obecnie: /admin/Avatar_admin.png).
+      // Jeśli zmienisz nazwę pliku na /admin/avatar_admin.jpg, podmień stałą poniżej.
+      const ADMIN_AVATAR_URL = "https://strzelca.pl/admin/Avatar_admin.png";
+      const isAdminRole = (role) => String(role || "").toLowerCase() === "admin";
+
       async function syncPublicProfileFromPrivate() {
         if (!currentUser || !isViewingOwnProfile || !userProfile) return;
         try {
+          const adminForcedAvatar = isAdminRole(userProfile.role) ? ADMIN_AVATAR_URL : "";
           // publiczny profil zawiera tylko nick + avatar
           const publicDoc = {
             displayName: String(userProfile.displayName || "").trim(),
-            avatar: userProfile.avatar || "",
+            avatar: adminForcedAvatar || userProfile.avatar || "",
             updatedAt: new Date(),
           };
           if (!publicDoc.displayName) return;
@@ -1117,16 +1125,10 @@ const firebaseConfig = {
       // Listener stanu autoryzacji z logiką przekierowań
       onAuthStateChanged(auth, async (user) => {
         if (user) {
-          // Odśwież dane użytkownika przed sprawdzeniem weryfikacji
+          // Odśwież dane użytkownika (best-effort)
           try {
             await user.reload();
-            console.log("Użytkownik zalogowany:", user.email, "emailVerified:", user.emailVerified);
-
-            // Jeśli użytkownik jest niezweryfikowany: tryb ograniczony (bez wylogowania) -> strona po rejestracji
-            if (!user.emailVerified) {
-              window.location.href = "./po.rejestracji.html";
-              return;
-            }
+            console.log("Użytkownik zalogowany:", user.email);
 
             currentUser = user;
 
@@ -1407,10 +1409,9 @@ const firebaseConfig = {
           }
           if (!isViewingOwnProfile) return;
 
-          // (opcjonalnie) wymóg weryfikacji emaila – zostawiamy jak wcześniej
-          if (!currentUser.emailVerified) {
-            alert("Aby ustawić avatar, aktywuj konto (zweryfikuj email).");
-            window.location.href = "./po.rejestracji.html";
+          // Admin ma stały avatar
+          if (isAdminRole(userProfile?.role || selfPrivateProfile?.role)) {
+            alert("Avatar administratora jest stały i nie może być zmieniany.");
             return;
           }
 
@@ -1440,6 +1441,12 @@ const firebaseConfig = {
             return;
           }
           if (!isViewingOwnProfile) return;
+
+          // Admin ma stały avatar
+          if (isAdminRole(userProfile?.role || selfPrivateProfile?.role)) {
+            alert("Avatar administratora jest stały i nie może być zmieniany.");
+            return;
+          }
 
           const url = avatarUrlForFile(file);
 
@@ -1498,6 +1505,38 @@ const firebaseConfig = {
           }
           if (!isViewingOwnProfile) return;
 
+          // Admin ma stały avatar
+          if (isAdminRole(userProfile?.role || selfPrivateProfile?.role)) {
+            // ustaw stały avatar admina
+            await updateDoc(doc(db, "userProfiles", currentUser.uid), {
+              avatar: ADMIN_AVATAR_URL,
+              avatarFile: "",
+              avatarSource: "admin_default",
+              avatarUpdatedAt: new Date(),
+            });
+            try {
+              await setDoc(
+                doc(db, "publicProfiles", currentUser.uid),
+                {
+                  displayName: String(userProfile?.displayName || "").trim(),
+                  avatar: ADMIN_AVATAR_URL,
+                  updatedAt: new Date(),
+                },
+                { merge: true },
+              );
+            } catch (e) {
+              console.warn("Public profile avatar sync failed (ignored):", e?.message || e);
+            }
+
+            if (userProfile) userProfile.avatar = ADMIN_AVATAR_URL;
+            if (avatarDisplay) {
+              avatarDisplay.innerHTML = `<img src="${ADMIN_AVATAR_URL}" alt="Avatar" class="avatar">`;
+            }
+            window.closeAvatarPicker && window.closeAvatarPicker();
+            alert("Przywrócono domyślny avatar administratora.");
+            return;
+          }
+
           if (avatarDisplay) {
             avatarDisplay.innerHTML = `<div class="text-zinc-400 text-sm">Przywracanie domyślnego avatara...</div>`;
           }
@@ -1543,28 +1582,16 @@ const firebaseConfig = {
         }
       }
 
-      // Status weryfikacji emaila w UI
-      async function updateVerificationStatus() {
+      // Status konta w UI (logika weryfikacji emaila jest sprawdzana wyłącznie przy logowaniu)
+      async function updateAccountStatus() {
         try {
           if (!currentUser) return;
-
-          // Upewnij się, że status jest aktualny (best-effort)
-          try {
-            await currentUser.reload();
-          } catch {}
 
           const emailEl = document.getElementById("user-email");
           const nameEl = document.getElementById("display-name");
           if (!emailEl || !nameEl) return;
 
-          const verified = currentUser.emailVerified === true;
-          emailEl.classList.remove("email-status-verified", "email-status-unverified");
-          emailEl.classList.add(
-            verified ? "email-status-verified" : "email-status-unverified"
-          );
-
           // Tooltip przeniesiony na nazwę użytkownika
-          const statusText = verified ? "Email zweryfikowany" : "Email niezweryfikowany";
           const memberText = memberSinceLabel ? `Członek od: ${memberSinceLabel}` : "";
 
           const role = (userProfile?.role || selfPrivateProfile?.role || "user").toString();
@@ -1573,7 +1600,7 @@ const firebaseConfig = {
             role === "company" ? "Status: Firma" :
             "Status: Użytkownik";
 
-          const tooltip = [roleLabel, statusText, memberText].filter(Boolean).join("\n");
+          const tooltip = [roleLabel, memberText].filter(Boolean).join("\n");
           nameEl.title = tooltip;
           nameEl.dataset.tooltip = tooltip;
 
@@ -1581,7 +1608,7 @@ const firebaseConfig = {
           emailEl.title = "";
           try { delete emailEl.dataset.tooltip; } catch {}
         } catch (e) {
-          console.warn("updateVerificationStatus failed (ignored):", e?.message || e);
+          console.warn("updateAccountStatus failed (ignored):", e?.message || e);
         }
       }
 
@@ -1637,10 +1664,27 @@ const firebaseConfig = {
               document.getElementById("user-email").textContent = "";
             }
 
-            // Ustaw avatar
+            // Ustaw avatar (admin ma stały)
             const avatarDisplay = document.getElementById("avatar-display");
-            if (userProfile.avatar) {
-              avatarDisplay.innerHTML = `<img src="${userProfile.avatar}" alt="Avatar" class="avatar">`;
+            const effectiveAvatar = isAdminRole(userProfile.role) ? ADMIN_AVATAR_URL : (userProfile.avatar || "");
+
+            // Jeśli to admin i ogląda własny profil, zapisujemy wymuszony avatar do profilu (i publicznego profilu)
+            if (isViewingOwnProfile && isAdminRole(userProfile.role) && userProfile.avatar !== ADMIN_AVATAR_URL) {
+              try {
+                await updateDoc(doc(db, "userProfiles", currentUser.uid), {
+                  avatar: ADMIN_AVATAR_URL,
+                  avatarFile: "",
+                  avatarSource: "admin_default",
+                  avatarUpdatedAt: new Date(),
+                });
+                userProfile.avatar = ADMIN_AVATAR_URL;
+              } catch (e) {
+                console.warn("Admin avatar enforce (private) failed (ignored):", e?.message || e);
+              }
+            }
+
+            if (effectiveAvatar) {
+              avatarDisplay.innerHTML = `<img src="${effectiveAvatar}" alt="Avatar" class="avatar">`;
             } else {
               avatarDisplay.innerHTML = getDefaultAvatar(userProfile.gender);
             }
@@ -1699,8 +1743,8 @@ const firebaseConfig = {
               // Zapisz snapshot wartości formularza, żeby "Wyjdź" mógł przywrócić stan bez zapisywania
               captureProfileFormSnapshot();
 
-              // Aktualizuj status weryfikacji emaila
-              await updateVerificationStatus();
+              // Aktualizuj status konta
+              await updateAccountStatus();
             } else {
               // Dla cudzych profili nie pokazujemy statusu weryfikacji emaila zalogowanego usera
               const emailEl = document.getElementById("user-email");

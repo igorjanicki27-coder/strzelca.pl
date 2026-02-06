@@ -1,7 +1,6 @@
 const API_URL = "https://strzelca.pl/api/me";
 const LOGIN_URL = "https://konto.strzelca.pl/logowanie.html";
-const PROFILE_URL_VERIFIED = "https://konto.strzelca.pl/profil.html";
-const PROFILE_URL_UNVERIFIED = "https://konto.strzelca.pl/po.rejestracji.html";
+const PROFILE_URL = "https://konto.strzelca.pl/profil.html";
 
 function ensureStyles() {
   if (document.getElementById("strzelca-auth-widget-style")) return;
@@ -145,8 +144,8 @@ function renderLoggedOut(root) {
   `;
 }
 
-function renderLoggedIn(root, { avatarUrl, displayName, emailVerified }) {
-  const href = emailVerified ? PROFILE_URL_VERIFIED : PROFILE_URL_UNVERIFIED;
+function renderLoggedIn(root, { avatarUrl, displayName }) {
+  const href = PROFILE_URL;
   const letter = firstLetter(displayName);
   const avatar = avatarUrl
     ? `<span class="strzelca-auth-avatar"><img src="${avatarUrl}" alt="Avatar" /></span>`
@@ -184,6 +183,17 @@ function ensureAdminFab() {
   return el;
 }
 
+function isAdminPanelPage() {
+  try {
+    const host = (window.location?.hostname || "").toLowerCase();
+    const path = (window.location?.pathname || "").toLowerCase();
+    // Panel admina jest hostowany na strzelca.pl/admin/...
+    return host === "strzelca.pl" && (path === "/admin" || path.startsWith("/admin/"));
+  } catch {
+    return false;
+  }
+}
+
 async function fetchMeWithTimeout(ms = 4500) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), ms);
@@ -218,14 +228,18 @@ async function main() {
       renderLoggedIn(root, {
         avatarUrl: data?.profile?.avatar || null,
         displayName: data?.profile?.displayName || null,
-        emailVerified: data?.emailVerified === true,
       });
 
       // Admin FAB
       try {
         const fab = ensureAdminFab();
-        if (data?.isAdmin === true) fab.style.display = "inline-flex";
-        else fab.style.display = "none";
+        if (isAdminPanelPage()) {
+          fab.style.display = "none";
+        } else if (data?.isAdmin === true) {
+          fab.style.display = "inline-flex";
+        } else {
+          fab.style.display = "none";
+        }
       } catch {}
 
       return;

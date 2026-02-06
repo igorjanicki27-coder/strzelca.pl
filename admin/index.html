@@ -23,7 +23,7 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
     <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="/shared.css?v=2026-02-06-1" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-02-06-1" />
     <style>
       :root {
         --coyote: #c19a6b;
@@ -573,46 +573,40 @@
       });
     </script>
 
-    <!-- Sekcja logowania -->
+    <!-- Sekcja startowa (bez osobnego logowania admina) -->
     <div
       id="login-section"
       class="h-full flex items-start justify-center p-6 pt-16 md:pt-20 lg:pt-24"
     >
       <div class="admin-card max-w-md w-full">
         <h1
-          class="text-3xl font-black uppercase italic font-[Orbitron] text-center mb-8"
+          class="text-3xl font-black uppercase italic font-[Orbitron] text-center mb-6"
         >
           <span class="coyote-text">PANEL</span>
           <span class="admin-text">ADMINISTRATORA</span>
         </h1>
 
-        <form id="admin-login-form" class="space-y-6">
-          <div>
-            <label
-              class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
-              >Login</label
-            >
-            <input type="text" id="admin-email" placeholder="Login" required />
+        <div class="text-center text-zinc-300">
+          <div class="text-sm text-zinc-400">
+            Sprawdzanie logowania i uprawnień…
+          </div>
+          <div class="mt-5">
+            <i class="fa-solid fa-spinner fa-spin text-zinc-400 text-2xl"></i>
           </div>
 
-          <div>
-            <label
-              class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
-              >Hasło</label
-            >
-            <input
-              type="password"
-              id="admin-password"
-              placeholder="Hasło"
-              required
-            />
+          <div class="mt-7 text-xs text-zinc-500 leading-relaxed">
+            Jeśli nie jesteś zalogowany, za chwilę nastąpi przekierowanie do wspólnego logowania.
           </div>
 
-          <button type="submit" class="btn-admin w-full" id="admin-login-btn">
-            <i class="fa-solid fa-sign-in-alt mr-2"></i>
-            ZALOGUJ
-          </button>
-        </form>
+          <div class="mt-6">
+            <a
+              class="btn-admin inline-flex items-center justify-center w-full"
+              href="https://konto.strzelca.pl/logowanie.html?redirect=https%3A%2F%2Fstrzelca.pl%2Fadmin%2Findex.html"
+            >
+              Przejdź do logowania
+            </a>
+          </div>
+        </div>
 
         <div
           id="login-status"
@@ -3175,9 +3169,8 @@ const firebaseConfig = {
       });
 
       // Logowanie administratora
-      document
-        .getElementById("admin-login-form")
-        .addEventListener("submit", async (e) => {
+      const legacyAdminLoginForm = document.getElementById("admin-login-form");
+      legacyAdminLoginForm?.addEventListener?.("submit", async (e) => {
           e.preventDefault();
 
           const login = document.getElementById("admin-email").value.trim();
@@ -3386,6 +3379,15 @@ const firebaseConfig = {
             clearInterval(window.sessionInterval);
             window.sessionInterval = null;
           } // Zatrzymaj UI updater przy wylogowaniu
+
+          // Brak sesji: przekieruj do wspólnego logowania (bez pokazywania osobnego logowania admina)
+          try {
+            const target = new URL("https://konto.strzelca.pl/logowanie.html");
+            target.searchParams.set("redirect", "https://strzelca.pl/admin/index.html");
+            window.location.replace(target.toString());
+          } catch {
+            window.location.replace("https://konto.strzelca.pl/logowanie.html?redirect=https%3A%2F%2Fstrzelca.pl%2Fadmin%2Findex.html");
+          }
         }
       });
 
@@ -8986,58 +8988,10 @@ const firebaseConfig = {
       // Globalne funkcje pomocnicze dla lokalnych administratorów
 
 
-      // Obsługa formularza logowania administratora
+      // Wyłączone: osobne logowanie administratora
+      // Panel korzysta z wspólnego logowania (`konto.strzelca.pl/logowanie.html`) + SSO cookie.
       document.addEventListener('DOMContentLoaded', function() {
-        const loginForm = document.getElementById('admin-login-form');
-        if (loginForm) {
-          loginForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            const login = document.getElementById('admin-email').value.trim();
-            const password = document.getElementById('admin-password').value;
-
-            if (!login || !password) {
-              showStatus('Wprowadź login i hasło administratora.', true);
-              return;
-            }
-
-            // Walidacja formatu email
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(login)) {
-              showStatus('Wprowadź prawidłowy adres email.', true);
-              return;
-            }
-
-            try {
-              // Ustaw persistence na session (użytkownik nie jest pamiętany)
-              await setPersistence(auth, browserSessionPersistence);
-
-              // Logowanie wyłącznie przez Firebase Authentication
-              await signInWithEmailAndPassword(auth, login, password);
-
-              // Sprawdź rolę administratora w Firestore
-              const user = auth.currentUser;
-              if (user) {
-                const userDoc = await getDoc(doc(db, "userProfiles", user.uid));
-                if (userDoc.exists()) {
-                  const userData = userDoc.data();
-                  if (userData.role === "admin") {
-                    showStatus('Logowanie administratora pomyślne.');
-                    // Firebase Auth listener automatycznie pokaże panel
-                    return;
-                  }
-                }
-              }
-
-              // Jeśli użytkownik nie ma roli admin, wyloguj
-              await signOut(auth);
-              showStatus('<strong style="color: #dc2626;">Błędne dane. Nieupoważnionym wstęp wzbroniony.</strong>', true);
-            } catch (error) {
-              console.error('Login error:', error);
-              showStatus('<strong style="color: #dc2626;">Błędne dane. Nieupoważnionym wstęp wzbroniony.</strong>', true);
-            }
-          });
-        }
+        // no-op
       });
 
       // Inicjalizacja event listenera dla zmiany kategorii czatu

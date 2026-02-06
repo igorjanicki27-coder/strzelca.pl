@@ -13,6 +13,8 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
+    <!-- Wspólne poprawki responsywności -->
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-02-06-1" />
     <style>
       :root {
         --coyote: #c19a6b;
@@ -392,6 +394,8 @@
         browserLocalPersistence,
         browserSessionPersistence,
         onAuthStateChanged,
+        signOut,
+        sendEmailVerification,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
       import {
         ensureFirebaseSSO,
@@ -452,7 +456,89 @@
           // Flagi, żeby nie przerywać logowania/przekierowania zanim ustawimy cookie SSO
           let isLoginFlowInProgress = false;
           let isNavigatingAway = false;
+          let isSigningOut = false;
           const POST_LOGIN_REDIRECT_URL = "https://strzelca.pl/";
+          const UNVERIFIED_REDIRECT_BASE = "./weryfikacja.html";
+          const urlParams = new URLSearchParams(window.location.search || "");
+          const isResendMode = urlParams.get("resend") === "1";
+
+          function unverifiedRedirectUrl({ email, sent } = {}) {
+            try {
+              const u = new URL(UNVERIFIED_REDIRECT_BASE, window.location.href);
+              if (email) u.searchParams.set("email", email);
+              if (sent === true) u.searchParams.set("sent", "1");
+              return u.toString();
+            } catch {
+              const qs = [];
+              if (email) qs.push(`email=${encodeURIComponent(email)}`);
+              if (sent === true) qs.push("sent=1");
+              return UNVERIFIED_REDIRECT_BASE + (qs.length ? `?${qs.join("&")}` : "");
+            }
+          }
+
+          // Prefill email (np. z weryfikacja.html?email=...)
+          try {
+            const emailPrefill = (urlParams.get("email") || "").trim();
+            const emailEl = document.getElementById("email");
+            if (emailPrefill && emailEl) emailEl.value = emailPrefill;
+          } catch {}
+
+          // Tryb "resend": podmień etykietę przycisku (UX)
+          try {
+            if (isResendMode) {
+              const btn = document.getElementById("login-btn");
+              if (btn) {
+                btn.innerHTML =
+                  '<i class="fa-solid fa-paper-plane mr-2"></i>WYŚLIJ PONOWNIE';
+              }
+              const statusEl = document.getElementById("status-message");
+              if (statusEl) {
+                statusEl.textContent =
+                  "Aby wysłać ponownie mail aktywacyjny, wpisz hasło i zatwierdź.";
+                statusEl.className =
+                  "mt-6 p-4 rounded-lg text-center text-sm bg-blue-900/50 text-blue-300 border border-blue-700";
+                statusEl.style.display = "block";
+              }
+            }
+          } catch {}
+
+          async function handleUnverifiedUser(user) {
+            const email = user?.email || "";
+            // Wysyłkę ponownego maila robimy tylko na żądanie użytkownika (tryb resend)
+            let sent = false;
+            if (isResendMode) {
+              try {
+                await sendEmailVerification(user, {
+                  url: "https://konto.strzelca.pl/akcja.html?mode=verifyEmail",
+                  handleCodeInApp: true,
+                });
+                sent = true;
+              } catch (e) {
+                console.warn("Resend verification failed (ignored):", e?.message || e);
+              }
+            }
+
+            // Wyloguj i przekieruj na stronę informacyjną
+            try {
+              // SSO: wyczyść cookie wspólnej sesji
+              try {
+                await fetch("https://strzelca.pl/api/sso-session-logout", {
+                  method: "POST",
+                  credentials: "include",
+                });
+              } catch (e) {
+                console.warn("SSO logout failed (ignored):", e?.message || e);
+              }
+
+              isSigningOut = true;
+              await signOut(auth);
+            } catch (e) {
+              console.warn("SignOut after unverified failed (ignored):", e?.message || e);
+            } finally {
+              isNavigatingAway = true;
+              window.location.href = unverifiedRedirectUrl({ email, sent });
+            }
+          }
 
           // Sprawdź aktualnego użytkownika przed ustawieniem listenera
           const checkCurrentUser = async () => {
@@ -466,9 +552,8 @@
                 );
 
                 if (!currentUser.emailVerified) {
-                  // Tryb ograniczony: zostaje zalogowany, ale prowadzi na stronę po rejestracji
-                  isNavigatingAway = true;
-                  window.location.href = "./po.rejestracji.html";
+                  // Tylko przy logowaniu: niezweryfikowany -> strona info + pozostaje niezalogowany
+                  await handleUnverifiedUser(currentUser);
                 } else {
                   // odśwież cookie SSO (best-effort) zanim przejdziemy na inną subdomenę
                   try {
@@ -501,9 +586,6 @@
 
           await checkCurrentUser();
 
-          // Flaga zapobiegająca wielokrotnemu wylogowaniu
-          let isSigningOut = false;
-
           // Listener stanu autoryzacji - jeśli użytkownik już jest zalogowany, sprawdź weryfikację
           onAuthStateChanged(auth, async (user) => {
             if (isLoginFlowInProgress || isNavigatingAway) return;
@@ -524,8 +606,7 @@
                 );
 
                 if (!user.emailVerified) {
-                  isNavigatingAway = true;
-                  window.location.href = "./po.rejestracji.html";
+                  await handleUnverifiedUser(user);
                   return;
                 }
 
@@ -643,6 +724,18 @@
                   await user.reload();
                 } catch {}
 
+                if (!user.emailVerified) {
+                  showStatus(
+                    isResendMode
+                      ? "Wysyłam ponownie mail aktywacyjny i przenoszę na stronę z instrukcją potwierdzenia konta."
+                      : "Email nie został jeszcze zweryfikowany. Przenoszę na stronę z instrukcją potwierdzenia konta.",
+                    true
+                  );
+                  await handleUnverifiedUser(user);
+                  return;
+                }
+
+                // Dopiero teraz (po weryfikacji emaila) ustawiamy cookie SSO
                 try {
                   await syncSessionCookieFromFirebaseUser(auth, {
                     minIntervalMinutes: 0,
@@ -652,18 +745,6 @@
                     "SSO session-login (submit) failed (ignored):",
                     ssoErr?.message || ssoErr
                   );
-                }
-
-                if (!user.emailVerified) {
-                  showStatus(
-                    "Konto nie zostało jeszcze aktywowane. Sprawdź swoją skrzynkę email i kliknij link aktywacyjny.",
-                    true
-                  );
-                  setTimeout(() => {
-                    isNavigatingAway = true;
-                    window.location.href = "./po.rejestracji.html";
-                  }, 1500);
-                  return;
                 }
 
                 showStatus("Zalogowano pomyślnie! Przekierowanie...");

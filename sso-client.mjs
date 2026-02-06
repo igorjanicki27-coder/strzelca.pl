@@ -56,7 +56,7 @@ export async function ensureFirebaseSSO(auth) {
     await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 }); // natychmiast
   } catch {}
 
-  return { status: "signed-in", emailVerified: data.emailVerified === true };
+  return { status: "signed-in" };
 }
 
 function nowMs() {
@@ -111,13 +111,11 @@ export async function syncSessionCookieFromFirebaseUser(auth, { minIntervalMinut
     }
 
     setLastSyncMs(t);
-    return { status: "ok", emailVerified: data.emailVerified === true };
+    return { status: "ok" };
   } catch (e) {
     return { status: "error", error: e?.message || String(e) };
   }
 }
 
-export function profileTargetUrl({ emailVerified, verifiedUrl, unverifiedUrl }) {
-  return emailVerified ? verifiedUrl : unverifiedUrl;
-}
+// (usunięto) profileTargetUrl - logika weryfikacji emaila jest sprawdzana wyłącznie przy logowaniu
 

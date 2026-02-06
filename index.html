@@ -145,7 +145,7 @@
     </style>
 
     <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="/shared.css?v=2026-02-06-1" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-02-06-1" />
 
     <!-- Cookies/zgody + warunkowe ładowanie analityki -->
     <script src="https://strzelca.pl/consent.js?v=2026-02-06-1"></script>
@@ -424,7 +424,6 @@
         signOut,
         setPersistence,
         browserLocalPersistence,
-        sendEmailVerification,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
       
@@ -527,10 +526,7 @@ const firebaseConfig = {
         if (currentUser) {
           try {
             await currentUser.reload();
-            console.log(
-              "Sprawdzanie aktualnego użytkownika na stronie głównej, emailVerified:",
-              currentUser.emailVerified
-            );
+            console.log("Sprawdzanie aktualnego użytkownika na stronie głównej");
           } catch (error) {
             console.warn("Błąd sprawdzania aktualnego użytkownika na stronie głównej:", error);
           }
@@ -559,50 +555,23 @@ const firebaseConfig = {
         if (initialAuthCheck && !user) {
           const currentUser = auth.currentUser;
           if (!currentUser) {
-            console.log("Początkowe wywołanie onAuthStateChanged z user = null - ignoruję (brak aktualnego użytkownika)");
+            console.log(
+              "Początkowe wywołanie onAuthStateChanged z user = null - ignoruję (brak aktualnego użytkownika)"
+            );
             initialAuthCheck = false;
             return;
-          } else {
-            // Jest aktualny użytkownik, więc to nie jest początkowe wywołanie
-            // Może być to po przekierowaniu z login.html
-            console.log("Wywołanie z user = null, ale jest aktualny użytkownik - kontynuuję (może być po przekierowaniu)");
-            // Nie ignoruj - użytkownik może być zalogowany, ale Firebase jeszcze nie zsynchronizował stanu
-            initialAuthCheck = false;
-            // Sprawdź aktualnego użytkownika
-            try {
-              await currentUser.reload();
-              if (currentUser.emailVerified) {
-                console.log("Aktualny użytkownik jest zweryfikowany - kontynuuj normalnie");
-                // Ustaw user na currentUser, aby kontynuować normalnie
-                user = currentUser;
-              } else {
-                console.log("Aktualny użytkownik niezweryfikowany - wylogowanie");
-                isSigningOut = true;
-                await signOut(auth);
-                window.location.href = "https://konto.strzelca.pl/po.rejestracji.html";
-                return;
-              }
-            } catch (reloadError) {
-              console.warn("Błąd sprawdzania aktualnego użytkownika:", reloadError);
-              initialAuthCheck = false;
-              return;
-            }
           }
+          // Jest aktualny użytkownik, więc kontynuujemy jako zalogowany
+          initialAuthCheck = false;
+          user = currentUser;
         }
         initialAuthCheck = false;
 
         console.log(
           "Auth state changed:",
           user ? "logged in" : "logged out",
-          user?.email || "",
-          user?.emailVerified ? "(verified)" : "(not verified)"
+          user?.email || ""
         );
-
-        // Jeśli email niezweryfikowany: NIE wylogowujemy (tryb ograniczony).
-        // Kliknięcie "profil" ma prowadzić do strony po rejestracji.
-        if (user && !user.emailVerified) {
-          console.warn("Użytkownik zalogowany, ale email niezweryfikowany (tryb ograniczony)");
-        }
 
         currentUser = user;
         updateUserInterface(user);
@@ -633,13 +602,7 @@ const firebaseConfig = {
           // Sprawdź czy użytkownik ma zweryfikowany email (tryb ograniczony, bez wylogowania)
           const profileLink = document.getElementById("profile-link");
           if (profileLink) {
-            profileLink.href = user.emailVerified
-              ? "https://konto.strzelca.pl/profil.html"
-              : "https://konto.strzelca.pl/po.rejestracji.html";
-          }
-          if (!user.emailVerified) {
-            console.log("Użytkownik ma niezweryfikowany email (tryb ograniczony)");
-            showEmailVerificationNotice();
+            profileLink.href = "https://konto.strzelca.pl/profil.html";
           }
 
           // Pobierz awatar z profilu użytkownika
@@ -690,70 +653,7 @@ const firebaseConfig = {
         }
       };
 
-      // Funkcja wyświetlająca komunikat o weryfikacji emaila
-      function showEmailVerificationNotice() {
-        // Sprawdź czy komunikat już istnieje
-        if (document.getElementById('email-verification-notice')) {
-          return;
-        }
-
-        const notice = document.createElement('div');
-        notice.id = 'email-verification-notice';
-        notice.className = 'fixed top-4 right-4 bg-yellow-500 text-black px-4 py-3 rounded-lg shadow-lg z-50 max-w-md';
-        notice.innerHTML = `
-          <div class="flex items-start">
-            <div class="flex-shrink-0">
-              <i class="fas fa-exclamation-triangle"></i>
-            </div>
-            <div class="ml-3">
-              <p class="text-sm font-medium">
-                Email nie został jeszcze zweryfikowany
-              </p>
-              <p class="text-sm mt-1">
-                Sprawdź swoją skrzynkę email i kliknij link aktywacyjny, aby móc korzystać z pełnej funkcjonalności systemu.
-              </p>
-              <div class="mt-2">
-                <button onclick="resendVerificationEmail()" class="text-black underline text-sm hover:no-underline">
-                  Wyślij ponownie link aktywacyjny
-                </button>
-                <button onclick="dismissVerificationNotice()" class="ml-4 text-black underline text-sm hover:no-underline">
-                  Zamknij
-                </button>
-              </div>
-            </div>
-          </div>
-        `;
-
-        document.body.appendChild(notice);
-
-        // Auto-ukrycie po 30 sekundach
-        setTimeout(() => {
-          dismissVerificationNotice();
-        }, 30000);
-      }
-
-      // Funkcja wysyłająca ponownie email weryfikacyjny
-      window.resendVerificationEmail = async () => {
-        if (!currentUser) return;
-
-        try {
-          await sendEmailVerification(currentUser, {
-            url: window.location.origin + '/index.html'
-          });
-          alert('Link aktywacyjny został wysłany ponownie na Twój adres email.');
-        } catch (error) {
-          console.error('Błąd wysyłania emaila weryfikacyjnego:', error);
-          alert('Wystąpił błąd podczas wysyłania emaila. Spróbuj ponownie później.');
-        }
-      };
-
-      // Funkcja ukrywająca komunikat
-      window.dismissVerificationNotice = () => {
-        const notice = document.getElementById('email-verification-notice');
-        if (notice) {
-          notice.remove();
-        }
-      };
+      // (usunięto) logikę weryfikacji emaila poza procesem logowania
 
       // Zamykanie menu po kliknięciu poza nim
       document.addEventListener("click", (event) => {
