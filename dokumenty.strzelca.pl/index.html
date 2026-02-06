@@ -178,12 +178,12 @@
 
             <!-- Regulamin Platformy -->
             <div class="accordion-item">
-                <div class="accordion-header" onclick="toggleAccordion('regulamin-platformy')">
+                <div class="accordion-header" onclick="openDocModal('regulamin-platformy')">
                     <div class="flex items-center gap-3">
                         <i class="fas fa-users text-coyote text-xl"></i>
                         <span class="font-bold text-lg">Regulamin Platformy</span>
                     </div>
-                    <i class="fas fa-chevron-down accordion-icon"></i>
+                    <i class="fas fa-up-right-from-square text-zinc-400"></i>
                 </div>
                 <div id="regulamin-platformy" class="accordion-content">
                     <div class="accordion-body">
@@ -321,12 +321,12 @@
 
             <!-- Regulamin Sklepu i Serwisu -->
             <div class="accordion-item">
-                <div class="accordion-header" onclick="toggleAccordion('regulamin-sklepu')">
+                <div class="accordion-header" onclick="openDocModal('regulamin-sklepu')">
                     <div class="flex items-center gap-3">
                         <i class="fas fa-store text-coyote text-xl"></i>
                         <span class="font-bold text-lg">Regulamin Sklepu i Serwisu</span>
                     </div>
-                    <i class="fas fa-chevron-down accordion-icon"></i>
+                    <i class="fas fa-up-right-from-square text-zinc-400"></i>
                 </div>
                 <div id="regulamin-sklepu" class="accordion-content">
                     <div class="accordion-body">
@@ -391,12 +391,12 @@
 
             <!-- Polityka Prywatności Platformy -->
             <div class="accordion-item">
-                <div class="accordion-header" onclick="toggleAccordion('polityka-prywatnosci-platformy')">
+                <div class="accordion-header" onclick="openDocModal('polityka-prywatnosci-platformy')">
                     <div class="flex items-center gap-3">
                         <i class="fas fa-user-shield text-coyote text-xl"></i>
                         <span class="font-bold text-lg">Polityka Prywatności Platformy</span>
                     </div>
-                    <i class="fas fa-chevron-down accordion-icon"></i>
+                    <i class="fas fa-up-right-from-square text-zinc-400"></i>
                 </div>
                 <div id="polityka-prywatnosci-platformy" class="accordion-content">
                     <div class="accordion-body">
@@ -579,12 +579,12 @@
 
             <!-- Polityka Prywatności i Cookies (Sklep) -->
             <div class="accordion-item">
-                <div class="accordion-header" onclick="toggleAccordion('polityka-prywatnosci')">
+                <div class="accordion-header" onclick="openDocModal('polityka-prywatnosci')">
                     <div class="flex items-center gap-3">
                         <i class="fas fa-shield-alt text-coyote text-xl"></i>
                         <span class="font-bold text-lg">Polityka Prywatności Sklepu</span>
                     </div>
-                    <i class="fas fa-chevron-down accordion-icon"></i>
+                    <i class="fas fa-up-right-from-square text-zinc-400"></i>
                 </div>
                 <div id="polityka-prywatnosci" class="accordion-content">
                     <div class="accordion-body">
@@ -630,12 +630,12 @@
 
             <!-- Regulamin Szkoleń Strzeleckich -->
             <div class="accordion-item">
-                <div class="accordion-header" onclick="toggleAccordion('regulamin-szkolen')">
+                <div class="accordion-header" onclick="openDocModal('regulamin-szkolen')">
                     <div class="flex items-center gap-3">
                         <i class="fas fa-graduation-cap text-coyote text-xl"></i>
                         <span class="font-bold text-lg">Regulamin Szkoleń Strzeleckich</span>
                     </div>
-                    <i class="fas fa-chevron-down accordion-icon"></i>
+                    <i class="fas fa-up-right-from-square text-zinc-400"></i>
                 </div>
                 <div id="regulamin-szkolen" class="accordion-content">
                     <div class="accordion-body">
@@ -882,34 +882,156 @@
         <a href="?cookies=1" class="hover:text-white transition ml-4">Ustawienia cookies</a>
     </footer>
 
+    <!-- Modal dokumentu (scrollowalne okno zamiast rozwijania na stronie) -->
+    <div id="doc-modal" class="fixed inset-0 z-[9999] hidden" role="dialog" aria-modal="true" aria-hidden="true">
+        <div id="doc-modal-overlay" class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+        <div class="relative mx-auto my-8 w-[95vw] max-w-4xl">
+            <div class="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden">
+                <div class="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+                    <div class="text-[10px] uppercase font-bold tracking-[0.4em] text-zinc-500">
+                        DOKUMENT
+                    </div>
+                    <div id="doc-modal-title" class="text-white font-semibold text-sm md:text-base text-center flex-1 px-4"></div>
+                    <button id="doc-modal-close" class="text-zinc-400 hover:text-white transition px-2" aria-label="Zamknij">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+                <div id="doc-modal-body" class="max-h-[78vh] overflow-y-auto"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // Dokumenty (te sekcje otwieramy w modalu)
+        const DOC_TITLES = {
+            "regulamin-platformy": "Regulamin Platformy",
+            "regulamin-sklepu": "Regulamin Sklepu i Serwisu",
+            "polityka-prywatnosci-platformy": "Polityka Prywatności Platformy",
+            "polityka-prywatnosci": "Polityka Prywatności Sklepu",
+            "regulamin-szkolen": "Regulamin Szkoleń Strzeleckich",
+        };
+
+        const PDF_ACCORDION_ID = "wzory-dokumentow";
+
+        let docModalState = null; // { bodyEl, originalParent, nextSibling }
+
+        function restoreDocModalContent() {
+            if (!docModalState) return;
+            const modalBody = document.getElementById("doc-modal-body");
+            const { bodyEl, originalParent, nextSibling } = docModalState;
+
+            try {
+                if (nextSibling && nextSibling.parentNode === originalParent) {
+                    originalParent.insertBefore(bodyEl, nextSibling);
+                } else {
+                    originalParent.appendChild(bodyEl);
+                }
+            } catch (_) {
+                // ignore restore issues
+            }
+
+            if (modalBody) modalBody.innerHTML = "";
+            docModalState = null;
+        }
+
+        function closeDocModal() {
+            const modal = document.getElementById("doc-modal");
+            if (!modal || modal.classList.contains("hidden")) return;
+
+            restoreDocModalContent();
+            modal.classList.add("hidden");
+            modal.setAttribute("aria-hidden", "true");
+            document.body.classList.remove("overflow-hidden");
+        }
+
+        function openDocModal(accordionId, opts = {}) {
+            const modal = document.getElementById("doc-modal");
+            const modalTitle = document.getElementById("doc-modal-title");
+            const modalBody = document.getElementById("doc-modal-body");
+            const closeBtn = document.getElementById("doc-modal-close");
+            const accordionContent = document.getElementById(accordionId);
+
+            if (!modal || !modalTitle || !modalBody || !accordionContent) return;
+
+            // Jeśli coś było wcześniej otwarte — najpierw przywróć
+            restoreDocModalContent();
+
+            const bodyEl = accordionContent.querySelector(".accordion-body");
+            if (!bodyEl) return;
+
+            modalTitle.textContent = DOC_TITLES[accordionId] || "Dokument";
+
+            docModalState = {
+                bodyEl,
+                originalParent: bodyEl.parentElement,
+                nextSibling: bodyEl.nextSibling,
+            };
+
+            modalBody.innerHTML = "";
+            modalBody.appendChild(bodyEl);
+
+            modal.classList.remove("hidden");
+            modal.setAttribute("aria-hidden", "false");
+            document.body.classList.add("overflow-hidden");
+
+            // Start od góry (lub przewiń do konkretnego miejsca)
+            modalBody.scrollTop = 0;
+
+            const scrollToId = opts && typeof opts.scrollToId === "string" ? opts.scrollToId : null;
+            if (scrollToId) {
+                setTimeout(() => {
+                    const target = document.getElementById(scrollToId);
+                    if (target) {
+                        target.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }
+                }, 50);
+            }
+
+            try {
+                closeBtn && closeBtn.focus && closeBtn.focus();
+            } catch (_) {
+                // ignore focus issues
+            }
+        }
+
         // Funkcja do obsługi akordeonów
         function toggleAccordion(accordionId) {
             const content = document.getElementById(accordionId);
+            if (!content) return;
             const header = content.previousElementSibling;
-            const icon = header.querySelector('.accordion-icon');
+            const icon = header ? header.querySelector('.accordion-icon') : null;
 
             // Zamknij wszystkie inne akordeony
             document.querySelectorAll('.accordion-content').forEach(item => {
                 if (item.id !== accordionId) {
                     item.classList.remove('open');
-                    item.previousElementSibling.classList.remove('active');
-                    item.previousElementSibling.querySelector('.accordion-icon').classList.remove('fa-chevron-up');
-                    item.previousElementSibling.querySelector('.accordion-icon').classList.add('fa-chevron-down');
+                    const prevHeader = item.previousElementSibling;
+                    if (prevHeader) {
+                        prevHeader.classList.remove('active');
+                        const prevIcon = prevHeader.querySelector('.accordion-icon');
+                        if (prevIcon) {
+                            prevIcon.classList.remove('fa-chevron-up');
+                            prevIcon.classList.add('fa-chevron-down');
+                        }
+                    }
                 }
             });
 
             // Przełącz bieżący akordeon
             if (content.classList.contains('open')) {
                 content.classList.remove('open');
-                header.classList.remove('active');
-                icon.classList.remove('fa-chevron-up');
-                icon.classList.add('fa-chevron-down');
+                header && header.classList.remove('active');
+                if (icon) {
+                    icon.classList.remove('fa-chevron-up');
+                    icon.classList.add('fa-chevron-down');
+                }
             } else {
                 content.classList.add('open');
-                header.classList.add('active');
-                icon.classList.remove('fa-chevron-down');
-                icon.classList.add('fa-chevron-up');
+                header && header.classList.add('active');
+                if (icon) {
+                    icon.classList.remove('fa-chevron-down');
+                    icon.classList.add('fa-chevron-up');
+                }
             }
         }
 
@@ -973,36 +1095,38 @@
                 }, 500);
             } else if (urlHash && urlHash.length > 1) {
                 // Uniwersalna obsługa hash'a:
-                // - jeśli hash wskazuje na element w środku akordeonu, rozwiń właściwy akordeon
-                // - przewiń do elementu (np. #cookies-platformy)
+                // - jeśli hash wskazuje na element w środku dokumentu, otwórz modal i przewiń do elementu (np. #cookies-platformy)
+                // - jeśli hash wskazuje na PDF-y, rozwiń akordeon
                 const targetId = urlHash.slice(1);
                 const targetEl = document.getElementById(targetId);
                 if (!targetEl) return;
 
-                // Jeśli hash wskazuje bezpośrednio na akordeon — rozwiń go
-                const directAccordion = targetEl.classList && targetEl.classList.contains('accordion-content');
-                if (directAccordion) {
-                    setTimeout(() => {
-                        toggleAccordion(targetId);
-                        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }, 200);
-                    return;
-                }
-
-                // W innym przypadku znajdź nadrzędny akordeon i rozwiń
                 const accordionContent = targetEl.closest ? targetEl.closest('.accordion-content') : null;
                 if (accordionContent && accordionContent.id) {
-                    setTimeout(() => {
-                        toggleAccordion(accordionContent.id);
-                        // Po otwarciu przewiń do konkretnego miejsca
+                    // PDF-y (akordeon) zostają jak były
+                    if (accordionContent.id === PDF_ACCORDION_ID) {
                         setTimeout(() => {
-                            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            toggleAccordion(PDF_ACCORDION_ID);
+                            setTimeout(() => {
+                                targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }, 150);
+                        }, 200);
+                        return;
+                    }
+
+                    // Dokumenty tekstowe otwieramy w modalu
+                    if (DOC_TITLES[accordionContent.id]) {
+                        setTimeout(() => {
+                            // jeśli hash wskazuje na sam kontener akordeonu, nie przewijamy do konkretnego id
+                            const scrollToId = targetId === accordionContent.id ? null : targetId;
+                            openDocModal(accordionContent.id, { scrollToId });
                         }, 150);
-                    }, 200);
-                } else {
-                    // Fallback: po prostu przewiń
-                    targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        return;
+                    }
                 }
+
+                // Fallback: po prostu przewiń
+                targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
 
@@ -1010,6 +1134,15 @@
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.accordion-icon').forEach(icon => {
                 icon.classList.add('fa-chevron-down');
+            });
+
+            // Obsługa modala
+            const overlay = document.getElementById("doc-modal-overlay");
+            const closeBtn = document.getElementById("doc-modal-close");
+            overlay && overlay.addEventListener("click", closeDocModal);
+            closeBtn && closeBtn.addEventListener("click", closeDocModal);
+            document.addEventListener("keydown", (e) => {
+                if (e.key === "Escape") closeDocModal();
             });
 
             // Obsługa hash'a przy załadowaniu strony
