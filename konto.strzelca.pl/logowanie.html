@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Logowanie - strzelca.pl [UPDATED]</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <style>
+      :root {
+        --coyote: #c19a6b;
+      }
+      body {
+        font-family: "Inter", sans-serif;
+        background:
+          linear-gradient(
+            rgba(10, 10, 10, 0.1) 0%,
+            rgba(10, 10, 10, 0.4) 50%,
+            #0a0a0a 100%
+          ),
+          url("https://strzelca.pl/tlo.png");
+        background-size: cover;
+        background-position: top center;
+        background-repeat: no-repeat;
+        background-color: #0a0a0a;
+        color: #e5e5e5;
+        margin: 0;
+        overflow-x: hidden;
+        min-height: 100vh;
+      }
+      .coyote-text {
+        color: var(--coyote);
+        font-family: "Orbitron";
+      }
+
+      input {
+        background: #111 !important;
+        border: 1px solid #222 !important;
+        color: white !important;
+        padding: 16px 20px !important;
+        border-radius: 12px;
+        width: 100%;
+        outline: none;
+        transition: 0.3s;
+      }
+      input:focus {
+        border-color: var(--coyote) !important;
+        background: #161616 !important;
+      }
+
+      input[type="checkbox"] {
+        width: auto !important;
+      }
+
+      /* Dodatkowe style dla lepszej widoczności zmian */
+      .checkbox-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .text-stacked {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+
+      input[type="checkbox"]:checked + i {
+        opacity: 1 !important;
+        transform: scale(1) !important;
+      }
+
+      .btn-login {
+        background: var(--coyote);
+        color: black;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        padding: 20px;
+        border-radius: 12px;
+        transition: 0.3s;
+        cursor: pointer;
+        width: 100%;
+      }
+      .btn-login:hover {
+        transform: scale(1.02);
+        box-shadow: 0 0 20px rgba(193, 154, 107, 0.2);
+      }
+      .btn-login:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .error-message {
+        color: #ef4444;
+        font-size: 14px;
+        margin-top: 5px;
+        display: none;
+      }
+    </style>
+
+    <!-- Cookies/zgody + warunkowe ładowanie analityki -->
+    <script src="https://strzelca.pl/consent.js?v=2026-02-06-1"></script>
+
+    <!-- Global functions -->
+    <script>
+      // Funkcja resetowania hasła - dostępna globalnie
+      window.resetPassword = async () => {
+        const email = document.getElementById("email").value.trim();
+
+        if (!email) {
+          showStatus("Wprowadź adres email, aby zresetować hasło.", true);
+          document.getElementById("email").focus();
+          return;
+        }
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          showStatus("Wprowadź prawidłowy adres email.", true);
+          document.getElementById("email").focus();
+          return;
+        }
+
+        // Pokaż status ładowania
+        const statusEl = document.getElementById("status-message");
+        statusEl.textContent = "Wysyłanie linku resetowania hasła...";
+        statusEl.className =
+          "mt-6 p-4 rounded-lg text-center text-sm bg-blue-900/50 text-blue-300 border border-blue-700";
+        statusEl.style.display = "block";
+
+        try {
+          // Dynamiczny import Firebase Auth
+          const { getAuth, sendPasswordResetEmail } = await import(
+            "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"
+          );
+
+          // Initialize Firebase (jeśli jeszcze nie jest)
+          if (!window.firebaseApp) {
+            const { initializeApp } = await import(
+              "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"
+            );
+
+            const firebaseConfig = {
+              apiKey: (await (
+                await fetch("/api/firebase-config", { cache: "no-store" })
+              ).json()).apiKey,
+              authDomain: "strzelca-pl.firebaseapp.com",
+              projectId: "strzelca-pl",
+              storageBucket: "strzelca-pl.appspot.com",
+              messagingSenderId: "511362047688",
+              appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
+              measurementId: "G-9EJ2R3JPVD",
+            };
+            window.firebaseApp = initializeApp(firebaseConfig);
+          }
+
+          const auth = getAuth(window.firebaseApp);
+          await sendPasswordResetEmail(auth, email, {
+            url: `https://konto.strzelca.pl/akcja.html?mode=resetPassword`,
+            handleCodeInApp: true,
+          });
+
+          statusEl.textContent =
+            "Link do resetowania hasła został wysłany na Twój adres email.";
+          statusEl.className =
+            "mt-6 p-4 rounded-lg text-center text-sm bg-green-900/50 text-green-300 border border-green-700";
+
+          setTimeout(() => {
+            statusEl.style.display = "none";
+          }, 5000);
+        } catch (error) {
+          console.error("Password reset error:", error);
+          let errorMessage =
+            "Wystąpił błąd podczas wysyłania linku resetowania hasła.";
+
+          if (error.code === "auth/user-not-found") {
+            errorMessage = "Nie znaleziono użytkownika z tym adresem email.";
+          } else if (error.code === "auth/invalid-email") {
+            errorMessage = "Nieprawidłowy format adresu email.";
+          } else if (error.code === "auth/too-many-requests") {
+            errorMessage = "Zbyt wiele prób. Spróbuj ponownie później.";
+          }
+
+          statusEl.textContent = errorMessage;
+          statusEl.className =
+            "mt-6 p-4 rounded-lg text-center text-sm bg-red-900/50 text-red-300 border border-red-700";
+
+          setTimeout(() => {
+            statusEl.style.display = "none";
+          }, 5000);
+        }
+      };
+
+      // Funkcja do wyświetlania statusu
+      function showStatus(message, isError = false) {
+        const statusEl = document.getElementById("status-message");
+        statusEl.textContent = message;
+        statusEl.className = `mt-6 p-4 rounded-lg text-center text-sm ${
+          isError
+            ? "bg-red-900/50 text-red-300 border border-red-700"
+            : "bg-green-900/50 text-green-300 border border-green-700"
+        }`;
+        statusEl.style.display = "block";
+
+        setTimeout(() => {
+          statusEl.style.display = "none";
+        }, 5000);
+      }
+    </script>
+  </head>
+  <body>
+    <nav
+      class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative"
+    >
+      <a
+        href="https://strzelca.pl"
+        class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl"
+      >
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <div class="container mx-auto px-6 flex justify-center">
+        <div
+          class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400"
+        >
+          LOGOWANIE.<span class="coyote-text">STRZELCA</span>.PL
+        </div>
+      </div>
+    </nav>
+
+    <main class="container mx-auto px-6 py-20 max-w-md">
+      <div
+        class="bg-zinc-900/50 p-8 md:p-12 rounded-3xl border border-zinc-800 shadow-2xl"
+      >
+        <h1
+          class="text-3xl md:text-4xl font-black uppercase italic font-[Orbitron] text-center mb-8"
+        >
+          <span class="coyote-text">KONTO STRZELCA</span>
+        </h1>
+
+        <form id="login-form" class="space-y-6">
+          <div>
+            <label
+              class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
+              >Adres email</label
+            >
+            <input
+              type="email"
+              id="email"
+              placeholder="jan.kowalski@email.com"
+              required
+            />
+          </div>
+
+          <div>
+            <label
+              class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
+              >Hasło</label
+            >
+            <input
+              type="password"
+              id="password"
+              placeholder="Twoje hasło"
+              required
+            />
+          </div>
+
+          <button type="submit" class="btn-login" id="login-btn">
+            <i class="fa-solid fa-sign-in-alt mr-2"></i>
+            ZALOGUJ STRZELCA
+          </button>
+        </form>
+
+        <div class="grid grid-cols-2 gap-4 pt-8">
+          <div class="text-center">
+            <a
+              href="./rejestracja.html"
+              class="coyote-text text-sm uppercase font-medium hover:text-white transition-colors tracking-[0.1em] block"
+            >
+              REJESTRACJA
+            </a>
+          </div>
+          <div class="text-center">
+            <button
+              type="button"
+              onclick="resetPassword()"
+              class="coyote-text text-sm uppercase font-medium hover:text-white transition-colors tracking-[0.1em] block w-full"
+            >
+              RESET HASŁA
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="status-message"
+          class="mt-6 p-4 rounded-lg text-center text-sm hidden"
+        ></div>
+      </div>
+    </main>
+
+    <footer
+      class="text-center py-10 border-t border-zinc-900 text-zinc-700 text-[10px] uppercase font-bold tracking-[0.4em]"
+    >
+      <a href="https://strzelca.pl" class="hover:text-white transition"
+        >STRZELCA.PL</a
+      >
+      |
+      <a href="?cookies=1" class="hover:text-white transition ml-4"
+        >Ustawienia cookies</a
+      >
+    </footer>
+
+    <!-- Session Manager -->
+
+    <script type="module">
+      // Dodaj globalną obsługę błędów CORS (ignoruj błędy Firebase internal)
+      window.addEventListener("error", function (e) {
+        // Ignoruj błędy CORS związane z Firebase/Firestore
+        if (
+          e.message &&
+          (e.message.includes("access control checks") ||
+            e.message.includes("CORS") ||
+            e.message.includes("firestore.googleapis.com"))
+        ) {
+          console.warn("Ignored Firebase CORS error in login:", e.message);
+          e.preventDefault();
+          return false;
+        }
+      });
+
+      // Dodaj obsługę błędów dla fetch API
+      window.addEventListener("unhandledrejection", function (e) {
+        if (
+          e.reason &&
+          e.reason.message &&
+          (e.reason.message.includes("access control checks") ||
+            e.reason.message.includes("CORS") ||
+            e.reason.message.includes("firestore.googleapis.com"))
+        ) {
+          console.warn(
+            "Ignored Firebase CORS promise rejection in login:",
+            e.reason.message
+          );
+          e.preventDefault();
+          return false;
+        }
+      });
+
+      async function getFirebaseApiKey() {
+        // Na części domen / subdomen endpoint /api/* może nie być podpięty.
+        // Dlatego mamy fallback do głównej domeny.
+        const isMain = (window.location?.hostname || "") === "strzelca.pl";
+        const urls = isMain
+          ? ["/api/firebase-config", "https://strzelca.pl/api/firebase-config"]
+          : ["https://strzelca.pl/api/firebase-config", "/api/firebase-config"];
+
+        for (const url of urls) {
+          try {
+            const res = await fetch(url, {
+              cache: "no-store",
+              credentials: url.startsWith("http") ? "omit" : "same-origin",
+            });
+            if (!res.ok) continue;
+            const data = await res.json().catch(() => null);
+            if (
+              data &&
+              typeof data.apiKey === "string" &&
+              data.apiKey.length > 10
+            ) {
+              return data.apiKey;
+            }
+          } catch (_) {
+            // ignore and try next url
+          }
+        }
+
+        return null;
+      }
+
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import {
+        getAuth,
+        signInWithEmailAndPassword,
+        setPersistence,
+        browserLocalPersistence,
+        browserSessionPersistence,
+        onAuthStateChanged,
+      } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+      import {
+        ensureFirebaseSSO,
+        syncSessionCookieFromFirebaseUser,
+      } from "https://strzelca.pl/sso-client.mjs?v=2026-01-28-1";
+
+      (async () => {
+        try {
+          const apiKey = await getFirebaseApiKey();
+          if (!apiKey) {
+            const statusEl = document.getElementById("status-message");
+            if (statusEl) {
+              statusEl.textContent =
+                "Błąd konfiguracji logowania: nie działa /api/firebase-config. Spróbuj odświeżyć stronę lub wróć za chwilę.";
+              statusEl.className =
+                "mt-6 p-4 rounded-lg text-center text-sm bg-red-900/40 text-red-200 border border-red-700";
+              statusEl.style.display = "block";
+            }
+            console.error(
+              "Login boot failed: missing firebase apiKey from /api/firebase-config (and fallback)."
+            );
+            throw new Error(
+              "Nie udało się pobrać FIREBASE_WEB_API_KEY z /api/firebase-config"
+            );
+          }
+
+          const firebaseConfig = {
+            apiKey,
+            authDomain: "strzelca-pl.firebaseapp.com",
+            projectId: "strzelca-pl",
+            storageBucket: "strzelca-pl.appspot.com",
+            messagingSenderId: "511362047688",
+            appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
+            measurementId: "G-9EJ2R3JPVD",
+          };
+
+          const app = initializeApp(firebaseConfig);
+          const auth = getAuth(app);
+
+          // Ustaw trwałość sesji na LOCAL dla wszystkich stron wymagających logowania
+          try {
+            await setPersistence(auth, browserLocalPersistence);
+            console.log(
+              "Firebase Auth persistence ustawiona na browserLocalPersistence"
+            );
+          } catch (persistenceError) {
+            console.warn("Błąd ustawiania persistence:", persistenceError);
+            console.log("Kontynuacja bez ustawiania persistence");
+          }
+
+          // SSO: jeśli użytkownik jest zalogowany w innej subdomenie, dologuj go tutaj z cookie
+          try {
+            await ensureFirebaseSSO(auth);
+          } catch (e) {
+            console.warn("SSO ensure failed (ignored):", e?.message || e);
+          }
+
+          // Flagi, żeby nie przerywać logowania/przekierowania zanim ustawimy cookie SSO
+          let isLoginFlowInProgress = false;
+          let isNavigatingAway = false;
+          const POST_LOGIN_REDIRECT_URL = "https://strzelca.pl/";
+
+          // Sprawdź aktualnego użytkownika przed ustawieniem listenera
+          const checkCurrentUser = async () => {
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+              try {
+                await currentUser.reload();
+                console.log(
+                  "Sprawdzanie aktualnego użytkownika, emailVerified:",
+                  currentUser.emailVerified
+                );
+
+                if (!currentUser.emailVerified) {
+                  // Tryb ograniczony: zostaje zalogowany, ale prowadzi na stronę po rejestracji
+                  isNavigatingAway = true;
+                  window.location.href = "./po.rejestracji.html";
+                } else {
+                  // odśwież cookie SSO (best-effort) zanim przejdziemy na inną subdomenę
+                  try {
+                    const sso = await syncSessionCookieFromFirebaseUser(auth, {
+                      minIntervalMinutes: 0,
+                    });
+                    console.log(
+                      "SSO session-login (auto) result (json):",
+                      JSON.stringify(sso)
+                    );
+                  } catch (e) {
+                    console.warn(
+                      "SSO session-login (auto) failed (ignored):",
+                      e?.message || e
+                    );
+                  }
+
+                  console.log(
+                    "Użytkownik zweryfikowany, przekierowanie do strony głównej:",
+                    POST_LOGIN_REDIRECT_URL
+                  );
+                  isNavigatingAway = true;
+                  window.location.href = POST_LOGIN_REDIRECT_URL;
+                }
+              } catch (error) {
+                console.warn("Błąd sprawdzania aktualnego użytkownika:", error);
+              }
+            }
+          };
+
+          await checkCurrentUser();
+
+          // Flaga zapobiegająca wielokrotnemu wylogowaniu
+          let isSigningOut = false;
+
+          // Listener stanu autoryzacji - jeśli użytkownik już jest zalogowany, sprawdź weryfikację
+          onAuthStateChanged(auth, async (user) => {
+            if (isLoginFlowInProgress || isNavigatingAway) return;
+            if (isSigningOut) return;
+
+            console.log(
+              "Auth state changed:",
+              user ? "logged in" : "logged out",
+              user?.email || ""
+            );
+
+            if (user) {
+              try {
+                await user.reload();
+                console.log(
+                  "User data reloaded on login page, emailVerified:",
+                  user.emailVerified
+                );
+
+                if (!user.emailVerified) {
+                  isNavigatingAway = true;
+                  window.location.href = "./po.rejestracji.html";
+                  return;
+                }
+
+                try {
+                  await syncSessionCookieFromFirebaseUser(auth, {
+                    minIntervalMinutes: 0,
+                  });
+                } catch (e) {
+                  console.warn(
+                    "SSO session-login (state) failed (ignored):",
+                    e?.message || e
+                  );
+                }
+
+                isNavigatingAway = true;
+                window.location.href = POST_LOGIN_REDIRECT_URL;
+              } catch (reloadError) {
+                console.warn(
+                  "Błąd odświeżania danych na stronie logowania:",
+                  reloadError
+                );
+                isSigningOut = false;
+              }
+            } else {
+              isSigningOut = false;
+            }
+          });
+
+          function showStatus(message, isError = false) {
+            const statusEl = document.getElementById("status-message");
+            statusEl.textContent = message;
+            statusEl.className = `mt-6 p-4 rounded-lg text-center text-sm ${
+              isError
+                ? "bg-red-900/50 text-red-300 border border-red-700"
+                : "bg-green-900/50 text-green-300 border border-green-700"
+            }`;
+            statusEl.style.display = "block";
+
+            setTimeout(() => {
+              statusEl.style.display = "none";
+            }, 5000);
+          }
+
+          // Funkcja logowania zdarzeń użytkowników
+          async function logUserEvent(
+            type,
+            userId,
+            userName,
+            action,
+            targetId = null,
+            targetType = null,
+            metadata = {}
+          ) {
+            try {
+              const eventData = {
+                type: type,
+                userId: userId,
+                userName: userName,
+                action: action,
+                targetId: targetId,
+                targetType: targetType,
+                details: action,
+                metadata: metadata,
+                timestamp: new Date().toISOString(),
+              };
+
+              try {
+                const response = await fetch("/api/user-events", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify(eventData),
+                });
+
+                if (response.ok) return;
+              } catch (apiError) {
+                console.warn(
+                  "API logging failed (ignored):",
+                  apiError.message
+                );
+              }
+            } catch (error) {
+              console.error(
+                "Błąd podczas logowania zdarzenia użytkownika:",
+                error
+              );
+            }
+          }
+
+          // Obsługa formularza logowania
+          document
+            .getElementById("login-form")
+            .addEventListener("submit", async (e) => {
+              e.preventDefault();
+
+              const loginBtn = document.getElementById("login-btn");
+
+              loginBtn.disabled = true;
+              loginBtn.innerHTML =
+                '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Logowanie...';
+
+              try {
+                console.log("Próba logowania użytkownika...");
+                isLoginFlowInProgress = true;
+                const userCredential = await signInWithEmailAndPassword(
+                  auth,
+                  document.getElementById("email").value.trim(),
+                  document.getElementById("password").value
+                );
+
+                const user = userCredential.user;
+
+                try {
+                  await user.reload();
+                } catch {}
+
+                try {
+                  await syncSessionCookieFromFirebaseUser(auth, {
+                    minIntervalMinutes: 0,
+                  });
+                } catch (ssoErr) {
+                  console.warn(
+                    "SSO session-login (submit) failed (ignored):",
+                    ssoErr?.message || ssoErr
+                  );
+                }
+
+                if (!user.emailVerified) {
+                  showStatus(
+                    "Konto nie zostało jeszcze aktywowane. Sprawdź swoją skrzynkę email i kliknij link aktywacyjny.",
+                    true
+                  );
+                  setTimeout(() => {
+                    isNavigatingAway = true;
+                    window.location.href = "./po.rejestracji.html";
+                  }, 1500);
+                  return;
+                }
+
+                showStatus("Zalogowano pomyślnie! Przekierowanie...");
+
+                await logUserEvent(
+                  "LOGIN",
+                  user.uid,
+                  user.displayName || user.email.split("@")[0],
+                  "Użytkownik zalogował się do systemu",
+                  null,
+                  null,
+                  {
+                    email: user.email,
+                    emailVerified: user.emailVerified,
+                  }
+                );
+
+                setTimeout(() => {
+                  isNavigatingAway = true;
+                  window.location.href = POST_LOGIN_REDIRECT_URL;
+                }, 1000);
+              } catch (error) {
+                console.error("Login error:", error);
+
+                let errorMessage = "Wystąpił błąd podczas logowania.";
+
+                if (error.code === "auth/user-not-found") {
+                  errorMessage =
+                    "Nie znaleziono użytkownika z tym adresem email.";
+                } else if (error.code === "auth/wrong-password") {
+                  errorMessage = "Nieprawidłowe hasło.";
+                } else if (error.code === "auth/invalid-email") {
+                  errorMessage = "Nieprawidłowy format adresu email.";
+                } else if (error.code === "auth/user-disabled") {
+                  errorMessage = "Konto zostało zablokowane.";
+                } else if (error.code === "auth/too-many-requests") {
+                  errorMessage =
+                    "Zbyt wiele prób logowania. Spróbuj ponownie później.";
+                } else if (error.code === "auth/network-request-failed") {
+                  errorMessage =
+                    "Błąd połączenia z serwerem. Sprawdź połączenie internetowe i spróbuj ponownie.";
+                } else if (
+                  error.message &&
+                  error.message.includes("accounts:lookup")
+                ) {
+                  errorMessage =
+                    "Błąd autoryzacji Firebase. Spróbuj odświeżyć stronę lub wyczyść cache przeglądarki.";
+                } else if (error.code === "auth/app-check-failed") {
+                  errorMessage =
+                    "Błąd weryfikacji aplikacji. Odśwież stronę i spróbuj ponownie.";
+                } else if (error.code) {
+                  errorMessage = `Błąd autoryzacji (${error.code}). Spróbuj ponownie.`;
+                }
+
+                showStatus(errorMessage, true);
+              } finally {
+                isLoginFlowInProgress = false;
+                loginBtn.disabled = false;
+                loginBtn.innerHTML =
+                  '<i class="fa-solid fa-sign-in-alt mr-2"></i>Zaloguj się';
+              }
+            });
+        } catch (e) {
+          console.error("Login page boot failed:", e);
+          const statusEl = document.getElementById("status-message");
+          if (statusEl) {
+            statusEl.textContent =
+              "Nie udało się uruchomić logowania (błąd konfiguracji). Spróbuj odświeżyć stronę lub wróć za chwilę.";
+            statusEl.className =
+              "mt-6 p-4 rounded-lg text-center text-sm bg-red-900/40 text-red-200 border border-red-700";
+            statusEl.style.display = "block";
+          }
+        }
+      })();
+    </script>
+    <script
+      type="module"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-02-05-1"
+    ></script>
+    <script
+      type="module"
+      src="https://strzelca.pl/messages-widget.mjs?v=2026-02-05-14"
+    ></script>
+  </body>
+</html>
+

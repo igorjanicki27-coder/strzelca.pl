@@ -1,5 +1,5 @@
 const API_URL = "https://strzelca.pl/api/me";
-const LOGIN_URL = "https://konto.strzelca.pl/login.html";
+const LOGIN_URL = "https://konto.strzelca.pl/logowanie.html";
 const PROFILE_URL_VERIFIED = "https://konto.strzelca.pl/profil.html";
 const PROFILE_URL_UNVERIFIED = "https://konto.strzelca.pl/po.rejestracji.html";
 
