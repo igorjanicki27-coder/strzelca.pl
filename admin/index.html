@@ -217,6 +217,29 @@
       .admin-card:hover {
         border-color: var(--coyote);
       }
+      
+      /* Poprawki dla modali - lepsza widoczność */
+      #user-details-modal .admin-card,
+      #user-delete-modal .admin-card {
+        background: #0f0f0f;
+        border: 1px solid #333;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+      }
+      
+      #user-details-modal .admin-card *,
+      #user-delete-modal .admin-card * {
+        color: inherit;
+      }
+      
+      #user-details-modal .text-white,
+      #user-delete-modal .text-white {
+        color: #ffffff !important;
+      }
+      
+      #user-details-modal .text-zinc-400,
+      #user-delete-modal .text-zinc-400 {
+        color: #a1a1aa !important;
+      }
 
       /* Styl dla górnego paska nawigacji */
       .top-nav {
@@ -2105,10 +2128,11 @@
 
     <div
       id="user-details-modal"
-      class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl overflow-y-auto"
+      class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl"
       onclick="if(event.target.id === 'user-details-modal') closeUserDetails()"
+      style="overflow-y: auto;"
     >
-      <div class="admin-card max-w-4xl w-full my-8" onclick="event.stopPropagation()">
+      <div class="admin-card max-w-4xl w-full my-8 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold coyote-text">Szczegóły Użytkownika</h2>
           <div class="flex space-x-2">
@@ -2438,10 +2462,11 @@
     <!-- Modal usuwania użytkownika -->
     <div
       id="user-delete-modal"
-      class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl overflow-y-auto"
+      class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl"
       onclick="if(event.target.id === 'user-delete-modal') closeUserDelete()"
+      style="overflow-y: auto;"
     >
-      <div class="admin-card max-w-2xl w-full my-8" onclick="event.stopPropagation()">
+      <div class="admin-card max-w-2xl w-full my-8 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold text-red-400">Usuwanie Użytkownika</h2>
           <button
@@ -2850,8 +2875,6 @@
           switchTab("dashboard");
           // Załaduj stats dla SuperAdmin'a
           setTimeout(() => loadDashboardStats(), 100);
-          // Zaloguj odwiedzinę panelu administracyjnego
-          logVisit(user.uid, '/admin');
           return true;
         }
 
@@ -2881,8 +2904,6 @@
               switchTab("dashboard");
               // Opóźnij ładowanie stats, żeby dać czas na zakończenie ładowania profilu
               setTimeout(() => loadDashboardStats(), 100);
-              // Zaloguj odwiedzinę panelu administracyjnego
-              logVisit(user.uid, '/admin');
               return true;
             } else {
               console.warn('User has role:', userData.role, 'but expected admin');
@@ -2985,31 +3006,6 @@
         }
       }
 
-      // Funkcja logowania odwiedzin
-      async function logVisit(userId = null, page = null) {
-        try {
-          const visitData = {
-            userId: userId || 'anonymous',
-            action: 'VISIT',
-            details: {
-              page: page || window.location.pathname,
-              referrer: document.referrer || null,
-              url: window.location.href,
-            },
-            timestamp: new Date(),
-            adminId: currentUser ? currentUser.uid : null,
-            userAgent: navigator.userAgent,
-          };
-
-          await addDoc(collection(db, "activityLogs"), visitData);
-        } catch (error) {
-          if (error.code === 'permission-denied') {
-            console.warn("Permission denied when logging visit to Firestore - check Firestore security rules");
-          } else {
-            console.error("Error logging visit:", error);
-          }
-        }
-      }
 
       // Funkcje pomocnicze
       function showStatus(message, isError = false) {
@@ -3304,8 +3300,6 @@
               ip: "unknown",
               userAgent: navigator.userAgent,
             });
-            // Zaloguj odwiedzinę panelu administracyjnego
-            await logVisit(user.uid, '/admin');
 
             showStatus("Logowanie administratora (Firebase) pomyślne.");
           } catch (error) {
@@ -3871,116 +3865,14 @@
 
           currentEditingUser = user;
 
-          const decryptedUser = {
-            ...user,
-            phone: user.phone
-              ? atob(user.phone)
-              : "",
-            parcelLocker: user.parcelLocker
-              ? atob(user.parcelLocker)
-              : "",
-            address: {
-              street: user.address?.street
-                ? atob(user.address.street)
-                : "",
-              buildingNumber: user.address?.buildingNumber
-                ? atob(user.address.buildingNumber)
-                : "",
-              postalCode: user.address?.postalCode
-                ? atob(user.address.postalCode)
-                : "",
-              city: user.address?.city
-                ? atob(user.address.city)
-                : "",
-            },
-          };
+          // Blokuj przewijanie strony w tle
+          document.body.style.overflow = 'hidden';
 
-          const detailsHtml = `
-                    <div class="space-y-8">
-                        <!-- Informacje podstawowe -->
-                        <div class="space-y-4">
-                            <h3 class="text-xl font-bold coyote-text pb-2 border-b border-zinc-700">Informacje podstawowe</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                    <div class="text-xs text-zinc-400 mb-1">Nazwa użytkownika</div>
-                                    <div class="text-white font-medium">${decryptedUser.displayName || "Nie podano"}</div>
-                                </div>
-                                <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                    <div class="text-xs text-zinc-400 mb-1">Email</div>
-                                    <div class="text-white font-medium">${decryptedUser.email || "Nie podano"}</div>
-                                </div>
-                                <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                    <div class="text-xs text-zinc-400 mb-1">Imię</div>
-                                    <div class="text-white font-medium">${decryptedUser.firstName || "Nie podano"}</div>
-                                </div>
-                                <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                    <div class="text-xs text-zinc-400 mb-1">Nazwisko</div>
-                                    <div class="text-white font-medium">${decryptedUser.lastName || "Nie podano"}</div>
-                                </div>
-                                <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                    <div class="text-xs text-zinc-400 mb-1">Telefon</div>
-                                    <div class="text-white font-medium">${decryptedUser.phone || "Nie podano"}</div>
-                                </div>
-                                <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                    <div class="text-xs text-zinc-400 mb-1">Rola</div>
-                                    <div class="text-white font-medium uppercase">${decryptedUser.role || "user"}</div>
-                                </div>
-                                <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                    <div class="text-xs text-zinc-400 mb-1">Status</div>
-                                    <div class="text-white font-medium uppercase">${decryptedUser.status || "active"}</div>
-                                </div>
-                                <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                    <div class="text-xs text-zinc-400 mb-1">Data rejestracji</div>
-                                    <div class="text-white font-medium">${new Date(decryptedUser.createdAt?.toDate?.() || decryptedUser.createdAt).toLocaleString("pl-PL")}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Adres dostawy -->
-                        <div class="space-y-4 pt-6 border-t border-zinc-700">
-                            <h3 class="text-xl font-bold coyote-text pb-2 border-b border-zinc-700">Adres dostawy</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                    <div class="text-xs text-zinc-400 mb-1">Ulica</div>
-                                    <div class="text-white font-medium">${decryptedUser.address.street || "Nie podano"}</div>
-                                </div>
-                                <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                    <div class="text-xs text-zinc-400 mb-1">Numer budynku</div>
-                                    <div class="text-white font-medium">${decryptedUser.address.buildingNumber || "Nie podano"}</div>
-                                </div>
-                                <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                    <div class="text-xs text-zinc-400 mb-1">Kod pocztowy</div>
-                                    <div class="text-white font-medium">${decryptedUser.address.postalCode || "Nie podano"}</div>
-                                </div>
-                                <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                    <div class="text-xs text-zinc-400 mb-1">Miasto</div>
-                                    <div class="text-white font-medium">${decryptedUser.address.city || "Nie podano"}</div>
-                                </div>
-                                <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                    <div class="text-xs text-zinc-400 mb-1">Paczkomat</div>
-                                    <div class="text-white font-medium">${decryptedUser.parcelLocker || "Nie podano"}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Preferencje -->
-                        <div class="space-y-4 pt-6 border-t border-zinc-700">
-                            <h3 class="text-xl font-bold coyote-text pb-2 border-b border-zinc-700">Preferencje</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="p-4 bg-zinc-800/50 rounded-lg">
-                                    <div class="text-xs text-zinc-400 mb-1">Newsletter</div>
-                                    <div class="text-white font-medium">${decryptedUser.newsletter ? "Tak" : "Nie"}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-          document.getElementById("user-details-content").innerHTML =
-            detailsHtml;
-          document
-            .getElementById("user-details-modal")
-            .classList.remove("hidden");
+          // Pokaż modal
+          document.getElementById("user-details-modal").classList.remove("hidden");
+          
+          // Załaduj szczegóły
+          loadUserDetails();
         } catch (error) {
           console.error("Error loading user details:", error);
           showNotification("Błąd ładowania szczegółów użytkownika.", "error");
@@ -3990,6 +3882,8 @@
       window.closeUserDetails = () => {
         document.getElementById("user-details-modal").classList.add("hidden");
         currentEditingUser = null; // Czyścimy tylko gdy zamykamy szczegóły użytkownika
+        // Odblokuj przewijanie strony
+        document.body.style.overflow = '';
       };
 
       window.openChatFromUserDetails = () => {
@@ -4980,12 +4874,18 @@
         `;
 
         document.getElementById("delete-user-id").value = decryptedUser.id;
+        
+        // Blokuj przewijanie strony w tle
+        document.body.style.overflow = 'hidden';
+        
         document.getElementById("user-delete-modal").classList.remove("hidden");
       }
 
       window.closeUserDelete = () => {
         document.getElementById("user-delete-modal").classList.add("hidden");
         currentDeletingUser = null;
+        // Odblokuj przewijanie strony
+        document.body.style.overflow = '';
       };
 
       window.resetUserPassword = async (userId, email) => {
@@ -5891,17 +5791,23 @@
           try {
             // Pobierz activity logs bezpośrednio z Firestore
             const eventsRef = collection(db, 'activityLogs');
-            const q = query(eventsRef, orderBy('timestamp', 'desc'), limit(100));
+            const q = query(eventsRef, orderBy('timestamp', 'desc'), limit(200));
             const querySnapshot = await getDocs(q);
 
+            // Filtruj tylko zdarzenia związane z usługami (service_online, service_offline, site_online, site_offline)
+            const serviceActions = ['service_online', 'service_offline', 'site_online', 'site_offline'];
             const eventsLog = [];
             querySnapshot.forEach((doc) => {
               const data = doc.data();
-              eventsLog.push({
-                id: doc.id,
-                ...data,
-                timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : (data.timestamp || new Date())
-              });
+              const action = data.action || data.type;
+              // Tylko zdarzenia związane z usługami
+              if (serviceActions.includes(action)) {
+                eventsLog.push({
+                  id: doc.id,
+                  ...data,
+                  timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : (data.timestamp || new Date())
+                });
+              }
             });
 
             if (eventsLog.length === 0) {
@@ -5923,16 +5829,17 @@
               const formattedDate = eventDate.toLocaleString('pl-PL');
               const eventAction = event.action || 'Aktywność';
               const eventDetails = event.details || {};
-              const eventUser = event.userId || event.adminId || 'System';
+              const eventUser = getUserDisplayName(event);
+              const activityLog = renderActivityLog ? renderActivityLog(event) : { description: eventAction, content: '' };
 
               return `
               <div class="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg mb-2 animate-fade-in">
                   <div class="flex items-center space-x-3">
                     <span class="text-blue-400"><i class="fa-solid fa-info-circle"></i></span>
                     <div>
-                      <div class="text-sm font-medium">${eventAction} - ${eventUser}</div>
+                      <div class="text-sm font-medium">${activityLog.description || eventAction}</div>
                       <div class="text-xs text-zinc-500">${formattedDate}</div>
-                      ${eventDetails && typeof eventDetails === 'object' ? `<div class="text-xs text-zinc-400 mt-1">${JSON.stringify(eventDetails)}</div>` : (eventDetails ? `<div class="text-xs text-zinc-400 mt-1">${eventDetails}</div>` : '')}
+                      ${activityLog.content ? `<div class="text-xs text-zinc-400 mt-1">${activityLog.content}</div>` : ''}
                     </div>
                   </div>
                   <button
@@ -6293,19 +6200,20 @@
         }
 
         // Modal ze szczegółami zdarzenia
-        function showEventDetails(eventId) {
+        async function showEventDetails(eventId) {
         const event = eventsData.find((e) => e.id === eventId);
           if (!event) return;
 
         const activityLog = renderActivityLog(event);
+        const userDisplayName = await getUserDisplayNameAsync(event);
 
           // Utwórz modal
           const modalHtml = `
-            <div id="event-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-              <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div id="event-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onclick="if(event.target.id === 'event-modal') closeEventModal()">
+              <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-2xl w-full max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation()">
                 <div class="flex justify-between items-center mb-6">
                   <h2 class="text-2xl font-bold coyote-text">Szczegóły Zdarzenia</h2>
-                  <button onclick="closeEventModal()" class="text-zinc-400 hover:text-white">
+                  <button onclick="closeEventModal()" class="text-zinc-400 hover:text-white transition-colors">
                     <i class="fa-solid fa-times text-xl"></i>
                   </button>
                 </div>
@@ -6313,7 +6221,7 @@
                 <div class="space-y-4">
                   <div>
                     <label class="text-sm text-zinc-400">Użytkownik:</label>
-                    <div class="text-white font-semibold">${getUserDisplayName(event)}</div>
+                    <div class="text-white font-semibold">${userDisplayName}</div>
                   </div>
 
                   <div>
@@ -6355,11 +6263,26 @@
           `;
 
         document.body.insertAdjacentHTML("beforeend", modalHtml);
+        
+        // Dodaj obsługę klawisza ESC
+        const handleEscape = (e) => {
+          if (e.key === 'Escape') {
+            closeEventModal();
+            document.removeEventListener('keydown', handleEscape);
+          }
+        };
+        document.addEventListener('keydown', handleEscape);
         }
 
         window.closeEventModal = () => {
         const modal = document.getElementById("event-modal");
-          if (modal) modal.remove();
+          if (modal) {
+            modal.remove();
+            // Usuń listener ESC jeśli jeszcze istnieje
+            document.removeEventListener('keydown', (e) => {
+              if (e.key === 'Escape') closeEventModal();
+            });
+          }
         };
 
         // Funkcja sprawdzania głównych usług serwera
@@ -6412,9 +6335,11 @@
 
             // Sprawdź Firestore
             try {
-              // Sprawdź połączenie przez waitForPendingWrites oraz testowy odczyt
-              await db.waitForPendingWrites();
-              const testDoc = await getDoc(doc(db, "test", "connection"));
+              // Sprawdź połączenie przez próbę odczytu z istniejącej kolekcji (limit 1 dla szybkości)
+              const testRef = collection(db, "activityLogs");
+              await getDocs(query(testRef, limit(1)));
+              
+              // Jeśli dotarliśmy tutaj, Firestore jest dostępne
               const firestoreOnline = true;
 
               // Sprawdź czy już istnieje zdarzenie service_online (jeśli nie, utwórz)
@@ -6738,7 +6663,10 @@
           "PRODUCT_VIEW": "Przeglądanie produktu",
           "PRODUCT_CREATED": "Wystawienie oferty w sklepie",
           "REVIEW_CREATED": "Wystawienie opinii",
-          "VISIT": "Odwiedzenie strony"
+          "service_online": "Usługa włączona",
+          "service_offline": "Usługa wyłączona",
+          "site_online": "Strona włączona",
+          "site_offline": "Strona wyłączona"
         };
         return actionLabels[action] || action || "Nieznana akcja";
       }
@@ -6780,7 +6708,32 @@
           return "System";
         }
         if (event.userId === "anonymous") {
-          return "Anonimowy użytkownik";
+          return "Użytkownik niezalogowany";
+        }
+        if (event.userId) {
+          // Jeśli userId jest emailem, użyj go
+          if (event.userId.includes("@")) {
+            return event.userId;
+          }
+          // Sprawdź czy w details jest email lub login
+          if (event.details && typeof event.details === 'object') {
+            if (event.details.email) return event.details.email;
+            if (event.details.login) return event.details.login;
+            if (event.details.userEmail) return event.details.userEmail;
+          }
+          // Jeśli nie ma emaila, pokaż jako niezalogowany
+          return "Użytkownik niezalogowany";
+        }
+        return "Użytkownik niezalogowany";
+      }
+
+      // Asynchroniczna wersja do pobierania nazwy użytkownika z Firestore
+      async function getUserDisplayNameAsync(event) {
+        if (event.userEmail) {
+          return event.userEmail;
+        }
+        if (event.userId === "system" || event.userId === "anonymous") {
+          return event.userId === "system" ? "System" : "Użytkownik niezalogowany";
         }
         if (event.userId) {
           // Jeśli userId jest emailem, użyj go
@@ -6791,14 +6744,21 @@
           if (event.details && typeof event.details === 'object') {
             if (event.details.email) return event.details.email;
             if (event.details.login) return event.details.login;
+            if (event.details.userEmail) return event.details.userEmail;
           }
-          // W przeciwnym razie użyj userId (ale skróć jeśli jest bardzo długi)
-          if (event.userId.length > 20) {
-            return event.userId.substring(0, 20) + "...";
+          // Spróbuj pobrać z Firestore
+          try {
+            const userDoc = await getDoc(doc(db, "userProfiles", event.userId));
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              return userData.email || userData.displayName || userData.name || "Użytkownik niezalogowany";
+            }
+          } catch (e) {
+            console.warn("Could not fetch user name:", e);
           }
-          return event.userId;
+          return "Użytkownik niezalogowany";
         }
-        return "Nieznany użytkownik";
+        return "Użytkownik niezalogowany";
       }
 
       function renderActivityLog(event) {
@@ -6881,11 +6841,6 @@
             content = eventDetails.targetUser || userDisplayName;
             details = `Profil użytkownika ${content} został zedytowany${eventDetails.changes ? `. Zmiany: ${typeof eventDetails.changes === 'string' ? eventDetails.changes : JSON.stringify(eventDetails.changes)}` : ""}`;
             break;
-          case "VISIT":
-            description = `${userDisplayName} odwiedził stronę`;
-            content = eventDetails.page || eventDetails.url || "Strona";
-            details = `Użytkownik ${userDisplayName} odwiedził stronę: ${content}`;
-            break;
           case "PRODUCT_CREATED":
             description = `${userDisplayName} wystawił ofertę w sklepie`;
             content = eventDetails.productName || "Produkt";
@@ -6900,6 +6855,34 @@
             description = `Utworzono nowe konto użytkownika`;
             content = eventDetails.email || eventDetails.userId || "Użytkownik";
             details = `Nowe konto zostało utworzone dla: ${content}`;
+            break;
+          case "service_online":
+            const serviceName = typeof eventDetails === 'object' ? (eventDetails.service || 'Nieznana') : 'Nieznana';
+            const serviceDetails = typeof eventDetails === 'string' ? eventDetails : (eventDetails.details || `Usługa ${serviceName} została przywrócona`);
+            description = `Usługa "${serviceName}" została włączona`;
+            content = serviceDetails;
+            details = serviceDetails;
+            break;
+          case "service_offline":
+            const serviceNameOff = typeof eventDetails === 'object' ? (eventDetails.service || 'Nieznana') : 'Nieznana';
+            const serviceDetailsOff = typeof eventDetails === 'string' ? eventDetails : (eventDetails.details || `Usługa ${serviceNameOff} stała się niedostępna`);
+            description = `Usługa "${serviceNameOff}" została wyłączona`;
+            content = serviceDetailsOff;
+            details = serviceDetailsOff;
+            break;
+          case "site_online":
+            const siteName = typeof eventDetails === 'object' ? (eventDetails.site || 'Nieznana') : 'Nieznana';
+            const siteDetails = typeof eventDetails === 'string' ? eventDetails : (eventDetails.details || `Strona ${siteName} wróciła do działania`);
+            description = `Strona "${siteName}" wróciła do działania`;
+            content = siteDetails;
+            details = siteDetails;
+            break;
+          case "site_offline":
+            const siteNameOff = typeof eventDetails === 'object' ? (eventDetails.site || 'Nieznana') : 'Nieznana';
+            const siteDetailsOff = typeof eventDetails === 'string' ? eventDetails : (eventDetails.details || `Strona ${siteNameOff} stała się niedostępna`);
+            description = `Strona "${siteNameOff}" stała się niedostępna`;
+            content = siteDetailsOff;
+            details = siteDetailsOff;
             break;
           default:
             description = `${userDisplayName} wykonał akcję: ${actionLabel}`;
