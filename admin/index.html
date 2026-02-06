@@ -2477,7 +2477,7 @@
           </button>
         </div>
 
-        <div id="delete-user-info" class="mb-6 p-4 bg-zinc-800 rounded-lg text-white">
+        <div id="delete-user-info" class="mb-6 p-4 bg-zinc-800/80 rounded-lg border border-zinc-700">
           <!-- Informacje o użytkowniku będą ładowane dynamicznie -->
         </div>
 
@@ -2485,30 +2485,32 @@
           <input type="hidden" id="delete-user-id" />
 
           <div>
-            <label class="text-sm text-zinc-400 block mb-4"
+            <label class="text-sm font-semibold text-zinc-300 block mb-4"
               >Opcje zawartości konta</label
             >
             <div class="space-y-3">
-              <div class="flex items-center space-x-3">
+              <div class="flex items-start space-x-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700 hover:border-zinc-600 transition">
                 <input
                   type="radio"
                   id="delete-keep-content"
                   name="delete-content-action"
                   value="keep"
                   checked
+                  class="mt-1"
                 />
-                <label for="delete-keep-content" class="text-sm"
+                <label for="delete-keep-content" class="text-sm text-zinc-200 flex-1 cursor-pointer"
                   >Zachowaj zawartość konta (produkty, czaty, komentarze)</label
                 >
               </div>
-              <div class="flex items-center space-x-3">
+              <div class="flex items-start space-x-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700 hover:border-zinc-600 transition">
                 <input
                   type="radio"
                   id="delete-remove-content"
                   name="delete-content-action"
                   value="remove"
+                  class="mt-1"
                 />
-                <label for="delete-remove-content" class="text-sm"
+                <label for="delete-remove-content" class="text-sm text-zinc-200 flex-1 cursor-pointer"
                   >Całkowicie usuń zawartość konta</label
                 >
               </div>
@@ -2529,10 +2531,10 @@
           </div>
 
           <div
-            class="flex items-center space-x-3 p-4 bg-yellow-900/20 border border-yellow-700 rounded-lg"
+            class="flex items-start space-x-3 p-4 bg-yellow-900/20 border border-yellow-700 rounded-lg"
           >
-            <input type="checkbox" id="delete-confirm" required />
-            <label for="delete-confirm" class="text-sm">
+            <input type="checkbox" id="delete-confirm" required class="mt-1" />
+            <label for="delete-confirm" class="text-sm text-zinc-200 flex-1 cursor-pointer">
               Potwierdzam, że chcę całkowicie usunąć tego użytkownika z systemu
             </label>
           </div>
@@ -3915,10 +3917,12 @@
 
         switch (currentUserFilter) {
           case "active":
-            filteredUsers = usersList.filter((u) => u.status === "active");
+            // Aktywni = użytkownicy online (lastSeen w ostatnich 30 minutach)
+            filteredUsers = usersList.filter((u) => isUserOnline(u));
             break;
           case "inactive":
-            filteredUsers = usersList.filter((u) => u.status !== "active" && u.status !== "blocked");
+            // Nieaktywni = użytkownicy offline (nie online) + zablokowani (zawsze nieaktywni)
+            filteredUsers = usersList.filter((u) => !isUserOnline(u) || u.status === "blocked");
             break;
           case "blocked":
             filteredUsers = usersList.filter((u) => u.status === "blocked");
@@ -3978,7 +3982,7 @@
                         <div class="flex justify-between items-start mb-2">
                             <div class="flex-1">
                                 <div class="flex items-center space-x-2 mb-1">
-                                    <h4 class="text-white font-bold">${decryptedUser.displayName}</h4>
+                                    <h4 class="${status === "blocked" ? "text-amber-700 font-bold" : "text-white font-bold"}">${decryptedUser.displayName}</h4>
                                     <span class="px-2 py-1 text-xs rounded font-bold ${roleClasses[role]}">${roleDisplay[role] || role.toUpperCase()}</span>
                                     <span class="px-2 py-1 text-xs rounded bg-gray-600 text-white">${status.toUpperCase()}</span>
                                     ${isOnline ? '<span class="px-2 py-1 text-xs rounded bg-green-500 text-white" title="Online">🟢 ONLINE</span>' : `<span class="px-2 py-1 text-xs rounded bg-gray-500 text-white" title="Ostatnia aktywność: ${lastSeenText}">⚫ OFFLINE</span>`}
@@ -4110,58 +4114,83 @@
         const detailsHtml = `
                   <div class="space-y-6">
                       <!-- Informacje podstawowe -->
-                      <div class="space-y-4">
-                          <h3 class="text-lg font-bold coyote-text pb-2 border-b border-zinc-700">Dane użytkownika</h3>
+                      <div class="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700">
+                          <div class="flex items-center space-x-2 mb-4">
+                              <i class="fa-solid fa-user text-coyote"></i>
+                              <h3 class="text-lg font-bold text-white">Dane użytkownika</h3>
+                          </div>
                           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                  <label class="text-xs text-zinc-400 block mb-1">Nazwa wyświetlana</label>
-                                  <div class="text-white font-medium">${decryptedUser.displayName || "Brak"}</div>
+                              <div class="bg-zinc-900/50 p-3 rounded border border-zinc-700/50">
+                                  <label class="text-xs text-zinc-400 block mb-1 uppercase tracking-wider">Nazwa wyświetlana</label>
+                                  <div class="text-white font-semibold text-base">${decryptedUser.displayName || "Brak"}</div>
                               </div>
-                              <div>
-                                  <label class="text-xs text-zinc-400 block mb-1">Email</label>
-                                  <div class="text-white font-medium">${decryptedUser.email || "Brak"}</div>
+                              <div class="bg-zinc-900/50 p-3 rounded border border-zinc-700/50">
+                                  <label class="text-xs text-zinc-400 block mb-1 uppercase tracking-wider">Email</label>
+                                  <div class="text-white font-semibold text-base">${decryptedUser.email || "Brak"}</div>
                               </div>
-                              <div>
-                                  <label class="text-xs text-zinc-400 block mb-1">Telefon</label>
-                                  <div class="text-white font-medium">${decryptedUser.phone || "Brak"}</div>
+                              <div class="bg-zinc-900/50 p-3 rounded border border-zinc-700/50">
+                                  <label class="text-xs text-zinc-400 block mb-1 uppercase tracking-wider">Telefon</label>
+                                  <div class="text-white font-semibold text-base">${decryptedUser.phone || "Brak"}</div>
                               </div>
-                              <div>
-                                  <label class="text-xs text-zinc-400 block mb-1">Data rejestracji</label>
-                                  <div class="text-white font-medium">${new Date(decryptedUser.createdAt?.toDate?.() || decryptedUser.createdAt).toLocaleDateString("pl-PL")}</div>
+                              <div class="bg-zinc-900/50 p-3 rounded border border-zinc-700/50">
+                                  <label class="text-xs text-zinc-400 block mb-1 uppercase tracking-wider">Data rejestracji</label>
+                                  <div class="text-white font-semibold text-base">${new Date(decryptedUser.createdAt?.toDate?.() || decryptedUser.createdAt).toLocaleDateString("pl-PL")}</div>
                               </div>
                           </div>
                       </div>
 
                       <!-- Rola i status -->
-                      <div class="space-y-4 pt-4 border-t border-zinc-700">
-                          <h3 class="text-lg font-bold coyote-text pb-2 border-b border-zinc-700">Uprawnienia</h3>
+                      <div class="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700">
+                          <div class="flex items-center space-x-2 mb-4">
+                              <i class="fa-solid fa-shield-halved text-coyote"></i>
+                              <h3 class="text-lg font-bold text-white">Uprawnienia i status</h3>
+                          </div>
                           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                  <label class="text-xs text-zinc-400 block mb-2">Rola użytkownika</label>
+                              <div class="bg-zinc-900/50 p-4 rounded border border-zinc-700/50">
+                                  <label class="text-xs text-zinc-400 block mb-2 uppercase tracking-wider">Rola użytkownika</label>
                                   <select id="user-role-select" class="w-full" onchange="changeUserRoleFromDetails('${currentEditingUser.id}', this.value)">
                                       <option value="user" ${decryptedUser.role === "user" ? "selected" : ""}>Użytkownik</option>
                                       <option value="company" ${decryptedUser.role === "company" ? "selected" : ""}>Firma</option>
                                       <option value="admin" ${decryptedUser.role === "admin" ? "selected" : ""}>Administrator</option>
                                   </select>
                               </div>
-                              <div>
-                                  <label class="text-xs text-zinc-400 block mb-1">Status konta</label>
-                                  <div class="text-white font-medium uppercase">
-                                      ${decryptedUser.status === "blocked" ? '<span class="text-red-400">Zablokowane</span>' : 
-                                        decryptedUser.status === "active" ? '<span class="text-green-400">Aktywne</span>' : 
-                                        '<span class="text-yellow-400">Nieaktywne</span>'}
+                              <div class="bg-zinc-900/50 p-4 rounded border border-zinc-700/50">
+                                  <label class="text-xs text-zinc-400 block mb-2 uppercase tracking-wider">Status konta</label>
+                                  <div class="text-lg font-semibold">
+                                      ${decryptedUser.status === "blocked" ? '<span class="inline-flex items-center px-3 py-1 rounded-full bg-red-900/30 text-red-400 border border-red-700"><i class="fa-solid fa-ban mr-2"></i>Zablokowane</span>' : 
+                                        decryptedUser.status === "active" ? '<span class="inline-flex items-center px-3 py-1 rounded-full bg-green-900/30 text-green-400 border border-green-700"><i class="fa-solid fa-check-circle mr-2"></i>Aktywne</span>' : 
+                                        '<span class="inline-flex items-center px-3 py-1 rounded-full bg-yellow-900/30 text-yellow-400 border border-yellow-700"><i class="fa-solid fa-pause-circle mr-2"></i>Nieaktywne</span>'}
                                   </div>
                               </div>
                           </div>
                       </div>
 
                       <!-- Adres -->
-                      <div class="space-y-4 pt-4 border-t border-zinc-700">
-                          <h3 class="text-lg font-bold coyote-text pb-2 border-b border-zinc-700">Adres dostawy</h3>
-                          <div class="text-sm text-zinc-300">
-                              ${decryptedUser.address.street || ""} ${decryptedUser.address.buildingNumber || ""}<br>
-                              ${decryptedUser.address.postalCode || ""} ${decryptedUser.address.city || "Brak adresu"}<br>
-                              ${decryptedUser.parcelLocker ? `Paczkomat: ${decryptedUser.parcelLocker}` : ""}
+                      <div class="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700">
+                          <div class="flex items-center space-x-2 mb-4">
+                              <i class="fa-solid fa-location-dot text-coyote"></i>
+                              <h3 class="text-lg font-bold text-white">Adres dostawy</h3>
+                          </div>
+                          <div class="bg-zinc-900/50 p-4 rounded border border-zinc-700/50">
+                              ${decryptedUser.address.street || decryptedUser.address.buildingNumber || decryptedUser.address.postalCode || decryptedUser.address.city || decryptedUser.parcelLocker ? 
+                                `<div class="space-y-2 text-sm">
+                                    ${decryptedUser.address.street || decryptedUser.address.buildingNumber ? 
+                                      `<div class="text-white font-medium">
+                                          <i class="fa-solid fa-road text-zinc-400 mr-2"></i>
+                                          ${decryptedUser.address.street || ""} ${decryptedUser.address.buildingNumber || ""}
+                                      </div>` : ''}
+                                    ${decryptedUser.address.postalCode || decryptedUser.address.city ? 
+                                      `<div class="text-white font-medium">
+                                          <i class="fa-solid fa-city text-zinc-400 mr-2"></i>
+                                          ${decryptedUser.address.postalCode || ""} ${decryptedUser.address.city || ""}
+                                      </div>` : ''}
+                                    ${decryptedUser.parcelLocker ? 
+                                      `<div class="text-white font-medium">
+                                          <i class="fa-solid fa-box text-zinc-400 mr-2"></i>
+                                          Paczkomat: ${decryptedUser.parcelLocker}
+                                      </div>` : ''}
+                                </div>` : 
+                                '<div class="text-zinc-400 italic">Brak adresu</div>'}
                           </div>
                       </div>
                   </div>
@@ -5021,16 +5050,16 @@
         };
 
         document.getElementById("delete-user-info").innerHTML = `
-          <div class="space-y-2">
-            <div class="flex items-center space-x-3 mb-2">
+          <div class="space-y-3">
+            <div class="flex items-center space-x-3">
               <div class="font-bold text-lg text-white">${decryptedUser.displayName || "Brak nazwy"}</div>
             </div>
-            <div class="text-sm text-zinc-300">${decryptedUser.email || "Brak emaila"}</div>
-            <div class="text-sm text-zinc-400">
+            <div class="text-sm text-zinc-200">${decryptedUser.email || "Brak emaila"}</div>
+            <div class="text-sm text-zinc-300">
               ${decryptedUser.address?.city ? `Miasto: ${decryptedUser.address.city}` : "Brak adresu"}
               ${decryptedUser.phone ? ` • Tel: ${decryptedUser.phone}` : ""}
             </div>
-            <div class="text-sm text-zinc-400 mt-2">
+            <div class="text-sm text-zinc-400 pt-2 border-t border-zinc-700">
               Konto utworzone: ${new Date(decryptedUser.createdAt?.toDate?.() || decryptedUser.createdAt).toLocaleDateString("pl-PL")}
             </div>
           </div>
@@ -6167,35 +6196,52 @@
             const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
             const yearAgo = new Date(today.getTime() - 365 * 24 * 60 * 60 * 1000);
 
-            // Aktywne zalogowane użytkownicy (ostatnie 24h)
+            // Aktywne zalogowane użytkownicy (ostatnie 30 minut - na podstawie lastSeen)
             try {
-              const activeUsersQuery = query(
-                collection(db, "activityLogs"),
-                where("timestamp", ">=", new Date(Date.now() - 24 * 60 * 60 * 1000)),
-                where("action", "in", ["LOGIN_SUCCESS", "ADMIN_LOGIN_SUCCESS"])
-              );
-              const activeUsersSnapshot = await getDocs(activeUsersQuery);
-              const activeUsers = [...new Set(activeUsersSnapshot.docs.map(doc => doc.data().userId || doc.data().adminId))].length;
+              const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+              const usersRef = collection(db, "userProfiles");
+              const usersSnapshot = await getDocs(usersRef);
+              
+              let activeUsersCount = 0;
+              usersSnapshot.forEach((doc) => {
+                const userData = doc.data();
+                if (userData.lastSeen) {
+                  const lastSeen = userData.lastSeen.toDate ? userData.lastSeen.toDate() : new Date(userData.lastSeen);
+                  if (lastSeen >= thirtyMinutesAgo) {
+                    activeUsersCount++;
+                  }
+                }
+              });
 
               const activeUsersEl = document.getElementById("active-logged-users");
-              if (activeUsersEl) activeUsersEl.textContent = activeUsers;
+              if (activeUsersEl) activeUsersEl.textContent = activeUsersCount;
             } catch (error) {
               console.warn("Could not fetch active users from Firestore:", error);
               const activeUsersEl = document.getElementById("active-logged-users");
               if (activeUsersEl) activeUsersEl.textContent = "0";
             }
 
-            // Wizyty dzisiaj
+            // Wizyty dzisiaj - zliczamy unikalne użytkowników którzy byli aktywni dzisiaj
             try {
-              const todayVisitsQuery = query(
-                collection(db, "activityLogs"),
-                where("action", "==", "VISIT"),
-                where("timestamp", ">=", today)
-              );
-              const todayVisitsSnapshot = await getDocs(todayVisitsQuery);
+              const todayStart = new Date();
+              todayStart.setHours(0, 0, 0, 0);
+              
+              const usersRef = collection(db, "userProfiles");
+              const usersSnapshot = await getDocs(usersRef);
+              
+              let todayVisitsCount = 0;
+              usersSnapshot.forEach((doc) => {
+                const userData = doc.data();
+                if (userData.lastSeen) {
+                  const lastSeen = userData.lastSeen.toDate ? userData.lastSeen.toDate() : new Date(userData.lastSeen);
+                  if (lastSeen >= todayStart) {
+                    todayVisitsCount++;
+                  }
+                }
+              });
 
               const todayVisitsEl = document.getElementById("visits-today");
-              if (todayVisitsEl) todayVisitsEl.textContent = todayVisitsSnapshot.size;
+              if (todayVisitsEl) todayVisitsEl.textContent = todayVisitsCount;
             } catch (error) {
               console.warn("Could not fetch today visits from Firestore:", error);
               const todayVisitsEl = document.getElementById("visits-today");
@@ -6235,55 +6281,97 @@
               if (pendingTasksEl) pendingTasksEl.textContent = "0";
             }
 
-            // Wizyty w tym tygodniu
+            // Wizyty w tym tygodniu - unikalni użytkownicy aktywni w ciągu tygodnia
             try {
-              const weekVisitsQuery = query(
-                collection(db, "activityLogs"),
-                where("action", "==", "VISIT"),
-                where("timestamp", ">=", weekAgo)
-              );
-              const weekVisitsSnapshot = await getDocs(weekVisitsQuery);
+              const usersRef = collection(db, "userProfiles");
+              const usersSnapshot = await getDocs(usersRef);
+              
+              let weekVisitsCount = 0;
+              usersSnapshot.forEach((doc) => {
+                const userData = doc.data();
+                if (userData.lastSeen) {
+                  const lastSeen = userData.lastSeen.toDate ? userData.lastSeen.toDate() : new Date(userData.lastSeen);
+                  if (lastSeen >= weekAgo) {
+                    weekVisitsCount++;
+                  }
+                }
+              });
 
               const weekVisitsEl = document.getElementById("week-visits");
-              if (weekVisitsEl) weekVisitsEl.textContent = weekVisitsSnapshot.size;
+              if (weekVisitsEl) weekVisitsEl.textContent = weekVisitsCount;
             } catch (error) {
               console.warn("Could not fetch week visits from Firestore:", error);
               const weekVisitsEl = document.getElementById("week-visits");
               if (weekVisitsEl) weekVisitsEl.textContent = "0";
             }
 
-            // Wizyty w tym miesiącu
+            // Wizyty w tym miesiącu - unikalni użytkownicy aktywni w ciągu miesiąca
             try {
-              const monthVisitsQuery = query(
-                collection(db, "activityLogs"),
-                where("action", "==", "VISIT"),
-                where("timestamp", ">=", monthAgo)
-              );
-              const monthVisitsSnapshot = await getDocs(monthVisitsQuery);
+              const usersRef = collection(db, "userProfiles");
+              const usersSnapshot = await getDocs(usersRef);
+              
+              let monthVisitsCount = 0;
+              usersSnapshot.forEach((doc) => {
+                const userData = doc.data();
+                if (userData.lastSeen) {
+                  const lastSeen = userData.lastSeen.toDate ? userData.lastSeen.toDate() : new Date(userData.lastSeen);
+                  if (lastSeen >= monthAgo) {
+                    monthVisitsCount++;
+                  }
+                }
+              });
 
               const monthVisitsEl = document.getElementById("month-visits");
-              if (monthVisitsEl) monthVisitsEl.textContent = monthVisitsSnapshot.size;
+              if (monthVisitsEl) monthVisitsEl.textContent = monthVisitsCount;
             } catch (error) {
               console.warn("Could not fetch month visits from Firestore:", error);
               const monthVisitsEl = document.getElementById("month-visits");
               if (monthVisitsEl) monthVisitsEl.textContent = "0";
             }
 
-            // Wizyty w tym roku
+            // Wizyty w tym roku - unikalni użytkownicy aktywni w ciągu roku
             try {
-              const yearVisitsQuery = query(
-                collection(db, "activityLogs"),
-                where("action", "==", "VISIT"),
-                where("timestamp", ">=", yearAgo)
-              );
-              const yearVisitsSnapshot = await getDocs(yearVisitsQuery);
+              const usersRef = collection(db, "userProfiles");
+              const usersSnapshot = await getDocs(usersRef);
+              
+              let yearVisitsCount = 0;
+              usersSnapshot.forEach((doc) => {
+                const userData = doc.data();
+                if (userData.lastSeen) {
+                  const lastSeen = userData.lastSeen.toDate ? userData.lastSeen.toDate() : new Date(userData.lastSeen);
+                  if (lastSeen >= yearAgo) {
+                    yearVisitsCount++;
+                  }
+                }
+              });
 
               const yearVisitsEl = document.getElementById("year-visits");
-              if (yearVisitsEl) yearVisitsEl.textContent = yearVisitsSnapshot.size;
+              if (yearVisitsEl) yearVisitsEl.textContent = yearVisitsCount;
             } catch (error) {
               console.warn("Could not fetch year visits from Firestore:", error);
               const yearVisitsEl = document.getElementById("year-visits");
               if (yearVisitsEl) yearVisitsEl.textContent = "0";
+            }
+
+            // Wizyty ogółem - wszyscy użytkownicy z lastSeen
+            try {
+              const usersRef = collection(db, "userProfiles");
+              const usersSnapshot = await getDocs(usersRef);
+              
+              let totalVisitsCount = 0;
+              usersSnapshot.forEach((doc) => {
+                const userData = doc.data();
+                if (userData.lastSeen) {
+                  totalVisitsCount++;
+                }
+              });
+
+              const totalVisitsEl = document.getElementById("visits-total");
+              if (totalVisitsEl) totalVisitsEl.textContent = totalVisitsCount;
+            } catch (error) {
+              console.warn("Could not fetch total visits from Firestore:", error);
+              const totalVisitsEl = document.getElementById("visits-total");
+              if (totalVisitsEl) totalVisitsEl.textContent = "0";
             }
 
           } catch (error) {
