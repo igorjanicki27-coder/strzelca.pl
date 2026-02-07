@@ -217,7 +217,7 @@
       .admin-card:hover {
         border-color: var(--coyote);
       }
-      
+
       /* Poprawki dla modali - lepsza widoczność */
       #user-details-modal .admin-card,
       #user-delete-modal .admin-card {
@@ -1024,9 +1024,18 @@
             <div class="admin-card mt-8" style="background: linear-gradient(135deg, rgba(193, 154, 107, 0.1), rgba(193, 154, 107, 0.05)); backdrop-filter: blur(20px); border: 1px solid rgba(193, 154, 107, 0.2);">
               <div class="flex justify-between items-center mb-6">
                 <h3 class="text-xl font-bold">Dziennik Aktywności</h3>
+                <div class="flex space-x-2">
+                  <button onclick="openAllActivityLogsModal()" class="bg-coyote hover:bg-opacity-80 text-black px-4 py-2 rounded-lg font-semibold transition text-sm">
+                    <i class="fa-solid fa-list mr-2"></i>
+                    Wszystkie logi
+                  </button>
                 <button onclick="refreshActivityLogs()" class="text-zinc-400 hover:text-coyote transition-colors p-2" id="refresh-activity-btn">
                   <i class="fa-solid fa-sync-alt text-lg" id="refresh-activity-icon"></i>
                 </button>
+                  <button onclick="clearAllActivityLogs()" class="text-red-400 hover:text-red-300 transition-colors p-2 border border-red-400 rounded" title="Usuń wszystkie logi aktywności">
+                    <i class="fa-solid fa-trash text-lg"></i>
+                  </button>
+                </div>
               </div>
 
               <div id="admin-activity-log" class="space-y-4">
@@ -2126,6 +2135,72 @@
         </div>
       </div>
 
+    <!-- Modal wszystkich logów aktywności -->
+    <div
+      id="all-activity-logs-modal"
+      class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl"
+      onclick="if(event.target.id === 'all-activity-logs-modal') closeAllActivityLogsModal()"
+      style="overflow-y: auto;"
+    >
+      <div class="admin-card max-w-6xl w-full my-8 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold coyote-text">Wszystkie logi aktywności</h2>
+          <button
+            onclick="closeAllActivityLogsModal()"
+            class="text-zinc-400 hover:text-white transition-colors p-2"
+          >
+            <i class="fa-solid fa-times text-xl"></i>
+          </button>
+        </div>
+
+        <!-- Filtry -->
+        <div class="bg-zinc-800/50 rounded-lg p-4 mb-6 border border-zinc-700">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="text-xs text-zinc-400 block mb-2 uppercase tracking-wider">Typ akcji</label>
+              <select id="activity-filter-action" class="w-full" onchange="filterActivityLogs()">
+                <option value="all">Wszystkie</option>
+                <option value="ADMIN_LOGIN_SUCCESS">Logowanie admina</option>
+                <option value="ADMIN_LOGIN_FAILED">Nieudane logowanie</option>
+                <option value="USER_CREATED">Utworzenie użytkownika</option>
+                <option value="USER_DELETED">Usunięcie użytkownika</option>
+                <option value="MESSAGE_SENT">Wysłanie wiadomości</option>
+                <option value="PRODUCT_CREATED">Utworzenie produktu</option>
+                <option value="REVIEW_CREATED">Utworzenie opinii</option>
+                <option value="USER_BLOCKED">Zablokowanie użytkownika</option>
+                <option value="USER_UNBLOCKED">Odblokowanie użytkownika</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-zinc-400 block mb-2 uppercase tracking-wider">Data od</label>
+              <input type="date" id="activity-filter-date-from" class="w-full" onchange="filterActivityLogs()" />
+            </div>
+            <div>
+              <label class="text-xs text-zinc-400 block mb-2 uppercase tracking-wider">Data do</label>
+              <input type="date" id="activity-filter-date-to" class="w-full" onchange="filterActivityLogs()" />
+            </div>
+          </div>
+          <div class="mt-4 flex justify-between items-center">
+            <div class="text-sm text-zinc-400">
+              Znaleziono: <span id="activity-logs-count" class="text-white font-semibold">0</span> logów
+            </div>
+            <button onclick="resetActivityFilters()" class="text-zinc-400 hover:text-coyote transition text-sm">
+              <i class="fa-solid fa-rotate-left mr-1"></i>
+              Resetuj filtry
+            </button>
+          </div>
+        </div>
+
+        <!-- Lista logów -->
+        <div id="all-activity-logs-container" class="space-y-4">
+          <div class="text-center text-zinc-500 py-8">
+            <i class="fa-solid fa-spinner fa-spin text-2xl mb-4 text-zinc-600"></i>
+            <h4 class="text-lg font-semibold mb-2">Ładowanie logów...</h4>
+          </div>
+          </div>
+        </div>
+      </div>
+
     <div
       id="user-details-modal"
       class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl"
@@ -2381,15 +2456,18 @@
           </button>
         </div>
 
-        <div id="block-user-info" class="mb-6 p-4 bg-zinc-800 rounded-lg">
+        <div id="block-user-info" class="mb-6 p-4 bg-zinc-800/80 rounded-lg border border-zinc-700">
           <!-- Informacje o użytkowniku będą ładowane dynamicznie -->
         </div>
 
         <form id="user-block-form" class="space-y-6">
           <input type="hidden" id="block-user-id" />
 
-          <div>
-            <label class="text-sm text-zinc-400 block mb-2">Czas blokady</label>
+          <div class="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+            <label class="text-sm font-semibold text-zinc-300 block mb-3">
+              <i class="fa-solid fa-clock mr-2 text-coyote"></i>
+              Czas blokady
+            </label>
             <select id="block-duration" class="w-full" required>
               <option value="15min">15 minut</option>
               <option value="1hour">1 godzina</option>
@@ -2401,40 +2479,12 @@
             </select>
           </div>
 
-          <div>
-            <label class="text-sm text-zinc-400 block mb-4"
-              >Opcje zawartości konta</label
-            >
-            <div class="space-y-3">
-              <div class="flex items-center space-x-3">
-                <input
-                  type="radio"
-                  id="keep-content"
-                  name="content-action"
-                  value="keep"
-                  checked
-                />
-                <label for="keep-content" class="text-sm"
-                  >Zachowaj zawartość konta (produkty, czaty, itp.)</label
-                >
-              </div>
-              <div class="flex items-center space-x-3">
-                <input
-                  type="radio"
-                  id="remove-content"
-                  name="content-action"
-                  value="remove"
-                />
-                <label for="remove-content" class="text-sm"
-                  >Usuń zawartość konta (produkty, czaty, itp.)</label
-                >
-              </div>
-            </div>
-          </div>
-
           <div class="p-4 bg-red-900/20 border border-red-700 rounded-lg">
-            <h4 class="text-red-400 font-bold mb-2">⚠️ Ostrzeżenie</h4>
-            <p class="text-sm text-zinc-300">
+            <h4 class="text-red-400 font-bold mb-2 flex items-center">
+              <i class="fa-solid fa-triangle-exclamation mr-2"></i>
+              Ostrzeżenie
+            </h4>
+            <p class="text-sm text-zinc-300 leading-relaxed">
               Blokada konta oznacza całkowite "uśmiercenie" konta - brak
               możliwości korzystania ze strony, pisania na czatach, odczytywania
               czatów, dodawania/edycji produktów na bazarze itp. Bez możliwości
@@ -2855,6 +2905,8 @@
       let pendingTasksListener = null;
       let activityLogsListener = null;
       let userFilterColors = {}; // Kolory filtrów zdefiniowane przez użytkownika
+      let activityLogsLimit = 20; // Limit logów do wyświetlenia
+      let loadedActivityLogs = []; // Załadowane logi
 
       // Dźwięk powiadomienia dla nowych wiadomości
       const notificationSound = new Audio('/message.mp3');
@@ -3226,7 +3278,7 @@
             const activityContainer = document.getElementById('admin-activity-log');
             if (activityContainer) {
               console.log('Dashboard tab switched, loading activity logs...');
-              loadDashboardActivityLogs();
+              loadDashboardActivityLogs(true);
             } else {
               console.warn('admin-activity-log container still not found after tab switch');
             }
@@ -3681,12 +3733,216 @@
         }
 
         try {
-          await loadDashboardActivityLogs();
+          await loadDashboardActivityLogs(true); // Reset i załaduj od nowa
         } finally {
           if (refreshBtn) {
             refreshBtn.disabled = false;
             refreshBtn.innerHTML = '<i class="fa-solid fa-sync-alt text-lg" id="refresh-activity-icon"></i>';
           }
+        }
+      };
+
+      // Funkcja ładowania więcej logów aktywności
+      window.loadMoreActivityLogs = async () => {
+        activityLogsLimit += 20; // Zwiększ limit o 20
+        await loadDashboardActivityLogs(false); // Nie resetuj, tylko załaduj więcej
+      };
+
+      // Funkcja otwierania modala wszystkich logów aktywności
+      window.openAllActivityLogsModal = async () => {
+        const modal = document.getElementById("all-activity-logs-modal");
+        modal.classList.remove("hidden");
+        document.body.style.overflow = 'hidden';
+        
+        // Dodaj listener dla ESC
+        const escHandler = (e) => {
+          if (e.key === 'Escape') {
+            closeAllActivityLogsModal();
+            document.removeEventListener('keydown', escHandler);
+          }
+        };
+        document.addEventListener('keydown', escHandler);
+        
+        await loadAllActivityLogs();
+      };
+
+      // Funkcja zamykania modala wszystkich logów aktywności
+      window.closeAllActivityLogsModal = () => {
+        document.getElementById("all-activity-logs-modal").classList.add("hidden");
+        document.body.style.overflow = '';
+      };
+
+      // Funkcja ładowania wszystkich logów aktywności do modala
+      let allActivityLogs = [];
+      async function loadAllActivityLogs() {
+        const container = document.getElementById('all-activity-logs-container');
+        if (!container) return;
+
+        try {
+          container.innerHTML = `
+            <div class="text-center text-zinc-500 py-8">
+              <i class="fa-solid fa-spinner fa-spin text-2xl mb-4 text-zinc-600"></i>
+              <h4 class="text-lg font-semibold mb-2">Ładowanie logów...</h4>
+            </div>
+          `;
+
+          // Pobierz wszystkie logi aktywności (bez limitu)
+          const activityLogsRef = collection(db, 'activityLogs');
+          const q = query(activityLogsRef, orderBy('timestamp', 'desc'));
+          const querySnapshot = await getDocs(q);
+
+          allActivityLogs = [];
+          querySnapshot.forEach((doc) => {
+            allActivityLogs.push({
+              id: doc.id,
+              ...doc.data(),
+              timestamp: doc.data().timestamp
+            });
+          });
+
+          console.log('Loaded all activity logs:', allActivityLogs.length);
+          
+          // Zastosuj filtry i wyświetl
+          filterActivityLogs();
+        } catch (error) {
+          console.error("Error loading all activity logs:", error);
+          container.innerHTML = `
+            <div class="text-center text-red-400 py-8">
+              <i class="fa-solid fa-exclamation-triangle text-2xl mb-4"></i>
+              <h4 class="text-lg font-semibold mb-2">Błąd ładowania logów</h4>
+              <p class="text-sm">${error.message}</p>
+            </div>
+          `;
+        }
+      }
+
+      // Funkcja filtrowania logów aktywności
+      window.filterActivityLogs = () => {
+        const container = document.getElementById('all-activity-logs-container');
+        if (!container || allActivityLogs.length === 0) return;
+
+        const actionFilter = document.getElementById('activity-filter-action')?.value || 'all';
+        const dateFrom = document.getElementById('activity-filter-date-from')?.value;
+        const dateTo = document.getElementById('activity-filter-date-to')?.value;
+
+        let filteredLogs = allActivityLogs;
+
+        // Filtruj po typie akcji
+        if (actionFilter !== 'all') {
+          filteredLogs = filteredLogs.filter(log => log.action === actionFilter);
+        }
+
+        // Filtruj po dacie
+        if (dateFrom) {
+          const fromDate = new Date(dateFrom);
+          fromDate.setHours(0, 0, 0, 0);
+          filteredLogs = filteredLogs.filter(log => {
+            const logDate = log.timestamp?.toDate ? log.timestamp.toDate() : new Date(log.timestamp);
+            return logDate >= fromDate;
+          });
+        }
+
+        if (dateTo) {
+          const toDate = new Date(dateTo);
+          toDate.setHours(23, 59, 59, 999);
+          filteredLogs = filteredLogs.filter(log => {
+            const logDate = log.timestamp?.toDate ? log.timestamp.toDate() : new Date(log.timestamp);
+            return logDate <= toDate;
+          });
+        }
+
+        // Zaktualizuj licznik
+        const countEl = document.getElementById('activity-logs-count');
+        if (countEl) countEl.textContent = filteredLogs.length;
+
+        // Wyświetl przefiltrowane logi
+        if (filteredLogs.length === 0) {
+          container.innerHTML = `
+            <div class="text-center text-zinc-500 py-8">
+              <i class="fa-solid fa-filter text-2xl mb-4 text-zinc-600"></i>
+              <h4 class="text-lg font-semibold mb-2">Brak logów</h4>
+              <p class="text-sm">Nie znaleziono logów spełniających kryteria filtrowania</p>
+            </div>
+          `;
+          return;
+        }
+
+        const logsHtml = filteredLogs
+          .map((log) => {
+            const timestamp = log.timestamp?.toDate ? log.timestamp.toDate() : new Date(log.timestamp);
+            const timeAgo = getTimeAgo ? getTimeAgo(timestamp) : timestamp.toLocaleString("pl-PL");
+            const activityLog = renderActivityLog ? renderActivityLog(log) : { description: log.action || 'Aktywność', content: log.details || '' };
+
+            return `
+              <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="showEventDetails ? showEventDetails('${log.id}') : null">
+                <div class="flex justify-between items-start mb-2">
+                  <div class="font-semibold text-white">${activityLog.description}</div>
+                  <div class="text-xs text-zinc-500">${timeAgo}</div>
+                </div>
+                ${activityLog.content ? `<div class="text-xs text-zinc-400 mt-1">${activityLog.content}</div>` : ''}
+                <div class="text-xs text-zinc-500 mt-2">
+                  ${timestamp.toLocaleString("pl-PL")}
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+
+        container.innerHTML = logsHtml;
+      }
+
+      // Funkcja resetowania filtrów
+      window.resetActivityFilters = () => {
+        document.getElementById('activity-filter-action').value = 'all';
+        document.getElementById('activity-filter-date-from').value = '';
+        document.getElementById('activity-filter-date-to').value = '';
+        filterActivityLogs();
+      }
+
+      // Funkcja czyszczenia wszystkich logów aktywności
+      window.clearAllActivityLogs = async () => {
+        if (!confirm("Czy na pewno chcesz usunąć WSZYSTKIE logi aktywności? Ta operacja jest nieodwracalna!")) {
+          return;
+        }
+
+        if (!confirm("UWAGA: To usunie wszystkie logi aktywności z bazy danych. Czy jesteś pewien?")) {
+          return;
+        }
+
+        try {
+          showNotification("Usuwanie logów aktywności...", "info");
+          
+          // Pobierz wszystkie logi aktywności
+          const activityLogsRef = collection(db, "activityLogs");
+          const querySnapshot = await getDocs(activityLogsRef);
+          
+          // Usuń wszystkie dokumenty w batchach (maksymalnie 500 na batch)
+          const batchSize = 500;
+          const docs = querySnapshot.docs;
+          let deletedCount = 0;
+          
+          for (let i = 0; i < docs.length; i += batchSize) {
+            const batch = writeBatch(db);
+            const batchDocs = docs.slice(i, i + batchSize);
+            
+            batchDocs.forEach((doc) => {
+              batch.delete(doc.ref);
+            });
+            
+            await batch.commit();
+            deletedCount += batchDocs.length;
+            
+            // Aktualizuj postęp
+            showNotification(`Usunięto ${deletedCount} z ${docs.length} logów...`, "info");
+          }
+          
+          showNotification(`Pomyślnie usunięto wszystkie logi aktywności (${deletedCount} rekordów).`, "success");
+          
+          // Odśwież listę logów
+          await loadDashboardActivityLogs(true);
+        } catch (error) {
+          console.error("Error clearing activity logs:", error);
+          showNotification("Błąd podczas usuwania logów aktywności.", "error");
         }
       };
 
@@ -3714,7 +3970,7 @@
           await loadContactFormsCount();
 
           // Ładowanie dziennika aktywności
-          await loadDashboardActivityLogs();
+          await loadDashboardActivityLogs(true);
 
           // Ładowanie statystyk Google Analytics
           await fetchGAStatistics();
@@ -3735,7 +3991,7 @@
       }
 
       // Funkcja ładowania dziennika aktywności dla dashboardu
-      async function loadDashboardActivityLogs() {
+      async function loadDashboardActivityLogs(reset = false) {
         const container = document.getElementById('admin-activity-log');
         console.log('loadDashboardActivityLogs called, container exists:', !!container);
         if (!container) {
@@ -3746,9 +4002,15 @@
         console.log('Loading activity logs...');
 
         try {
+          // Jeśli reset, wyczyść załadowane logi
+          if (reset) {
+            loadedActivityLogs = [];
+            activityLogsLimit = 20;
+          }
+
           // Pobierz activity logs bezpośrednio z Firestore
           const activityLogsRef = collection(db, 'activityLogs');
-          const q = query(activityLogsRef, orderBy('timestamp', 'desc'), limit(10));
+          const q = query(activityLogsRef, orderBy('timestamp', 'desc'), limit(activityLogsLimit));
           const querySnapshot = await getDocs(q);
 
           const logs = [];
@@ -3762,7 +4024,10 @@
 
           console.log('Loaded logs from Firestore:', logs.length);
 
-            if (logs.length === 0) {
+          // Zaktualizuj załadowane logi
+          loadedActivityLogs = logs;
+
+          if (logs.length === 0 && reset) {
               container.innerHTML = `
                 <div class="text-center text-zinc-500 py-8">
                   <i class="fa-solid fa-list text-2xl mb-4 text-zinc-600"></i>
@@ -3782,16 +4047,32 @@
                 return `
                   <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="showEventDetails ? showEventDetails('${log.id}') : null">
                     <div class="flex justify-between items-start mb-2">
-                      <div class="font-semibold text-white">${activityLog.description}</div>
+                    <div class="font-semibold text-white">${activityLog.description}</div>
                       <div class="text-xs text-zinc-500">${timeAgo}</div>
                     </div>
-                    ${activityLog.content ? `<div class="text-xs text-zinc-400 mt-1">${activityLog.content}</div>` : ''}
+                  ${activityLog.content ? `<div class="text-xs text-zinc-400 mt-1">${activityLog.content}</div>` : ''}
                   </div>
                 `;
               })
               .join("");
 
-            container.innerHTML = logsHtml;
+          // Sprawdź czy są więcej logów do załadowania
+          const hasMore = logs.length >= activityLogsLimit;
+          const loadMoreButton = hasMore ? `
+            <div class="text-center mt-6">
+              <button onclick="loadMoreActivityLogs()" class="bg-coyote hover:bg-opacity-80 text-black px-6 py-3 rounded-lg font-semibold transition">
+                <i class="fa-solid fa-arrow-down mr-2"></i>
+                Załaduj więcej (${activityLogsLimit} zobaczono)
+              </button>
+            </div>
+          ` : logs.length > 0 ? `
+            <div class="text-center mt-6 text-zinc-500 text-sm">
+              <i class="fa-solid fa-check-circle mr-2"></i>
+              Wyświetlono wszystkie logi (${logs.length})
+            </div>
+          ` : '';
+
+          container.innerHTML = logsHtml + loadMoreButton;
         } catch (apiError) {
           console.warn('API failed, using mock data for localhost:', apiError.message);
 
@@ -3997,7 +4278,7 @@
                                 </div>
                             </div>
                             <div class="flex space-x-2 ml-4">
-                                    <button onclick="viewUserDetails('${user.id}')" class="text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400 rounded text-xs">Szczegóły</button>
+                                <button onclick="viewUserDetails('${user.id}')" class="text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400 rounded text-xs">Szczegóły</button>
                                 ${
                                   !isCurrentUser
                                     ? `
@@ -4160,7 +4441,7 @@
                                       ${decryptedUser.status === "blocked" ? '<span class="inline-flex items-center px-3 py-1 rounded-full bg-red-900/30 text-red-400 border border-red-700"><i class="fa-solid fa-ban mr-2"></i>Zablokowane</span>' : 
                                         decryptedUser.status === "active" ? '<span class="inline-flex items-center px-3 py-1 rounded-full bg-green-900/30 text-green-400 border border-green-700"><i class="fa-solid fa-check-circle mr-2"></i>Aktywne</span>' : 
                                         '<span class="inline-flex items-center px-3 py-1 rounded-full bg-yellow-900/30 text-yellow-400 border border-yellow-700"><i class="fa-solid fa-pause-circle mr-2"></i>Nieaktywne</span>'}
-                                  </div>
+                              </div>
                               </div>
                           </div>
                       </div>
@@ -4170,7 +4451,7 @@
                           <div class="flex items-center space-x-2 mb-4">
                               <i class="fa-solid fa-location-dot text-coyote"></i>
                               <h3 class="text-lg font-bold text-white">Adres dostawy</h3>
-                          </div>
+                              </div>
                           <div class="bg-zinc-900/50 p-4 rounded border border-zinc-700/50">
                               ${decryptedUser.address.street || decryptedUser.address.buildingNumber || decryptedUser.address.postalCode || decryptedUser.address.city || decryptedUser.parcelLocker ? 
                                 `<div class="space-y-2 text-sm">
@@ -4982,13 +5263,15 @@
         };
 
         document.getElementById("block-user-info").innerHTML = `
-          <div class="flex items-center space-x-3 mb-2">
-            <div class="font-bold text-white">${decryptedUser.displayName}</div>
-            <div class="text-sm text-zinc-400">${decryptedUser.email}</div>
+          <div class="space-y-3">
+            <div class="flex items-center space-x-3">
+              <div class="font-bold text-lg text-white">${decryptedUser.displayName || "Brak nazwy"}</div>
           </div>
-          <div class="text-sm text-zinc-500">
-            ${decryptedUser.address.city ? `Miasto: ${decryptedUser.address.city}` : "Brak adresu"}
+            <div class="text-sm text-zinc-200">${decryptedUser.email || "Brak emaila"}</div>
+            <div class="text-sm text-zinc-300">
+              ${decryptedUser.address?.city ? `Miasto: ${decryptedUser.address.city}` : "Brak adresu"}
             ${decryptedUser.phone ? ` • Tel: ${decryptedUser.phone}` : ""}
+            </div>
           </div>
         `;
 
@@ -5053,14 +5336,14 @@
           <div class="space-y-3">
             <div class="flex items-center space-x-3">
               <div class="font-bold text-lg text-white">${decryptedUser.displayName || "Brak nazwy"}</div>
-            </div>
+          </div>
             <div class="text-sm text-zinc-200">${decryptedUser.email || "Brak emaila"}</div>
             <div class="text-sm text-zinc-300">
               ${decryptedUser.address?.city ? `Miasto: ${decryptedUser.address.city}` : "Brak adresu"}
-              ${decryptedUser.phone ? ` • Tel: ${decryptedUser.phone}` : ""}
-            </div>
+            ${decryptedUser.phone ? ` • Tel: ${decryptedUser.phone}` : ""}
+          </div>
             <div class="text-sm text-zinc-400 pt-2 border-t border-zinc-700">
-              Konto utworzone: ${new Date(decryptedUser.createdAt?.toDate?.() || decryptedUser.createdAt).toLocaleDateString("pl-PL")}
+            Konto utworzone: ${new Date(decryptedUser.createdAt?.toDate?.() || decryptedUser.createdAt).toLocaleDateString("pl-PL")}
             </div>
           </div>
         `;
@@ -5994,11 +6277,11 @@
               const action = data.action || data.type;
               // Tylko zdarzenia związane z usługami
               if (serviceActions.includes(action)) {
-                eventsLog.push({
-                  id: doc.id,
-                  ...data,
-                  timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : (data.timestamp || new Date())
-                });
+              eventsLog.push({
+                id: doc.id,
+                ...data,
+                timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : (data.timestamp || new Date())
+              });
               }
             });
 
@@ -6962,8 +7245,8 @@
         if (event.userId) {
           // Jeśli userId jest emailem, użyj go
           if (event.userId.includes("@")) {
-            return event.userId;
-          }
+          return event.userId;
+        }
           // Sprawdź czy w details jest email
           if (event.details && typeof event.details === 'object') {
             if (event.details.email) return event.details.email;
@@ -7763,9 +8046,6 @@
           if (!userId) return;
 
           const duration = document.getElementById("block-duration").value;
-          const contentAction = document.querySelector(
-            'input[name="content-action"]:checked',
-          ).value;
 
           const blockBtn = e.target.querySelector('button[type="submit"]');
           blockBtn.disabled = true;
@@ -7811,7 +8091,6 @@
               blockedUntil: blockedUntil,
               blockedBy: currentUser.uid,
               blockDuration: duration,
-              contentAction: contentAction,
               isPermanentBlock: duration === "permanent",
             };
 
@@ -7821,13 +8100,9 @@
             await logActivity(userId, "USER_BLOCKED", {
               duration: duration,
               blockedUntil: blockedUntil,
-              contentAction: contentAction,
               isPermanent: duration === "permanent",
               blockedBy: currentUser.uid,
             });
-
-            // Jeśli wybrano usunięcie zawartości, tutaj należałoby dodać logikę usuwania
-            // (produkty, wiadomości, itp.) - będzie implementowane w następnych krokach
 
             showNotification(
               `Użytkownik został zablokowany${blockedUntil ? " do " + blockedUntil.toLocaleString("pl-PL") : " na zawsze"}.`,
