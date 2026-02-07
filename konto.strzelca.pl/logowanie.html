@@ -592,8 +592,18 @@
 
           // Listener stanu autoryzacji - jeśli użytkownik już jest zalogowany, sprawdź weryfikację
           onAuthStateChanged(auth, async (user) => {
-            if (isLoginFlowInProgress || isNavigatingAway) return;
-            if (isSigningOut) return;
+            if (isLoginFlowInProgress) {
+              console.log("Auth state changed - ignorowanie (login flow in progress)");
+              return;
+            }
+            if (isNavigatingAway) {
+              console.log("Auth state changed - ignorowanie (navigating away)");
+              return;
+            }
+            if (isSigningOut) {
+              console.log("Auth state changed - ignorowanie (signing out)");
+              return;
+            }
 
             console.log(
               "Auth state changed:",
@@ -837,12 +847,27 @@
                 // Krótkie opóźnienie, aby upewnić się, że sesja Firebase Auth jest w pełni ustawiona
                 await new Promise(resolve => setTimeout(resolve, 100));
 
+                console.log("Sprawdzanie statusu konta w Firestore...");
+
                 // Sprawdź status konta w Firestore
                 try {
-                  const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-                  const { initAuth } = await import("https://strzelca.pl/auth-init.mjs?v=2026-02-06-2");
-                  const { db } = await initAuth(firebaseConfig);
+                  const { getDoc, doc, getFirestore } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+                  
+                  // Użyj istniejącej instancji Firestore z app zamiast initAuth (które może być wolne)
+                  let db;
+                  try {
+                    db = getFirestore(app);
+                  } catch (firestoreError) {
+                    // Jeśli getFirestore nie działa, użyj initAuth
+                    console.log("Używanie initAuth do inicjalizacji Firestore...");
+                    const { initAuth } = await import("https://strzelca.pl/auth-init.mjs?v=2026-02-06-2");
+                    const authResult = await initAuth(firebaseConfig, { skipSSO: true, logAuthReady: false, logSSO: false });
+                    db = authResult.db;
+                  }
+                  
+                  console.log("Pobieranie profilu użytkownika...");
                   const userProfile = await getDoc(doc(db, "userProfiles", user.uid));
+                  console.log("Profil użytkownika pobrany:", userProfile.exists());
                   
                   if (userProfile.exists()) {
                     const userData = userProfile.data();
@@ -872,6 +897,7 @@
                         showBlockedAccountModal(blockMessage);
                         loginBtn.disabled = false;
                         loginBtn.innerHTML = '<i class="fa-solid fa-sign-in-alt mr-2"></i>Zaloguj się';
+                        isLoginFlowInProgress = false;
                         return;
                       }
                     }
@@ -887,11 +913,14 @@
                   // Kontynuuj logowanie jeśli nie udało się sprawdzić statusu
                 }
 
+                console.log("Ustawianie cookie SSO...");
+
                 // Dopiero teraz (po weryfikacji emaila i sprawdzeniu blokady) ustawiamy cookie SSO
                 try {
                   await syncSessionCookieFromFirebaseUser(auth, {
                     minIntervalMinutes: 0,
                   });
+                  console.log("Cookie SSO ustawione pomyślnie");
                 } catch (ssoErr) {
                   console.warn(
                     "SSO session-login (submit) failed (ignored):",
@@ -899,8 +928,11 @@
                   );
                 }
 
+                console.log("Wyświetlanie komunikatu sukcesu...");
                 showStatus("Zalogowano pomyślnie! Przekierowanie...");
+                console.log("Komunikat wyświetlony, czekanie na przekierowanie...");
 
+                console.log("Logowanie zdarzenia użytkownika...");
                 await logUserEvent(
                   "LOGIN",
                   user.uid,
@@ -913,8 +945,12 @@
                     emailVerified: user.emailVerified,
                   }
                 );
+                console.log("Zdarzenie zalogowane");
 
+                console.log("Ustawianie przekierowania za 1 sekundę...");
+                isLoginFlowInProgress = false; // Zakończ flow przed przekierowaniem
                 setTimeout(() => {
+                  console.log("Przekierowywanie do:", POST_LOGIN_REDIRECT_URL);
                   isNavigatingAway = true;
                   window.location.href = POST_LOGIN_REDIRECT_URL;
                 }, 1000);
