@@ -101,11 +101,19 @@
 
         
       async function getFirebaseApiKey() {
-        const urls = ["/api/firebase-config"];
+        // Na części domen / subdomen endpoint /api/* może nie być podpięty.
+        // Dlatego mamy fallback do głównej domeny.
+        const isMain = (window.location?.hostname || "") === "strzelca.pl";
+        const urls = isMain
+          ? ["/api/firebase-config", "https://strzelca.pl/api/firebase-config"]
+          : ["https://strzelca.pl/api/firebase-config", "/api/firebase-config"];
 
         for (const url of urls) {
           try {
-            const res = await fetch(url, { cache: "no-store" });
+            const res = await fetch(url, {
+              cache: "no-store",
+              credentials: url.startsWith("http") ? "omit" : "same-origin",
+            });
             if (!res.ok) continue;
             const data = await res.json().catch(() => null);
             if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
@@ -116,7 +124,7 @@
           }
         }
 
-        throw new Error("Nie udało się pobrać FIREBASE_WEB_API_KEY z /api/firebase-config");
+        throw new Error("Nie udało się pobrać FIREBASE_WEB_API_KEY z /api/firebase-config (ani z fallbacku)");
       }
 const firebaseConfig = {
             apiKey: await getFirebaseApiKey(),

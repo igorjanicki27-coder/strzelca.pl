@@ -127,14 +127,26 @@ function hideLegacyAuthUiIfPresent() {
 }
 
 async function getFirebaseApiKey() {
-  try {
-    const res = await fetch("/api/firebase-config", { cache: "no-store" });
-    if (!res.ok) return null;
-    const data = await res.json().catch(() => null);
-    if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
-      return data.apiKey;
-    }
-  } catch {}
+  // Na części domen / subdomen endpoint /api/* może nie być podpięty.
+  // Dlatego mamy fallback do głównej domeny.
+  const isMain = (typeof window !== "undefined" && window.location?.hostname) === "strzelca.pl";
+  const urls = isMain
+    ? ["/api/firebase-config", "https://strzelca.pl/api/firebase-config"]
+    : ["https://strzelca.pl/api/firebase-config", "/api/firebase-config"];
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, {
+        cache: "no-store",
+        credentials: url.startsWith("http") ? "omit" : "same-origin",
+      });
+      if (!res.ok) continue;
+      const data = await res.json().catch(() => null);
+      if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
+        return data.apiKey;
+      }
+    } catch {}
+  }
   return null;
 }
 

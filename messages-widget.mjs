@@ -1018,7 +1018,15 @@ async function main() {
         await batch.commit();
       }
     } catch (e) {
-      console.warn("markConversationRead failed:", e?.message || e);
+      const msg = (e?.message || "").toString();
+      // Ignoruj błędy uprawnień - użytkownik może nie mieć dostępu do tej konwersacji
+      if (msg.includes("Missing or insufficient permissions") || 
+          msg.includes("permission-denied") ||
+          msg.includes("Not authenticated")) {
+        console.debug("messages-widget: brak uprawnień do oznaczania jako przeczytane (normalne dla niektórych użytkowników)");
+        return;
+      }
+      console.warn("markConversationRead failed:", msg || e);
     }
   }
 
@@ -1123,7 +1131,18 @@ async function main() {
         renderList();
       },
       (err) => {
-        console.warn("conversations snapshot error:", err?.message || err);
+        const msg = (err?.message || "").toString();
+        // Ignoruj błędy uprawnień - użytkownik może nie mieć dostępu do wszystkich konwersacji
+        // lub może nie być w pełni zalogowany. Widget powinien działać cicho w tle.
+        if (msg.includes("Missing or insufficient permissions") || 
+            msg.includes("permission-denied") ||
+            msg.includes("Not authenticated")) {
+          // Cicho zignoruj - widget nie powinien być widoczny dla niezalogowanych użytkowników
+          // lub użytkowników bez uprawnień
+          console.debug("messages-widget: brak uprawnień do konwersacji (normalne dla niezalogowanych)");
+          return;
+        }
+        console.warn("conversations snapshot error:", msg || err);
       }
     );
   }
@@ -1249,13 +1268,21 @@ async function main() {
       },
       (err) => {
         const msg = (err?.message || "").toString();
+        // Ignoruj błędy uprawnień - użytkownik może nie mieć dostępu do tej konwersacji
+        if (msg.includes("Missing or insufficient permissions") || 
+            msg.includes("permission-denied") ||
+            msg.includes("Not authenticated")) {
+          console.debug("messages-widget: brak uprawnień do wątku (normalne dla niektórych użytkowników)");
+          try {
+            msgs.innerHTML = `<div class="empty">Brak uprawnień do tej rozmowy.</div>`;
+          } catch {}
+          return;
+        }
         console.warn("thread snapshot error:", msg || err);
         try {
           msgs.innerHTML = `<div class="empty">${
             msg.includes("requires an index") || msg.includes("index is currently building")
               ? "Indeks Firestore dla wiadomości jest w trakcie budowania. Odczekaj chwilę (czasem kilka minut) i odśwież."
-              : msg.includes("Missing or insufficient permissions")
-                ? "Brak uprawnień do tej rozmowy. Odśwież stronę i upewnij się, że jesteś zalogowany."
               : "Nie udało się załadować rozmowy. Spróbuj odświeżyć."
           }</div>`;
         } catch {}
@@ -1270,13 +1297,21 @@ async function main() {
       },
       (err) => {
         const msg = (err?.message || "").toString();
+        // Ignoruj błędy uprawnień - użytkownik może nie mieć dostępu do tej konwersacji
+        if (msg.includes("Missing or insufficient permissions") || 
+            msg.includes("permission-denied") ||
+            msg.includes("Not authenticated")) {
+          console.debug("messages-widget: brak uprawnień do wątku (normalne dla niektórych użytkowników)");
+          try {
+            msgs.innerHTML = `<div class="empty">Brak uprawnień do tej rozmowy.</div>`;
+          } catch {}
+          return;
+        }
         console.warn("thread snapshot error:", msg || err);
         try {
           msgs.innerHTML = `<div class="empty">${
             msg.includes("requires an index") || msg.includes("index is currently building")
               ? "Indeks Firestore dla wiadomości jest w trakcie budowania. Odczekaj chwilę (czasem kilka minut) i odśwież."
-              : msg.includes("Missing or insufficient permissions")
-                ? "Brak uprawnień do tej rozmowy. Odśwież stronę i upewnij się, że jesteś zalogowany."
               : "Nie udało się załadować rozmowy. Spróbuj odświeżyć."
           }</div>`;
         } catch {}
