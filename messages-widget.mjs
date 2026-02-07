@@ -303,6 +303,151 @@ function makeStyles() {
       .grid { grid-template-columns: 1fr; }
       .left { display: none; }
     }
+    .modalOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(8px);
+      z-index: 2147483647;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modalOverlay.show { display: flex; }
+    .modalContent {
+      background: rgba(10,10,10,0.95);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 18px;
+      padding: 20px;
+      max-width: 480px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modalHeader {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+    }
+    .modalTitle {
+      font-weight: 900;
+      font-size: 16px;
+      color: #e5e5e5;
+    }
+    .modalClose {
+      background: none;
+      border: none;
+      color: rgba(229,229,229,0.6);
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+    }
+    .modalClose:hover { background: rgba(255,255,255,0.08); color: #e5e5e5; }
+    .modalField {
+      margin-bottom: 16px;
+    }
+    .modalLabel {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(229,229,229,0.7);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .userSearchResults {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      margin-top: 4px;
+      background: rgba(0,0,0,0.95);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 10;
+      display: none;
+    }
+    .userSearchResults.show { display: block; }
+    .userResultItem {
+      padding: 12px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .userResultItem:hover { background: rgba(255,255,255,0.06); }
+    .userResultItem:last-child { border-bottom: none; }
+    .userResultAvatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      background: rgba(193,154,107,0.95);
+      color: #111;
+      font-weight: 900;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+    }
+    .userResultText {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .userResultName {
+      font-weight: 700;
+      font-size: 13px;
+      color: #e5e5e5;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .userResultEmail {
+      font-size: 11px;
+      color: rgba(229,229,229,0.6);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    .modalActions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.10);
+    }
+    .modalBtn {
+      flex: 1;
+      padding: 12px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: #e5e5e5;
+    }
+    .modalBtn:hover { border-color: rgba(193,154,107,0.7); background: rgba(193,154,107,0.1); }
+    .modalBtn.primary {
+      background: rgba(193,154,107,0.92);
+      color: #111;
+      border-color: rgba(193,154,107,0.35);
+    }
+    .modalBtn.primary:hover { background: rgba(193,154,107,1); }
+    .modalBtn:disabled { opacity: 0.5; cursor: not-allowed; }
   `;
   return style;
 }
@@ -562,8 +707,16 @@ async function main() {
   const hint = document.createElement("div");
   hint.className = "smallHint";
   hint.textContent = "Filtruje na żywo: rozmowy, a niżej użytkownicy.";
+  const newMsgBtn = document.createElement("button");
+  newMsgBtn.className = "ghost";
+  newMsgBtn.type = "button";
+  newMsgBtn.style.marginTop = "10px";
+  newMsgBtn.style.width = "100%";
+  newMsgBtn.innerHTML = '<span style="margin-right: 6px;">+</span> Nowa wiadomość';
+  newMsgBtn.setAttribute("aria-label", "Nowa wiadomość");
   leftTop.appendChild(searchInput);
   leftTop.appendChild(hint);
+  leftTop.appendChild(newMsgBtn);
 
   const convList = document.createElement("div");
   left.appendChild(leftTop);
@@ -1211,6 +1364,145 @@ async function main() {
       sendBtn.disabled = false;
     }
   }
+
+  // Modal do tworzenia nowej wiadomości
+  const modalOverlay = document.createElement("div");
+  modalOverlay.className = "modalOverlay";
+  modalOverlay.innerHTML = `
+    <div class="modalContent">
+      <div class="modalHeader">
+        <div class="modalTitle">Nowa wiadomość</div>
+        <button class="modalClose" type="button" aria-label="Zamknij">×</button>
+      </div>
+      <div class="modalField" style="position: relative;">
+        <label class="modalLabel">Wyszukaj użytkownika</label>
+        <input type="text" class="search" id="new-msg-user-search" placeholder="Wpisz nick lub email..." autocomplete="off" />
+        <input type="hidden" id="new-msg-user-id" />
+        <input type="hidden" id="new-msg-user-email" />
+        <div class="userSearchResults" id="new-msg-results"></div>
+      </div>
+      <div class="modalField">
+        <label class="modalLabel">Wiadomość</label>
+        <textarea class="search" id="new-msg-content" placeholder="Wpisz wiadomość..." rows="4" style="resize: vertical;"></textarea>
+      </div>
+      <div class="modalActions">
+        <button class="modalBtn" type="button" id="new-msg-cancel">Anuluj</button>
+        <button class="modalBtn primary" type="button" id="new-msg-send">Wyślij</button>
+      </div>
+    </div>
+  `;
+  shadow.appendChild(modalOverlay);
+
+  const newMsgUserSearch = shadow.getElementById("new-msg-user-search");
+  const newMsgUserId = shadow.getElementById("new-msg-user-id");
+  const newMsgUserEmail = shadow.getElementById("new-msg-user-email");
+  const newMsgContent = shadow.getElementById("new-msg-content");
+  const newMsgResults = shadow.getElementById("new-msg-results");
+  const newMsgCancel = shadow.getElementById("new-msg-cancel");
+  const newMsgSend = shadow.getElementById("new-msg-send");
+  const modalCloseBtn = shadow.querySelector(".modalClose");
+
+  let newMsgSearchTimer = null;
+  newMsgUserSearch.addEventListener("input", () => {
+    const q = (newMsgUserSearch.value || "").trim();
+    if (newMsgSearchTimer) clearTimeout(newMsgSearchTimer);
+    if (q.length < 2) {
+      newMsgResults.classList.remove("show");
+      newMsgResults.innerHTML = "";
+      newMsgUserId.value = "";
+      newMsgUserEmail.value = "";
+      return;
+    }
+    newMsgSearchTimer = setTimeout(async () => {
+      try {
+        const users = await searchUsersByPrefix(q);
+        if (users.length === 0) {
+          newMsgResults.innerHTML = '<div style="padding: 12px; text-align: center; color: rgba(229,229,229,0.6); font-size: 12px;">Nie znaleziono użytkowników</div>';
+          newMsgResults.classList.add("show");
+          return;
+        }
+        newMsgResults.innerHTML = users.slice(0, 8).map(u => `
+          <div class="userResultItem" data-uid="${u.uid}" data-name="${u.displayName || 'Użytkownik'}" data-email="${u.uid}">
+            <div class="userResultAvatar">${firstLetter(u.displayName || "U")}</div>
+            <div class="userResultText">
+              <div class="userResultName">${u.displayName || "Użytkownik"}</div>
+            </div>
+          </div>
+        `).join("");
+        newMsgResults.querySelectorAll(".userResultItem").forEach(item => {
+          item.addEventListener("click", () => {
+            const uid = item.dataset.uid;
+            const name = item.dataset.name;
+            newMsgUserId.value = uid;
+            newMsgUserEmail.value = uid; // Używamy uid jako email dla DM
+            newMsgUserSearch.value = name;
+            newMsgResults.classList.remove("show");
+          });
+        });
+        newMsgResults.classList.add("show");
+      } catch (e) {
+        console.warn("User search failed:", e);
+        newMsgResults.innerHTML = '<div style="padding: 12px; text-align: center; color: rgba(229,229,229,0.6); font-size: 12px;">Błąd wyszukiwania</div>';
+        newMsgResults.classList.add("show");
+      }
+    }, 300);
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!newMsgResults.contains(e.target) && !newMsgUserSearch.contains(e.target)) {
+      newMsgResults.classList.remove("show");
+    }
+  });
+
+  async function sendNewMessage() {
+    const userId = newMsgUserId.value.trim();
+    const content = (newMsgContent.value || "").trim();
+    if (!userId || !content) return;
+    newMsgSend.disabled = true;
+    newMsgSend.textContent = "Wysyłanie...";
+    try {
+      await ensureConversation(userId).catch(() => {});
+      await sendMessageTo(userId, content);
+      closeNewMessageModal();
+      // Otwórz konwersację z wybranym użytkownikiem
+      selectPeer(userId, newMsgUserSearch.value || "Użytkownik");
+    } catch (e) {
+      console.warn("Send new message failed:", e?.message || e);
+      alert("Nie udało się wysłać wiadomości. Spróbuj ponownie.");
+    } finally {
+      newMsgSend.disabled = false;
+      newMsgSend.textContent = "Wyślij";
+    }
+  }
+
+  function openNewMessageModal() {
+    modalOverlay.classList.add("show");
+    newMsgUserSearch.focus();
+  }
+
+  function closeNewMessageModal() {
+    modalOverlay.classList.remove("show");
+    newMsgUserSearch.value = "";
+    newMsgContent.value = "";
+    newMsgUserId.value = "";
+    newMsgUserEmail.value = "";
+    newMsgResults.classList.remove("show");
+    newMsgResults.innerHTML = "";
+  }
+
+  newMsgBtn.addEventListener("click", openNewMessageModal);
+  newMsgCancel.addEventListener("click", closeNewMessageModal);
+  modalCloseBtn.addEventListener("click", closeNewMessageModal);
+  newMsgSend.addEventListener("click", sendNewMessage);
+  newMsgContent.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      sendNewMessage();
+    }
+  });
+  modalOverlay.addEventListener("click", (e) => {
+    if (e.target === modalOverlay) closeNewMessageModal();
+  });
 
   btn.addEventListener("click", () => {
     if (isOpen) closePanel();

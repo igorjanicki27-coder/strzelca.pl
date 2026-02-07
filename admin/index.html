@@ -4655,12 +4655,31 @@
             return;
           }
 
+          // Pobierz dane administratora z profilu
+          let adminName = 'Administrator';
+          let adminEmail = currentUser?.email || 'admin@strzelca.pl';
+          
+          if (currentUser?.uid) {
+            try {
+              const adminProfile = await getDoc(doc(db, 'userProfiles', currentUser.uid));
+              if (adminProfile.exists()) {
+                const adminData = adminProfile.data();
+                adminName = adminData.displayName || adminData.email || 'Administrator';
+                adminEmail = adminData.email || adminEmail;
+              }
+            } catch (e) {
+              console.warn('Could not fetch admin profile:', e);
+            }
+          }
+
           const draftData = {
             subject: subject,
             content: content,
             savedAt: serverTimestamp(),
             savedBy: currentUser.uid,
-            savedByEmail: currentUser.email,
+            savedByEmail: adminEmail,
+            senderName: adminName, // Dodaj senderName dla zgodności z API
+            senderEmail: adminEmail,
           };
 
           // Zapisz wersję roboczą w Firestore
@@ -4669,7 +4688,7 @@
           showNotification("Wersja robocza newslettera została zapisana.", "success");
         } catch (error) {
           console.error("Error saving newsletter draft:", error);
-          showNotification("Błąd podczas zapisywania wersji roboczej.", "error");
+          showNotification("Błąd podczas zapisywania wersji roboczej: " + (error.message || error), "error");
         }
       };
 
@@ -4718,6 +4737,23 @@
             return;
           }
 
+          // Pobierz dane administratora z profilu
+          let adminName = 'Administrator';
+          let adminEmail = currentUser?.email || 'admin@strzelca.pl';
+          
+          if (currentUser?.uid) {
+            try {
+              const adminProfile = await getDoc(doc(db, 'userProfiles', currentUser.uid));
+              if (adminProfile.exists()) {
+                const adminData = adminProfile.data();
+                adminName = adminData.displayName || adminData.email || 'Administrator';
+                adminEmail = adminData.email || adminEmail;
+              }
+            } catch (e) {
+              console.warn('Could not fetch admin profile:', e);
+            }
+          }
+
           // Zapisz newsletter do wysłania w Firestore (do przetworzenia przez backend)
           const newsletterData = {
             subject: subject,
@@ -4726,7 +4762,9 @@
             subscriberCount: subscribers.length,
             sentAt: serverTimestamp(),
             sentBy: currentUser.uid,
-            sentByEmail: currentUser.email,
+            sentByEmail: adminEmail,
+            senderName: adminName, // Dodaj senderName dla zgodności z API
+            senderEmail: adminEmail,
             status: "pending",
           };
 
@@ -6662,11 +6700,30 @@
         createBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Tworzenie...';
 
         try {
+          // Pobierz nazwę administratora z profilu
+          let adminName = 'Administrator';
+          let adminEmail = currentUser?.email || 'admin@strzelca.pl';
+          
+          if (currentUser?.uid) {
+            try {
+              const adminProfile = await getDoc(doc(db, 'userProfiles', currentUser.uid));
+              if (adminProfile.exists()) {
+                const adminData = adminProfile.data();
+                adminName = adminData.displayName || adminData.email || 'Administrator';
+                adminEmail = adminData.email || adminEmail;
+              }
+            } catch (e) {
+              console.warn('Could not fetch admin profile:', e);
+            }
+          }
+
           // Utwórz wiadomość przez API
           const payload = {
             recipientId: userId,
             content: message,
             status: 'in_progress',
+            senderName: adminName, // Nazwa administratora (nadawcy)
+            senderEmail: adminEmail, // Email administratora
           };
           if (topic) payload.topic = topic;
 
@@ -7400,17 +7457,26 @@
             const activeTotalEl = document.getElementById("active-total");
             if (activeTotalEl) activeTotalEl.textContent = activeTotalCount;
 
-            // Wizyty dzisiaj - zliczamy unikalne użytkowników którzy byli aktywni dzisiaj
+            // Wizyty dzisiaj - zliczamy unikalne odwiedziny z kolekcji "visits" (zarówno zalogowanych jak i niezalogowanych)
             try {
-              // Zoptymalizowane zapytanie z filtrem Firestore
               const todayVisitsQuery = query(
-                collection(db, "userProfiles"),
-                where("lastSeen", ">=", todayTimestamp),
-                where("lastSeen", "<", tomorrowTimestamp)
+                collection(db, "visits"),
+                where("timestamp", ">=", todayTimestamp),
+                where("timestamp", "<", tomorrowTimestamp)
               );
               const todayVisitsSnapshot = await getDocs(todayVisitsQuery);
               
-              const todayVisitsCount = todayVisitsSnapshot.size;
+              // Zlicz unikalnych użytkowników (userId dla zalogowanych, visitorId dla niezalogowanych)
+              const uniqueVisitors = new Set();
+              todayVisitsSnapshot.forEach((doc) => {
+                const visitData = doc.data();
+                const identifier = visitData.userId || visitData.visitorId;
+                if (identifier) {
+                  uniqueVisitors.add(identifier);
+                }
+              });
+              
+              const todayVisitsCount = uniqueVisitors.size;
 
               const todayVisitsEl = document.getElementById("visits-today");
               if (todayVisitsEl) {
@@ -7458,33 +7524,23 @@
 
             // Wizyty w tym tygodniu - unikalni użytkownicy aktywni od początku tygodnia (poniedziałek)
             try {
-              const usersRef = collection(db, "userProfiles");
-              const usersSnapshot = await getDocs(usersRef);
+              const weekVisitsQuery = query(
+                collection(db, "visits"),
+                where("timestamp", ">=", weekStartTimestamp)
+              );
+              const weekVisitsSnapshot = await getDocs(weekVisitsQuery);
               
-              let weekVisitsCount = 0;
-              usersSnapshot.forEach((doc) => {
-                const userData = doc.data();
-                if (userData.lastSeen) {
-                  try {
-                    let lastSeen;
-                    if (userData.lastSeen.toDate) {
-                      lastSeen = userData.lastSeen.toDate();
-                    } else if (userData.lastSeen.seconds) {
-                      lastSeen = new Date(userData.lastSeen.seconds * 1000);
-                    } else if (userData.lastSeen instanceof Date) {
-                      lastSeen = userData.lastSeen;
-                    } else {
-                      lastSeen = new Date(userData.lastSeen);
-                    }
-                    
-                    if (lastSeen >= weekStart) {
-                      weekVisitsCount++;
-                    }
-                  } catch (dateError) {
-                    console.warn(`Błąd parsowania daty lastSeen dla użytkownika ${doc.id}:`, dateError);
-                  }
+              // Zlicz unikalnych użytkowników (userId dla zalogowanych, visitorId dla niezalogowanych)
+              const uniqueVisitors = new Set();
+              weekVisitsSnapshot.forEach((doc) => {
+                const visitData = doc.data();
+                const identifier = visitData.userId || visitData.visitorId;
+                if (identifier) {
+                  uniqueVisitors.add(identifier);
                 }
               });
+              
+              const weekVisitsCount = uniqueVisitors.size;
 
               const weekVisitsEl = document.getElementById("visits-week");
               if (weekVisitsEl) weekVisitsEl.textContent = weekVisitsCount;
@@ -7496,33 +7552,23 @@
 
             // Wizyty w tym miesiącu - unikalni użytkownicy aktywni w ciągu miesiąca
             try {
-              const usersRef = collection(db, "userProfiles");
-              const usersSnapshot = await getDocs(usersRef);
+              const monthVisitsQuery = query(
+                collection(db, "visits"),
+                where("timestamp", ">=", monthAgoTimestamp)
+              );
+              const monthVisitsSnapshot = await getDocs(monthVisitsQuery);
               
-              let monthVisitsCount = 0;
-              usersSnapshot.forEach((doc) => {
-                const userData = doc.data();
-                if (userData.lastSeen) {
-                  try {
-                    let lastSeen;
-                    if (userData.lastSeen.toDate) {
-                      lastSeen = userData.lastSeen.toDate();
-                    } else if (userData.lastSeen.seconds) {
-                      lastSeen = new Date(userData.lastSeen.seconds * 1000);
-                    } else if (userData.lastSeen instanceof Date) {
-                      lastSeen = userData.lastSeen;
-                    } else {
-                      lastSeen = new Date(userData.lastSeen);
-                    }
-                    
-                    if (lastSeen >= monthAgo) {
-                      monthVisitsCount++;
-                    }
-                  } catch (dateError) {
-                    console.warn(`Błąd parsowania daty lastSeen dla użytkownika ${doc.id}:`, dateError);
-                  }
+              // Zlicz unikalnych użytkowników (userId dla zalogowanych, visitorId dla niezalogowanych)
+              const uniqueVisitors = new Set();
+              monthVisitsSnapshot.forEach((doc) => {
+                const visitData = doc.data();
+                const identifier = visitData.userId || visitData.visitorId;
+                if (identifier) {
+                  uniqueVisitors.add(identifier);
                 }
               });
+              
+              const monthVisitsCount = uniqueVisitors.size;
 
               const monthVisitsEl = document.getElementById("visits-month");
               if (monthVisitsEl) monthVisitsEl.textContent = monthVisitsCount;
@@ -7534,33 +7580,23 @@
 
             // Wizyty w tym roku - unikalni użytkownicy aktywni w ciągu roku
             try {
-              const usersRef = collection(db, "userProfiles");
-              const usersSnapshot = await getDocs(usersRef);
+              const yearVisitsQuery = query(
+                collection(db, "visits"),
+                where("timestamp", ">=", yearAgoTimestamp)
+              );
+              const yearVisitsSnapshot = await getDocs(yearVisitsQuery);
               
-              let yearVisitsCount = 0;
-              usersSnapshot.forEach((doc) => {
-                const userData = doc.data();
-                if (userData.lastSeen) {
-                  try {
-                    let lastSeen;
-                    if (userData.lastSeen.toDate) {
-                      lastSeen = userData.lastSeen.toDate();
-                    } else if (userData.lastSeen.seconds) {
-                      lastSeen = new Date(userData.lastSeen.seconds * 1000);
-                    } else if (userData.lastSeen instanceof Date) {
-                      lastSeen = userData.lastSeen;
-                    } else {
-                      lastSeen = new Date(userData.lastSeen);
-                    }
-                    
-                    if (lastSeen >= yearAgo) {
-                      yearVisitsCount++;
-                    }
-                  } catch (dateError) {
-                    console.warn(`Błąd parsowania daty lastSeen dla użytkownika ${doc.id}:`, dateError);
-                  }
+              // Zlicz unikalnych użytkowników (userId dla zalogowanych, visitorId dla niezalogowanych)
+              const uniqueVisitors = new Set();
+              yearVisitsSnapshot.forEach((doc) => {
+                const visitData = doc.data();
+                const identifier = visitData.userId || visitData.visitorId;
+                if (identifier) {
+                  uniqueVisitors.add(identifier);
                 }
               });
+              
+              const yearVisitsCount = uniqueVisitors.size;
 
               const yearVisitsEl = document.getElementById("visits-year");
               if (yearVisitsEl) yearVisitsEl.textContent = yearVisitsCount;
@@ -7570,18 +7606,22 @@
               if (yearVisitsEl) yearVisitsEl.textContent = "0";
             }
 
-            // Wizyty ogółem - wszyscy użytkownicy z lastSeen
+            // Wizyty ogółem - wszyscy unikalni użytkownicy (zalogowani i niezalogowani)
             try {
-              const usersRef = collection(db, "userProfiles");
-              const usersSnapshot = await getDocs(usersRef);
+              const visitsRef = collection(db, "visits");
+              const visitsSnapshot = await getDocs(visitsRef);
               
-              let totalVisitsCount = 0;
-              usersSnapshot.forEach((doc) => {
-                const userData = doc.data();
-                if (userData.lastSeen) {
-                  totalVisitsCount++;
+              // Zlicz unikalnych użytkowników (userId dla zalogowanych, visitorId dla niezalogowanych)
+              const uniqueVisitors = new Set();
+              visitsSnapshot.forEach((doc) => {
+                const visitData = doc.data();
+                const identifier = visitData.userId || visitData.visitorId;
+                if (identifier) {
+                  uniqueVisitors.add(identifier);
                 }
               });
+              
+              const totalVisitsCount = uniqueVisitors.size;
 
               const totalVisitsEl = document.getElementById("visits-total");
               if (totalVisitsEl) totalVisitsEl.textContent = totalVisitsCount;

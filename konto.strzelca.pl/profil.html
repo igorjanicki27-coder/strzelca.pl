@@ -2452,10 +2452,18 @@ const firebaseConfig = {
         const { initUserStatusMonitor } = await import("https://strzelca.pl/user-status-monitor.mjs?v=2026-02-06-1");
         await initUserStatusMonitor(auth, db);
       } catch (error) {
-        console.warn("Could not initialize activity tracker:", error);
-      }
+      console.warn("Could not initialize activity tracker:", error);
+    }
+    
+    // Inicjalizuj śledzenie odwiedzin (działa dla wszystkich użytkowników, również niezalogowanych)
+    try {
+      const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-02-06-1");
+      await initVisitTracker(auth);
+    } catch (error) {
+      console.warn("Could not initialize visit tracker:", error);
+    }
 
-      // Sprawdź stan autoryzacji
+    // Sprawdź stan autoryzacji
       onAuthStateChanged(auth, (user) => {
         if (user) {
           currentUser = user;
