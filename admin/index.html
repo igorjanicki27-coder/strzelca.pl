@@ -2479,6 +2479,20 @@
             </select>
           </div>
 
+          <div class="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+            <label class="text-sm font-semibold text-zinc-300 block mb-3">
+              <i class="fa-solid fa-comment mr-2 text-coyote"></i>
+              Powód blokady
+            </label>
+            <textarea
+              id="block-reason"
+              class="w-full bg-zinc-900 text-white border border-zinc-700 rounded-lg p-3 focus:outline-none focus:border-coyote"
+              rows="3"
+              placeholder="Wprowadź powód blokady użytkownika..."
+              required
+            ></textarea>
+          </div>
+
           <div class="p-4 bg-red-900/20 border border-red-700 rounded-lg">
             <h4 class="text-red-400 font-bold mb-2 flex items-center">
               <i class="fa-solid fa-triangle-exclamation mr-2"></i>
@@ -5314,6 +5328,8 @@
 
       window.closeUserBlock = () => {
         document.getElementById("user-block-modal").classList.add("hidden");
+        const blockReasonEl = document.getElementById("block-reason");
+        if (blockReasonEl) blockReasonEl.value = "";
         currentBlockingUser = null;
       };
 
@@ -6580,7 +6596,7 @@
                 }
               });
 
-              const weekVisitsEl = document.getElementById("week-visits");
+              const weekVisitsEl = document.getElementById("visits-week");
               if (weekVisitsEl) weekVisitsEl.textContent = weekVisitsCount;
             } catch (error) {
               console.warn("Could not fetch week visits from Firestore:", error);
@@ -6604,7 +6620,7 @@
                 }
               });
 
-              const monthVisitsEl = document.getElementById("month-visits");
+              const monthVisitsEl = document.getElementById("visits-month");
               if (monthVisitsEl) monthVisitsEl.textContent = monthVisitsCount;
             } catch (error) {
               console.warn("Could not fetch month visits from Firestore:", error);
@@ -6628,7 +6644,7 @@
                 }
               });
 
-              const yearVisitsEl = document.getElementById("year-visits");
+              const yearVisitsEl = document.getElementById("visits-year");
               if (yearVisitsEl) yearVisitsEl.textContent = yearVisitsCount;
             } catch (error) {
               console.warn("Could not fetch year visits from Firestore:", error);
@@ -8046,6 +8062,7 @@
           if (!userId) return;
 
           const duration = document.getElementById("block-duration").value;
+          const blockReason = document.getElementById("block-reason").value.trim() || "Nie podano powodu";
 
           const blockBtn = e.target.querySelector('button[type="submit"]');
           blockBtn.disabled = true;
@@ -8092,6 +8109,7 @@
               blockedBy: currentUser.uid,
               blockDuration: duration,
               isPermanentBlock: duration === "permanent",
+              blockReason: blockReason,
             };
 
             await updateDoc(doc(db, "userProfiles", userId), blockData);
@@ -8107,6 +8125,9 @@
             showNotification(
               `Użytkownik został zablokowany${blockedUntil ? " do " + blockedUntil.toLocaleString("pl-PL") : " na zawsze"}.`,
             );
+            
+            // Wyczyść formularz
+            document.getElementById("block-reason").value = "";
             closeUserBlock();
             loadUsers();
           } catch (error) {
