@@ -614,6 +614,9 @@
                   return;
                 }
 
+                // Krótkie opóźnienie, aby upewnić się, że sesja Firebase Auth jest w pełni ustawiona
+                await new Promise(resolve => setTimeout(resolve, 100));
+
                 // Sprawdź status konta w Firestore
                 try {
                   const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
@@ -651,7 +654,13 @@
                     }
                   }
                 } catch (blockCheckError) {
-                  console.warn("Błąd sprawdzania statusu konta:", blockCheckError);
+                  // Ignoruj błędy permission denied - użytkownik może nie mieć jeszcze profilu lub uprawnień
+                  // To nie powinno blokować logowania
+                  if (blockCheckError?.code === 'permission-denied' || blockCheckError?.code === 'PERMISSION_DENIED') {
+                    console.log("Profil użytkownika nie jest jeszcze dostępny lub brak uprawnień - kontynuowanie logowania");
+                  } else {
+                    console.warn("Błąd sprawdzania statusu konta:", blockCheckError);
+                  }
                   // Kontynuuj logowanie jeśli nie udało się sprawdzić statusu
                 }
 
@@ -746,26 +755,44 @@
               };
 
               try {
-                const response = await fetch("/api/user-events", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify(eventData),
-                });
+                // Próbuj najpierw lokalny endpoint, potem główną domenę
+                const urls = [
+                  "/api/user-events",
+                  "https://strzelca.pl/api/user-events"
+                ];
+                
+                let logged = false;
+                for (const url of urls) {
+                  try {
+                    const response = await fetch(url, {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify(eventData),
+                      credentials: url.startsWith("http") ? "omit" : "same-origin",
+                    });
 
-                if (response.ok) return;
+                    if (response.ok) {
+                      logged = true;
+                      break;
+                    }
+                  } catch (fetchError) {
+                    // Próbuj następny URL
+                    continue;
+                  }
+                }
+                
+                if (!logged) {
+                  console.log("Nie udało się zalogować zdarzenia użytkownika (endpoint niedostępny) - kontynuowanie");
+                }
               } catch (apiError) {
-                console.warn(
-                  "API logging failed (ignored):",
-                  apiError.message
-                );
+                // Ignoruj błędy API - nie blokuj logowania
+                console.log("API logging failed (ignored):", apiError.message);
               }
             } catch (error) {
-              console.error(
-                "Błąd podczas logowania zdarzenia użytkownika:",
-                error
-              );
+              // Ignoruj błędy logowania zdarzeń - nie blokuj logowania
+              console.log("Błąd podczas logowania zdarzenia użytkownika (ignored):", error);
             }
           }
 
@@ -807,6 +834,9 @@
                   return;
                 }
 
+                // Krótkie opóźnienie, aby upewnić się, że sesja Firebase Auth jest w pełni ustawiona
+                await new Promise(resolve => setTimeout(resolve, 100));
+
                 // Sprawdź status konta w Firestore
                 try {
                   const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
@@ -847,7 +877,13 @@
                     }
                   }
                 } catch (blockCheckError) {
-                  console.warn("Błąd sprawdzania statusu konta:", blockCheckError);
+                  // Ignoruj błędy permission denied - użytkownik może nie mieć jeszcze profilu lub uprawnień
+                  // To nie powinno blokować logowania
+                  if (blockCheckError?.code === 'permission-denied' || blockCheckError?.code === 'PERMISSION_DENIED') {
+                    console.log("Profil użytkownika nie jest jeszcze dostępny lub brak uprawnień - kontynuowanie logowania");
+                  } else {
+                    console.warn("Błąd sprawdzania statusu konta:", blockCheckError);
+                  }
                   // Kontynuuj logowanie jeśli nie udało się sprawdzić statusu
                 }
 
