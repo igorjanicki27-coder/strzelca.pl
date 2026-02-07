@@ -2775,6 +2775,8 @@
             
             if (!res.ok) {
               console.warn(`[Firebase Config] Błąd HTTP ${res.status} dla ${url}`);
+              const errorText = await res.text().catch(() => "");
+              console.warn(`[Firebase Config] Treść błędu:`, errorText);
               continue;
             }
             
@@ -2784,7 +2786,7 @@
             });
             
             if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
-              console.log(`[Firebase Config] Pobrano API key z ${url}`);
+              console.log(`[Firebase Config] Pobrano API key z ${url} (długość: ${data.apiKey.length})`);
               return data.apiKey;
             } else {
               console.warn(`[Firebase Config] Nieprawidłowe dane z ${url}:`, data);
@@ -2797,21 +2799,67 @@
 
         throw new Error("Nie udało się pobrać FIREBASE_WEB_API_KEY z /api/firebase-config. Sprawdź konsole przeglądarki dla szczegółów.");
       }
+      
       // OPTYMALIZACJA: Użyj wspólnego modułu inicjalizacji
-      const firebaseConfig = {
-        apiKey: await getFirebaseApiKey(),
-        authDomain: "strzelca-pl.firebaseapp.com",
-        projectId: "strzelca-pl",
-        storageBucket: "strzelca-pl.appspot.com",
-        messagingSenderId: "511362047688",
-        appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
-        measurementId: "G-9EJ2R3JPVD",
-      };
+      let firebaseConfig;
+      let auth, db;
+      
+      try {
+        const apiKey = await getFirebaseApiKey();
+        
+        if (!apiKey || apiKey.length < 10) {
+          throw new Error("Nieprawidłowy API key Firebase");
+        }
+        
+        firebaseConfig = {
+          apiKey: apiKey,
+          authDomain: "strzelca-pl.firebaseapp.com",
+          projectId: "strzelca-pl",
+          storageBucket: "strzelca-pl.appspot.com",
+          messagingSenderId: "511362047688",
+          appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
+          measurementId: "G-9EJ2R3JPVD",
+        };
+        
+        console.log("[Firebase] Inicjalizacja Firebase z konfiguracją:", {
+          apiKey: apiKey.substring(0, 10) + "...",
+          authDomain: firebaseConfig.authDomain,
+          projectId: firebaseConfig.projectId
+        });
 
-      const { auth, db } = await initAuth(firebaseConfig, {
-        logAuthReady: true,
-        logSSO: true,
-      });
+        const initResult = await initAuth(firebaseConfig, {
+          logAuthReady: true,
+          logSSO: true,
+        });
+        
+        auth = initResult.auth;
+        db = initResult.db;
+        
+        console.log("[Firebase] Firebase zainicjalizowany pomyślnie");
+      } catch (error) {
+        console.error("[Firebase] BŁĄD INICJALIZACJI FIREBASE:", error);
+        console.error("[Firebase] Szczegóły błędu:", {
+          message: error.message,
+          stack: error.stack,
+          config: firebaseConfig ? {
+            apiKey: firebaseConfig.apiKey ? firebaseConfig.apiKey.substring(0, 10) + "..." : "brak",
+            authDomain: firebaseConfig.authDomain,
+            projectId: firebaseConfig.projectId
+          } : "brak konfiguracji"
+        });
+        
+        // Wyświetl błąd użytkownikowi
+        const errorDiv = document.createElement("div");
+        errorDiv.style.cssText = "position: fixed; top: 0; left: 0; right: 0; background: #dc2626; color: white; padding: 20px; z-index: 10000; text-align: center;";
+        errorDiv.innerHTML = `
+          <h2 style="margin: 0 0 10px 0;">❌ Błąd inicjalizacji Firebase</h2>
+          <p style="margin: 0;">${error.message}</p>
+          <p style="margin: 10px 0 0 0; font-size: 12px;">Sprawdź konsolę przeglądarki (F12) dla szczegółów.</p>
+        `;
+        document.body.appendChild(errorDiv);
+        
+        throw error; // Rzuć błąd dalej, aby zatrzymać wykonanie
+      }
 
       let currentUser = null;
       let currentTab = "dashboard";
