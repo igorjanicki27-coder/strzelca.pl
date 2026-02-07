@@ -2830,12 +2830,28 @@
         const initResult = await initAuth(firebaseConfig, {
           logAuthReady: true,
           logSSO: true,
+          firestore: {
+            // Wyłącz eksperymentalne opcje, które mogą powodować problemy z CORS
+            experimentalAutoDetectLongPolling: false,
+            useFetchStreams: false,
+          },
         });
         
         auth = initResult.auth;
         db = initResult.db;
         
         console.log("[Firebase] Firebase zainicjalizowany pomyślnie");
+        console.log("[Firebase] Firestore database:", db);
+        console.log("[Firebase] Auth:", auth);
+        
+        // Sprawdź, czy Firestore działa - test połączenia
+        try {
+          const testDoc = doc(db, "_test", "connection");
+          await getDoc(testDoc);
+          console.log("[Firebase] Test połączenia z Firestore: OK");
+        } catch (testError) {
+          console.warn("[Firebase] Test połączenia z Firestore nie powiódł się (może być normalne):", testError);
+        }
       } catch (error) {
         console.error("[Firebase] BŁĄD INICJALIZACJI FIREBASE:", error);
         console.error("[Firebase] Szczegóły błędu:", {
@@ -4013,7 +4029,17 @@
           // Pobierz activity logs bezpośrednio z Firestore
           const activityLogsRef = collection(db, 'activityLogs');
           const q = query(activityLogsRef, orderBy('timestamp', 'desc'), limit(activityLogsLimit));
-          const querySnapshot = await getDocs(q);
+          
+          console.log('[Activity Logs] Próba pobrania danych z Firestore...');
+          const querySnapshot = await getDocs(q).catch((error) => {
+            console.error('[Activity Logs] Błąd podczas pobierania danych:', error);
+            console.error('[Activity Logs] Szczegóły błędu:', {
+              code: error.code,
+              message: error.message,
+              stack: error.stack
+            });
+            throw error;
+          });
 
           const logs = [];
           querySnapshot.forEach((doc) => {
