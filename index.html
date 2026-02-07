@@ -29,7 +29,7 @@
     <link rel="apple-touch-icon" href="./ikona.svg" />
 
     <title>Strefa STRZELCA.PL</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com/3.4.1"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;700&display=swap"
       rel="stylesheet"
@@ -520,6 +520,10 @@
 
       // Sprawdź aktualnego użytkownika przed ustawieniem listenera
       const checkCurrentUserOnIndex = async () => {
+        if (!auth) {
+          console.warn("Auth nie jest jeszcze dostępne");
+          return false;
+        }
         const currentUser = auth.currentUser;
         if (currentUser) {
           try {
@@ -540,7 +544,7 @@
       let isSigningOut = false;
       let initialAuthCheck = true; // Flaga dla pierwszego wywołania
 
-      if (!shouldSkipAuthListener) {
+      if (!shouldSkipAuthListener && auth) {
         onAuthStateChanged(auth, async (user) => {
         // Ignoruj zmiany stanu podczas wylogowywania
         if (isSigningOut) {

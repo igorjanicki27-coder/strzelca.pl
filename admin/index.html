@@ -3036,37 +3036,55 @@
 
         // Dla zwykłych użytkowników sprawdź rolę w Firestore
         try {
-          console.log('Checking admin role in Firestore for user:', user.uid);
+          console.log('=== [ADMIN CHECK] Starting admin role check ===');
+          console.log('[ADMIN CHECK] User UID:', user.uid);
+          console.log('[ADMIN CHECK] User email:', user.email);
+          console.log('[ADMIN CHECK] Firestore db available:', !!db);
           
           // Sprawdź, czy db jest dostępny
           if (!db) {
-            console.error('Firestore database (db) is not available');
+            console.error('[ADMIN CHECK] ❌ Firestore database (db) is not available');
+            console.error('[ADMIN CHECK] This means Firebase was not initialized correctly');
             throw new Error('Firestore database not initialized');
           }
           
-          const userDoc = await getDoc(doc(db, "userProfiles", user.uid)).catch((error) => {
-            console.error("Error fetching user profile from Firestore:", error);
-            console.error("Error details:", {
-              code: error.code,
-              message: error.message,
-              name: error.name
-            });
+          console.log('[ADMIN CHECK] Attempting to fetch user profile from Firestore...');
+          const userDocRef = doc(db, "userProfiles", user.uid);
+          console.log('[ADMIN CHECK] Document reference:', userDocRef.path);
+          
+          const userDoc = await getDoc(userDocRef).catch((error) => {
+            console.error("[ADMIN CHECK] ❌ Error fetching user profile from Firestore:", error);
+            console.error("[ADMIN CHECK] Error code:", error.code);
+            console.error("[ADMIN CHECK] Error message:", error.message);
+            console.error("[ADMIN CHECK] Error name:", error.name);
+            console.error("[ADMIN CHECK] Full error object:", error);
             
             // Jeśli to błąd CORS lub permission-denied, może to być problem z konfiguracją
-            if (error.code === 'permission-denied' || error.message?.includes('CORS') || error.message?.includes('access control')) {
-              console.warn('CORS or permission error - this may be a configuration issue');
-              console.warn('User may still be admin, but cannot verify due to Firestore access issues');
+            if (error.code === 'permission-denied') {
+              console.error('[ADMIN CHECK] ❌ PERMISSION DENIED - Check Firestore Security Rules');
+              console.error('[ADMIN CHECK] User may not have read access to userProfiles collection');
+            } else if (error.message?.includes('CORS') || error.message?.includes('access control')) {
+              console.error('[ADMIN CHECK] ❌ CORS ERROR - Check Firebase Console domain settings');
+              console.error('[ADMIN CHECK] Domain may not be added to authorized domains');
+            } else if (error.code === 'unavailable' || error.message?.includes('network')) {
+              console.error('[ADMIN CHECK] ❌ NETWORK ERROR - Firestore may be unavailable');
             }
             
             throw error;
           });
           
+          console.log('[ADMIN CHECK] Document fetch completed');
+          console.log('[ADMIN CHECK] Document exists:', userDoc.exists());
+          
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            console.log('User data from Firestore:', userData);
+            console.log('[ADMIN CHECK] ✅ User profile found in Firestore');
+            console.log('[ADMIN CHECK] User data:', userData);
+            console.log('[ADMIN CHECK] User role:', userData.role);
+            console.log('[ADMIN CHECK] Expected role: admin');
 
             if (userData.role === "admin") {
-              console.log('Admin role confirmed for user:', user.uid);
+              console.log('[ADMIN CHECK] ✅ Admin role confirmed for user:', user.uid);
               currentUser = user;
 
               // Załaduj kolory filtrów z bazy danych użytkownika
@@ -3088,11 +3106,15 @@
               setTimeout(() => loadDashboardStats(), 100);
               return true;
             } else {
-              console.warn('User has role:', userData.role, 'but expected admin');
+              console.warn('[ADMIN CHECK] ❌ User has role:', userData.role, 'but expected admin');
+              console.warn('[ADMIN CHECK] Access denied - user is not an admin');
             }
           } else {
-            console.warn('User profile not found in Firestore for UID:', user.uid);
+            console.warn('[ADMIN CHECK] ❌ User profile not found in Firestore for UID:', user.uid);
+            console.warn('[ADMIN CHECK] Profile may not exist or user may not have read permissions');
           }
+          
+          console.log('=== [ADMIN CHECK] Check completed - returning false ===');
         } catch (error) {
           console.error("Error checking admin role in Firestore:", error);
           console.error("Error details:", {
@@ -3745,13 +3767,54 @@
       // Ustaw listener dla przyszłych zmian stanu autoryzacji
       onAuthStateChanged(auth, async (user) => {
         if (user) {
+          console.log('[Auth State Changed] User logged in:', user.uid);
           const isAdmin = await checkAndShowAdminPanel(user);
+          console.log('[Auth State Changed] Admin check result:', isAdmin);
+          
           if (!isAdmin) {
             // Jeśli użytkownik nie ma roli admin, wyloguj go
             console.warn('User does not have admin role, signing out:', user.uid);
-            try { await signOut(auth); } catch {}
-            showStatus('<strong style="color: #dc2626; font-weight: bold;">Strona dostępna tylko dla uprawnionych użytkowników.</strong>', true);
-            setTimeout(() => redirectNotAuthorized(), 400);
+            console.warn('Waiting 5 seconds before signout to allow debugging...');
+            
+            // Pokaż komunikat z możliwością anulowania
+            const errorDiv = document.createElement("div");
+            errorDiv.id = "admin-access-denied";
+            errorDiv.style.cssText = "position: fixed; top: 0; left: 0; right: 0; background: #dc2626; color: white; padding: 20px; z-index: 10000; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.3);";
+            errorDiv.innerHTML = `
+              <strong>🚫 Brak dostępu do panelu admina</strong><br>
+              <p style="margin: 10px 0;">Użytkownik nie ma uprawnień administratora.</p>
+              <p style="margin: 10px 0; font-size: 12px;">Wylogowanie za <span id="countdown">5</span> sekund...</p>
+              <p style="margin: 10px 0; font-size: 11px;">Sprawdź konsolę przeglądarki (F12) dla szczegółów.</p>
+              <button onclick="document.getElementById('admin-access-denied').remove(); clearTimeout(window.signoutTimeout);" 
+                      style="margin-top: 10px; padding: 8px 16px; background: rgba(255,255,255,0.2); border: 1px solid white; color: white; border-radius: 4px; cursor: pointer;">
+                Anuluj wylogowanie (debug)
+              </button>
+            `;
+            document.body.appendChild(errorDiv);
+            
+            // Countdown
+            let countdown = 5;
+            const countdownEl = document.getElementById('countdown');
+            const countdownInterval = setInterval(() => {
+              countdown--;
+              if (countdownEl) countdownEl.textContent = countdown;
+              if (countdown <= 0) {
+                clearInterval(countdownInterval);
+              }
+            }, 1000);
+            
+            // Opóźnij wylogowanie o 5 sekund, żeby można było zobaczyć błędy
+            window.signoutTimeout = setTimeout(async () => {
+              clearInterval(countdownInterval);
+              try { 
+                await signOut(auth); 
+                console.log('[Auth State Changed] User signed out');
+              } catch (e) {
+                console.error('[Auth State Changed] Error signing out:', e);
+              }
+              showStatus('<strong style="color: #dc2626; font-weight: bold;">Strona dostępna tylko dla uprawnionych użytkowników.</strong>', true);
+              setTimeout(() => redirectNotAuthorized(), 400);
+            }, 5000);
             if (window.sessionInterval) {
               clearInterval(window.sessionInterval);
               window.sessionInterval = null;
