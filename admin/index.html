@@ -3218,6 +3218,49 @@
         }
       }
 
+      // Funkcja formatująca czas pozostały do odblokowania
+      function getBlockedUntilText(user) {
+        if (!user || user.status !== "blocked") return null;
+        
+        try {
+          if (!user.blockedUntil) {
+            return "Blokada permanentna";
+          }
+          
+          const blockedUntil = user.blockedUntil.toDate ? user.blockedUntil.toDate() : new Date(user.blockedUntil);
+          const now = new Date();
+          
+          // Jeśli blokada wygasła
+          if (blockedUntil <= now) {
+            return "Blokada wygasła (wymaga odblokowania)";
+          }
+          
+          // Oblicz pozostały czas
+          const diffMs = blockedUntil - now;
+          const diffMinutes = Math.floor(diffMs / 1000 / 60);
+          const diffHours = Math.floor(diffMinutes / 60);
+          const diffDays = Math.floor(diffHours / 24);
+          
+          if (diffDays > 0) {
+            const remainingHours = diffHours % 24;
+            if (remainingHours > 0) {
+              return `Odblokowanie za ${diffDays} ${diffDays === 1 ? 'dzień' : diffDays < 5 ? 'dni' : 'dni'} i ${remainingHours} ${remainingHours === 1 ? 'godzinę' : remainingHours < 5 ? 'godziny' : 'godzin'}`;
+            }
+            return `Odblokowanie za ${diffDays} ${diffDays === 1 ? 'dzień' : diffDays < 5 ? 'dni' : 'dni'}`;
+          } else if (diffHours > 0) {
+            const remainingMinutes = diffMinutes % 60;
+            if (remainingMinutes > 0) {
+              return `Odblokowanie za ${diffHours} ${diffHours === 1 ? 'godzinę' : diffHours < 5 ? 'godziny' : 'godzin'} i ${remainingMinutes} ${remainingMinutes === 1 ? 'minutę' : remainingMinutes < 5 ? 'minuty' : 'minut'}`;
+            }
+            return `Odblokowanie za ${diffHours} ${diffHours === 1 ? 'godzinę' : diffHours < 5 ? 'godziny' : 'godzin'}`;
+          } else {
+            return `Odblokowanie za ${diffMinutes} ${diffMinutes === 1 ? 'minutę' : diffMinutes < 5 ? 'minuty' : 'minut'}`;
+          }
+        } catch (error) {
+          return "Błąd obliczania czasu";
+        }
+      }
+
       // Funkcje pomocnicze
       function showStatus(message, isError = false) {
         const statusEl = document.getElementById("login-status");
@@ -4271,6 +4314,7 @@
             // Sprawdź czy użytkownik jest online
             const isOnline = isUserOnline(user);
             const lastSeenText = getLastSeenText(user);
+            const blockedUntilText = getBlockedUntilText(user);
 
             return `
                     <div class="border-l-4 ${statusClasses[status]} p-4 rounded-r-lg">
@@ -4289,6 +4333,7 @@
                                     <div>🏠 ${decryptedUser.address.city || "Brak adresu"}</div>
                                     <div>📅 ${new Date(user.createdAt?.toDate?.() || user.createdAt).toLocaleDateString("pl-PL")}</div>
                                     <div>🕐 Ostatnia aktywność: ${lastSeenText}</div>
+                                    ${status === "blocked" && blockedUntilText ? `<div class="text-red-400 font-semibold">🔒 ${blockedUntilText}</div>` : ""}
                                 </div>
                             </div>
                             <div class="flex space-x-2 ml-4">
@@ -4455,6 +4500,11 @@
                                       ${decryptedUser.status === "blocked" ? '<span class="inline-flex items-center px-3 py-1 rounded-full bg-red-900/30 text-red-400 border border-red-700"><i class="fa-solid fa-ban mr-2"></i>Zablokowane</span>' : 
                                         decryptedUser.status === "active" ? '<span class="inline-flex items-center px-3 py-1 rounded-full bg-green-900/30 text-green-400 border border-green-700"><i class="fa-solid fa-check-circle mr-2"></i>Aktywne</span>' : 
                                         '<span class="inline-flex items-center px-3 py-1 rounded-full bg-yellow-900/30 text-yellow-400 border border-yellow-700"><i class="fa-solid fa-pause-circle mr-2"></i>Nieaktywne</span>'}
+                                  </div>
+                                  ${decryptedUser.status === "blocked" ? (() => {
+                                    const blockedUntilText = getBlockedUntilText(currentEditingUser);
+                                    return blockedUntilText ? `<div class="mt-3 text-sm text-red-400 font-semibold"><i class="fa-solid fa-clock mr-2"></i>${blockedUntilText}</div>` : '';
+                                  })() : ''}
                               </div>
                               </div>
                           </div>
