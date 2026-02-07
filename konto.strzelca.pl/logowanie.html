@@ -721,12 +721,18 @@
           }
 
           function showBlockedAccountModal(message) {
+            // Zablokuj scrollowanie i nawigację
+            document.body.style.overflow = "hidden";
+            document.body.style.position = "fixed";
+            document.body.style.width = "100%";
+            
             // Utwórz modal jeśli nie istnieje
             let modal = document.getElementById("blocked-account-modal");
             if (!modal) {
               modal = document.createElement("div");
               modal.id = "blocked-account-modal";
-              modal.className = "fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/95 backdrop-blur-xl overflow-y-auto";
+              modal.className = "fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 bg-black/95 backdrop-blur-xl overflow-y-auto";
+              modal.style.pointerEvents = "auto";
               modal.innerHTML = `
                 <div class="bg-zinc-900 border-2 border-red-600 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 max-w-md w-full mx-auto my-auto text-center">
                   <div class="mb-4 sm:mb-6">
@@ -734,19 +740,55 @@
                     <h2 class="text-xl sm:text-2xl font-bold text-red-400 mb-3 sm:mb-4 px-2">Konto zablokowane</h2>
                     <div id="blocked-message" class="text-sm sm:text-base text-zinc-300 whitespace-pre-line mb-4 sm:mb-6 px-2 break-words leading-relaxed"></div>
                   </div>
-                  <a href="https://strzelca.pl" class="inline-block w-full sm:w-auto btn-login bg-coyote text-black hover:bg-coyote/90 px-4 py-3 sm:px-6 sm:py-3 rounded-lg text-sm sm:text-base font-semibold">
-                    <i class="fa-solid fa-home mr-2"></i>
-                    <span class="hidden sm:inline">Przejdź do strony głównej</span>
-                    <span class="sm:hidden">Strona główna</span>
-                  </a>
+                  <button
+                    id="blocked-logout-button"
+                    class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-3 sm:px-6 sm:py-3 rounded-lg text-sm sm:text-base font-semibold transition"
+                  >
+                    <i class="fa-solid fa-sign-out-alt mr-2"></i>
+                    Wyloguj się
+                  </button>
                 </div>
               `;
               document.body.appendChild(modal);
+              
+              // Dodaj event listener do przycisku wylogowania
+              const logoutButton = modal.querySelector("#blocked-logout-button");
+              if (logoutButton) {
+                logoutButton.addEventListener("click", async () => {
+                  try {
+                    const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+                    await signOut(auth);
+                    // Wyczyść cookie SSO
+                    try {
+                      await fetch("https://strzelca.pl/api/sso-session-logout", {
+                        method: "POST",
+                        credentials: "include",
+                      });
+                    } catch (e) {
+                      console.warn("SSO logout failed (ignored):", e?.message || e);
+                    }
+                    // Przekieruj do strony logowania
+                    window.location.href = "https://konto.strzelca.pl/logowanie.html";
+                  } catch (error) {
+                    console.error("Błąd wylogowania:", error);
+                    // Nawet jeśli wylogowanie się nie powiodło, przekieruj
+                    window.location.href = "https://konto.strzelca.pl/logowanie.html";
+                  }
+                });
+              }
             }
             
             document.getElementById("blocked-message").textContent = message;
             modal.classList.remove("hidden");
             modal.style.display = "flex";
+            
+            // Zablokuj wszystkie kliknięcia poza modalem
+            modal.addEventListener("click", (e) => {
+              if (e.target === modal) {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            });
           }
 
           // Funkcja logowania zdarzeń użytkowników

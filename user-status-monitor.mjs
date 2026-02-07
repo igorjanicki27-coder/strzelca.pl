@@ -114,6 +114,11 @@ export async function initUserStatusMonitor(auth, db) {
  * Wyświetla modal z informacją o zablokowanym koncie
  */
 function showBlockedAccountModal(message) {
+  // Zablokuj scrollowanie i nawigację
+  document.body.style.overflow = "hidden";
+  document.body.style.position = "fixed";
+  document.body.style.width = "100%";
+  
   // Sprawdź czy modal już istnieje
   let modal = document.getElementById("blocked-account-modal");
   
@@ -121,8 +126,9 @@ function showBlockedAccountModal(message) {
     // Utwórz modal jeśli nie istnieje
     modal = document.createElement("div");
     modal.id = "blocked-account-modal";
-    modal.className = "fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[9999] overflow-y-auto p-3 sm:p-4";
+    modal.className = "fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-[99999] overflow-y-auto p-3 sm:p-4 backdrop-blur-xl";
     modal.style.zIndex = "99999";
+    modal.style.pointerEvents = "auto";
     
     // Escapuj HTML w wiadomości dla bezpieczeństwa
     const escapedMessage = message.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
@@ -136,25 +142,52 @@ function showBlockedAccountModal(message) {
           <h2 class="text-xl sm:text-2xl font-bold text-red-400 mb-3 sm:mb-4 px-2">Konto zablokowane</h2>
           <div id="blocked-message" class="text-sm sm:text-base text-zinc-300 whitespace-pre-line mb-4 sm:mb-6 px-2 break-words leading-relaxed">${escapedMessage}</div>
           <button
-            id="blocked-modal-button"
-            class="w-full sm:w-auto bg-coyote hover:bg-opacity-80 text-black px-4 py-3 sm:px-6 sm:py-3 rounded-lg text-sm sm:text-base font-semibold transition"
+            id="blocked-logout-button"
+            class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-3 sm:px-6 sm:py-3 rounded-lg text-sm sm:text-base font-semibold transition"
           >
-            <i class="fa-solid fa-home mr-2"></i>
-            <span class="hidden sm:inline">Przejdź do strony głównej</span>
-            <span class="sm:hidden">Strona główna</span>
+            <i class="fa-solid fa-sign-out-alt mr-2"></i>
+            Wyloguj się
           </button>
         </div>
       </div>
     `;
     document.body.appendChild(modal);
     
-    // Dodaj event listener do przycisku
-    const button = modal.querySelector("#blocked-modal-button");
-    if (button) {
-      button.addEventListener("click", () => {
-        window.location.href = "https://strzelca.pl";
+    // Dodaj event listener do przycisku wylogowania
+    const logoutButton = modal.querySelector("#blocked-logout-button");
+    if (logoutButton) {
+      logoutButton.addEventListener("click", async () => {
+        try {
+          // Importuj moduły Firebase
+          const { getAuth, signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+          const auth = getAuth();
+          await signOut(auth);
+          // Wyczyść cookie SSO
+          try {
+            await fetch("https://strzelca.pl/api/sso-session-logout", {
+              method: "POST",
+              credentials: "include",
+            });
+          } catch (e) {
+            console.warn("SSO logout failed (ignored):", e?.message || e);
+          }
+          // Przekieruj do strony logowania
+          window.location.href = "https://konto.strzelca.pl/logowanie.html";
+        } catch (error) {
+          console.error("Błąd wylogowania:", error);
+          // Nawet jeśli wylogowanie się nie powiodło, przekieruj
+          window.location.href = "https://konto.strzelca.pl/logowanie.html";
+        }
       });
     }
+    
+    // Zablokuj wszystkie kliknięcia poza modalem
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
   } else {
     // Zaktualizuj treść modala
     const messageEl = modal.querySelector("#blocked-message") || modal.querySelector(".text-zinc-300");
@@ -165,9 +198,6 @@ function showBlockedAccountModal(message) {
     modal.style.display = "flex";
     modal.classList.remove("hidden");
   }
-
-  // Zablokuj scrollowanie strony
-  document.body.style.overflow = "hidden";
 }
 
 /**

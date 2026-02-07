@@ -643,7 +643,7 @@
       <!-- Górny pasek nawigacji -->
       <div class="bg-black/40 backdrop-blur-xl border-b border-zinc-700/50 sticky top-0 z-50">
         <div class="flex items-center justify-between px-4 py-3">
-          <!-- Logo i nazwa -->
+          <!-- Strzałka cofająca -->
           <div class="flex items-center space-x-4">
             <button
               onclick="toggleSidebar()"
@@ -652,11 +652,20 @@
             >
               <i class="fa-solid fa-bars text-lg"></i>
             </button>
-            <div class="hidden md:flex items-center space-x-3">
-              <i class="fa-solid fa-crown text-coyote text-xl"></i>
-              <span class="text-white font-bold text-lg">Admin Panel</span>
-              </div>
-            </div>
+            <a
+              href="https://strzelca.pl"
+              aria-label="Powrót do centrum dowodzenia"
+              class="hidden md:flex text-zinc-400 hover:text-white transition p-2"
+            >
+              <i class="fa-solid fa-arrow-left text-lg"></i>
+            </a>
+          </div>
+
+          <!-- Panel Admina na środku -->
+          <div class="flex items-center space-x-3">
+            <i class="fa-solid fa-crown text-coyote text-xl"></i>
+            <span class="text-white font-bold text-lg">Panel Admina</span>
+          </div>
 
           <!-- Profil administratora (kompaktowy) -->
           <div class="flex items-center space-x-3">
@@ -2441,34 +2450,35 @@
     <!-- Modal blokowania użytkownika -->
     <div
       id="user-block-modal"
-      class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl"
+      class="fixed inset-0 z-50 hidden flex items-center justify-center p-2 sm:p-3 md:p-4 bg-black/95 backdrop-blur-xl overflow-y-auto"
+      onclick="if(event.target.id === 'user-block-modal') closeUserBlock()"
     >
-      <div class="admin-card max-w-2xl w-full">
-        <div class="flex justify-between items-center mb-6">
-          <h2 class="text-2xl font-bold text-red-400">
+      <div class="admin-card max-w-2xl w-full my-4 sm:my-6 md:my-8 max-h-[95vh] overflow-y-auto" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-4 sm:mb-6">
+          <h2 class="text-lg sm:text-xl md:text-2xl font-bold text-red-400">
             Blokowanie Użytkownika
           </h2>
           <button
             onclick="closeUserBlock()"
-            class="text-zinc-400 hover:text-white"
+            class="text-zinc-400 hover:text-white p-1 sm:p-2"
           >
-            <i class="fa-solid fa-times text-xl"></i>
+            <i class="fa-solid fa-times text-lg sm:text-xl"></i>
           </button>
         </div>
 
-        <div id="block-user-info" class="mb-6 p-4 bg-zinc-800/80 rounded-lg border border-zinc-700">
+        <div id="block-user-info" class="mb-4 sm:mb-6 p-3 sm:p-4 bg-zinc-800/80 rounded-lg border border-zinc-700">
           <!-- Informacje o użytkowniku będą ładowane dynamicznie -->
         </div>
 
-        <form id="user-block-form" class="space-y-6">
+        <form id="user-block-form" class="space-y-4 sm:space-y-6">
           <input type="hidden" id="block-user-id" />
 
-          <div class="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
-            <label class="text-sm font-semibold text-zinc-300 block mb-3">
+          <div class="bg-zinc-800/50 rounded-lg p-3 sm:p-4 border border-zinc-700">
+            <label class="text-xs sm:text-sm font-semibold text-zinc-300 block mb-2 sm:mb-3">
               <i class="fa-solid fa-clock mr-2 text-coyote"></i>
               Czas blokady
             </label>
-            <select id="block-duration" class="w-full" required>
+            <select id="block-duration" class="w-full text-sm sm:text-base p-2 sm:p-3" required>
               <option value="15min">15 minut</option>
               <option value="1hour">1 godzina</option>
               <option value="6hours">6 godzin</option>
@@ -2479,8 +2489,8 @@
             </select>
           </div>
 
-          <div class="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
-            <label class="text-base font-bold text-red-400 block mb-3">
+          <div class="bg-zinc-800/50 rounded-lg p-3 sm:p-4 border border-zinc-700">
+            <label class="text-sm sm:text-base font-bold text-red-400 block mb-2 sm:mb-3">
               <i class="fa-solid fa-exclamation-triangle mr-2 text-red-500"></i>
               Powód blokady <span class="text-red-500">*</span>
             </label>
@@ -2489,8 +2499,8 @@
             </p>
             <textarea
               id="block-reason"
-              class="w-full bg-zinc-900 text-white border-2 border-red-700/50 rounded-lg p-4 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all"
-              rows="5"
+              class="w-full bg-zinc-900 text-white border-2 border-red-700/50 rounded-lg p-3 sm:p-4 text-sm sm:text-base focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all resize-y"
+              rows="4"
               placeholder="Wprowadź szczegółowy powód blokady użytkownika. Ten komunikat zobaczy użytkownik..."
               required
               minlength="10"
@@ -2500,12 +2510,12 @@
             </p>
           </div>
 
-          <div class="p-4 bg-red-900/20 border border-red-700 rounded-lg">
-            <h4 class="text-red-400 font-bold mb-2 flex items-center">
+          <div class="p-3 sm:p-4 bg-red-900/20 border border-red-700 rounded-lg">
+            <h4 class="text-sm sm:text-base text-red-400 font-bold mb-2 flex items-center">
               <i class="fa-solid fa-triangle-exclamation mr-2"></i>
               Ostrzeżenie
             </h4>
-            <p class="text-sm text-zinc-300 leading-relaxed">
+            <p class="text-xs sm:text-sm text-zinc-300 leading-relaxed">
               Blokada konta oznacza całkowite "uśmiercenie" konta - brak
               możliwości korzystania ze strony, pisania na czatach, odczytywania
               czatów, dodawania/edycji produktów na bazarze itp. Bez możliwości
@@ -2513,17 +2523,18 @@
             </p>
           </div>
 
-          <div class="flex justify-end space-x-4 pt-6 border-t border-zinc-700">
+          <div class="flex flex-col sm:flex-row justify-end gap-2 sm:gap-4 pt-4 sm:pt-6 border-t border-zinc-700">
             <button
               type="button"
               onclick="closeUserBlock()"
-              class="px-6 py-2 border border-zinc-600 rounded-lg hover:bg-zinc-700 transition"
+              class="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-2 text-sm sm:text-base border border-zinc-600 rounded-lg hover:bg-zinc-700 transition"
             >
               Anuluj
             </button>
-            <button type="submit" class="btn-admin bg-red-600 hover:bg-red-500">
+            <button type="submit" class="w-full sm:w-auto btn-admin bg-red-600 hover:bg-red-500 text-sm sm:text-base px-4 sm:px-6 py-2">
               <i class="fa-solid fa-ban mr-2"></i>
-              Zablokuj użytkownika
+              <span class="hidden sm:inline">Zablokuj użytkownika</span>
+              <span class="sm:hidden">Zablokuj</span>
             </button>
           </div>
         </form>
@@ -4356,7 +4367,6 @@
                                     <button onclick="toggleUserBlock('${user.id}')" class="text-${status === "blocked" ? "green" : "yellow"}-400 hover:text-${status === "blocked" ? "green" : "yellow"}-300 px-2 py-1 border border-${status === "blocked" ? "green" : "yellow"}-400 rounded text-xs">
                                         ${status === "blocked" ? "Odblokuj" : "Zablokuj"}
                                     </button>
-                                    <button onclick="resetUserPassword('${user.id}', '${decryptedUser.email}')" class="text-orange-400 hover:text-orange-300 px-2 py-1 border border-orange-400 rounded text-xs">Reset hasła</button>
                                     <button onclick="deleteUser('${user.id}')" class="text-red-400 hover:text-red-300 px-2 py-1 border border-red-400 rounded text-xs">Usuń</button>
                                 `
                                     : ""
@@ -4439,6 +4449,9 @@
           editButton.style.display = "inline-block";
         }
 
+        // Sprawdź czy można resetować hasło (nie dla aktualnie zalogowanego użytkownika)
+        const canResetPassword = currentUser && currentEditingUser.id !== currentUser.uid;
+
         const decryptedUser = {
           ...currentEditingUser,
           phone: currentEditingUser.phone
@@ -4497,28 +4510,37 @@
                               <i class="fa-solid fa-shield-halved text-coyote"></i>
                               <h3 class="text-lg font-bold text-white">Uprawnienia i status</h3>
                           </div>
-                          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div class="space-y-4">
+                              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div class="bg-zinc-900/50 p-4 rounded border border-zinc-700/50">
+                                      <label class="text-xs text-zinc-400 block mb-2 uppercase tracking-wider">Rola użytkownika</label>
+                                      <select id="user-role-select" class="w-full" onchange="changeUserRoleFromDetails('${currentEditingUser.id}', this.value)">
+                                          <option value="user" ${decryptedUser.role === "user" ? "selected" : ""}>Użytkownik</option>
+                                          <option value="company" ${decryptedUser.role === "company" ? "selected" : ""}>Firma</option>
+                                          <option value="admin" ${decryptedUser.role === "admin" ? "selected" : ""}>Administrator</option>
+                                      </select>
+                                  </div>
+                                  <div class="bg-zinc-900/50 p-4 rounded border border-zinc-700/50">
+                                      <label class="text-xs text-zinc-400 block mb-2 uppercase tracking-wider">Status konta</label>
+                                      <div class="text-lg font-semibold">
+                                          ${decryptedUser.status === "blocked" ? '<span class="inline-flex items-center px-3 py-1 rounded-full bg-red-900/30 text-red-400 border border-red-700"><i class="fa-solid fa-ban mr-2"></i>Zablokowane</span>' : 
+                                            decryptedUser.status === "active" ? '<span class="inline-flex items-center px-3 py-1 rounded-full bg-green-900/30 text-green-400 border border-green-700"><i class="fa-solid fa-check-circle mr-2"></i>Aktywne</span>' : 
+                                            '<span class="inline-flex items-center px-3 py-1 rounded-full bg-yellow-900/30 text-yellow-400 border border-yellow-700"><i class="fa-solid fa-pause-circle mr-2"></i>Nieaktywne</span>'}
+                                      </div>
+                                      ${decryptedUser.status === "blocked" ? (() => {
+                                        const blockedUntilText = getBlockedUntilText(currentEditingUser);
+                                        return blockedUntilText ? `<div class="mt-3 text-sm text-red-400 font-semibold"><i class="fa-solid fa-clock mr-2"></i>${blockedUntilText}</div>` : '';
+                                      })() : ''}
+                                  </div>
+                              </div>
+                              ${canResetPassword ? `
                               <div class="bg-zinc-900/50 p-4 rounded border border-zinc-700/50">
-                                  <label class="text-xs text-zinc-400 block mb-2 uppercase tracking-wider">Rola użytkownika</label>
-                                  <select id="user-role-select" class="w-full" onchange="changeUserRoleFromDetails('${currentEditingUser.id}', this.value)">
-                                      <option value="user" ${decryptedUser.role === "user" ? "selected" : ""}>Użytkownik</option>
-                                      <option value="company" ${decryptedUser.role === "company" ? "selected" : ""}>Firma</option>
-                                      <option value="admin" ${decryptedUser.role === "admin" ? "selected" : ""}>Administrator</option>
-                                  </select>
+                                  <label class="text-xs text-zinc-400 block mb-2 uppercase tracking-wider">Zarządzanie hasłem</label>
+                                  <button onclick="resetUserPassword('${currentEditingUser.id}', '${decryptedUser.email}')" class="text-orange-400 hover:text-orange-300 px-4 py-2 border border-orange-400 rounded text-sm transition-colors">
+                                      <i class="fa-solid fa-key mr-2"></i>Reset hasła
+                                  </button>
                               </div>
-                              <div class="bg-zinc-900/50 p-4 rounded border border-zinc-700/50">
-                                  <label class="text-xs text-zinc-400 block mb-2 uppercase tracking-wider">Status konta</label>
-                                  <div class="text-lg font-semibold">
-                                      ${decryptedUser.status === "blocked" ? '<span class="inline-flex items-center px-3 py-1 rounded-full bg-red-900/30 text-red-400 border border-red-700"><i class="fa-solid fa-ban mr-2"></i>Zablokowane</span>' : 
-                                        decryptedUser.status === "active" ? '<span class="inline-flex items-center px-3 py-1 rounded-full bg-green-900/30 text-green-400 border border-green-700"><i class="fa-solid fa-check-circle mr-2"></i>Aktywne</span>' : 
-                                        '<span class="inline-flex items-center px-3 py-1 rounded-full bg-yellow-900/30 text-yellow-400 border border-yellow-700"><i class="fa-solid fa-pause-circle mr-2"></i>Nieaktywne</span>'}
-                              </div>
-                                  ${decryptedUser.status === "blocked" ? (() => {
-                                    const blockedUntilText = getBlockedUntilText(currentEditingUser);
-                                    return blockedUntilText ? `<div class="mt-3 text-sm text-red-400 font-semibold"><i class="fa-solid fa-clock mr-2"></i>${blockedUntilText}</div>` : '';
-                                  })() : ''}
-                              </div>
-                              </div>
+                              ` : ''}
                           </div>
                       </div>
 
@@ -4527,7 +4549,7 @@
                           <div class="flex items-center space-x-2 mb-4">
                               <i class="fa-solid fa-location-dot text-coyote"></i>
                               <h3 class="text-lg font-bold text-white">Adres dostawy</h3>
-                              </div>
+                          </div>
                           <div class="bg-zinc-900/50 p-4 rounded border border-zinc-700/50">
                               ${decryptedUser.address.street || decryptedUser.address.buildingNumber || decryptedUser.address.postalCode || decryptedUser.address.city || decryptedUser.parcelLocker ? 
                                 `<div class="space-y-2 text-sm">
@@ -5385,17 +5407,46 @@
           await updateDoc(doc(db, "userProfiles", userId), updateData);
 
           // Zaloguj odblokowanie użytkownika
-          await logActivity(
-            isAutomatic ? "system" : (currentUser?.uid || "unknown"), 
-            "USER_UNBLOCKED", 
-            {
-              unblockedBy: isAutomatic ? "system" : (currentUser?.uid || "unknown"),
-              automatic: isAutomatic,
-              reason: isAutomatic ? "Blokada wygasła automatycznie" : undefined,
-              targetUser: userId,
-            },
-            userId
-          );
+          if (!isAutomatic && currentUser?.uid) {
+            // Pobierz email administratora dla logowania
+            let adminEmail = currentUser.email || null;
+            if (!adminEmail) {
+              try {
+                const adminDoc = await getDoc(doc(db, "userProfiles", currentUser.uid));
+                if (adminDoc.exists()) {
+                  const adminData = adminDoc.data();
+                  adminEmail = adminData.email || null;
+                }
+              } catch (e) {
+                console.warn("Nie udało się pobrać emaila administratora:", e);
+              }
+            }
+            
+            await logActivity(
+              currentUser.uid, 
+              "USER_UNBLOCKED", 
+              {
+                unblockedBy: currentUser.uid,
+                automatic: false,
+                targetUser: userId,
+                adminEmail: adminEmail, // Email administratora dla wyświetlania
+              },
+              userId
+            );
+          } else if (isAutomatic) {
+            // Automatyczne odblokowanie
+            await logActivity(
+              "system", 
+              "USER_UNBLOCKED", 
+              {
+                unblockedBy: "system",
+                automatic: true,
+                reason: "Blokada wygasła automatycznie",
+                targetUser: userId,
+              },
+              userId
+            );
+          }
 
           if (!isAutomatic) {
           showNotification("Użytkownik został odblokowany.");
@@ -6685,20 +6736,40 @@
               const usersSnapshot = await getDocs(usersRef);
               
               let todayVisitsCount = 0;
+              const todayStart = new Date(today.getTime());
+              const todayEnd = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1); // Koniec dzisiaj (23:59:59.999)
+              
               usersSnapshot.forEach((doc) => {
                 const userData = doc.data();
                 if (userData.lastSeen) {
-                  const lastSeen = userData.lastSeen.toDate ? userData.lastSeen.toDate() : new Date(userData.lastSeen);
-                  // Porównaj daty bez czasu - tylko dzień (normalizuj do początku dnia)
-                  const lastSeenDate = new Date(lastSeen.getFullYear(), lastSeen.getMonth(), lastSeen.getDate());
-                  if (lastSeenDate.getTime() === today.getTime()) {
-                    todayVisitsCount++;
+                  try {
+                    let lastSeen;
+                    if (userData.lastSeen.toDate) {
+                      lastSeen = userData.lastSeen.toDate();
+                    } else if (userData.lastSeen.seconds) {
+                      // Firestore Timestamp w formacie {seconds, nanoseconds}
+                      lastSeen = new Date(userData.lastSeen.seconds * 1000);
+                    } else if (userData.lastSeen instanceof Date) {
+                      lastSeen = userData.lastSeen;
+                    } else {
+                      lastSeen = new Date(userData.lastSeen);
+                    }
+                    
+                    // Sprawdź czy lastSeen jest w dzisiejszym zakresie (od początku dnia do końca dnia)
+                    if (lastSeen >= todayStart && lastSeen <= todayEnd) {
+                      todayVisitsCount++;
+                    }
+                  } catch (dateError) {
+                    console.warn(`Błąd parsowania daty lastSeen dla użytkownika ${doc.id}:`, dateError);
                   }
                 }
               });
 
               const todayVisitsEl = document.getElementById("visits-today");
-              if (todayVisitsEl) todayVisitsEl.textContent = todayVisitsCount;
+              if (todayVisitsEl) {
+                todayVisitsEl.textContent = todayVisitsCount;
+                console.log(`Odwiedziny dzisiaj: ${todayVisitsCount} (dzisiaj: ${todayStart.toLocaleString("pl-PL")} - ${todayEnd.toLocaleString("pl-PL")})`);
+              }
             } catch (error) {
               console.error("Error fetching today visits from Firestore:", error);
               const todayVisitsEl = document.getElementById("visits-today");
@@ -7396,8 +7467,9 @@
           if (event.userId.includes("@")) {
             return event.userId;
           }
-          // Sprawdź czy w details jest email lub login
+          // Sprawdź czy w details jest email lub login (priorytet dla adminEmail)
           if (event.details && typeof event.details === 'object') {
+            if (event.details.adminEmail) return event.details.adminEmail;
             if (event.details.email) return event.details.email;
             if (event.details.login) return event.details.login;
             if (event.details.userEmail) return event.details.userEmail;
@@ -8303,6 +8375,20 @@
             await updateDoc(doc(db, "userProfiles", userId), blockData);
 
             // Zaloguj blokadę użytkownika - userId to ID administratora, targetUserId to ID zablokowanego użytkownika
+            // Pobierz email administratora dla logowania
+            let adminEmail = currentUser.email || null;
+            if (!adminEmail && currentUser.uid) {
+              try {
+                const adminDoc = await getDoc(doc(db, "userProfiles", currentUser.uid));
+                if (adminDoc.exists()) {
+                  const adminData = adminDoc.data();
+                  adminEmail = adminData.email || null;
+                }
+              } catch (e) {
+                console.warn("Nie udało się pobrać emaila administratora:", e);
+              }
+            }
+            
             await logActivity(currentUser.uid, "USER_BLOCKED", {
               duration: duration,
               blockedUntil: blockedUntil,
@@ -8310,6 +8396,7 @@
               blockedBy: currentUser.uid,
               blockReason: blockReason,
               targetUser: userId, // ID zablokowanego użytkownika
+              adminEmail: adminEmail, // Email administratora dla wyświetlania
             }, userId);
 
             showNotification(
