@@ -1255,8 +1255,12 @@
               </div>
             </div>
 
-            <!-- Refresh (Right Side) -->
+            <!-- Refresh and New Message (Right Side) -->
             <div class="flex items-center gap-3">
+              <button onclick="startNewChat()" class="btn-admin text-sm px-4 py-2 h-10 flex items-center gap-2">
+                <i class="fa-solid fa-plus mr-1"></i>
+                Nowa wiadomość
+              </button>
               <button onclick="refreshMessages()" class="text-zinc-400 hover:text-coyote transition-colors p-2" id="refresh-messages-btn">
                 <i class="fa-solid fa-sync-alt text-lg" id="refresh-icon"></i>
               </button>
@@ -2812,6 +2816,51 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Modal podglądu newslettera -->
+    <div
+      id="newsletter-preview-modal"
+      class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl"
+      onclick="if(event.target.id === 'newsletter-preview-modal') closeNewsletterPreview()"
+      style="overflow-y: auto;"
+    >
+      <div class="admin-card max-w-4xl w-full my-8 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold coyote-text">Podgląd Newslettera</h2>
+          <button
+            onclick="closeNewsletterPreview()"
+            class="text-zinc-400 hover:text-white"
+          >
+            <i class="fa-solid fa-times text-xl"></i>
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2 text-zinc-400">Temat:</label>
+            <div id="preview-subject" class="text-xl font-bold text-white p-3 bg-zinc-800/50 rounded-lg border border-zinc-700">
+              <!-- Temat będzie wyświetlony tutaj -->
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-2 text-zinc-400">Treść:</label>
+            <div id="preview-content" class="text-white p-4 bg-zinc-800/50 rounded-lg border border-zinc-700 min-h-[300px]">
+              <!-- Treść będzie wyświetlona tutaj -->
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end space-x-4 pt-6 mt-6 border-t border-zinc-700">
+          <button
+            onclick="closeNewsletterPreview()"
+            class="px-6 py-2 border border-zinc-600 rounded-lg hover:bg-zinc-700 transition"
+          >
+            Zamknij
+          </button>
+        </div>
       </div>
     </div>
 
@@ -4562,6 +4611,197 @@
         loadNewsletterSubscribers();
       };
 
+      // Funkcje związane z newsletterem
+      window.previewNewsletter = function() {
+        const subject = document.getElementById("newsletter-subject")?.value || "";
+        const content = document.getElementById("newsletter-editor")?.innerHTML || "";
+
+        if (!subject.trim() && !content.trim()) {
+          showNotification("Wprowadź temat i treść newslettera przed podglądem.", "error");
+          return;
+        }
+
+        // Wyświetl podgląd w modalu
+        const previewModal = document.getElementById("newsletter-preview-modal");
+        const previewSubject = document.getElementById("preview-subject");
+        const previewContent = document.getElementById("preview-content");
+
+        if (previewModal && previewSubject && previewContent) {
+          previewSubject.textContent = subject || "(Brak tematu)";
+          previewContent.innerHTML = content || "<p class='text-zinc-500'>Brak treści</p>";
+          previewModal.classList.remove("hidden");
+        }
+      };
+
+      window.closeNewsletterPreview = function() {
+        const previewModal = document.getElementById("newsletter-preview-modal");
+        if (previewModal) {
+          previewModal.classList.add("hidden");
+        }
+      };
+
+      window.saveNewsletterDraft = async function() {
+        try {
+          const subject = document.getElementById("newsletter-subject")?.value || "";
+          const content = document.getElementById("newsletter-editor")?.innerHTML || "";
+
+          if (!subject.trim() && !content.trim()) {
+            showNotification("Wprowadź temat i treść newslettera przed zapisaniem.", "error");
+            return;
+          }
+
+          if (!currentUser) {
+            showNotification("Musisz być zalogowany, aby zapisać wersję roboczą.", "error");
+            return;
+          }
+
+          const draftData = {
+            subject: subject,
+            content: content,
+            savedAt: serverTimestamp(),
+            savedBy: currentUser.uid,
+            savedByEmail: currentUser.email,
+          };
+
+          // Zapisz wersję roboczą w Firestore
+          await setDoc(doc(db, "newsletterDrafts", "current"), draftData, { merge: true });
+
+          showNotification("Wersja robocza newslettera została zapisana.", "success");
+        } catch (error) {
+          console.error("Error saving newsletter draft:", error);
+          showNotification("Błąd podczas zapisywania wersji roboczej.", "error");
+        }
+      };
+
+      window.sendNewsletter = async function() {
+        try {
+          const subject = document.getElementById("newsletter-subject")?.value || "";
+          const content = document.getElementById("newsletter-editor")?.innerHTML || "";
+
+          if (!subject.trim()) {
+            showNotification("Wprowadź temat newslettera.", "error");
+            return;
+          }
+
+          if (!content.trim()) {
+            showNotification("Wprowadź treść newslettera.", "error");
+            return;
+          }
+
+          if (!currentUser) {
+            showNotification("Musisz być zalogowany, aby wysłać newsletter.", "error");
+            return;
+          }
+
+          // Potwierdź wysłanie
+          const confirmMessage = `Czy na pewno chcesz wysłać newsletter do wszystkich subskrybentów?\n\nTemat: ${subject}\n\nTa operacja nie może być cofnięta.`;
+          if (!confirm(confirmMessage)) {
+            return;
+          }
+
+          // Pobierz listę subskrybentów
+          const usersSnapshot = await getDocs(collection(db, "userProfiles"));
+          const subscribers = [];
+          usersSnapshot.forEach((doc) => {
+            const userData = doc.data();
+            if (userData.newsletter === true || userData.newsletter === "true" || userData.newsletter === 1) {
+              subscribers.push({
+                id: doc.id,
+                email: userData.email,
+                displayName: userData.displayName || userData.email,
+              });
+            }
+          });
+
+          if (subscribers.length === 0) {
+            showNotification("Brak subskrybentów newslettera.", "error");
+            return;
+          }
+
+          // Zapisz newsletter do wysłania w Firestore (do przetworzenia przez backend)
+          const newsletterData = {
+            subject: subject,
+            content: content,
+            subscribers: subscribers.map(s => s.email),
+            subscriberCount: subscribers.length,
+            sentAt: serverTimestamp(),
+            sentBy: currentUser.uid,
+            sentByEmail: currentUser.email,
+            status: "pending",
+          };
+
+          await addDoc(collection(db, "newsletterQueue"), newsletterData);
+
+          showNotification(`Newsletter został dodany do kolejki wysyłki do ${subscribers.length} subskrybentów.`, "success");
+
+          // Opcjonalnie: wyczyść edytor
+          if (confirm("Czy chcesz wyczyścić edytor newslettera?")) {
+            document.getElementById("newsletter-subject").value = "";
+            document.getElementById("newsletter-editor").innerHTML = "";
+          }
+        } catch (error) {
+          console.error("Error sending newsletter:", error);
+          showNotification("Błąd podczas wysyłania newslettera.", "error");
+        }
+      };
+
+      window.exportNewsletter = async function() {
+        try {
+          const subject = document.getElementById("newsletter-subject")?.value || "";
+          const content = document.getElementById("newsletter-editor")?.innerHTML || "";
+
+          if (!subject.trim() && !content.trim()) {
+            showNotification("Wprowadź temat i treść newslettera przed eksportem.", "error");
+            return;
+          }
+
+          // Pobierz listę subskrybentów
+          const usersSnapshot = await getDocs(collection(db, "userProfiles"));
+          const subscribers = [];
+          usersSnapshot.forEach((doc) => {
+            const userData = doc.data();
+            if (userData.newsletter === true || userData.newsletter === "true" || userData.newsletter === 1) {
+              subscribers.push(userData.email || "");
+            }
+          });
+
+          // Utwórz plik CSV z adresami email
+          const csvContent = "data:text/csv;charset=utf-8," + subscribers.join("\n");
+          const encodedUri = encodeURI(csvContent);
+          const link = document.createElement("a");
+          link.setAttribute("href", encodedUri);
+          link.setAttribute("download", `newsletter_subscribers_${new Date().toISOString().split('T')[0]}.csv`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          showNotification(`Eksportowano ${subscribers.length} adresów email do pliku CSV.`, "success");
+        } catch (error) {
+          console.error("Error exporting newsletter:", error);
+          showNotification("Błąd podczas eksportu.", "error");
+        }
+      };
+
+      window.insertLink = function() {
+        const url = prompt("Wprowadź URL linku:");
+        const text = prompt("Wprowadź tekst linku (lub pozostaw puste, aby użyć URL):");
+        if (url) {
+          const linkText = text || url;
+          document.execCommand("createLink", false, url);
+          // Jeśli execCommand nie zadziała, wstaw ręcznie
+          const selection = window.getSelection();
+          if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const a = document.createElement("a");
+            a.href = url;
+            a.textContent = linkText;
+            a.target = "_blank";
+            range.deleteContents();
+            range.insertNode(a);
+          }
+        }
+      };
+
       // Szczegóły użytkownika
       window.viewUserDetails = async (userId) => {
         try {
@@ -4867,6 +5107,10 @@
             const colorClass =
               activityColors[activity.action] || "text-zinc-400";
 
+            // Sprawdź czy użytkownik jest wykonawcą czy celem zdarzenia
+            const isTarget = activity.targetUserId && activity.targetUserId === currentEditingUser.id;
+            const isPerformer = activity.userId === currentEditingUser.id;
+
             // Opis aktywności
             let description = "";
             switch (activity.action) {
@@ -4877,20 +5121,49 @@
                 description = "Wysłano link resetowania hasła";
                 break;
               case "USER_BLOCKED":
-                if (activity.details.isPermanent) {
-                  description = "Konto zablokowane na zawsze";
+                if (isPerformer) {
+                  // Użytkownik jest wykonawcą (admin zablokował kogoś)
+                  if (activity.details.isPermanent) {
+                    description = "Zablokował konto na zawsze";
+                  } else {
+                    description = `Zablokował konto na ${activity.details.duration}`;
+                  }
+                } else if (isTarget) {
+                  // Użytkownik jest celem (został zablokowany)
+                  if (activity.details.isPermanent) {
+                    description = "Konto zostało zablokowane na zawsze";
+                  } else {
+                    description = `Konto zostało zablokowane na ${activity.details.duration}`;
+                  }
                 } else {
-                  description = `Konto zablokowane na ${activity.details.duration}`;
+                  // Fallback dla innych przypadków
+                  if (activity.details.isPermanent) {
+                    description = "Konto zablokowane na zawsze";
+                  } else {
+                    description = `Konto zablokowane na ${activity.details.duration}`;
+                  }
                 }
                 if (activity.details.contentAction === "remove") {
                   description += " (zawartość usunięta)";
                 }
                 break;
               case "USER_UNBLOCKED":
-                description = "Konto odblokowane";
+                if (isPerformer) {
+                  description = "Odblokował konto";
+                } else if (isTarget) {
+                  description = "Konto zostało odblokowane";
+                } else {
+                  description = "Konto odblokowane";
+                }
                 break;
               case "USER_DELETED":
-                description = `Konto usunięte${activity.details.contentAction === "keep" ? " (zawartość zachowana)" : " (zawartość usunięta)"}`;
+                if (isPerformer) {
+                  description = `Usunął konto${activity.details.contentAction === "keep" ? " (zawartość zachowana)" : " (zawartość usunięta)"}`;
+                } else if (isTarget) {
+                  description = `Konto zostało usunięte${activity.details.contentAction === "keep" ? " (zawartość zachowana)" : " (zawartość usunięta)"}`;
+                } else {
+                  description = `Konto usunięte${activity.details.contentAction === "keep" ? " (zawartość zachowana)" : " (zawartość usunięta)"}`;
+                }
                 break;
               case "PROFILE_EDITED":
                 description = `Edycja profilu (${activity.details.changes?.join(", ") || "nieznane zmiany"})`;
@@ -4899,9 +5172,9 @@
                 description = activity.action.replace(/_/g, " ").toLowerCase();
             }
 
-            // Szczegóły wykonawcy
+            // Szczegóły wykonawcy (tylko gdy użytkownik jest celem, a nie wykonawcą)
             let performedBy = "";
-            if (activity.adminId && activity.adminId !== activity.userId) {
+            if (isTarget && activity.adminId && activity.adminId !== currentEditingUser.id) {
               performedBy = " przez administratora";
             }
 
@@ -6147,7 +6420,7 @@
             <div class="bg-zinc-900 rounded-xl shadow-2xl w-full max-w-md mx-4">
               <div class="p-6">
                 <div class="flex items-center justify-between mb-6">
-                  <h3 class="text-xl font-bold text-white">Nowy czat</h3>
+                  <h3 class="text-xl font-bold text-white">Nowa wiadomość</h3>
                   <button onclick="closeNewChatModal()" class="text-zinc-400 hover:text-white">
                     <i class="fa-solid fa-times text-xl"></i>
                   </button>
@@ -6155,17 +6428,29 @@
 
                 <form id="new-chat-form" onsubmit="createNewChat(event)">
                   <div class="space-y-4">
-                  <div>
+                  <div class="relative">
                       <label class="block text-sm font-medium text-zinc-300 mb-2">
-                        Adres email użytkownika
+                        Wyszukaj użytkownika
                       </label>
                       <input
-                        type="email"
-                        id="new-chat-email"
+                        type="text"
+                        id="new-chat-user-search"
+                        autocomplete="off"
                         required
-                        placeholder="user@example.com"
+                        placeholder="Wpisz nick lub email użytkownika..."
                         class="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-coyote"
                       >
+                      <input
+                        type="hidden"
+                        id="new-chat-user-id"
+                      >
+                      <input
+                        type="hidden"
+                        id="new-chat-email"
+                      >
+                      <div id="user-search-results" class="absolute z-50 w-full mt-1 bg-zinc-800 border border-zinc-600 rounded-lg max-h-60 overflow-y-auto hidden">
+                        <!-- Wyniki wyszukiwania będą tutaj -->
+                      </div>
                   </div>
 
                     <div>
@@ -6219,6 +6504,134 @@
 
         // Dodaj modal do strony
         document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Dodaj event listenery dla wyszukiwania użytkowników
+        setTimeout(() => {
+          const searchInput = document.getElementById('new-chat-user-search');
+          const resultsContainer = document.getElementById('user-search-results');
+          const userIdInput = document.getElementById('new-chat-user-id');
+          const emailInput = document.getElementById('new-chat-email');
+
+          if (searchInput && resultsContainer) {
+            let searchTimeout = null;
+
+            searchInput.addEventListener('input', async (e) => {
+              const searchTerm = e.target.value.trim();
+
+              // Wyczyść poprzedni timeout
+              if (searchTimeout) {
+                clearTimeout(searchTimeout);
+              }
+
+              if (searchTerm.length < 2) {
+                resultsContainer.classList.add('hidden');
+                userIdInput.value = '';
+                emailInput.value = '';
+                return;
+              }
+
+              // Opóźnienie wyszukiwania (debounce)
+              searchTimeout = setTimeout(async () => {
+                await searchUsers(searchTerm, resultsContainer, userIdInput, emailInput, searchInput);
+              }, 300);
+            });
+
+            // Ukryj wyniki po kliknięciu poza nimi
+            document.addEventListener('click', (e) => {
+              if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) {
+                resultsContainer.classList.add('hidden');
+              }
+            });
+          }
+        }, 100);
+      }
+
+      // Funkcja wyszukiwania użytkowników
+      async function searchUsers(searchTerm, resultsContainer, userIdInput, emailInput, searchInput) {
+        try {
+          resultsContainer.innerHTML = '<div class="p-3 text-center text-zinc-400"><i class="fa-solid fa-spinner fa-spin"></i> Wyszukiwanie...</div>';
+          resultsContainer.classList.remove('hidden');
+
+          const usersRef = collection(db, 'userProfiles');
+          const searchLower = searchTerm.toLowerCase();
+
+          // Pobierz wszystkich użytkowników (limit 50 dla wydajności)
+          const usersSnapshot = await getDocs(query(usersRef, limit(50)));
+          const matchingUsers = [];
+
+          usersSnapshot.forEach((doc) => {
+            const userData = doc.data();
+            const userId = doc.id;
+            const displayName = (userData.displayName || '').toLowerCase();
+            const email = (userData.email || '').toLowerCase();
+
+            // Sprawdź czy wyszukiwany tekst pasuje do nicku lub emailu
+            if (displayName.includes(searchLower) || email.includes(searchLower)) {
+              matchingUsers.push({
+                id: userId,
+                displayName: userData.displayName || userData.email || 'Brak nazwy',
+                email: userData.email || '',
+                avatar: userData.avatar || ''
+              });
+            }
+          });
+
+          // Sortuj: najpierw dokładne dopasowania, potem częściowe
+          matchingUsers.sort((a, b) => {
+            const aName = a.displayName.toLowerCase();
+            const bName = b.displayName.toLowerCase();
+            const aEmail = a.email.toLowerCase();
+            const bEmail = b.email.toLowerCase();
+
+            const aExact = aName === searchLower || aEmail === searchLower;
+            const bExact = bName === searchLower || bEmail === searchLower;
+
+            if (aExact && !bExact) return -1;
+            if (!aExact && bExact) return 1;
+            if (aName.startsWith(searchLower) && !bName.startsWith(searchLower)) return -1;
+            if (!aName.startsWith(searchLower) && bName.startsWith(searchLower)) return 1;
+            return aName.localeCompare(bName);
+          });
+
+          // Wyświetl wyniki
+          if (matchingUsers.length === 0) {
+            resultsContainer.innerHTML = '<div class="p-3 text-center text-zinc-400">Nie znaleziono użytkowników</div>';
+          } else {
+            resultsContainer.innerHTML = matchingUsers.slice(0, 10).map(user => `
+              <div class="p-3 hover:bg-zinc-700 cursor-pointer border-b border-zinc-700 last:border-b-0 user-search-result"
+                   data-user-id="${user.id}"
+                   data-user-name="${user.displayName}"
+                   data-user-email="${user.email}">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 bg-coyote rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-user text-black text-sm"></i>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-white font-medium truncate">${user.displayName}</div>
+                    ${user.email ? `<div class="text-zinc-400 text-sm truncate">${user.email}</div>` : ''}
+                  </div>
+                </div>
+              </div>
+            `).join('');
+
+            // Dodaj event listenery do wyników
+            resultsContainer.querySelectorAll('.user-search-result').forEach(item => {
+              item.addEventListener('click', () => {
+                const userId = item.dataset.userId;
+                const userName = item.dataset.userName;
+                const userEmail = item.dataset.userEmail;
+
+                userIdInput.value = userId;
+                emailInput.value = userEmail;
+                searchInput.value = userName;
+                resultsContainer.classList.add('hidden');
+              });
+            });
+          }
+        } catch (error) {
+          console.error('Error searching users:', error);
+          resultsContainer.innerHTML = '<div class="p-3 text-center text-red-400">Błąd wyszukiwania</div>';
+        }
       }
 
       // Funkcja do zamykania modalu nowego czatu
@@ -6233,12 +6646,14 @@
       async function createNewChat(event) {
         event.preventDefault();
 
+        const userId = document.getElementById('new-chat-user-id').value.trim();
         const email = document.getElementById('new-chat-email').value.trim();
+        const userName = document.getElementById('new-chat-user-search').value.trim();
         const topic = document.getElementById('new-chat-topic').value.trim();
         const message = document.getElementById('new-chat-message').value.trim();
 
-        if (!email || !message) {
-          showNotification("Wypełnij wszystkie wymagane pola", "warning");
+        if (!userId || !email || !message) {
+          showNotification("Wybierz użytkownika i wpisz wiadomość", "warning");
           return;
         }
 
@@ -6247,30 +6662,40 @@
         createBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Tworzenie...';
 
         try {
-          // Utwórz ID dla nowego użytkownika
-          const userId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-          const userName = email.split('@')[0]; // Użyj części przed @ jako nazwy
+          // Utwórz wiadomość przez API
+          const payload = {
+            recipientId: userId,
+            content: message,
+            status: 'in_progress',
+          };
+          if (topic) payload.topic = topic;
 
-          // TODO: Implementacja przez Firebase Firestore - dodanie wiadomości do privateMessages
-          showNotification('Funkcja tworzenia czatu wymaga implementacji przez Firebase', 'info');
-          createBtn.disabled = false;
-          createBtn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i>Utwórz czat';
-          return;
+          const res = await fetch('/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload),
+          });
+
+          const data = await res.json().catch(() => null);
+          if (!res.ok || !data?.success) {
+            throw new Error(data?.error || `HTTP ${res.status}`);
+          }
 
           // Zamknij modal
           closeNewChatModal();
 
           // Odśwież listę konwersacji
-          loadMessages();
+          await loadMessagesWithFilters();
 
           // Otwórz nową konwersację
           openConversation(userId, userName, email);
 
-          showNotification("Czat został utworzony!", "success");
+          showNotification("Wiadomość została wysłana!", "success");
 
         } catch (error) {
           console.error('Error creating chat:', error);
-          showNotification("Błąd podczas tworzenia czatu", "error");
+          showNotification("Błąd podczas tworzenia wiadomości: " + (error.message || 'Nieznany błąd'), "error");
         } finally {
           createBtn.disabled = false;
           createBtn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i>Utwórz czat';
@@ -10064,6 +10489,9 @@
       window.sendChatReply = sendChatReply;
       window.openConversation = openConversation;
       window.toggleConversationStatus = toggleConversationStatus;
+      window.startNewChat = startNewChat;
+      window.closeNewChatModal = closeNewChatModal;
+      window.createNewChat = createNewChat;
 
       // Funkcja czyszczenia filtrów
       function clearFilters() {
