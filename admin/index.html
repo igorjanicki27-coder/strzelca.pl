@@ -2831,7 +2831,8 @@
           logAuthReady: true,
           logSSO: true,
           firestore: {
-            // Wyłącz eksperymentalne opcje, które mogą powodować problemy z CORS
+            // Wymuś long polling zamiast WebSocket, aby uniknąć problemów z CORS
+            experimentalForceLongPolling: true,
             experimentalAutoDetectLongPolling: false,
             useFetchStreams: false,
           },
@@ -4109,6 +4110,32 @@
               message: error.message,
               stack: error.stack
             });
+            
+            // Sprawdź, czy to błąd CORS
+            if (error.message?.includes('CORS') || 
+                error.message?.includes('access control') ||
+                error.code === 'unavailable' ||
+                error.code === 'permission-denied') {
+              console.error('[Activity Logs] ⚠️ BŁĄD CORS LUB DOSTĘPU DO FIRESTORE!');
+              console.error('[Activity Logs] Sprawdź:');
+              console.error('[Activity Logs] 1. Czy domena jest dodana do Firebase Console → Authentication → Settings → Authorized domains');
+              console.error('[Activity Logs] 2. Czy API Key ma odpowiednie ograniczenia w Google Cloud Console');
+              console.error('[Activity Logs] 3. Czy Firestore Security Rules pozwalają na dostęp');
+              
+              // Wyświetl komunikat użytkownikowi
+              const container = document.getElementById('admin-activity-log');
+              if (container) {
+                container.innerHTML = `
+                  <div class="bg-red-900/20 border border-red-500 rounded-lg p-4 text-center">
+                    <h3 class="text-red-400 font-bold mb-2">⚠️ Błąd połączenia z Firestore</h3>
+                    <p class="text-zinc-300 text-sm mb-2">Nie można połączyć się z bazą danych Firestore.</p>
+                    <p class="text-zinc-400 text-xs">Sprawdź konfigurację domeny w Firebase Console.</p>
+                    <p class="text-zinc-500 text-xs mt-2">Kod błędu: ${error.code || 'unknown'}</p>
+                  </div>
+                `;
+              }
+            }
+            
             throw error;
           });
 
