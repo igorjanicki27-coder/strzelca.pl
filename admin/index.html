@@ -1698,6 +1698,14 @@
                       <i class="fa-solid fa-save mr-2"></i>
                       Zapisz wersję roboczą
                     </button>
+                    <button
+                      onclick="loadNewsletterDraft()"
+                      class="btn-admin flex-1"
+                      title="Załaduj zapisaną wersję roboczą"
+                    >
+                      <i class="fa-solid fa-folder-open mr-2"></i>
+                      Załaduj wersję roboczą
+                    </button>
                   </div>
                 </div>
               </div>
@@ -3537,6 +3545,10 @@
             break;
           case "newsletter":
             loadNewsletterSubscribers();
+            // Załaduj zapisaną wersję roboczą jeśli istnieje (bez powiadomienia)
+            setTimeout(() => {
+              loadNewsletterDraft(false);
+            }, 200);
             break;
         }
 
@@ -4655,40 +4667,95 @@
             return;
           }
 
-          // Pobierz dane administratora z profilu
-          let adminName = 'Administrator';
-          let adminEmail = currentUser?.email || 'admin@strzelca.pl';
-          
-          if (currentUser?.uid) {
-            try {
-              const adminProfile = await getDoc(doc(db, 'userProfiles', currentUser.uid));
-              if (adminProfile.exists()) {
-                const adminData = adminProfile.data();
-                adminName = adminData.displayName || adminData.email || 'Administrator';
-                adminEmail = adminData.email || adminEmail;
-              }
-            } catch (e) {
-              console.warn('Could not fetch admin profile:', e);
-            }
-          }
-
+          // Zapisz wersję roboczą w localStorage (nie wymaga uprawnień Firestore)
           const draftData = {
             subject: subject,
             content: content,
-            savedAt: serverTimestamp(),
+            savedAt: new Date().toISOString(),
             savedBy: currentUser.uid,
-            savedByEmail: adminEmail,
-            senderName: adminName, // Dodaj senderName dla zgodności z API
-            senderEmail: adminEmail,
+            savedByEmail: currentUser.email || 'admin@strzelca.pl',
           };
 
-          // Zapisz wersję roboczą w Firestore
-          await setDoc(doc(db, "newsletterDrafts", "current"), draftData, { merge: true });
+          try {
+            localStorage.setItem('newsletterDraft', JSON.stringify(draftData));
+            showNotification("Wersja robocza newslettera została zapisana lokalnie.", "success");
+          } catch (storageError) {
+            // Jeśli localStorage nie jest dostępny (np. tryb prywatny), spróbuj zapisać w Firestore
+            console.warn("localStorage not available, trying Firestore:", storageError);
+            
+            // Pobierz dane administratora z profilu
+            let adminName = 'Administrator';
+            let adminEmail = currentUser?.email || 'admin@strzelca.pl';
+            
+            if (currentUser?.uid) {
+              try {
+                const adminProfile = await getDoc(doc(db, 'userProfiles', currentUser.uid));
+                if (adminProfile.exists()) {
+                  const adminData = adminProfile.data();
+                  adminName = adminData.displayName || adminData.email || 'Administrator';
+                  adminEmail = adminData.email || adminEmail;
+                }
+              } catch (e) {
+                console.warn('Could not fetch admin profile:', e);
+              }
+            }
 
-          showNotification("Wersja robocza newslettera została zapisana.", "success");
+            const firestoreDraftData = {
+              ...draftData,
+              senderName: adminName,
+              senderEmail: adminEmail,
+            };
+
+            // Próbuj zapisać w Firestore (może nie mieć uprawnień)
+            try {
+              await setDoc(doc(db, "newsletterDrafts", "current"), firestoreDraftData, { merge: true });
+              showNotification("Wersja robocza newslettera została zapisana.", "success");
+            } catch (firestoreError) {
+              if (firestoreError.code === 'permission-denied') {
+                showNotification("Nie można zapisać wersji roboczej - brak uprawnień do Firestore. Użyj localStorage (włączony w przeglądarce).", "error");
+              } else {
+                throw firestoreError;
+              }
+            }
+          }
         } catch (error) {
           console.error("Error saving newsletter draft:", error);
           showNotification("Błąd podczas zapisywania wersji roboczej: " + (error.message || error), "error");
+        }
+      };
+
+      // Funkcja do ładowania zapisanej wersji roboczej
+      window.loadNewsletterDraft = function(showNotificationOnLoad = true) {
+        try {
+          const savedDraft = localStorage.getItem('newsletterDraft');
+          if (savedDraft) {
+            const draftData = JSON.parse(savedDraft);
+            const subjectInput = document.getElementById("newsletter-subject");
+            const contentEditor = document.getElementById("newsletter-editor");
+            
+            if (subjectInput) {
+              subjectInput.value = draftData.subject || "";
+            }
+            if (contentEditor) {
+              contentEditor.innerHTML = draftData.content || "";
+            }
+            
+            if (showNotificationOnLoad) {
+              showNotification("Wersja robocza została załadowana.", "success");
+            }
+            return true;
+          } else {
+            if (showNotificationOnLoad) {
+              showNotification("Brak zapisanej wersji roboczej.", "info");
+            }
+            return false;
+          }
+        } catch (error) {
+          console.error("Error loading newsletter draft:", error);
+          if (showNotificationOnLoad) {
+            showNotification("Błąd podczas ładowania wersji roboczej.", "error");
+          }
+          return false;
         }
       };
 
@@ -4754,23 +4821,58 @@
             }
           }
 
-          // Zapisz newsletter do wysłania w Firestore (do przetworzenia przez backend)
-          const newsletterData = {
+          // Wyślij newsletter przez API endpoint (zamiast bezpośredniego zapisu do Firestore)
+          const newsletterPayload = {
             subject: subject,
             content: content,
             subscribers: subscribers.map(s => s.email),
             subscriberCount: subscribers.length,
-            sentAt: serverTimestamp(),
-            sentBy: currentUser.uid,
-            sentByEmail: adminEmail,
-            senderName: adminName, // Dodaj senderName dla zgodności z API
+            senderName: adminName,
             senderEmail: adminEmail,
-            status: "pending",
+            sentBy: currentUser.uid,
           };
 
-          await addDoc(collection(db, "newsletterQueue"), newsletterData);
+          try {
+            const res = await fetch('/api/newsletter', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify(newsletterPayload),
+            });
 
-          showNotification(`Newsletter został dodany do kolejki wysyłki do ${subscribers.length} subskrybentów.`, "success");
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data?.success) {
+              throw new Error(data?.error || `HTTP ${res.status}`);
+            }
+
+            showNotification(`Newsletter został dodany do kolejki wysyłki do ${subscribers.length} subskrybentów.`, "success");
+          } catch (apiError) {
+            // Fallback: spróbuj zapisać bezpośrednio do Firestore (może nie mieć uprawnień)
+            console.warn('API endpoint failed, trying Firestore fallback:', apiError);
+            try {
+              const newsletterData = {
+                subject: subject,
+                content: content,
+                subscribers: subscribers.map(s => s.email),
+                subscriberCount: subscribers.length,
+                sentAt: serverTimestamp(),
+                sentBy: currentUser.uid,
+                sentByEmail: adminEmail,
+                senderName: adminName,
+                senderEmail: adminEmail,
+                status: "pending",
+              };
+
+              await addDoc(collection(db, "newsletterQueue"), newsletterData);
+              showNotification(`Newsletter został dodany do kolejki wysyłki do ${subscribers.length} subskrybentów.`, "success");
+            } catch (firestoreError) {
+              if (firestoreError.code === 'permission-denied') {
+                throw new Error('Brak uprawnień do zapisu newslettera. Skontaktuj się z administratorem systemu.');
+              } else {
+                throw new Error(`Błąd podczas wysyłania newslettera: ${apiError.message || firestoreError.message}`);
+              }
+            }
+          }
 
           // Opcjonalnie: wyczyść edytor
           if (confirm("Czy chcesz wyczyścić edytor newslettera?")) {
