@@ -53,7 +53,8 @@ function getSessionUser(req) {
 
 // Serverless function handler
 module.exports = async (req, res) => {
-  setCors(res);
+  // CORS (wspiera cookie SSO między subdomenami)
+  setCors(req, res, { methods: 'GET, POST, PUT, DELETE, OPTIONS' });
 
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
@@ -63,6 +64,7 @@ module.exports = async (req, res) => {
 
   try {
     initAdmin();
+    const firestoreDb = admin.firestore();
     const db = await initDatabase();
 
     const sessionUser = getSessionUser(req);
@@ -84,22 +86,23 @@ module.exports = async (req, res) => {
     // Routing based on method
     switch (req.method) {
       case 'POST':
-        await handlePostNewsletter(req, res, db, requesterUid);
+        await handlePostNewsletter(req, res, firestoreDb, requesterUid);
         break;
       default:
         res.status(405).json({ success: false, error: 'Method not allowed' });
     }
   } catch (error) {
     console.error('Newsletter API error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
-      error: 'Internal server error'
+      error: 'Internal server error: ' + (error.message || 'Unknown error')
     });
   }
 };
 
 // POST /api/newsletter - Dodawanie newslettera do kolejki wysyłki
-async function handlePostNewsletter(req, res, db, requesterUid) {
+async function handlePostNewsletter(req, res, firestoreDb, requesterUid) {
   try {
     const {
       subject,
@@ -141,7 +144,7 @@ async function handlePostNewsletter(req, res, db, requesterUid) {
     };
 
     // Zapisz newsletter do kolekcji newsletterQueue
-    const newsletterRef = await admin.firestore().collection('newsletterQueue').add(newsletterData);
+    const newsletterRef = await firestoreDb.collection('newsletterQueue').add(newsletterData);
 
     res.json({
       success: true,
@@ -153,9 +156,10 @@ async function handlePostNewsletter(req, res, db, requesterUid) {
     });
   } catch (error) {
     console.error('Error creating newsletter:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
-      error: 'Failed to create newsletter: ' + error.message
+      error: 'Failed to create newsletter: ' + (error.message || 'Unknown error')
     });
   }
 }

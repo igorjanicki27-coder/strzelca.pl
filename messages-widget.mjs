@@ -312,7 +312,8 @@ function makeStyles() {
       display: none;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 16px;
+      overflow-y: auto;
     }
     .modalOverlay.show { display: flex; }
     .modalContent {
@@ -320,10 +321,12 @@ function makeStyles() {
       border: 1px solid rgba(255,255,255,0.14);
       border-radius: 18px;
       padding: 20px;
-      max-width: 480px;
+      max-width: min(480px, calc(100vw - 32px));
       width: 100%;
-      max-height: 90vh;
+      max-height: min(85vh, 600px);
       overflow-y: auto;
+      margin: auto;
+      box-sizing: border-box;
     }
     .modalHeader {
       display: flex;
@@ -355,6 +358,7 @@ function makeStyles() {
     .modalClose:hover { background: rgba(255,255,255,0.08); color: #e5e5e5; }
     .modalField {
       margin-bottom: 16px;
+      position: relative;
     }
     .modalLabel {
       display: block;
@@ -365,6 +369,11 @@ function makeStyles() {
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
+    .modalField textarea {
+      min-height: 80px;
+      max-height: 200px;
+      resize: vertical;
+    }
     .userSearchResults {
       position: absolute;
       top: 100%;
@@ -374,10 +383,11 @@ function makeStyles() {
       background: rgba(0,0,0,0.95);
       border: 1px solid rgba(255,255,255,0.14);
       border-radius: 12px;
-      max-height: 200px;
+      max-height: min(200px, calc(85vh - 300px));
       overflow-y: auto;
       z-index: 10;
       display: none;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     }
     .userSearchResults.show { display: block; }
     .userResultItem {
@@ -568,7 +578,6 @@ async function main() {
     getDocs,
     getDoc,
     setLogLevel,
-    FieldPath,
   } = fsMod;
 
   const apiKey = await getFirebaseApiKey();
@@ -925,39 +934,45 @@ async function main() {
   async function searchUsersByPrefix(prefix) {
     const qRaw = (prefix || "").toString().trim().toLowerCase();
     if (qRaw.length < 2) return [];
-    const end = `${qRaw}\uf8ff`;
 
-    const snap = await getDocs(
-      query(
-        collection(db, "displayNames"),
-        where(FieldPath.documentId(), ">=", qRaw),
-        where(FieldPath.documentId(), "<=", end),
-        limit(10)
-      )
-    );
+    // Wyszukaj w userProfiles po displayName i email
+    try {
+      const usersRef = collection(db, "userProfiles");
+      const usersSnapshot = await getDocs(usersRef);
+      const matchingUsers = [];
 
-    const hits = snap.docs
-      .map((d) => ({ ...(d.data() || {}), __id: d.id }))
-      .filter((x) => x && typeof x.userId === "string")
-      .map((x) => ({
-        uid: x.userId,
-        displayName: typeof x.displayName === "string" ? x.displayName : null,
-      }))
-      .filter((x) => x.uid !== uid);
+      usersSnapshot.forEach((doc) => {
+        const userData = doc.data();
+        const userId = doc.id;
+        const displayName = (userData.displayName || "").toLowerCase();
+        const email = (userData.email || "").toLowerCase();
 
-    const profs = await Promise.all(
-      hits.map((h) => getDoc(doc(db, "publicProfiles", h.uid)).catch(() => null))
-    );
+        // Sprawdź czy wyszukiwany tekst pasuje do nicku lub emailu
+        if (displayName.includes(qRaw) || email.includes(qRaw)) {
+          matchingUsers.push({
+            uid: userId,
+            displayName: userData.displayName || userData.email || "Użytkownik",
+            avatar: userData.avatar || null,
+          });
+        }
+      });
 
-    return hits.map((h, i) => {
-      const ps = profs[i];
-      const d = ps && ps.exists() ? ps.data() : null;
-      return {
-        uid: h.uid,
-        displayName: h.displayName || (typeof d?.displayName === "string" ? d.displayName : null),
-        avatar: typeof d?.avatar === "string" ? d.avatar : null,
-      };
-    });
+      // Sortuj: najpierw dokładne dopasowania, potem częściowe
+      matchingUsers.sort((a, b) => {
+        const aName = a.displayName.toLowerCase();
+        const bName = b.displayName.toLowerCase();
+        const aExact = aName === qRaw || aName.startsWith(qRaw);
+        const bExact = bName === qRaw || bName.startsWith(qRaw);
+        if (aExact && !bExact) return -1;
+        if (!aExact && bExact) return 1;
+        return aName.localeCompare(bName);
+      });
+
+      return matchingUsers.slice(0, 10).filter((x) => x.uid !== uid);
+    } catch (e) {
+      console.warn("searchUsersByPrefix error:", e);
+      return [];
+    }
   }
 
   async function markConversationRead({ conversationId, peerId }) {

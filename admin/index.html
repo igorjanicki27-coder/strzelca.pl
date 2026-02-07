@@ -694,10 +694,6 @@
                 <i class="fa-solid fa-tachometer-alt mr-2"></i>
                 Dashboard
               </div>
-              <div class="nav-item" data-tab="messages">
-                <i class="fa-solid fa-comments mr-2"></i>
-                Wiadomości
-              </div>
               <div class="nav-item" data-tab="users">
                 <i class="fa-solid fa-users mr-2"></i>
                 Użytkownicy
@@ -1243,193 +1239,6 @@
           </div>
         </div>
 
-          <!-- Czat -->
-        <div id="tab-messages" class="tab-content">
-          <!-- Single-Line Header -->
-          <div class="flex items-center justify-between mb-6">
-            <div class="flex items-center gap-4">
-              <h2 id="messages-header" class="text-xl font-bold text-white">Wiadomości: <span id="unread-count" class="text-red-600">0</span> | <span id="total-count" class="text-zinc-300">0</span></h2>
-              <!-- Dynamic Category Buttons -->
-              <div id="category-buttons" class="flex items-center gap-2">
-                <!-- Category buttons will be loaded dynamically -->
-              </div>
-            </div>
-
-            <!-- Refresh and New Message (Right Side) -->
-            <div class="flex items-center gap-3">
-              <button onclick="startNewChat()" class="btn-admin text-sm px-4 py-2 h-10 flex items-center gap-2">
-                <i class="fa-solid fa-plus mr-1"></i>
-                Nowa wiadomość
-              </button>
-              <button onclick="refreshMessages()" class="text-zinc-400 hover:text-coyote transition-colors p-2" id="refresh-messages-btn">
-                <i class="fa-solid fa-sync-alt text-lg" id="refresh-icon"></i>
-              </button>
-            </div>
-          </div>
-
-          <!-- Pasek wyszukiwania i filtrów -->
-          <div class="liquid-glass p-6 mb-6">
-            <div class="flex items-center gap-3">
-              <!-- Wyszukiwarka (po lewej stronie, rozszerzona) -->
-              <div class="flex-[1_1_auto] relative">
-                <input
-                  type="text"
-                  id="messages-search"
-                  placeholder="Szukaj po nazwie użytkownika lub treści wiadomości..."
-                  class="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-3 pr-10 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-coyote transition-all h-12"
-                >
-                <button
-                  onclick="clearMessagesSearch()"
-                  id="clear-search-btn"
-                  class="absolute right-3 top-1/2 transform -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors opacity-0 cursor-pointer z-10"
-                  style="background: none; border: none; padding: 4px;"
-                >
-                  <i class="fa-solid fa-times text-sm"></i>
-                </button>
-              </div>
-
-              <!-- Filtry (po prawej stronie) -->
-              <div class="flex-[0_0_auto]">
-                <select id="messages-filter" class="bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-coyote transition-all min-w-[140px] h-12">
-                  <option value="all">Wszystkie</option>
-                  <option value="unread">Nieprzeczytane</option>
-                  <option value="read">Przeczytane</option>
-                  <option value="in_progress">Niezakończone</option>
-                  <option value="completed">Zakończone</option>
-                  <!-- Opcje kategorii będą dodawane dynamicznie -->
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <!-- Lista wiadomości -->
-          <div class="liquid-glass overflow-hidden">
-            <div class="p-6">
-              <div id="messages-container" class="space-y-4">
-                <!-- Wiadomości będą ładowane dynamicznie -->
-                <div class="text-center text-zinc-500 py-12">
-                  <i class="fa-solid fa-spinner fa-spin text-3xl mb-4 text-zinc-600"></i>
-                  <h3 class="text-lg font-semibold mb-2">Ładowanie wiadomości...</h3>
-                  <p class="text-sm">Proszę czekać</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Modal ustawień kategorii -->
-          <div id="categories-modal" class="fixed inset-0 bg-black/80 hidden z-50">
-            <div class="flex items-center justify-center min-h-screen p-4">
-              <div class="bg-zinc-900 rounded-xl shadow-2xl w-full max-w-2xl h-[80vh] flex flex-col">
-                <div class="p-6 border-b border-zinc-700">
-                  <div class="flex items-center justify-between">
-                    <h3 class="text-xl font-bold text-white">Ustawienia kategorii</h3>
-                    <button onclick="closeCategoriesModal()" class="text-zinc-400 hover:text-white">
-                      <i class="fa-solid fa-times text-xl"></i>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="flex-1 overflow-y-auto p-6">
-                  <div class="space-y-4" id="categories-list">
-                    <!-- Kategorie będą ładowane dynamicznie -->
-                  </div>
-
-                  <button onclick="addNewCategory()" class="btn-admin w-full mt-6">
-                    <i class="fa-solid fa-plus mr-2"></i>
-                    Dodaj kategorię
-                </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Modal szybkich odpowiedzi -->
-          <div id="quick-replies-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999] hidden">
-            <div class="bg-zinc-900 rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
-              <div class="p-4 border-b border-zinc-700">
-                <div class="flex items-center justify-between">
-                  <h3 class="text-lg font-bold text-white">Szybkie odpowiedzi</h3>
-                  <button onclick="closeQuickRepliesModal()" class="text-zinc-400 hover:text-white">
-                    <i class="fa-solid fa-times text-xl"></i>
-                  </button>
-                </div>
-              </div>
-
-              <div class="flex-1 overflow-y-auto p-4" id="quick-replies-list">
-                <!-- Szablony będą ładowane dynamicznie -->
-              </div>
-            </div>
-          </div>
-
-          <!-- Modal czatu -->
-          <div id="chat-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden">
-            <div class="liquid-glass shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col">
-              <!-- Nagłówek czatu -->
-              <div class="flex items-center justify-between p-4 border-b border-zinc-700">
-                <!-- Back Arrow -->
-                <button onclick="closeChatModal()" class="text-zinc-400 hover:text-coyote transition-colors p-2">
-                  <i class="fa-solid fa-arrow-left text-lg"></i>
-                </button>
-
-                <!-- User Name (clickable to switch to Users tab) -->
-                <div class="flex-1 text-center">
-                  <h4 id="chat-user-name" class="font-semibold text-white ${currentConversationUser?.name && !currentConversationUser.name.includes('@') ? 'cursor-pointer hover:text-coyote transition-colors' : ''}"
-                      ${currentConversationUser?.name && !currentConversationUser.name.includes('@') ? `onclick="viewUserDetails(currentConversationUser?.id)"` : ''}></h4>
-                  <p id="chat-user-email" class="text-sm text-zinc-400"></p>
-                </div>
-
-                <!-- Complete Button -->
-                <div class="flex flex-col items-end space-y-2">
-                  <button id="complete-start-btn" onclick="toggleConversationStatus()" class="btn-admin text-sm px-4 py-2 h-10 flex items-center">
-                    <i class="fa-solid fa-check mr-2 text-green-400"></i>
-                    Zakończ
-                  </button>
-                  <!-- Category Dropdown -->
-                  <select id="chat-category-select" class="bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-coyote relative z-[100]">
-                    <!-- Opcje będą ładowane dynamicznie -->
-                  </select>
-                </div>
-              </div>
-
-              <!-- Wiadomości -->
-              <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4">
-                <!-- Wiadomości będą ładowane dynamicznie -->
-              </div>
-
-              <!-- Pole do odpowiedzi -->
-              <div class="p-4 border-t border-zinc-700">
-                <div class="flex space-x-3">
-                  <textarea
-                    id="chat-reply-input"
-                    placeholder="Wpisz swoją odpowiedź..."
-                    class="flex-1 bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-coyote resize-none"
-                    rows="3"
-                  ></textarea>
-                  <div class="flex flex-col space-y-2">
-                    <button
-                      onclick="sendChatReply()"
-                      class="w-12 h-12 bg-zinc-800 border border-zinc-600 rounded-lg flex items-center justify-center text-zinc-400 hover:text-green-400 hover:border-green-400 transition-colors"
-                      title="Wyślij wiadomość"
-                      style="color: #22c55e;"
-                    >
-                      <i class="fa-solid fa-paper-plane text-lg"></i>
-                    </button>
-                    <button
-                      onclick="openQuickRepliesMenu()"
-                      class="w-12 h-12 bg-zinc-800 border border-zinc-600 rounded-lg flex items-center justify-center text-zinc-400 hover:text-coyote hover:border-coyote transition-colors"
-                      title="Szybkie odpowiedzi"
-                      style="color: var(--coyote);"
-                    >
-                      <i class="fa-solid fa-bolt text-lg"></i>
-                    </button>
-                  </div>
-                </div>
-                <p class="text-xs text-zinc-500 mt-2">Naciśnij Enter, aby wysłać • Shift+Enter dla nowej linii</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <!-- Wydarzenia -->
         <div id="tab-events" class="tab-content">
           <h1 class="text-3xl font-bold coyote-text mb-8">
@@ -1706,6 +1515,13 @@
                       <i class="fa-solid fa-folder-open mr-2"></i>
                       Załaduj wersję roboczą
                     </button>
+                    <button
+                      onclick="sendNewsletter()"
+                      class="btn-admin flex-1"
+                    >
+                      <i class="fa-solid fa-paper-plane mr-2"></i>
+                      Wyślij Newsletter
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1732,25 +1548,17 @@
 
                 <div class="mt-6 pt-4 border-t border-zinc-700">
                   <div
-                    class="flex justify-between items-center text-sm text-zinc-400"
+                    class="flex justify-between items-center text-sm text-zinc-400 mb-4"
                   >
                     <span>Łącznie subskrybentów:</span>
                     <span id="subscribers-count">0</span>
                   </div>
+                  <button onclick="exportNewsletter()" class="btn-admin w-full">
+                    <i class="fa-solid fa-download mr-2"></i>
+                    Eksportuj listę subskrybentów
+                  </button>
                 </div>
               </div>
-            </div>
-
-            <!-- Przyciski akcji -->
-            <div class="mt-8 flex justify-center space-x-4">
-              <button onclick="sendNewsletter()" class="btn-admin px-8 py-3">
-                <i class="fa-solid fa-paper-plane mr-2"></i>
-                Wyślij Newsletter
-              </button>
-              <button onclick="exportNewsletter()" class="btn-admin px-8 py-3">
-                <i class="fa-solid fa-download mr-2"></i>
-                Eksportuj do Email
-              </button>
             </div>
           </div>
 
@@ -3420,56 +3228,6 @@
           }, 300);
         }
 
-        // Specjalna obsługa messages - dodaj event listenery dla wyszukiwania i filtrów
-        if (tabName === "messages") {
-          setTimeout(() => {
-            const messagesSearch = document.getElementById('messages-search');
-            const messagesFilter = document.getElementById('messages-filter');
-
-            if (messagesSearch && !messagesSearch.hasSearchListener) {
-              console.log('Adding search event listeners in switchTab');
-              messagesSearch.hasSearchListener = true;
-
-              messagesSearch.addEventListener('input', (e) => {
-                console.log('Search input event fired in switchTab, value:', e.target.value);
-                currentFilters.search = e.target.value;
-
-                // Pokaż/ukryj przycisk clear
-                const clearBtn = document.getElementById('clear-search-btn');
-                if (clearBtn) {
-                  if (e.target.value.length > 0) {
-                    clearBtn.classList.remove('opacity-0');
-                    clearBtn.classList.add('opacity-100');
-                  } else {
-                    clearBtn.classList.add('opacity-0');
-                    clearBtn.classList.remove('opacity-100');
-                  }
-                }
-
-                loadMessagesWithFilters();
-              });
-
-              messagesSearch.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                  console.log('Search Enter pressed in switchTab, value:', e.target.value);
-                  e.preventDefault();
-                  currentFilters.search = e.target.value;
-                  loadMessagesWithFilters();
-                }
-              });
-            }
-
-            if (messagesFilter && !messagesFilter.hasFilterListener) {
-              console.log('Adding filter dropdown event listener in switchTab');
-              messagesFilter.hasFilterListener = true;
-              messagesFilter.addEventListener('change', () => {
-                console.log('Filter dropdown changed in switchTab to:', messagesFilter.value);
-                currentFilters.category = messagesFilter.value;
-                loadMessagesWithFilters();
-              });
-            }
-          }, 100);
-        }
 
         // Specjalna obsługa newsletter - dodaj event listener dla wyszukiwania
         if (tabName === "newsletter") {
@@ -3509,11 +3267,6 @@
             break;
           case "products":
             loadProducts();
-            break;
-          case "messages":
-            console.log('📱 Switching to messages tab, loading messages...');
-            // Daj czas na update DOM
-            setTimeout(() => loadMessages(), 100);
             break;
           case "events":
             loadEvents();
@@ -4678,7 +4431,8 @@
 
           try {
             localStorage.setItem('newsletterDraft', JSON.stringify(draftData));
-            showNotification("Wersja robocza newslettera została zapisana lokalnie.", "success");
+            const savedDate = new Date(draftData.savedAt).toLocaleString('pl-PL');
+            showNotification(`Wersja robocza zapisana lokalnie w przeglądarce (${savedDate}). Możesz ją pobrać jako plik.`, "success");
           } catch (storageError) {
             // Jeśli localStorage nie jest dostępny (np. tryb prywatny), spróbuj zapisać w Firestore
             console.warn("localStorage not available, trying Firestore:", storageError);
@@ -4741,7 +4495,8 @@
             }
             
             if (showNotificationOnLoad) {
-              showNotification("Wersja robocza została załadowana.", "success");
+              const savedDate = draftData.savedAt ? new Date(draftData.savedAt).toLocaleString('pl-PL') : 'nieznana data';
+              showNotification(`Wersja robocza została załadowana (zapisana: ${savedDate}).`, "success");
             }
             return true;
           } else {
@@ -4756,6 +4511,96 @@
             showNotification("Błąd podczas ładowania wersji roboczej.", "error");
           }
           return false;
+        }
+      };
+
+      // Funkcja do pobierania wersji roboczej jako plik
+      window.downloadNewsletterDraft = function() {
+        try {
+          const savedDraft = localStorage.getItem('newsletterDraft');
+          if (!savedDraft) {
+            showNotification("Brak zapisanej wersji roboczej do pobrania.", "info");
+            return;
+          }
+
+          const draftData = JSON.parse(savedDraft);
+          const savedDate = draftData.savedAt ? new Date(draftData.savedAt).toISOString().split('T')[0] : 'unknown';
+          
+          // Utwórz plik JSON z wersją roboczą
+          const jsonContent = JSON.stringify(draftData, null, 2);
+          const blob = new Blob([jsonContent], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `newsletter_draft_${savedDate}.json`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+
+          // Opcjonalnie: utwórz też plik HTML z treścią
+          const htmlContent = `<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Newsletter - ${draftData.subject || 'Bez tematu'}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+        h1 {
+            color: #c19a6b;
+            border-bottom: 2px solid #c19a6b;
+            padding-bottom: 10px;
+        }
+        .meta {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+        .content {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <h1>${draftData.subject || 'Newsletter - Bez tematu'}</h1>
+    <div class="meta">
+        <p><strong>Zapisano:</strong> ${draftData.savedAt ? new Date(draftData.savedAt).toLocaleString('pl-PL') : 'Nieznana data'}</p>
+        <p><strong>Zapisane przez:</strong> ${draftData.savedByEmail || 'Nieznany użytkownik'}</p>
+    </div>
+    <div class="content">
+        ${draftData.content || '<p>Brak treści</p>'}
+    </div>
+</body>
+</html>`;
+
+          // Pobierz HTML po krótkim opóźnieniu
+          setTimeout(() => {
+            const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+            const htmlUrl = URL.createObjectURL(htmlBlob);
+            const htmlLink = document.createElement('a');
+            htmlLink.href = htmlUrl;
+            htmlLink.download = `newsletter_draft_${savedDate}.html`;
+            document.body.appendChild(htmlLink);
+            htmlLink.click();
+            document.body.removeChild(htmlLink);
+            URL.revokeObjectURL(htmlUrl);
+          }, 300);
+
+          showNotification("Wersja robocza została pobrana jako pliki JSON i HTML.", "success");
+        } catch (error) {
+          console.error("Error downloading newsletter draft:", error);
+          showNotification("Błąd podczas pobierania wersji roboczej: " + (error.message || error), "error");
         }
       };
 
@@ -4976,9 +4821,9 @@
 
       window.openChatFromUserDetails = () => {
         if (!currentEditingUser) return;
-        switchTab('messages');
-        openMessageChat(currentEditingUser.id, currentEditingUser.displayName, currentEditingUser.email);
+        // Wiadomości są teraz dostępne przez floating widget
         closeUserDetails();
+        showNotification("Użyj floating widget wiadomości (prawy dolny róg) do komunikacji z użytkownikiem", "info");
       };
 
       window.switchUserTab = (tabName) => {
@@ -6334,27 +6179,7 @@
         }
       };
 
-      // Placeholder funkcje - będą zaimplementowane w kolejnych krokach
-      // Zmienne globalne dla nowego systemu wiadomości
-      let currentConversationUser = null;
-      let messagesAutoRefresh = null;
-      let currentFilters = { search: '', category: 'all', status: 'all' };
-      let availableCategories = [];
-
-      // Udostępnij funkcje globalnie dla onclick
-      window.loadMessages = async function() {
-        console.log('🔄 loadMessages called from window');
-        // Znajdź właściwą funkcję
-        const messagesTab = document.getElementById('tab-messages');
-        if (messagesTab && messagesTab.classList.contains('active')) {
-          // Jesteśmy już na zakładce messages, wywołaj loadMessages
-          const func = arguments.callee._originalFunction;
-          if (func) return func.apply(this, arguments);
-        } else {
-          // Przełącz na zakładkę messages i załaduj
-          switchTab('messages');
-        }
-      };
+      // Wiadomości zostały przeniesione do floating widget
 
       async function loadMessages() {
         console.log('🔄 loadMessages called - redirecting to new interface');
@@ -10622,18 +10447,7 @@
       });
 
       // Udostępnij funkcje globalnie
-      window.filterMessages = filterMessages;
       window.toggleFilterDropdown = toggleFilterDropdown;
-      window.closeChatModal = closeChatModal;
-      window.clearMessagesSearch = clearMessagesSearch;
-      window.updateCategoryButtonsHighlight = updateCategoryButtonsHighlight;
-      window.refreshMessages = refreshMessages;
-      window.sendChatReply = sendChatReply;
-      window.openConversation = openConversation;
-      window.toggleConversationStatus = toggleConversationStatus;
-      window.startNewChat = startNewChat;
-      window.closeNewChatModal = closeNewChatModal;
-      window.createNewChat = createNewChat;
 
       // Funkcja czyszczenia filtrów
       function clearFilters() {
