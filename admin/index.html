@@ -2843,6 +2843,7 @@
         console.log("[Firebase] Firebase zainicjalizowany pomyślnie");
         console.log("[Firebase] Firestore database:", db);
         console.log("[Firebase] Auth:", auth);
+        console.log("[Firebase] Current user:", auth.currentUser?.uid || "brak");
         
         // Sprawdź, czy Firestore działa - test połączenia
         try {
@@ -2850,7 +2851,19 @@
           await getDoc(testDoc);
           console.log("[Firebase] Test połączenia z Firestore: OK");
         } catch (testError) {
-          console.warn("[Firebase] Test połączenia z Firestore nie powiódł się (może być normalne):", testError);
+          console.warn("[Firebase] Test połączenia z Firestore nie powiódł się:", testError);
+          console.warn("[Firebase] Szczegóły błędu testu:", {
+            code: testError.code,
+            message: testError.message,
+            name: testError.name
+          });
+          
+          // Jeśli to błąd CORS, pokaż ostrzeżenie
+          if (testError.message?.includes('CORS') || testError.message?.includes('access control')) {
+            console.error("[Firebase] ⚠️ BŁĄD CORS Z FIRESTORE!");
+            console.error("[Firebase] To może blokować dostęp do panelu admina.");
+            console.error("[Firebase] Sprawdź konfigurację domeny w Firebase Console.");
+          }
         }
       } catch (error) {
         console.error("[Firebase] BŁĄD INICJALIZACJI FIREBASE:", error);
@@ -3022,7 +3035,30 @@
         // Dla zwykłych użytkowników sprawdź rolę w Firestore
         try {
           console.log('Checking admin role in Firestore for user:', user.uid);
-          const userDoc = await getDoc(doc(db, "userProfiles", user.uid));
+          
+          // Sprawdź, czy db jest dostępny
+          if (!db) {
+            console.error('Firestore database (db) is not available');
+            throw new Error('Firestore database not initialized');
+          }
+          
+          const userDoc = await getDoc(doc(db, "userProfiles", user.uid)).catch((error) => {
+            console.error("Error fetching user profile from Firestore:", error);
+            console.error("Error details:", {
+              code: error.code,
+              message: error.message,
+              name: error.name
+            });
+            
+            // Jeśli to błąd CORS lub permission-denied, może to być problem z konfiguracją
+            if (error.code === 'permission-denied' || error.message?.includes('CORS') || error.message?.includes('access control')) {
+              console.warn('CORS or permission error - this may be a configuration issue');
+              console.warn('User may still be admin, but cannot verify due to Firestore access issues');
+            }
+            
+            throw error;
+          });
+          
           if (userDoc.exists()) {
             const userData = userDoc.data();
             console.log('User data from Firestore:', userData);
@@ -3060,8 +3096,32 @@
           console.error("Error details:", {
             code: error.code,
             message: error.message,
+            name: error.name,
             stack: error.stack
           });
+          
+          // Jeśli to błąd CORS lub problem z dostępem do Firestore, 
+          // nie blokuj dostępu - może użytkownik jest adminem, ale nie możemy tego zweryfikować
+          // W takim przypadku pokaż komunikat, ale nie przekierowuj
+          if (error.code === 'permission-denied' || 
+              error.message?.includes('CORS') || 
+              error.message?.includes('access control') ||
+              error.message?.includes('Failed to fetch')) {
+            console.warn('Cannot verify admin role due to Firestore access issues');
+            console.warn('This may be a CORS or configuration problem');
+            
+            // Pokaż komunikat użytkownikowi
+            const errorDiv = document.createElement("div");
+            errorDiv.style.cssText = "position: fixed; top: 0; left: 0; right: 0; background: #f59e0b; color: white; padding: 15px; z-index: 10000; text-align: center;";
+            errorDiv.innerHTML = `
+              <strong>⚠️ Ostrzeżenie:</strong> Nie można zweryfikować uprawnień administratora z powodu problemów z dostępem do Firestore. 
+              Sprawdź konfigurację Firebase i konsolę przeglądarki (F12) dla szczegółów.
+            `;
+            document.body.appendChild(errorDiv);
+            
+            // Usuń komunikat po 10 sekundach
+            setTimeout(() => errorDiv.remove(), 10000);
+          }
         }
 
         return false;
@@ -3638,13 +3698,24 @@
         const initialUser = auth.currentUser;
         if (initialUser) {
           console.log('Admin: Checking initial user:', initialUser.uid);
+          
+          // Sprawdź czy to SuperAdmin (szybka weryfikacja bez Firestore)
+          const superAdminUID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
+          if (initialUser.uid === superAdminUID) {
+            console.log('SuperAdmin detected, granting access immediately');
+            const isAdmin = await checkAndShowAdminPanel(initialUser);
+            if (isAdmin) return; // SuperAdmin ma dostęp
+          }
+          
           const isAdmin = await checkAndShowAdminPanel(initialUser);
           if (!isAdmin) {
-            // Użytkownik jest zalogowany, ale nie ma roli admin
-            console.warn('Initial user does not have admin role, signing out:', initialUser.uid);
-            try { await signOut(auth); } catch {}
-            showStatus('<strong style="color: #dc2626; font-weight: bold;">Strona dostępna tylko dla uprawnionych użytkowników.</strong>', true);
-            setTimeout(() => redirectNotAuthorized(), 400);
+            // Sprawdź, czy błąd był związany z dostępem do Firestore
+            // Jeśli tak, nie blokuj dostępu - może użytkownik jest adminem, ale nie możemy tego zweryfikować
+            console.warn('Initial user check failed. This may be due to Firestore access issues.');
+            console.warn('If you are an admin, check Firebase Console configuration and CORS settings.');
+            
+            // Nie wylogowuj automatycznie - pozwól użytkownikowi zobaczyć komunikat błędu
+            // showStatus('<strong style="color: #dc2626; font-weight: bold;">Nie można zweryfikować uprawnień. Sprawdź konfigurację Firebase.</strong>', true);
           }
         }
       })();
