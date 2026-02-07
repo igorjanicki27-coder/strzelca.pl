@@ -663,9 +663,9 @@
 
           <!-- Panel Admina na środku -->
           <div class="flex items-center space-x-3">
-            <i class="fa-solid fa-crown text-coyote text-xl"></i>
+              <i class="fa-solid fa-crown text-coyote text-xl"></i>
             <span class="text-white font-bold text-lg">Panel Admina</span>
-          </div>
+            </div>
 
           <!-- Profil administratora (kompaktowy) -->
           <div class="flex items-center space-x-3">
@@ -3894,7 +3894,7 @@
       }
 
       // Funkcja filtrowania logów aktywności
-      window.filterActivityLogs = () => {
+      window.filterActivityLogs = async () => {
         const container = document.getElementById('all-activity-logs-container');
         if (!container || allActivityLogs.length === 0) return;
 
@@ -3944,11 +3944,18 @@
           return;
         }
 
-        const logsHtml = filteredLogs
-          .map((log) => {
+        // Pobierz nazwy użytkowników asynchronicznie dla wszystkich logów
+        const logsWithNames = await Promise.all(
+          filteredLogs.map(async (log) => {
             const timestamp = log.timestamp?.toDate ? log.timestamp.toDate() : new Date(log.timestamp);
             const timeAgo = getTimeAgo ? getTimeAgo(timestamp) : timestamp.toLocaleString("pl-PL");
-            const activityLog = renderActivityLog ? renderActivityLog(log) : { description: log.action || 'Aktywność', content: log.details || '' };
+            
+            // Użyj asynchronicznej wersji do pobrania nazwy użytkownika
+            const userDisplayName = await getUserDisplayNameAsync(log);
+            
+            // Utwórz kopię logu z nazwą użytkownika dla renderActivityLog
+            const logWithName = { ...log, userDisplayName };
+            const activityLog = renderActivityLog ? renderActivityLog(logWithName) : { description: log.action || 'Aktywność', content: log.details || '' };
 
             return `
               <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="showEventDetails ? showEventDetails('${log.id}') : null">
@@ -3963,7 +3970,9 @@
               </div>
             `;
           })
-          .join("");
+        );
+        
+        const logsHtml = logsWithNames.join("");
 
         container.innerHTML = logsHtml;
       }
@@ -4115,23 +4124,38 @@
               return;
             }
 
-            const logsHtml = logs
-              .map((log) => {
+            // Pobierz nazwy użytkowników asynchronicznie dla wszystkich logów
+            const logsWithNames = await Promise.all(
+              logs.map(async (log) => {
                 const timestamp = log.timestamp ? new Date(log.timestamp.toDate ? log.timestamp.toDate() : log.timestamp) : new Date();
                 const timeAgo = getTimeAgo ? getTimeAgo(timestamp) : timestamp.toLocaleString("pl-PL");
-                const activityLog = renderActivityLog ? renderActivityLog(log) : { description: log.action || 'Aktywność', content: log.details || '' };
+                
+                // Użyj asynchronicznej wersji do pobrania nazwy użytkownika
+                const userDisplayName = await getUserDisplayNameAsync(log);
+                
+                // Utwórz kopię logu z nazwą użytkownika dla renderActivityLog
+                const logWithName = { ...log, userDisplayName };
+                const activityLog = renderActivityLog ? renderActivityLog(logWithName) : { description: log.action || 'Aktywność', content: log.details || '' };
 
-                return `
+                return {
+                  html: `
                   <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="showEventDetails ? showEventDetails('${log.id}') : null">
                     <div class="flex justify-between items-start mb-2">
-                    <div class="font-semibold text-white">${activityLog.description}</div>
+                        <div class="font-semibold text-white">${activityLog.description}</div>
                       <div class="text-xs text-zinc-500">${timeAgo}</div>
                     </div>
-                  ${activityLog.content ? `<div class="text-xs text-zinc-400 mt-1">${activityLog.content}</div>` : ''}
+                      ${activityLog.content ? `<div class="text-xs text-zinc-400 mt-1">${activityLog.content}</div>` : ''}
                   </div>
-                `;
+                  `,
+                  timestamp
+                };
               })
-              .join("");
+            );
+            
+            // Sortuj po czasie (najnowsze na górze)
+            logsWithNames.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            const logsHtml = logsWithNames.map(log => log.html).join("");
 
           // Sprawdź czy są więcej logów do załadowania
           const hasMore = logs.length >= activityLogsLimit;
@@ -4511,7 +4535,7 @@
                               <h3 class="text-lg font-bold text-white">Uprawnienia i status</h3>
                           </div>
                           <div class="space-y-4">
-                              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   <div class="bg-zinc-900/50 p-4 rounded border border-zinc-700/50">
                                       <label class="text-xs text-zinc-400 block mb-2 uppercase tracking-wider">Rola użytkownika</label>
                                       <select id="user-role-select" class="w-full" onchange="changeUserRoleFromDetails('${currentEditingUser.id}', this.value)">
@@ -4519,19 +4543,19 @@
                                           <option value="company" ${decryptedUser.role === "company" ? "selected" : ""}>Firma</option>
                                           <option value="admin" ${decryptedUser.role === "admin" ? "selected" : ""}>Administrator</option>
                                       </select>
-                                  </div>
+                              </div>
                                   <div class="bg-zinc-900/50 p-4 rounded border border-zinc-700/50">
                                       <label class="text-xs text-zinc-400 block mb-2 uppercase tracking-wider">Status konta</label>
                                       <div class="text-lg font-semibold">
                                           ${decryptedUser.status === "blocked" ? '<span class="inline-flex items-center px-3 py-1 rounded-full bg-red-900/30 text-red-400 border border-red-700"><i class="fa-solid fa-ban mr-2"></i>Zablokowane</span>' : 
                                             decryptedUser.status === "active" ? '<span class="inline-flex items-center px-3 py-1 rounded-full bg-green-900/30 text-green-400 border border-green-700"><i class="fa-solid fa-check-circle mr-2"></i>Aktywne</span>' : 
                                             '<span class="inline-flex items-center px-3 py-1 rounded-full bg-yellow-900/30 text-yellow-400 border border-yellow-700"><i class="fa-solid fa-pause-circle mr-2"></i>Nieaktywne</span>'}
-                                      </div>
+                              </div>
                                       ${decryptedUser.status === "blocked" ? (() => {
                                         const blockedUntilText = getBlockedUntilText(currentEditingUser);
                                         return blockedUntilText ? `<div class="mt-3 text-sm text-red-400 font-semibold"><i class="fa-solid fa-clock mr-2"></i>${blockedUntilText}</div>` : '';
                                       })() : ''}
-                                  </div>
+                              </div>
                               </div>
                               ${canResetPassword ? `
                               <div class="bg-zinc-900/50 p-4 rounded border border-zinc-700/50">
@@ -4549,7 +4573,7 @@
                           <div class="flex items-center space-x-2 mb-4">
                               <i class="fa-solid fa-location-dot text-coyote"></i>
                               <h3 class="text-lg font-bold text-white">Adres dostawy</h3>
-                          </div>
+                              </div>
                           <div class="bg-zinc-900/50 p-4 rounded border border-zinc-700/50">
                               ${decryptedUser.address.street || decryptedUser.address.buildingNumber || decryptedUser.address.postalCode || decryptedUser.address.city || decryptedUser.parcelLocker ? 
                                 `<div class="space-y-2 text-sm">
@@ -5426,7 +5450,7 @@
               currentUser.uid, 
               "USER_UNBLOCKED", 
               {
-                unblockedBy: currentUser.uid,
+            unblockedBy: currentUser.uid,
                 automatic: false,
                 targetUser: userId,
                 adminEmail: adminEmail, // Email administratora dla wyświetlania
@@ -7493,8 +7517,9 @@
           if (event.userId.includes("@")) {
           return event.userId;
         }
-          // Sprawdź czy w details jest email
+          // Sprawdź czy w details jest email (priorytet dla adminEmail)
           if (event.details && typeof event.details === 'object') {
+            if (event.details.adminEmail) return event.details.adminEmail;
             if (event.details.email) return event.details.email;
             if (event.details.login) return event.details.login;
             if (event.details.userEmail) return event.details.userEmail;
@@ -7521,7 +7546,8 @@
 
         // Użyj właściwych pól z bazy danych
         const action = event.action || event.type || "UNKNOWN";
-        const userDisplayName = getUserDisplayName(event);
+        // Użyj userDisplayName jeśli jest dostępne (z getUserDisplayNameAsync), w przeciwnym razie użyj synchronicznej wersji
+        const userDisplayName = event.userDisplayName || getUserDisplayName(event);
         const actionLabel = getActionLabel(action);
         const eventDetails = event.details || {};
         const detailsText = typeof eventDetails === 'string' ? eventDetails : JSON.stringify(eventDetails);
