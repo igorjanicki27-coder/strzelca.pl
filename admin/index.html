@@ -3232,7 +3232,9 @@
           
           // Jeśli blokada wygasła
           if (blockedUntil <= now) {
-            return "Blokada wygasła (wymaga odblokowania)";
+            // Funkcja getBlockedUntilText jest synchroniczna, więc nie możemy tu odblokować
+            // Odblokowanie nastąpi automatycznie przy następnym loadUsers()
+            return "Blokada wygasła - zostanie automatycznie odblokowana";
           }
           
           // Oblicz pozostały czas
@@ -4202,6 +4204,9 @@
       // Zarządzanie użytkownikami
       async function loadUsers() {
         try {
+          // Najpierw automatycznie odblokuj wygasłe blokady
+          await autoUnblockExpiredBlocks();
+          
           const usersSnapshot = await getDocs(collection(db, "userProfiles"));
           usersList = usersSnapshot.docs.map((doc) => ({
             id: doc.id,
@@ -5355,24 +5360,97 @@
         }
       }
 
-      async function unblockUser(userId) {
+      async function unblockUser(userId, isAutomatic = false) {
         try {
-          await updateDoc(doc(db, "userProfiles", userId), {
+          const updateData = {
             status: "active",
             unblockedAt: new Date(),
-            unblockedBy: currentUser.uid,
-          });
+            blockedUntil: null,
+            blockDuration: null,
+            isPermanentBlock: null,
+          };
+          
+          // Jeśli nie jest automatyczne, dodaj informację o tym kto odblokował
+          if (!isAutomatic && currentUser) {
+            updateData.unblockedBy = currentUser.uid;
+          }
+
+          await updateDoc(doc(db, "userProfiles", userId), updateData);
 
           // Zaloguj odblokowanie użytkownika
           await logActivity(userId, "USER_UNBLOCKED", {
-            unblockedBy: currentUser.uid,
+            unblockedBy: isAutomatic ? "system" : (currentUser?.uid || "unknown"),
+            automatic: isAutomatic,
           });
 
-          showNotification("Użytkownik został odblokowany.");
+          if (!isAutomatic) {
+            showNotification("Użytkownik został odblokowany.");
+          }
           loadUsers();
         } catch (error) {
           console.error("Error unblocking user:", error);
-          showNotification("Błąd podczas odblokowywania użytkownika.", "error");
+          if (!isAutomatic) {
+            showNotification("Błąd podczas odblokowywania użytkownika.", "error");
+          }
+        }
+      }
+
+      // Funkcja automatycznie odblokowująca wygasłe blokady
+      async function autoUnblockExpiredBlocks() {
+        try {
+          const usersSnapshot = await getDocs(collection(db, "userProfiles"));
+          const now = new Date();
+          let unblockedCount = 0;
+
+          let batch = writeBatch(db);
+          let batchCount = 0;
+          const BATCH_LIMIT = 500; // Firestore limit
+
+          for (const docSnapshot of usersSnapshot.docs) {
+            const userData = docSnapshot.data();
+            
+            // Sprawdź czy użytkownik jest zablokowany i ma czasową blokadę
+            if (userData.status === "blocked" && userData.blockedUntil && !userData.isPermanentBlock) {
+              const blockedUntil = userData.blockedUntil.toDate ? userData.blockedUntil.toDate() : new Date(userData.blockedUntil);
+              
+              // Jeśli blokada wygasła, odblokuj
+              if (blockedUntil <= now) {
+                const userRef = doc(db, "userProfiles", docSnapshot.id);
+                batch.update(userRef, {
+                  status: "active",
+                  unblockedAt: new Date(),
+                  blockedUntil: null,
+                  blockDuration: null,
+                  isPermanentBlock: null,
+                });
+                batchCount++;
+                unblockedCount++;
+
+                // Jeśli osiągnięto limit batcha, wykonaj i zacznij nowy
+                if (batchCount >= BATCH_LIMIT) {
+                  await batch.commit();
+                  batch = writeBatch(db);
+                  batchCount = 0;
+                }
+              }
+            }
+          }
+
+          // Wykonaj pozostałe operacje
+          if (batchCount > 0) {
+            await batch.commit();
+          }
+
+          // Zaloguj automatyczne odblokowania
+          if (unblockedCount > 0) {
+            console.log(`Automatycznie odblokowano ${unblockedCount} wygasłych blokad.`);
+            // Nie pokazuj powiadomienia dla automatycznych odblokowań
+          }
+
+          return unblockedCount;
+        } catch (error) {
+          console.error("Błąd podczas automatycznego odblokowywania wygasłych blokad:", error);
+          return 0;
         }
       }
 
@@ -6572,9 +6650,6 @@
 
             // Wizyty dzisiaj - zliczamy unikalne użytkowników którzy byli aktywni dzisiaj
             try {
-              const todayStart = new Date();
-              todayStart.setHours(0, 0, 0, 0);
-              
               const usersRef = collection(db, "userProfiles");
               const usersSnapshot = await getDocs(usersRef);
               
@@ -6583,7 +6658,9 @@
                 const userData = doc.data();
                 if (userData.lastSeen) {
                   const lastSeen = userData.lastSeen.toDate ? userData.lastSeen.toDate() : new Date(userData.lastSeen);
-                  if (lastSeen >= todayStart) {
+                  // Porównaj daty bez czasu - tylko dzień (normalizuj do początku dnia)
+                  const lastSeenDate = new Date(lastSeen.getFullYear(), lastSeen.getMonth(), lastSeen.getDate());
+                  if (lastSeenDate.getTime() === today.getTime()) {
                     todayVisitsCount++;
                   }
                 }
@@ -6592,7 +6669,7 @@
               const todayVisitsEl = document.getElementById("visits-today");
               if (todayVisitsEl) todayVisitsEl.textContent = todayVisitsCount;
             } catch (error) {
-              console.warn("Could not fetch today visits from Firestore:", error);
+              console.error("Error fetching today visits from Firestore:", error);
               const todayVisitsEl = document.getElementById("visits-today");
               if (todayVisitsEl) todayVisitsEl.textContent = "0";
             }

@@ -648,10 +648,16 @@
                       let blockMessage = `Twoje konto zostało zablokowane.\n\nPowód: ${blockReason}`;
                       if (blockUntil && blockUntil > new Date()) {
                         blockMessage += `\n\nBlokada obowiązuje do: ${blockUntil.toLocaleDateString("pl-PL")} ${blockUntil.toLocaleTimeString("pl-PL")}`;
-                      } else if (blockUntil && blockUntil <= new Date()) {
-                        // Blokada wygasła, odblokuj konto
+                      } else if (blockUntil && blockUntil <= new Date() && !userData.isPermanentBlock) {
+                        // Blokada wygasła, odblokuj konto automatycznie
                         const { updateDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-                        await updateDoc(doc(db, "userProfiles", user.uid), { status: "active", blockedUntil: null });
+                        await updateDoc(doc(db, "userProfiles", user.uid), { 
+                          status: "active", 
+                          blockedUntil: null,
+                          blockDuration: null,
+                          isPermanentBlock: null,
+                          unblockedAt: new Date()
+                        });
                         // Pozwól na logowanie - kontynuuj normalny flow
                       } else {
                         blockMessage += "\n\nBlokada jest permanentna.";
@@ -873,7 +879,11 @@
                   
                   if (userProfile.exists()) {
                     const userData = userProfile.data();
+                    console.log("Status konta użytkownika:", userData.status);
+                    
                     if (userData.status === "blocked") {
+                      console.log("Konto jest zablokowane - wylogowywanie i pokazywanie modala");
+                      
                       // Wyloguj użytkownika
                       const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
                       await signOut(auth);
@@ -882,37 +892,55 @@
                       const blockUntil = userData.blockedUntil?.toDate ? userData.blockedUntil.toDate() : (userData.blockedUntil ? new Date(userData.blockedUntil) : null);
                       const blockReason = userData.blockReason || "Nie podano powodu";
                       
+                      console.log("Blokada do:", blockUntil, "Powód:", blockReason);
+                      
                       let blockMessage = `Twoje konto zostało zablokowane.\n\nPowód: ${blockReason}`;
+                      let shouldBlock = true;
+                      
                       if (blockUntil && blockUntil > new Date()) {
                         blockMessage += `\n\nBlokada obowiązuje do: ${blockUntil.toLocaleDateString("pl-PL")} ${blockUntil.toLocaleTimeString("pl-PL")}`;
+                        shouldBlock = true;
                       } else if (blockUntil && blockUntil <= new Date()) {
                         // Blokada wygasła, odblokuj konto
+                        console.log("Blokada wygasła - odblokowywanie konta");
                         const { updateDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
                         await updateDoc(doc(db, "userProfiles", user.uid), { status: "active", blockedUntil: null });
+                        shouldBlock = false;
                         // Pozwól na logowanie - kontynuuj normalny flow
                       } else {
                         blockMessage += "\n\nBlokada jest permanentna.";
+                        shouldBlock = true;
                       }
                       
-                      if (blockUntil && blockUntil > new Date()) {
-                        // Pokaż modal z informacją o blokadzie tylko jeśli blokada jest aktywna
+                      if (shouldBlock) {
+                        // Pokaż modal z informacją o blokadzie
+                        console.log("Pokazywanie modala zablokowanego konta");
                         showBlockedAccountModal(blockMessage);
                         loginBtn.disabled = false;
                         loginBtn.innerHTML = '<i class="fa-solid fa-sign-in-alt mr-2"></i>Zaloguj się';
                         isLoginFlowInProgress = false;
                         return;
+                      } else {
+                        console.log("Blokada wygasła - kontynuowanie logowania");
                       }
-                    }
-                  }
-                } catch (blockCheckError) {
-                  // Ignoruj błędy permission denied - użytkownik może nie mieć jeszcze profilu lub uprawnień
-                  // To nie powinno blokować logowania
-                  if (blockCheckError?.code === 'permission-denied' || blockCheckError?.code === 'PERMISSION_DENIED') {
-                    console.log("Profil użytkownika nie jest jeszcze dostępny lub brak uprawnień - kontynuowanie logowania");
                   } else {
-                    console.warn("Błąd sprawdzania statusu konta:", blockCheckError);
+                    console.log("Konto nie jest zablokowane - kontynuowanie logowania");
+                  }
+                } else {
+                  console.log("Profil użytkownika nie istnieje - kontynuowanie logowania");
+                }
+                } catch (blockCheckError) {
+                  // Ignoruj błędy permission denied tylko jeśli profil nie istnieje
+                  // Jeśli profil istnieje ale nie możemy odczytać danych, to może być problem z uprawnieniami
+                  console.warn("Błąd sprawdzania statusu konta:", blockCheckError);
+                  
+                  if (blockCheckError?.code === 'permission-denied' || blockCheckError?.code === 'PERMISSION_DENIED') {
+                    console.log("Brak uprawnień do odczytu profilu - kontynuowanie logowania (użytkownik może nie mieć jeszcze profilu)");
+                  } else {
+                    console.error("Nieoczekiwany błąd podczas sprawdzania statusu konta:", blockCheckError);
                   }
                   // Kontynuuj logowanie jeśli nie udało się sprawdzić statusu
+                  // (użytkownik może nie mieć jeszcze profilu w Firestore)
                 }
 
                 console.log("Ustawianie cookie SSO...");
