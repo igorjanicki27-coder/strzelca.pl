@@ -16,16 +16,17 @@ module.exports = (req, res) => {
     // --- Security: Verify request comes from our domains ---
     const origin = req.headers?.origin;
     const referer = req.headers?.referer;
+    const host = req.headers?.host;
     
     // Pattern dla dozwolonych domen (strzelca.pl i wszystkie subdomeny)
-    const allowedDomainPattern = /^https:\/\/([a-z0-9-]+\.)?strzelca\.pl$/i;
+    const allowedDomainPattern = /^https?:\/\/([a-z0-9-]+\.)?strzelca\.pl$/i;
     
     // Sprawdź origin (dla CORS requests z JavaScript)
     const originAllowed = origin && allowedDomainPattern.test(origin);
     
     // Sprawdź referer (dla same-origin requests lub jako backup)
     // Referer może być null dla niektórych requestów (np. privacy settings)
-    let refererAllowed = true; // domyślnie dozwolone jeśli nie ma referer
+    let refererAllowed = false;
     if (referer) {
       try {
         // Wyciągnij domenę z referer
@@ -36,23 +37,25 @@ module.exports = (req, res) => {
         refererAllowed = false;
       }
     }
-
-    // Blokuj tylko jeśli:
-    // 1. Nie ma origin (nie jest to CORS request z JavaScript)
-    // 2. I nie ma referer (lub referer jest niedozwolony)
-    // To blokuje bezpośrednie wpisanie URL w przeglądarce, ale pozwala na requesty z JavaScript
-    if (!origin && !refererAllowed) {
-      res.statusCode = 403;
-      res.setHeader("Content-Type", "application/json; charset=utf-8");
-      res.end(JSON.stringify({ 
-        error: "Forbidden",
-        message: "This endpoint can only be accessed from authorized domains"
-      }));
-      return;
-    }
     
-    // Jeśli origin jest niedozwolony (ale istnieje), też blokuj
-    if (origin && !originAllowed) {
+    // Sprawdź host (dla same-origin requests bez origin/referer)
+    let hostAllowed = false;
+    if (host) {
+      try {
+        // Sprawdź czy host pasuje do dozwolonych domen
+        hostAllowed = /^([a-z0-9-]+\.)?strzelca\.pl$/i.test(host);
+      } catch (e) {
+        hostAllowed = false;
+      }
+    }
+
+    // Request jest dozwolony jeśli:
+    // 1. Origin jest dozwolony (CORS request z dozwolonej domeny)
+    // 2. LUB referer jest dozwolony (request z dozwolonej domeny)
+    // 3. LUB host jest dozwolony (same-origin request)
+    const requestAllowed = originAllowed || refererAllowed || hostAllowed;
+
+    if (!requestAllowed) {
       res.statusCode = 403;
       res.setHeader("Content-Type", "application/json; charset=utf-8");
       res.end(JSON.stringify({ 
@@ -62,14 +65,19 @@ module.exports = (req, res) => {
       return;
     }
 
-    // Ustaw nagłówki CORS tylko jeśli origin jest dozwolony
+    // Ustaw nagłówki CORS
     if (originAllowed) {
+      // CORS request - zwróć origin w nagłówku
       res.setHeader("Access-Control-Allow-Origin", origin);
       res.setHeader("Vary", "Origin");
-      res.setHeader("Access-Control-Allow-Credentials", "true");
-      res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    } else if (hostAllowed) {
+      // Same-origin request - zwróć host w nagłówku (dla zgodności)
+      res.setHeader("Access-Control-Allow-Origin", `https://${host}`);
     }
+    
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
     if (req.method === "OPTIONS") {
       // Preflight

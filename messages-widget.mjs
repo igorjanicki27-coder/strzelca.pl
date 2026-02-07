@@ -127,7 +127,7 @@ function makeStyles() {
       min-width: 20px;
       height: 20px;
       border-radius: 999px;
-      background: #c19a6b;
+      background: #22c55e;
       color: #000;
       font-weight: 900;
       font-size: 12px;
@@ -494,6 +494,25 @@ function setBadgeEl(badgeEl, n) {
   badgeEl.textContent = count > 99 ? "99+" : String(count);
 }
 
+// Funkcja do odtwarzania dźwięku nowej wiadomości
+let soundCache = null;
+function playMessageSound() {
+  try {
+    if (!soundCache) {
+      soundCache = new Audio("/message.mp3");
+      soundCache.volume = 0.5;
+    }
+    // Reset do początku i odtwórz
+    soundCache.currentTime = 0;
+    soundCache.play().catch((e) => {
+      // Ignoruj błędy autoplay (użytkownik musi najpierw kliknąć na stronę)
+      console.debug("Nie można odtworzyć dźwięku (wymagana interakcja użytkownika):", e);
+    });
+  } catch (e) {
+    console.debug("Błąd odtwarzania dźwięku:", e);
+  }
+}
+
 function scrollToBottom(el) {
   try {
     el.scrollTop = el.scrollHeight;
@@ -767,6 +786,7 @@ async function main() {
   let convUnsub = null;
   let threadUnsub = null;
   let badgeTimer = null;
+  let previousUnreadTotal = 0; // Śledzenie poprzedniej liczby nieprzeczytanych wiadomości
 
   let state = {
     conversations: [], // { id, peerId, peerName, peerAvatar, lastText, unread }
@@ -1087,7 +1107,19 @@ async function main() {
 
         state.conversations = list;
         state.unreadTotal = totalUnread;
-        setBadgeEl(badge, totalUnread);
+        
+        // Dodaj nieprzeczytane wiadomości support do całkowitej liczby
+        const supportUnread = Number(state.supportUnread || 0) || 0;
+        const totalUnreadWithSupport = totalUnread + supportUnread;
+        
+        setBadgeEl(badge, totalUnreadWithSupport);
+        
+        // Odtwórz dźwięk jeśli liczba nieprzeczytanych wiadomości wzrosła
+        if (totalUnreadWithSupport > previousUnreadTotal && previousUnreadTotal >= 0) {
+          playMessageSound();
+        }
+        previousUnreadTotal = totalUnreadWithSupport;
+        
         renderList();
       },
       (err) => {
@@ -1177,10 +1209,34 @@ async function main() {
       });
     }
 
+    let previousMessageCount = 0;
+    let previousLastMessageTime = 0;
+    
     async function recompute() {
       const merged = [...mapDocs(aDocs), ...mapDocs(bDocs)].sort((x, y) => (x.timestampMs || 0) - (y.timestampMs || 0));
+      
+      // Sprawdź czy są nowe nieprzeczytane wiadomości od tego użytkownika
+      const unreadFromPeer = merged.filter(m => m.senderId === peerId && m.recipientId === uid && !m.isRead);
+      const hasNewUnread = unreadFromPeer.length > 0;
+      const lastMessage = merged[merged.length - 1];
+      const lastMessageTime = lastMessage?.timestampMs || 0;
+      
+      // Odtwórz dźwięk jeśli:
+      // 1. Jest nowa nieprzeczytana wiadomość od tego użytkownika
+      // 2. Ostatnia wiadomość jest nowsza niż poprzednia (nowa wiadomość przyszła)
+      // 3. Panel nie jest otwarty lub otwarta jest inna konwersacja
+      if (hasNewUnread && lastMessageTime > previousLastMessageTime && 
+          (!isOpen || state.selectedPeerId !== peerId)) {
+        playMessageSound();
+      }
+      
+      previousMessageCount = merged.length;
+      previousLastMessageTime = lastMessageTime;
+      
       renderMessages(merged);
-      if (isOpen) {
+      
+      // Oznacz jako przeczytane jeśli panel jest otwarty i ta konwersacja jest wybrana
+      if (isOpen && state.selectedPeerId === peerId) {
         await markConversationRead({ conversationId, peerId });
       }
     }
@@ -1269,6 +1325,9 @@ async function main() {
       const last = items[items.length - 1];
       state.supportLastText = last?.content ? String(last.content).slice(0, 70) : "Pomoc / zgłoszenia";
       state.supportUnread = items.filter((m) => m && m.senderId === "admin" && m.isRead === false).length;
+      // Zaktualizuj badge z uwzględnieniem support unread
+      const totalUnreadWithSupport = state.unreadTotal + state.supportUnread;
+      setBadgeEl(badge, totalUnreadWithSupport);
       renderList();
     } catch {}
     return items;
@@ -1301,12 +1360,36 @@ async function main() {
     if (threadUnsub) threadUnsub();
     if (supportTimer) clearInterval(supportTimer);
     supportTimer = null;
+    let previousSupportMessageCount = 0;
+    let previousSupportLastMessageTime = 0;
 
     const tick = async () => {
       try {
         const items = await fetchSupportThread();
+        
+        // Sprawdź czy są nowe nieprzeczytane wiadomości od admina
+        const unreadFromAdmin = items.filter(m => m && m.senderId === "admin" && m.isRead === false);
+        const lastMessage = items[items.length - 1];
+        const lastMessageTime = lastMessage?.timestampMs || lastMessage?.timestamp || 0;
+        
+        // Odtwórz dźwięk jeśli:
+        // 1. Jest nowa nieprzeczytana wiadomość od admina
+        // 2. Ostatnia wiadomość jest nowsza niż poprzednia (nowa wiadomość przyszła)
+        // 3. Panel nie jest otwarty lub otwarta jest inna konwersacja
+        if (unreadFromAdmin.length > 0 && lastMessageTime > previousSupportLastMessageTime && 
+            (!isOpen || state.selectedPeerId !== SUPPORT_PEER_ID)) {
+          playMessageSound();
+        }
+        
+        previousSupportMessageCount = items.length;
+        previousSupportLastMessageTime = lastMessageTime;
+        
         renderSupportMessages(items);
-        if (isOpen) await markSupportRead(items);
+        
+        // Oznacz jako przeczytane jeśli panel jest otwarty i ta konwersacja jest wybrana
+        if (isOpen && state.selectedPeerId === SUPPORT_PEER_ID) {
+          await markSupportRead(items);
+        }
       } catch (e) {
         const msg = (e?.message || "").toString();
         msgs.innerHTML = `<div class="empty">${

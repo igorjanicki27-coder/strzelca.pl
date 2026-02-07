@@ -2759,22 +2759,43 @@
 
       
       async function getFirebaseApiKey() {
-        const urls = ["/api/firebase-config"];
+        // Użyj pełnej ścieżki z domeną, aby uniknąć problemów z CORS i ścieżkami
+        const urls = [
+          "https://strzelca.pl/api/firebase-config",
+          "/api/firebase-config" // fallback dla lokalnego developmentu
+        ];
 
         for (const url of urls) {
           try {
-            const res = await fetch(url, { cache: "no-store" });
-            if (!res.ok) continue;
-            const data = await res.json().catch(() => null);
-            if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
-              return data.apiKey;
+            console.log(`[Firebase Config] Próba pobrania z: ${url}`);
+            const res = await fetch(url, { 
+              cache: "no-store",
+              credentials: "include" // Włącz cookies dla CORS
+            });
+            
+            if (!res.ok) {
+              console.warn(`[Firebase Config] Błąd HTTP ${res.status} dla ${url}`);
+              continue;
             }
-          } catch (_) {
-            // ignore and try next url
+            
+            const data = await res.json().catch((e) => {
+              console.error(`[Firebase Config] Błąd parsowania JSON z ${url}:`, e);
+              return null;
+            });
+            
+            if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
+              console.log(`[Firebase Config] Pobrano API key z ${url}`);
+              return data.apiKey;
+            } else {
+              console.warn(`[Firebase Config] Nieprawidłowe dane z ${url}:`, data);
+            }
+          } catch (error) {
+            console.error(`[Firebase Config] Błąd podczas pobierania z ${url}:`, error);
+            // continue to next url
           }
         }
 
-        throw new Error("Nie udało się pobrać FIREBASE_WEB_API_KEY z /api/firebase-config");
+        throw new Error("Nie udało się pobrać FIREBASE_WEB_API_KEY z /api/firebase-config. Sprawdź konsole przeglądarki dla szczegółów.");
       }
       // OPTYMALIZACJA: Użyj wspólnego modułu inicjalizacji
       const firebaseConfig = {
