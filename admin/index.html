@@ -3102,26 +3102,29 @@
           });
           
           // Jeśli to błąd CORS lub problem z dostępem do Firestore, 
-          // nie blokuj dostępu - może użytkownik jest adminem, ale nie możemy tego zweryfikować
-          // W takim przypadku pokaż komunikat, ale nie przekierowuj
+          // BLOKUJ dostęp - bezpieczeństwo jest priorytetem
+          // Tylko SuperAdmin (hardcoded UID) może mieć dostęp bez sprawdzania Firestore
           if (error.code === 'permission-denied' || 
+              error.code === 'unavailable' ||
               error.message?.includes('CORS') || 
               error.message?.includes('access control') ||
-              error.message?.includes('Failed to fetch')) {
-            console.warn('Cannot verify admin role due to Firestore access issues');
-            console.warn('This may be a CORS or configuration problem');
+              error.message?.includes('Failed to fetch') ||
+              error.message?.includes('network') ||
+              error.name === 'FirebaseError') {
+            console.error('❌ KRYTYCZNY BŁĄD: Nie można zweryfikować uprawnień administratora z powodu problemów z dostępem do Firestore');
+            console.error('❌ Dostęp ZABLOKOWANY ze względów bezpieczeństwa');
+            console.error('❌ Napraw konfigurację Firebase (CORS, domeny, Security Rules)');
             
-            // Pokaż komunikat użytkownikowi
+            // Pokaż komunikat o błędzie i zablokuj dostęp
             const errorDiv = document.createElement("div");
-            errorDiv.style.cssText = "position: fixed; top: 0; left: 0; right: 0; background: #f59e0b; color: white; padding: 15px; z-index: 10000; text-align: center;";
+            errorDiv.id = "firestore-error";
+            errorDiv.style.cssText = "position: fixed; top: 0; left: 0; right: 0; background: #dc2626; color: white; padding: 20px; z-index: 10000; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.3);";
             errorDiv.innerHTML = `
-              <strong>⚠️ Ostrzeżenie:</strong> Nie można zweryfikować uprawnień administratora z powodu problemów z dostępem do Firestore. 
-              Sprawdź konfigurację Firebase i konsolę przeglądarki (F12) dla szczegółów.
+              <strong>🚫 BŁĄD DOSTĘPU DO FIRESTORE</strong><br>
+              Nie można zweryfikować uprawnień administratora. Dostęp został zablokowany ze względów bezpieczeństwa.<br>
+              <small>Sprawdź konfigurację Firebase (CORS, domeny, Security Rules) i konsolę przeglądarki (F12) dla szczegółów.</small>
             `;
             document.body.appendChild(errorDiv);
-            
-            // Usuń komunikat po 10 sekundach
-            setTimeout(() => errorDiv.remove(), 10000);
           }
         }
 
@@ -3165,6 +3168,23 @@
             message: error.message,
             stack: error.stack
           });
+          
+          // Jeśli to błąd CORS lub problem z dostępem do Firestore,
+          // ZABLOKUJ dostęp - bezpieczeństwo jest priorytetem
+          // Tylko SuperAdmin (hardcoded UID) może mieć dostęp bez sprawdzania Firestore
+          if (error.code === 'permission-denied' || 
+              error.code === 'unavailable' ||
+              error.message?.includes('CORS') || 
+              error.message?.includes('access control') ||
+              error.message?.includes('Failed to fetch') ||
+              error.message?.includes('network') ||
+              error.name === 'FirebaseError') {
+            console.error('❌ KRYTYCZNY BŁĄD: Nie można zweryfikować roli administratora');
+            console.error('❌ Dostęp ZABLOKOWANY ze względów bezpieczeństwa');
+            console.error('❌ Napraw konfigurację Firebase (CORS, domeny, Security Rules)');
+            return false; // Zablokuj dostęp - bezpieczeństwo przede wszystkim
+          }
+          
           return false;
         }
       }
@@ -3726,7 +3746,7 @@
         if (user) {
           const isAdmin = await checkAndShowAdminPanel(user);
           if (!isAdmin) {
-            // Jeśli użytkownik nie ma roli admin
+            // Jeśli użytkownik nie ma roli admin, wyloguj go
             console.warn('User does not have admin role, signing out:', user.uid);
             try { await signOut(auth); } catch {}
             showStatus('<strong style="color: #dc2626; font-weight: bold;">Strona dostępna tylko dla uprawnionych użytkowników.</strong>', true);
