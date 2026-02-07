@@ -1241,7 +1241,7 @@ async function main() {
     panel.style.display = "block";
     // realtime uruchamiamy dopiero po otwarciu okna (żeby nie generować Listen na każdej stronie)
     subscribeConversations();
-    selectPeer(state.selectedPeerId, state.selectedPeerId === SUPPORT_UID ? "Obsługa Strzelca.pl" : "Wiadomości");
+    selectPeer(state.selectedPeerId, state.selectedPeerId === SUPPORT_PEER_ID ? "Obsługa Strzelca.pl" : "Wiadomości");
 
     if (badgeTimer) clearInterval(badgeTimer);
     badgeTimer = null;
