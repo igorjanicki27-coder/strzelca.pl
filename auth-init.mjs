@@ -23,6 +23,7 @@ export async function initAuth(firebaseConfig, options = {}) {
 
   const {
     initializeFirestore,
+    getFirestore,
   } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
 
   // Inicjalizuj Firebase App (jeśli jeszcze nie zainicjalizowany)
@@ -56,12 +57,30 @@ export async function initAuth(firebaseConfig, options = {}) {
   }
 
   // Inicjalizuj Firestore (z opcjonalnymi opcjami)
+  // WAŻNE: Sprawdź, czy Firestore nie został już zainicjalizowany
+  let db;
   const firestoreOptions = options.firestore || {
     experimentalAutoDetectLongPolling: true,
     useFetchStreams: true,
   };
   
-  const db = initializeFirestore(app, firestoreOptions);
+  try {
+    // Spróbuj zainicjalizować Firestore z opcjami
+    db = initializeFirestore(app, firestoreOptions);
+    if (options.logAuthReady !== false) {
+      console.log("Firestore: zainicjalizowano nową instancję z opcjami:", firestoreOptions);
+    }
+  } catch (initError) {
+    // Jeśli inicjalizacja nie powiodła się (np. już zainicjalizowany z innymi opcjami),
+    // użyj getFirestore() aby pobrać istniejącą instancję
+    if (initError.code === 'failed-precondition') {
+      console.warn("Firestore: już zainicjalizowany z innymi opcjami, używam getFirestore()");
+      db = getFirestore(app);
+    } else {
+      // Jeśli to inny błąd, rzuć go dalej
+      throw initError;
+    }
+  }
 
   // SSO: synchronizacja między subdomenami (opcjonalne, można wyłączyć)
   let ssoResult = null;
