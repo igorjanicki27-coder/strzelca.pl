@@ -171,12 +171,12 @@ function showBlockedAccountModal(message) {
           } catch (e) {
             console.warn("SSO logout failed (ignored):", e?.message || e);
           }
-          // Przekieruj do strony logowania
-          window.location.href = "https://konto.strzelca.pl/logowanie.html";
+          // Przekieruj do strony głównej
+          window.location.href = "https://strzelca.pl";
         } catch (error) {
           console.error("Błąd wylogowania:", error);
-          // Nawet jeśli wylogowanie się nie powiodło, przekieruj
-          window.location.href = "https://konto.strzelca.pl/logowanie.html";
+          // Nawet jeśli wylogowanie się nie powiodło, przekieruj do strony głównej
+          window.location.href = "https://strzelca.pl";
         }
       });
     }
