@@ -1034,7 +1034,7 @@
                 </button>
                   <button onclick="clearAllActivityLogs()" class="text-red-400 hover:text-red-300 transition-colors p-2 border border-red-400 rounded" title="Usuń wszystkie logi aktywności">
                     <i class="fa-solid fa-trash text-lg"></i>
-                  </button>
+                </button>
                 </div>
               </div>
 
@@ -2480,17 +2480,24 @@
           </div>
 
           <div class="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
-            <label class="text-sm font-semibold text-zinc-300 block mb-3">
-              <i class="fa-solid fa-comment mr-2 text-coyote"></i>
-              Powód blokady
+            <label class="text-base font-bold text-red-400 block mb-3">
+              <i class="fa-solid fa-exclamation-triangle mr-2 text-red-500"></i>
+              Powód blokady <span class="text-red-500">*</span>
             </label>
+            <p class="text-xs text-zinc-400 mb-2">
+              Ten powód zostanie wyświetlony użytkownikowi, aby wiedział za co został zablokowany.
+            </p>
             <textarea
               id="block-reason"
-              class="w-full bg-zinc-900 text-white border border-zinc-700 rounded-lg p-3 focus:outline-none focus:border-coyote"
-              rows="3"
-              placeholder="Wprowadź powód blokady użytkownika..."
+              class="w-full bg-zinc-900 text-white border-2 border-red-700/50 rounded-lg p-4 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all"
+              rows="5"
+              placeholder="Wprowadź szczegółowy powód blokady użytkownika. Ten komunikat zobaczy użytkownik..."
               required
+              minlength="10"
             ></textarea>
+            <p class="text-xs text-zinc-500 mt-2">
+              Minimum 10 znaków. Powód jest wymagany i będzie widoczny dla użytkownika.
+            </p>
           </div>
 
           <div class="p-4 bg-red-900/20 border border-red-700 rounded-lg">
@@ -4505,7 +4512,7 @@
                                       ${decryptedUser.status === "blocked" ? '<span class="inline-flex items-center px-3 py-1 rounded-full bg-red-900/30 text-red-400 border border-red-700"><i class="fa-solid fa-ban mr-2"></i>Zablokowane</span>' : 
                                         decryptedUser.status === "active" ? '<span class="inline-flex items-center px-3 py-1 rounded-full bg-green-900/30 text-green-400 border border-green-700"><i class="fa-solid fa-check-circle mr-2"></i>Aktywne</span>' : 
                                         '<span class="inline-flex items-center px-3 py-1 rounded-full bg-yellow-900/30 text-yellow-400 border border-yellow-700"><i class="fa-solid fa-pause-circle mr-2"></i>Nieaktywne</span>'}
-                                  </div>
+                              </div>
                                   ${decryptedUser.status === "blocked" ? (() => {
                                     const blockedUntilText = getBlockedUntilText(currentEditingUser);
                                     return blockedUntilText ? `<div class="mt-3 text-sm text-red-400 font-semibold"><i class="fa-solid fa-clock mr-2"></i>${blockedUntilText}</div>` : '';
@@ -5378,19 +5385,26 @@
           await updateDoc(doc(db, "userProfiles", userId), updateData);
 
           // Zaloguj odblokowanie użytkownika
-          await logActivity(userId, "USER_UNBLOCKED", {
-            unblockedBy: isAutomatic ? "system" : (currentUser?.uid || "unknown"),
-            automatic: isAutomatic,
-          });
+          await logActivity(
+            isAutomatic ? "system" : (currentUser?.uid || "unknown"), 
+            "USER_UNBLOCKED", 
+            {
+              unblockedBy: isAutomatic ? "system" : (currentUser?.uid || "unknown"),
+              automatic: isAutomatic,
+              reason: isAutomatic ? "Blokada wygasła automatycznie" : undefined,
+              targetUser: userId,
+            },
+            userId
+          );
 
           if (!isAutomatic) {
-            showNotification("Użytkownik został odblokowany.");
+          showNotification("Użytkownik został odblokowany.");
           }
           loadUsers();
         } catch (error) {
           console.error("Error unblocking user:", error);
           if (!isAutomatic) {
-            showNotification("Błąd podczas odblokowywania użytkownika.", "error");
+          showNotification("Błąd podczas odblokowywania użytkownika.", "error");
           }
         }
       }
@@ -5401,6 +5415,7 @@
           const usersSnapshot = await getDocs(collection(db, "userProfiles"));
           const now = new Date();
           let unblockedCount = 0;
+          const unblockedUsers = []; // Lista użytkowników do zalogowania
 
           let batch = writeBatch(db);
           let batchCount = 0;
@@ -5425,6 +5440,9 @@
                 });
                 batchCount++;
                 unblockedCount++;
+                
+                // Zapisz ID użytkownika do późniejszego zalogowania
+                unblockedUsers.push(docSnapshot.id);
 
                 // Jeśli osiągnięto limit batcha, wykonaj i zacznij nowy
                 if (batchCount >= BATCH_LIMIT) {
@@ -5441,10 +5459,23 @@
             await batch.commit();
           }
 
-          // Zaloguj automatyczne odblokowania
+          // Zaloguj automatyczne odblokowania dla każdego użytkownika
           if (unblockedCount > 0) {
             console.log(`Automatycznie odblokowano ${unblockedCount} wygasłych blokad.`);
-            // Nie pokazuj powiadomienia dla automatycznych odblokowań
+            
+            // Zaloguj każde odblokowanie osobno
+            for (const userId of unblockedUsers) {
+              try {
+                await logActivity("system", "USER_UNBLOCKED", {
+                  unblockedBy: "system",
+                  automatic: true,
+                  reason: "Blokada wygasła automatycznie",
+                  targetUser: userId,
+                }, userId);
+              } catch (logError) {
+                console.error(`Błąd podczas logowania automatycznego odblokowania dla użytkownika ${userId}:`, logError);
+              }
+            }
           }
 
           return unblockedCount;
@@ -7461,13 +7492,32 @@
             break;
           case "USER_BLOCKED":
             description = `${userDisplayName} zablokował użytkownika`;
-            content = eventDetails.targetUser || "Użytkownik";
-            details = `Administrator ${userDisplayName} zablokował użytkownika: ${content}${eventDetails.reason ? `. Powód: ${eventDetails.reason}` : ""}`;
+            // Użyj targetUserId jeśli dostępne, w przeciwnym razie eventDetails.targetUser
+            const blockedUserId = event.targetUserId || eventDetails.targetUser || "Użytkownik";
+            content = blockedUserId;
+            let blockDetails = `Administrator ${userDisplayName} zablokował użytkownika (ID: ${blockedUserId})`;
+            if (eventDetails.blockReason) {
+              blockDetails += `. Powód: ${eventDetails.blockReason}`;
+            }
+            if (eventDetails.duration) {
+              const durationText = eventDetails.duration === "permanent" ? "na zawsze" : eventDetails.duration;
+              blockDetails += `. Czas trwania: ${durationText}`;
+            }
+            if (eventDetails.blockedUntil && !eventDetails.isPermanent) {
+              const blockedUntilDate = eventDetails.blockedUntil.toDate ? eventDetails.blockedUntil.toDate() : new Date(eventDetails.blockedUntil);
+              blockDetails += `. Blokada do: ${blockedUntilDate.toLocaleString("pl-PL")}`;
+            }
+            details = blockDetails;
             break;
           case "USER_UNBLOCKED":
-            description = `${userDisplayName} odblokował użytkownika`;
-            content = eventDetails.targetUser || "Użytkownik";
-            details = `Administrator ${userDisplayName} odblokował użytkownika: ${content}`;
+            description = eventDetails.automatic ? `System automatycznie odblokował użytkownika` : `${userDisplayName} odblokował użytkownika`;
+            // Użyj targetUserId jeśli dostępne, w przeciwnym razie eventDetails.targetUser
+            const unblockedUserId = event.targetUserId || eventDetails.targetUser || "Użytkownik";
+            content = unblockedUserId;
+            let unblockDetails = eventDetails.automatic 
+              ? `System automatycznie odblokował użytkownika (ID: ${unblockedUserId})${eventDetails.reason ? `. ${eventDetails.reason}` : ""}`
+              : `Administrator ${userDisplayName} odblokował użytkownika (ID: ${unblockedUserId})`;
+            details = unblockDetails;
             break;
           case "USER_DELETED":
             description = `${userDisplayName} usunął użytkownika`;
@@ -8189,7 +8239,18 @@
           if (!userId) return;
 
           const duration = document.getElementById("block-duration").value;
-          const blockReason = document.getElementById("block-reason").value.trim() || "Nie podano powodu";
+          const blockReason = document.getElementById("block-reason").value.trim();
+          
+          // Walidacja powodu blokady
+          if (!blockReason || blockReason.length < 10) {
+            showNotification("Powód blokady jest wymagany i musi zawierać minimum 10 znaków.", "error");
+            const blockBtn = e.target.querySelector('button[type="submit"]');
+            if (blockBtn) {
+              blockBtn.disabled = false;
+              blockBtn.innerHTML = '<i class="fa-solid fa-ban mr-2"></i>Zablokuj użytkownika';
+            }
+            return;
+          }
 
           const blockBtn = e.target.querySelector('button[type="submit"]');
           blockBtn.disabled = true;
@@ -8241,13 +8302,15 @@
 
             await updateDoc(doc(db, "userProfiles", userId), blockData);
 
-            // Zaloguj blokadę użytkownika
-            await logActivity(userId, "USER_BLOCKED", {
+            // Zaloguj blokadę użytkownika - userId to ID administratora, targetUserId to ID zablokowanego użytkownika
+            await logActivity(currentUser.uid, "USER_BLOCKED", {
               duration: duration,
               blockedUntil: blockedUntil,
               isPermanent: duration === "permanent",
               blockedBy: currentUser.uid,
-            });
+              blockReason: blockReason,
+              targetUser: userId, // ID zablokowanego użytkownika
+            }, userId);
 
             showNotification(
               `Użytkownik został zablokowany${blockedUntil ? " do " + blockedUntil.toLocaleString("pl-PL") : " na zawsze"}.`,
