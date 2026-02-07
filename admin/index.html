@@ -4168,7 +4168,14 @@
                 
                 // Utwórz kopię logu z nazwą użytkownika dla renderActivityLog
                 const logWithName = { ...log, userDisplayName };
-                const activityLog = renderActivityLog ? renderActivityLog(logWithName) : { description: log.action || 'Aktywność', content: log.details || '' };
+                // Pobierz nick użytkownika docelowego jeśli to USER_BLOCKED lub USER_UNBLOCKED
+                if ((log.action === "USER_BLOCKED" || log.action === "USER_UNBLOCKED") && (log.targetUserId || (log.details && log.details.targetUser))) {
+                  const targetUserId = log.targetUserId || (log.details && log.details.targetUser);
+                  if (targetUserId) {
+                    logWithName.targetUserNickname = await getUserNicknameByIdAsync(targetUserId);
+                  }
+                }
+                const activityLog = renderActivityLog ? await renderActivityLog(logWithName) : { description: log.action || 'Aktywność', content: log.details || '' };
 
                 return {
                   html: `
@@ -7026,14 +7033,33 @@
 
             // Wizyty w tym tygodniu - unikalni użytkownicy aktywni od początku tygodnia (poniedziałek)
             try {
-              // Zoptymalizowane zapytanie z filtrem Firestore
-              const weekVisitsQuery = query(
-                collection(db, "userProfiles"),
-                where("lastSeen", ">=", weekStartTimestamp)
-              );
-              const weekVisitsSnapshot = await getDocs(weekVisitsQuery);
+              const usersRef = collection(db, "userProfiles");
+              const usersSnapshot = await getDocs(usersRef);
               
-              const weekVisitsCount = weekVisitsSnapshot.size;
+              let weekVisitsCount = 0;
+              usersSnapshot.forEach((doc) => {
+                const userData = doc.data();
+                if (userData.lastSeen) {
+                  try {
+                    let lastSeen;
+                    if (userData.lastSeen.toDate) {
+                      lastSeen = userData.lastSeen.toDate();
+                    } else if (userData.lastSeen.seconds) {
+                      lastSeen = new Date(userData.lastSeen.seconds * 1000);
+                    } else if (userData.lastSeen instanceof Date) {
+                      lastSeen = userData.lastSeen;
+                    } else {
+                      lastSeen = new Date(userData.lastSeen);
+                    }
+                    
+                    if (lastSeen >= weekStart) {
+                      weekVisitsCount++;
+                    }
+                  } catch (dateError) {
+                    console.warn(`Błąd parsowania daty lastSeen dla użytkownika ${doc.id}:`, dateError);
+                  }
+                }
+              });
 
               const weekVisitsEl = document.getElementById("visits-week");
               if (weekVisitsEl) weekVisitsEl.textContent = weekVisitsCount;
@@ -7045,14 +7071,33 @@
 
             // Wizyty w tym miesiącu - unikalni użytkownicy aktywni w ciągu miesiąca
             try {
-              // Zoptymalizowane zapytanie z filtrem Firestore
-              const monthVisitsQuery = query(
-                collection(db, "userProfiles"),
-                where("lastSeen", ">=", monthAgoTimestamp)
-              );
-              const monthVisitsSnapshot = await getDocs(monthVisitsQuery);
+              const usersRef = collection(db, "userProfiles");
+              const usersSnapshot = await getDocs(usersRef);
               
-              const monthVisitsCount = monthVisitsSnapshot.size;
+              let monthVisitsCount = 0;
+              usersSnapshot.forEach((doc) => {
+                const userData = doc.data();
+                if (userData.lastSeen) {
+                  try {
+                    let lastSeen;
+                    if (userData.lastSeen.toDate) {
+                      lastSeen = userData.lastSeen.toDate();
+                    } else if (userData.lastSeen.seconds) {
+                      lastSeen = new Date(userData.lastSeen.seconds * 1000);
+                    } else if (userData.lastSeen instanceof Date) {
+                      lastSeen = userData.lastSeen;
+                    } else {
+                      lastSeen = new Date(userData.lastSeen);
+                    }
+                    
+                    if (lastSeen >= monthAgo) {
+                      monthVisitsCount++;
+                    }
+                  } catch (dateError) {
+                    console.warn(`Błąd parsowania daty lastSeen dla użytkownika ${doc.id}:`, dateError);
+                  }
+                }
+              });
 
               const monthVisitsEl = document.getElementById("visits-month");
               if (monthVisitsEl) monthVisitsEl.textContent = monthVisitsCount;
@@ -7064,14 +7109,33 @@
 
             // Wizyty w tym roku - unikalni użytkownicy aktywni w ciągu roku
             try {
-              // Zoptymalizowane zapytanie z filtrem Firestore
-              const yearVisitsQuery = query(
-                collection(db, "userProfiles"),
-                where("lastSeen", ">=", yearAgoTimestamp)
-              );
-              const yearVisitsSnapshot = await getDocs(yearVisitsQuery);
+              const usersRef = collection(db, "userProfiles");
+              const usersSnapshot = await getDocs(usersRef);
               
-              const yearVisitsCount = yearVisitsSnapshot.size;
+              let yearVisitsCount = 0;
+              usersSnapshot.forEach((doc) => {
+                const userData = doc.data();
+                if (userData.lastSeen) {
+                  try {
+                    let lastSeen;
+                    if (userData.lastSeen.toDate) {
+                      lastSeen = userData.lastSeen.toDate();
+                    } else if (userData.lastSeen.seconds) {
+                      lastSeen = new Date(userData.lastSeen.seconds * 1000);
+                    } else if (userData.lastSeen instanceof Date) {
+                      lastSeen = userData.lastSeen;
+                    } else {
+                      lastSeen = new Date(userData.lastSeen);
+                    }
+                    
+                    if (lastSeen >= yearAgo) {
+                      yearVisitsCount++;
+                    }
+                  } catch (dateError) {
+                    console.warn(`Błąd parsowania daty lastSeen dla użytkownika ${doc.id}:`, dateError);
+                  }
+                }
+              });
 
               const yearVisitsEl = document.getElementById("visits-year");
               if (yearVisitsEl) yearVisitsEl.textContent = yearVisitsCount;
@@ -7083,16 +7147,16 @@
 
             // Wizyty ogółem - wszyscy użytkownicy z lastSeen
             try {
-              // Zoptymalizowane zapytanie - pobierz tylko użytkowników z lastSeen
-              // Uwaga: Firestore nie obsługuje != null, więc musimy pobrać wszystkich i przefiltrować
-              // Ale możemy użyć where("lastSeen", ">", Timestamp.fromDate(new Date(0))) dla wszystkich z datą
-              const totalVisitsQuery = query(
-                collection(db, "userProfiles"),
-                where("lastSeen", ">", Timestamp.fromDate(new Date(0))) // Wszystkie z lastSeen > 1970
-              );
-              const totalVisitsSnapshot = await getDocs(totalVisitsQuery);
+              const usersRef = collection(db, "userProfiles");
+              const usersSnapshot = await getDocs(usersRef);
               
-              const totalVisitsCount = totalVisitsSnapshot.size;
+              let totalVisitsCount = 0;
+              usersSnapshot.forEach((doc) => {
+                const userData = doc.data();
+                if (userData.lastSeen) {
+                  totalVisitsCount++;
+                }
+              });
 
               const totalVisitsEl = document.getElementById("visits-total");
               if (totalVisitsEl) totalVisitsEl.textContent = totalVisitsCount;
@@ -7738,11 +7802,16 @@
           const userDoc = await getDoc(doc(db, "userProfiles", userId));
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            // Zwróć displayName (nick) użytkownika
-            return userData.displayName || userData.email || null;
+            // Zwróć displayName (nick) użytkownika, jeśli nie ma to email
+            if (userData.displayName) {
+              return userData.displayName;
+            }
+            if (userData.email) {
+              return userData.email;
+            }
           }
         } catch (e) {
-          console.warn("Could not fetch user nickname:", e);
+          console.warn("Could not fetch user nickname for userId:", userId, e);
         }
         return null;
       }
@@ -7797,12 +7866,12 @@
             details = `Nieudana próba logowania${eventDetails.email ? ` dla użytkownika ${eventDetails.email}` : ""}${eventDetails.reason ? `. Powód: ${eventDetails.reason}` : ""}`;
             break;
           case "USER_BLOCKED":
-            description = `${userDisplayName} zablokował użytkownika`;
             // Użyj targetUserId jeśli dostępne, w przeciwnym razie eventDetails.targetUser
             const blockedUserId = event.targetUserId || eventDetails.targetUser || "Użytkownik";
             // Pobierz nick użytkownika zamiast ID
             const blockedUserNickname = event.targetUserNickname || await getUserNicknameByIdAsync(blockedUserId);
             const blockedUserDisplay = blockedUserNickname || blockedUserId;
+            description = `${userDisplayName} zablokował użytkownika ${blockedUserDisplay}`;
             content = blockedUserDisplay;
             let blockDetails = `Administrator ${userDisplayName} zablokował użytkownika ${blockedUserDisplay}`;
             if (eventDetails.blockReason) {
@@ -7819,12 +7888,12 @@
             details = blockDetails;
             break;
           case "USER_UNBLOCKED":
-            description = eventDetails.automatic ? `System automatycznie odblokował użytkownika` : `${userDisplayName} odblokował użytkownika`;
             // Użyj targetUserId jeśli dostępne, w przeciwnym razie eventDetails.targetUser
             const unblockedUserId = event.targetUserId || eventDetails.targetUser || "Użytkownik";
             // Pobierz nick użytkownika zamiast ID
             const unblockedUserNickname = event.targetUserNickname || await getUserNicknameByIdAsync(unblockedUserId);
             const unblockedUserDisplay = unblockedUserNickname || unblockedUserId;
+            description = eventDetails.automatic ? `System automatycznie odblokował użytkownika ${unblockedUserDisplay}` : `${userDisplayName} odblokował użytkownika ${unblockedUserDisplay}`;
             content = unblockedUserDisplay;
             let unblockDetails = eventDetails.automatic 
               ? `System automatycznie odblokował użytkownika ${unblockedUserDisplay}${eventDetails.reason ? `. ${eventDetails.reason}` : ""}`
@@ -9184,6 +9253,12 @@
         `;
 
         try {
+          // Aktualizuj currentFilters.search z wartości pola wyszukiwania
+          const searchInput = document.getElementById('messages-search');
+          if (searchInput) {
+            currentFilters.search = searchInput.value || '';
+          }
+
           // Buduj query Firestore z filtrami
           let messagesQuery = collection(db, 'messages');
 
@@ -9240,7 +9315,7 @@
             });
           });
 
-          displayMessages(messages);
+          await displayMessages(messages);
 
         } catch (error) {
           console.error('Error loading messages with filters:', error);
@@ -9255,7 +9330,7 @@
       }
 
       // Funkcja wyświetlania wiadomości
-      function displayMessages(messages) {
+      async function displayMessages(messages) {
         const messagesContainer = document.getElementById('messages-container');
         if (!messagesContainer) return;
 
@@ -9270,6 +9345,30 @@
           return;
         }
 
+        // Pobierz nazwy użytkowników z kolekcji userProfiles dla wszystkich unikalnych senderId
+        const uniqueSenderIds = [...new Set(messages.map(msg => msg.senderId).filter(id => id && id !== 'admin'))];
+        const userNamesMap = {};
+        
+        if (uniqueSenderIds.length > 0) {
+          try {
+            const userPromises = uniqueSenderIds.map(async (userId) => {
+              try {
+                const userDoc = await getDoc(doc(db, "userProfiles", userId));
+                if (userDoc.exists()) {
+                  const userData = userDoc.data();
+                  // Priorytet: displayName (nick), potem email
+                  userNamesMap[userId] = userData.displayName || userData.email || null;
+                }
+              } catch (e) {
+                console.warn(`Could not fetch user name for ${userId}:`, e);
+              }
+            });
+            await Promise.all(userPromises);
+          } catch (error) {
+            console.error('Error fetching user names:', error);
+          }
+        }
+
         // Grupuj wiadomości w konwersacje
         const conversations = {};
 
@@ -9280,9 +9379,12 @@
           const conversationKey = participants.join('_');
 
           if (!conversations[conversationKey]) {
+            // Użyj nazwy z wiadomości, jeśli jest, w przeciwnym razie pobierz z userNamesMap
+            const senderName = msg.senderName || userNamesMap[msg.senderId] || 'Nieznany';
+            
             conversations[conversationKey] = {
               participants: participants,
-              senderName: msg.senderName || 'Nieznany',
+              senderName: senderName,
               senderEmail: msg.senderEmail || '',
               senderId: msg.senderId || 'unknown',
               lastMessage: msg,
@@ -9302,8 +9404,29 @@
           }
         });
 
+        // Filtruj konwersacje po tekście wyszukiwania (nazwa użytkownika, email lub treść wiadomości)
+        const searchTerm = (currentFilters.search || '').toLowerCase().trim();
+        let filteredConversations = Object.values(conversations);
+        
+        if (searchTerm) {
+          filteredConversations = filteredConversations.filter(conversation => {
+            // Szukaj po nazwie użytkownika (nick)
+            const senderName = (conversation.senderName || '').toLowerCase();
+            // Szukaj po emailu
+            const senderEmail = (conversation.senderEmail || '').toLowerCase();
+            // Szukaj po treści wiadomości
+            const messageContent = (conversation.lastMessage?.content || '').toLowerCase();
+            const messageTopic = (conversation.lastMessage?.topic || '').toLowerCase();
+            
+            return senderName.includes(searchTerm) || 
+                   senderEmail.includes(searchTerm) || 
+                   messageContent.includes(searchTerm) ||
+                   messageTopic.includes(searchTerm);
+          });
+        }
+
         // Konwertuj na tablicę i posortuj
-        const conversationsArray = Object.values(conversations).sort((a, b) => {
+        const conversationsArray = filteredConversations.sort((a, b) => {
           // Najpierw nieprzeczytane
           if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
           if (a.unreadCount === 0 && b.unreadCount > 0) return 1;
@@ -9938,6 +10061,9 @@
       window.clearMessagesSearch = clearMessagesSearch;
       window.updateCategoryButtonsHighlight = updateCategoryButtonsHighlight;
       window.refreshMessages = refreshMessages;
+      window.sendChatReply = sendChatReply;
+      window.openConversation = openConversation;
+      window.toggleConversationStatus = toggleConversationStatus;
 
       // Funkcja czyszczenia filtrów
       function clearFilters() {
