@@ -5,7 +5,7 @@
  * - działa dla zalogowanych i niezalogowanych użytkowników
  * 
  * Użycie:
- *   import { initVisitTracker } from "https://strzelca.pl/visit-tracker.mjs?v=2026-02-06-2";
+ *   import { initVisitTracker } from "https://strzelca.pl/visit-tracker.mjs?v=2026-02-06-3";
  *   await initVisitTracker();
  */
 
@@ -65,8 +65,11 @@ function markVisitedToday() {
  * Wysyła informację o odwiedzinie do API
  */
 async function trackVisit(userId = null) {
+  console.log('[Visit Tracker] trackVisit called', { userId, hasVisitedToday: hasVisitedToday() });
+  
   // Sprawdź, czy już zarejestrowaliśmy odwiedzinę dzisiaj
   if (hasVisitedToday()) {
+    console.log('[Visit Tracker] Visit already tracked today, skipping');
     return; // Już zarejestrowano odwiedzinę dzisiaj
   }
   
@@ -76,6 +79,8 @@ async function trackVisit(userId = null) {
   const pageUrl = window.location.href;
   const pageTitle = document.title;
   const referrer = document.referrer || '';
+  
+  console.log('[Visit Tracker] Sending visit data to API', { userId, visitorId, pageUrl });
   
   try {
     const response = await fetch('https://strzelca.pl/api/track-visit', {
@@ -97,13 +102,15 @@ async function trackVisit(userId = null) {
     });
     
     if (response.ok) {
+      const result = await response.json();
       markVisitedToday();
-      console.log('Visit tracked successfully', userId ? `(user: ${userId})` : '(visitor)');
+      console.log('[Visit Tracker] Visit tracked successfully', { userId, visitorId, result });
     } else {
-      console.warn('Failed to track visit:', response.status);
+      const errorText = await response.text();
+      console.warn('[Visit Tracker] Failed to track visit:', response.status, errorText);
     }
   } catch (error) {
-    console.warn('Error tracking visit:', error);
+    console.warn('[Visit Tracker] Error tracking visit:', error);
     // Nie rzucaj błędu - odwiedziny nie są krytyczne
   }
 }
@@ -113,12 +120,15 @@ async function trackVisit(userId = null) {
  * @param {Object} auth - Firebase Auth instance (opcjonalne, dla zalogowanych użytkowników)
  */
 export async function initVisitTracker(auth = null) {
+  console.log('[Visit Tracker] Initializing visit tracker...', { hasAuth: !!auth });
   // Poczekaj, aż strona się załaduje
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
+      console.log('[Visit Tracker] DOM loaded, starting tracking...');
       handleVisitTracking(auth);
     });
   } else {
+    console.log('[Visit Tracker] DOM already loaded, starting tracking...');
     handleVisitTracking(auth);
   }
 }
@@ -127,24 +137,29 @@ export async function initVisitTracker(auth = null) {
  * Obsługuje śledzenie odwiedzin
  */
 async function handleVisitTracking(auth) {
+  console.log('[Visit Tracker] handleVisitTracking called', { hasAuth: !!auth, currentUser: auth?.currentUser?.uid });
   let userId = null;
   let visitTracked = false;
   
   // Jeśli użytkownik jest zalogowany, poczekaj na stan autoryzacji
   if (auth) {
     try {
+      console.log('[Visit Tracker] Auth provided, checking auth state...');
       const { onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
       
       // Sprawdź najpierw aktualny stan autoryzacji (dla użytkowników już zalogowanych)
       if (auth.currentUser) {
         userId = auth.currentUser.uid;
+        console.log('[Visit Tracker] User already logged in:', userId);
         visitTracked = true;
         await trackVisit(userId);
       } else {
+        console.log('[Visit Tracker] No current user, waiting for auth state change...');
         // Jeśli currentUser jest null, poczekaj na pierwsze wywołanie onAuthStateChanged
         const authStatePromise = new Promise((resolve) => {
           const unsubscribe = onAuthStateChanged(auth, async (user) => {
             userId = user ? user.uid : null;
+            console.log('[Visit Tracker] Auth state changed:', userId);
             
             // Śledź odwiedzinę tylko jeśli jeszcze nie została zarejestrowana
             if (!visitTracked) {
@@ -165,12 +180,13 @@ async function handleVisitTracking(auth) {
         
         // Jeśli po 2 sekundach nadal nie mamy userId, śledź jako niezalogowany
         if (!visitTracked) {
+          console.log('[Visit Tracker] Timeout waiting for auth, tracking as visitor');
           visitTracked = true;
           await trackVisit(null);
         }
       }
     } catch (error) {
-      console.warn('Could not initialize auth state listener:', error);
+      console.warn('[Visit Tracker] Could not initialize auth state listener:', error);
       // Jeśli wystąpił błąd, śledź jako niezalogowany
       if (!visitTracked) {
         visitTracked = true;
@@ -179,6 +195,7 @@ async function handleVisitTracking(auth) {
     }
   } else {
     // Dla niezalogowanych użytkowników, śledź od razu
+    console.log('[Visit Tracker] No auth provided, tracking as visitor');
     visitTracked = true;
     await trackVisit(null);
   }

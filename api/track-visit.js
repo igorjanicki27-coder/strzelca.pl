@@ -110,16 +110,30 @@ module.exports = async (req, res) => {
     };
 
     // Zapisz odwiedzinę w Firestore
-    await db.collection("visits").add(visitData);
+    console.log("[track-visit] Saving visit to Firestore:", {
+      userId: finalUserId,
+      visitorId: finalVisitorId,
+      pageUrl: visitData.pageUrl,
+      date: visitData.date
+    });
+    
+    const docRef = await db.collection("visits").add(visitData);
+    console.log("[track-visit] Visit saved successfully with ID:", docRef.id);
 
     res.status(200).json({ 
       success: true, 
       message: "Visit tracked",
       userId: finalUserId,
-      visitorId: finalVisitorId
+      visitorId: finalVisitorId,
+      visitId: docRef.id
     });
   } catch (error) {
-    console.error("track-visit API error:", error);
+    console.error("[track-visit] API error:", error);
+    console.error("[track-visit] Error details:", {
+      message: error.message,
+      stack: error.stack,
+      code: error.code
+    });
     // Dla sendBeacon ważne jest, aby nie zwracać błędów, które mogą być widoczne
     // w konsoli, więc zwracamy 200 nawet przy błędzie (best-effort)
     res.status(200).json({ 
