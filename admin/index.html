@@ -695,6 +695,10 @@
                 <i class="fa-solid fa-tachometer-alt mr-2"></i>
                 Dashboard
               </div>
+              <div class="nav-item" data-tab="messages">
+                <i class="fa-solid fa-comments mr-2"></i>
+                Wiadomości
+              </div>
               <div class="nav-item" data-tab="users">
                 <i class="fa-solid fa-users mr-2"></i>
                 Użytkownicy
@@ -1558,6 +1562,54 @@
                     <i class="fa-solid fa-download mr-2"></i>
                     Eksportuj listę subskrybentów
                   </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Wiadomości -->
+          <div id="tab-messages" class="tab-content">
+            <h1 class="text-3xl font-bold coyote-text mb-8">
+              Zarządzanie Wiadomościami
+            </h1>
+
+            <div class="admin-card mb-8">
+              <div class="flex justify-between items-center mb-6">
+                <div class="flex items-center space-x-4">
+                  <div class="text-sm text-zinc-400">
+                    Nieprzeczytane: <span id="unread-count" class="text-white font-semibold">0</span>
+                  </div>
+                  <div class="text-sm text-zinc-400">
+                    Wszystkie: <span id="total-count" class="text-white font-semibold">0</span>
+                  </div>
+                </div>
+                <button onclick="loadMessagesWithFilters()" class="btn-admin text-sm px-3 py-1" id="refresh-messages-btn">
+                  <i class="fa-solid fa-sync-alt mr-2"></i>
+                  <span id="refresh-text">Odśwież</span>
+                </button>
+              </div>
+
+              <!-- Wyszukiwanie -->
+              <div class="mb-6">
+                <input
+                  type="text"
+                  id="messages-search"
+                  placeholder="Szukaj wiadomości..."
+                  class="w-full"
+                  oninput="loadMessagesWithFilters()"
+                />
+              </div>
+
+              <!-- Przyciski kategorii -->
+              <div id="category-buttons" class="flex flex-wrap gap-2 mb-6">
+                <!-- Przyciski będą ładowane dynamicznie -->
+              </div>
+
+              <!-- Lista wiadomości -->
+              <div id="messages-container">
+                <div class="text-center text-zinc-500 py-12">
+                  <i class="fa-solid fa-spinner fa-spin text-3xl mb-4 text-zinc-600"></i>
+                  <h3 class="text-lg font-semibold mb-2">Ładowanie wiadomości...</h3>
                 </div>
               </div>
             </div>
@@ -11043,6 +11095,71 @@
       }
 
     </script>
+
+    <!-- Modal czatu -->
+    <div id="chat-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onclick="if(event.target.id === 'chat-modal') closeChatModal()" style="overflow-y: auto;">
+      <div class="admin-card max-w-4xl w-full my-8 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-6">
+          <div>
+            <h2 class="text-2xl font-bold coyote-text" id="chat-user-name">Użytkownik</h2>
+            <p class="text-sm text-zinc-400" id="chat-user-email">email@example.com</p>
+          </div>
+          <button onclick="closeChatModal()" class="text-zinc-400 hover:text-white">
+            <i class="fa-solid fa-times text-xl"></i>
+          </button>
+        </div>
+
+        <!-- Wybór kategorii -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">Kategoria</label>
+          <select id="chat-category-select" class="w-full">
+            <option value="">Wybierz kategorię...</option>
+          </select>
+        </div>
+
+        <!-- Wiadomości -->
+        <div id="chat-messages" class="space-y-4 mb-6 min-h-[300px] max-h-[400px] overflow-y-auto p-4 bg-zinc-900/50 rounded-lg">
+          <div class="text-center text-zinc-500 py-8">
+            <i class="fa-solid fa-spinner fa-spin"></i> Ładowanie...
+          </div>
+        </div>
+
+        <!-- Pole odpowiedzi -->
+        <div class="flex gap-2">
+          <textarea
+            id="chat-reply-input"
+            placeholder="Napisz odpowiedź..."
+            class="flex-1 min-h-[100px]"
+            rows="4"
+          ></textarea>
+          <div class="flex flex-col gap-2">
+            <button onclick="sendChatReply()" class="btn-admin px-4 py-2">
+              <i class="fa-solid fa-paper-plane mr-2"></i>
+              Wyślij
+            </button>
+            <button onclick="openQuickRepliesMenu()" class="btn-admin px-4 py-2 text-sm">
+              <i class="fa-solid fa-bolt mr-2"></i>
+              Szablony
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal szybkich odpowiedzi -->
+    <div id="quick-replies-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onclick="if(event.target.id === 'quick-replies-modal') closeQuickRepliesModal()">
+      <div class="admin-card max-w-2xl w-full" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold coyote-text">Szybkie odpowiedzi</h2>
+          <button onclick="closeQuickRepliesModal()" class="text-zinc-400 hover:text-white">
+            <i class="fa-solid fa-times text-xl"></i>
+          </button>
+        </div>
+        <div id="quick-replies-list" class="space-y-2">
+          <!-- Lista będzie ładowana dynamicznie -->
+        </div>
+      </div>
+    </div>
 
     <!-- Global loading overlay -->
     <div id="dashboard-loading-overlay" class="dashboard-loading-overlay">

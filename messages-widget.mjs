@@ -1112,9 +1112,9 @@ async function main() {
     const qRaw = (prefix || "").toString().trim().toLowerCase();
     if (qRaw.length < 2) return [];
 
-    // Wyszukaj w userProfiles po displayName i email
+    // Wyszukaj w publicProfiles po displayName (publiczne dane dostępne dla wszystkich)
     try {
-      const usersRef = collection(db, "userProfiles");
+      const usersRef = collection(db, "publicProfiles");
       const usersSnapshot = await getDocs(usersRef);
       const matchingUsers = [];
 
@@ -1122,13 +1122,12 @@ async function main() {
         const userData = doc.data();
         const userId = doc.id;
         const displayName = (userData.displayName || "").toLowerCase();
-        const email = (userData.email || "").toLowerCase();
 
-        // Sprawdź czy wyszukiwany tekst pasuje do nicku lub emailu
-        if (displayName.includes(qRaw) || email.includes(qRaw)) {
+        // Sprawdź czy wyszukiwany tekst pasuje do nicku
+        if (displayName.includes(qRaw)) {
           matchingUsers.push({
             uid: userId,
-            displayName: userData.displayName || userData.email || "Użytkownik",
+            displayName: userData.displayName || "Użytkownik",
             avatar: userData.avatar || null,
           });
         }
