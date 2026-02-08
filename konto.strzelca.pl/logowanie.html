@@ -952,11 +952,7 @@
                     console.log("Status konta użytkownika:", userData.status);
                     
                     if (userData.status === "blocked") {
-                      console.log("Konto jest zablokowane - wylogowywanie i pokazywanie modala");
-                      
-                      // Wyloguj użytkownika
-                      const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-                      await signOut(auth);
+                      console.log("Konto jest zablokowane - sprawdzanie daty wygaśnięcia blokady");
                       
                       // Pokaż komunikat o blokadzie
                       const blockUntil = userData.blockedUntil?.toDate ? userData.blockedUntil.toDate() : (userData.blockedUntil ? new Date(userData.blockedUntil) : null);
@@ -968,21 +964,40 @@
                       let shouldBlock = true;
                       
                       if (blockUntil && blockUntil > new Date()) {
+                        // Blokada jest nadal aktywna
                         blockMessage += `\n\nBlokada obowiązuje do: ${blockUntil.toLocaleDateString("pl-PL")} ${blockUntil.toLocaleTimeString("pl-PL")}`;
                         shouldBlock = true;
                       } else if (blockUntil && blockUntil <= new Date()) {
-                        // Blokada wygasła, odblokuj konto
+                        // Blokada wygasła, odblokuj konto (PRZED wylogowaniem, żeby mieć uprawnienia)
                         console.log("Blokada wygasła - odblokowywanie konta");
-                        const { updateDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-                        await updateDoc(doc(db, "userProfiles", user.uid), { status: "active", blockedUntil: null });
-                        shouldBlock = false;
-                        // Pozwól na logowanie - kontynuuj normalny flow
+                        try {
+                          const { updateDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+                          await updateDoc(doc(db, "userProfiles", user.uid), { 
+                            status: "active", 
+                            blockedUntil: null,
+                            blockReason: null 
+                          });
+                          console.log("Konto zostało odblokowane pomyślnie");
+                          shouldBlock = false;
+                          // Pozwól na logowanie - kontynuuj normalny flow
+                        } catch (unblockError) {
+                          console.error("Błąd podczas odblokowywania konta:", unblockError);
+                          // Jeśli nie udało się odblokować, pokaż błąd ale pozwól na logowanie
+                          blockMessage += "\n\nUwaga: Nie udało się automatycznie odblokować konta. Skontaktuj się z administratorem.";
+                          shouldBlock = false; // Pozwól na logowanie mimo błędu
+                        }
                       } else {
+                        // Brak daty wygaśnięcia - blokada permanentna
                         blockMessage += "\n\nBlokada jest permanentna.";
                         shouldBlock = true;
                       }
                       
                       if (shouldBlock) {
+                        // Wyloguj użytkownika tylko jeśli blokada jest nadal aktywna
+                        console.log("Blokada jest aktywna - wylogowywanie użytkownika");
+                        const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+                        await signOut(auth);
+                        
                         // Pokaż modal z informacją o blokadzie
                         console.log("Pokazywanie modala zablokowanego konta");
                         showBlockedAccountModal(blockMessage);
@@ -991,11 +1006,11 @@
                         isLoginFlowInProgress = false;
                         return;
                       } else {
-                        console.log("Blokada wygasła - kontynuowanie logowania");
+                        console.log("Blokada wygasła lub została odblokowana - kontynuowanie logowania");
                       }
-                  } else {
-                    console.log("Konto nie jest zablokowane - kontynuowanie logowania");
-                  }
+                    } else {
+                      console.log("Konto nie jest zablokowane - kontynuowanie logowania");
+                    }
                 } else {
                   console.log("Profil użytkownika nie istnieje - kontynuowanie logowania");
                 }

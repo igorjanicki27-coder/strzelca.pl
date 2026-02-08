@@ -369,9 +369,9 @@ function makeStyles() {
       backdrop-filter: blur(8px);
       z-index: 2147483647;
       display: none;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
-      padding: 16px;
+      padding: 20px;
       overflow-y: auto;
       box-sizing: border-box;
     }
@@ -381,14 +381,16 @@ function makeStyles() {
       border: 1px solid rgba(255,255,255,0.14);
       border-radius: 18px;
       padding: 20px;
-      max-width: min(480px, calc(100vw - 32px));
+      max-width: min(480px, calc(100vw - 40px));
       width: 100%;
-      max-height: calc(100vh - 32px);
+      max-height: calc(100vh - 40px);
       overflow-y: auto;
+      overflow-x: hidden;
       margin: auto;
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
+      min-height: 0;
     }
     .modalHeader {
       display: flex;
@@ -435,6 +437,8 @@ function makeStyles() {
     }
     .modalField .search {
       border: 1px solid rgba(193,154,107,0.5);
+      width: 100%;
+      box-sizing: border-box;
     }
     .modalField .search:focus {
       border-color: rgba(193,154,107,0.8);
@@ -444,6 +448,8 @@ function makeStyles() {
       max-height: 200px;
       resize: vertical;
       border: 1px solid rgba(193,154,107,0.5);
+      width: 100%;
+      box-sizing: border-box;
     }
     .modalField textarea:focus {
       border-color: rgba(193,154,107,0.8);
@@ -535,22 +541,31 @@ function makeStyles() {
     .modalBtn:disabled { opacity: 0.5; cursor: not-allowed; }
     @media (max-width: 640px) {
       .modalOverlay {
-        padding: 12px;
+        padding: 16px 12px;
+        align-items: flex-start;
       }
       .modalContent {
         max-width: calc(100vw - 24px);
-        max-height: calc(100vh - 24px);
+        max-height: calc(100vh - 32px);
         padding: 16px;
+        margin-top: 0;
+      }
+      .modalHeader {
+        margin-bottom: 16px;
       }
       .modalField {
         margin-bottom: 12px;
       }
       .modalField textarea {
         min-height: 100px;
-        max-height: 150px;
+        max-height: 120px;
       }
       .userSearchResults {
-        max-height: min(180px, calc(100vh - 350px));
+        max-height: min(150px, calc(100vh - 400px));
+      }
+      .modalActions {
+        margin-top: 16px;
+        padding-top: 12px;
       }
     }
   `;
