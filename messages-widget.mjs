@@ -1263,12 +1263,13 @@ async function main() {
     const conversationId = conversationIdFor(uid, peerId);
     const ref = doc(db, "privateConversations", conversationId);
     // Tworzymy dokument konwersacji bez czytania (żeby nie wpadać w permission-denied na nieistniejącym docu).
+    // NIE aktualizujemy updatedAt - to powodowało przesunięcie konwersacji na górę po kliknięciu.
+    // updatedAt jest aktualizowane tylko przy wysyłaniu wiadomości.
     await setDoc(
       ref,
       {
         participants: [uid, peerId].sort(),
         unreadCounts: { [uid]: 0, [peerId]: 0 },
-        updatedAt: serverTimestamp(),
       },
       { merge: true }
     );
@@ -1482,14 +1483,23 @@ async function main() {
 
   function renderSupportMessages(items) {
     // map to widget render format
-    const mapped = (items || []).map((m) => ({
-      id: m.id,
-      content: (m.content || "").toString(),
-      senderId: m.senderId || null,
-      recipientId: m.recipientId || null,
-      isRead: m.isRead === true,
-      timestampMs: typeof m.timestamp === "number" ? m.timestamp : Date.now(),
-    }));
+    // Dla wiadomości support: jeśli senderId === "admin", używamy "Pomoc STRZELCA.PL" jako nazwy nadawcy
+    const mapped = (items || []).map((m) => {
+      const senderId = m.senderId || null;
+      // Jeśli to wiadomość od admina, ustawiamy senderName na "Pomoc STRZELCA.PL"
+      const senderName = (senderId === "admin" || senderId === SUPPORT_PEER_ID) 
+        ? "Pomoc STRZELCA.PL" 
+        : (m.senderName || null);
+      return {
+        id: m.id,
+        content: (m.content || "").toString(),
+        senderId,
+        senderName,
+        recipientId: m.recipientId || null,
+        isRead: m.isRead === true,
+        timestampMs: typeof m.timestamp === "number" ? m.timestamp : Date.now(),
+      };
+    });
     renderMessages(mapped);
   }
 
