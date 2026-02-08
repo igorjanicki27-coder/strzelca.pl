@@ -7690,20 +7690,30 @@
               
               // Zlicz unikalnych użytkowników (userId dla zalogowanych, visitorId dla niezalogowanych)
               const uniqueVisitors = new Set();
+              let loggedInCount = 0;
+              let guestCount = 0;
+              
               todayVisitsSnapshot.forEach((doc) => {
                 const visitData = doc.data();
-                const identifier = visitData.userId || visitData.visitorId;
+                // Dla zalogowanych: userId jest ustawiony, visitorId jest null
+                // Dla niezalogowanych: userId jest null, visitorId jest ustawiony
+                const identifier = visitData.userId ?? visitData.visitorId;
                 if (identifier) {
                   uniqueVisitors.add(identifier);
+                  if (visitData.userId) {
+                    loggedInCount++;
+                  } else if (visitData.visitorId) {
+                    guestCount++;
+                  }
                 }
               });
               
               const todayVisitsCount = uniqueVisitors.size;
+              console.log(`Odwiedziny dzisiaj: ${todayVisitsCount} (zalogowani: ${loggedInCount}, goście: ${guestCount})`);
 
               const todayVisitsEl = document.getElementById("visits-today");
               if (todayVisitsEl) {
                 todayVisitsEl.textContent = todayVisitsCount;
-                console.log(`Odwiedziny dzisiaj: ${todayVisitsCount} (od ${today.toLocaleString("pl-PL")} do ${tomorrow.toLocaleString("pl-PL")})`);
               }
             } catch (error) {
               console.error("Error fetching today visits from Firestore:", error);
@@ -7756,7 +7766,9 @@
               const uniqueVisitors = new Set();
               weekVisitsSnapshot.forEach((doc) => {
                 const visitData = doc.data();
-                const identifier = visitData.userId || visitData.visitorId;
+                // Dla zalogowanych: userId jest ustawiony, visitorId jest null
+                // Dla niezalogowanych: userId jest null, visitorId jest ustawiony
+                const identifier = visitData.userId ?? visitData.visitorId;
                 if (identifier) {
                   uniqueVisitors.add(identifier);
                 }
@@ -7784,7 +7796,9 @@
               const uniqueVisitors = new Set();
               monthVisitsSnapshot.forEach((doc) => {
                 const visitData = doc.data();
-                const identifier = visitData.userId || visitData.visitorId;
+                // Dla zalogowanych: userId jest ustawiony, visitorId jest null
+                // Dla niezalogowanych: userId jest null, visitorId jest ustawiony
+                const identifier = visitData.userId ?? visitData.visitorId;
                 if (identifier) {
                   uniqueVisitors.add(identifier);
                 }
@@ -7812,7 +7826,9 @@
               const uniqueVisitors = new Set();
               yearVisitsSnapshot.forEach((doc) => {
                 const visitData = doc.data();
-                const identifier = visitData.userId || visitData.visitorId;
+                // Dla zalogowanych: userId jest ustawiony, visitorId jest null
+                // Dla niezalogowanych: userId jest null, visitorId jest ustawiony
+                const identifier = visitData.userId ?? visitData.visitorId;
                 if (identifier) {
                   uniqueVisitors.add(identifier);
                 }
@@ -7837,7 +7853,9 @@
               const uniqueVisitors = new Set();
               visitsSnapshot.forEach((doc) => {
                 const visitData = doc.data();
-                const identifier = visitData.userId || visitData.visitorId;
+                // Dla zalogowanych: userId jest ustawiony, visitorId jest null
+                // Dla niezalogowanych: userId jest null, visitorId jest ustawiony
+                const identifier = visitData.userId ?? visitData.visitorId;
                 if (identifier) {
                   uniqueVisitors.add(identifier);
                 }

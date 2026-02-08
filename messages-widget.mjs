@@ -103,6 +103,9 @@ function makeStyles() {
       z-index: 2147483646;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       color: #e5e5e5;
+      max-width: calc(100vw - 32px);
+      max-height: calc(100vh - 32px);
+      box-sizing: border-box;
     }
     .btn {
       width: 56px;
@@ -141,8 +144,10 @@ function makeStyles() {
       position: absolute;
       right: 0;
       bottom: 70px;
-      width: min(92vw, 900px);
-      height: min(80vh, 600px);
+      width: min(calc(100vw - 32px), 900px);
+      max-width: calc(100vw - 32px);
+      height: min(calc(100vh - 100px), 600px);
+      max-height: calc(100vh - 100px);
       border-radius: 18px;
       border: 1px solid rgba(255,255,255,0.14);
       background: rgba(10,10,10,0.82);
@@ -151,6 +156,7 @@ function makeStyles() {
       box-shadow: 0 20px 70px rgba(0,0,0,0.65);
       overflow: hidden;
       display: none;
+      box-sizing: border-box;
     }
     .hdr {
       height: 52px;
@@ -188,9 +194,24 @@ function makeStyles() {
       gap: 8px;
     }
     .ghost:hover { border-color: rgba(193,154,107,0.7); }
-    .grid { height: calc(100% - 52px); display: grid; grid-template-columns: 300px 1fr; }
-    .left { border-right: 1px solid rgba(255,255,255,0.10); overflow: auto; }
-    .leftTop { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .grid { 
+      height: calc(100% - 52px); 
+      display: grid; 
+      grid-template-columns: 300px 1fr; 
+      min-height: 0;
+      overflow: hidden;
+    }
+    .left { 
+      border-right: 1px solid rgba(255,255,255,0.10); 
+      overflow-y: auto; 
+      overflow-x: hidden;
+      min-width: 0;
+    }
+    .leftTop { 
+      padding: 10px; 
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      flex-shrink: 0;
+    }
     .search {
       width: 100%;
       border-radius: 12px;
@@ -253,8 +274,22 @@ function makeStyles() {
       padding: 0 6px;
     }
     .convSub { font-size: 12px; color: rgba(229,229,229,0.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-    .right { display: grid; grid-template-rows: 1fr auto; min-width: 0; }
-    .msgs { overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .right { 
+      display: grid; 
+      grid-template-rows: 1fr auto; 
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .msgs { 
+      overflow-y: auto; 
+      overflow-x: hidden;
+      padding: 14px; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 10px;
+      min-height: 0;
+    }
     .bubbleRow { display: flex; }
     .bubbleRow.me { justify-content: flex-end; }
     .bubble {
@@ -269,7 +304,16 @@ function makeStyles() {
     }
     .bubble.me { background: rgba(193,154,107,0.18); border-color: rgba(193,154,107,0.28); }
     .meta { margin-top: 6px; font-size: 11px; color: rgba(229,229,229,0.55); text-align: right; }
-    .composer { border-top: 1px solid rgba(255,255,255,0.10); padding: 10px; display: flex; gap: 10px; align-items: flex-end; }
+    .composer { 
+      border-top: 1px solid rgba(255,255,255,0.10); 
+      padding: 10px; 
+      display: flex; 
+      gap: 10px; 
+      align-items: flex-end;
+      flex-shrink: 0;
+      min-height: 64px;
+      box-sizing: border-box;
+    }
     textarea {
       flex: 1 1 auto;
       min-height: 44px;
@@ -297,9 +341,24 @@ function makeStyles() {
     }
     .send:disabled { opacity: 0.45; cursor: not-allowed; }
     .empty { color: rgba(229,229,229,0.70); font-size: 13px; padding: 18px; }
-    @media (max-width: 900px) { .grid { grid-template-columns: 260px 1fr; } }
+    @media (max-width: 900px) { 
+      .grid { grid-template-columns: 260px 1fr; }
+      .panel {
+        width: min(calc(100vw - 32px), 900px);
+        max-width: calc(100vw - 32px);
+        height: min(calc(100vh - 100px), 600px);
+        max-height: calc(100vh - 100px);
+      }
+    }
     @media (max-width: 640px) {
-      .panel { width: min(96vw, 900px); height: min(84vh, 600px); }
+      .panel { 
+        width: min(calc(100vw - 16px), 900px);
+        max-width: calc(100vw - 16px);
+        height: min(calc(100vh - 80px), 600px);
+        max-height: calc(100vh - 80px);
+        right: 8px;
+        bottom: 80px;
+      }
       .grid { grid-template-columns: 1fr; }
       .left { display: none; }
     }
@@ -314,6 +373,7 @@ function makeStyles() {
       justify-content: center;
       padding: 16px;
       overflow-y: auto;
+      box-sizing: border-box;
     }
     .modalOverlay.show { display: flex; }
     .modalContent {
@@ -323,10 +383,12 @@ function makeStyles() {
       padding: 20px;
       max-width: min(480px, calc(100vw - 32px));
       width: 100%;
-      max-height: min(85vh, 600px);
+      max-height: calc(100vh - 32px);
       overflow-y: auto;
       margin: auto;
       box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
     }
     .modalHeader {
       display: flex;
@@ -335,6 +397,7 @@ function makeStyles() {
       margin-bottom: 20px;
       padding-bottom: 12px;
       border-bottom: 1px solid rgba(255,255,255,0.10);
+      flex-shrink: 0;
     }
     .modalTitle {
       font-weight: 900;
@@ -359,6 +422,7 @@ function makeStyles() {
     .modalField {
       margin-bottom: 16px;
       position: relative;
+      flex-shrink: 0;
     }
     .modalLabel {
       display: block;
@@ -393,7 +457,7 @@ function makeStyles() {
       background: rgba(0,0,0,0.95);
       border: 1px solid rgba(255,255,255,0.14);
       border-radius: 12px;
-      max-height: min(200px, calc(85vh - 300px));
+      max-height: min(200px, calc(100vh - 400px));
       overflow-y: auto;
       z-index: 10;
       display: none;
@@ -448,6 +512,7 @@ function makeStyles() {
       margin-top: 20px;
       padding-top: 16px;
       border-top: 1px solid rgba(255,255,255,0.10);
+      flex-shrink: 0;
     }
     .modalBtn {
       flex: 1;
@@ -468,6 +533,26 @@ function makeStyles() {
     }
     .modalBtn.primary:hover { background: rgba(193,154,107,1); }
     .modalBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+    @media (max-width: 640px) {
+      .modalOverlay {
+        padding: 12px;
+      }
+      .modalContent {
+        max-width: calc(100vw - 24px);
+        max-height: calc(100vh - 24px);
+        padding: 16px;
+      }
+      .modalField {
+        margin-bottom: 12px;
+      }
+      .modalField textarea {
+        min-height: 100px;
+        max-height: 150px;
+      }
+      .userSearchResults {
+        max-height: min(180px, calc(100vh - 350px));
+      }
+    }
   `;
   return style;
 }
