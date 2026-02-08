@@ -5,7 +5,7 @@
  * - działa dla zalogowanych i niezalogowanych użytkowników
  * 
  * Użycie:
- *   import { initVisitTracker } from "https://strzelca.pl/visit-tracker.mjs?v=2026-02-06-1";
+ *   import { initVisitTracker } from "https://strzelca.pl/visit-tracker.mjs?v=2026-02-06-2";
  *   await initVisitTracker();
  */
 
@@ -70,7 +70,9 @@ async function trackVisit(userId = null) {
     return; // Już zarejestrowano odwiedzinę dzisiaj
   }
   
-  const visitorId = userId || generateVisitorId();
+  // Dla zalogowanych użytkowników visitorId powinien być null
+  // Dla niezalogowanych generujemy visitorId
+  const visitorId = userId ? null : generateVisitorId();
   const pageUrl = window.location.href;
   const pageTitle = document.title;
   const referrer = document.referrer || '';
@@ -96,7 +98,7 @@ async function trackVisit(userId = null) {
     
     if (response.ok) {
       markVisitedToday();
-      console.log('Visit tracked successfully');
+      console.log('Visit tracked successfully', userId ? `(user: ${userId})` : '(visitor)');
     } else {
       console.warn('Failed to track visit:', response.status);
     }
@@ -126,37 +128,59 @@ export async function initVisitTracker(auth = null) {
  */
 async function handleVisitTracking(auth) {
   let userId = null;
+  let visitTracked = false;
   
-  // Jeśli użytkownik jest zalogowany, pobierz jego ID
+  // Jeśli użytkownik jest zalogowany, poczekaj na stan autoryzacji
   if (auth) {
     try {
       const { onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-      onAuthStateChanged(auth, async (user) => {
-        userId = user ? user.uid : null;
-        // Śledź odwiedzinę po zmianie stanu autoryzacji
+      
+      // Sprawdź najpierw aktualny stan autoryzacji (dla użytkowników już zalogowanych)
+      if (auth.currentUser) {
+        userId = auth.currentUser.uid;
+        visitTracked = true;
         await trackVisit(userId);
-      });
+      } else {
+        // Jeśli currentUser jest null, poczekaj na pierwsze wywołanie onAuthStateChanged
+        const authStatePromise = new Promise((resolve) => {
+          const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            userId = user ? user.uid : null;
+            
+            // Śledź odwiedzinę tylko jeśli jeszcze nie została zarejestrowana
+            if (!visitTracked) {
+              visitTracked = true;
+              await trackVisit(userId);
+            }
+            
+            // Rozwiąż Promise po pierwszym wywołaniu
+            resolve(userId);
+          });
+        });
+        
+        // Poczekaj maksymalnie 2 sekundy na stan autoryzacji
+        await Promise.race([
+          authStatePromise,
+          new Promise(resolve => setTimeout(resolve, 2000))
+        ]);
+        
+        // Jeśli po 2 sekundach nadal nie mamy userId, śledź jako niezalogowany
+        if (!visitTracked) {
+          visitTracked = true;
+          await trackVisit(null);
+        }
+      }
     } catch (error) {
       console.warn('Could not initialize auth state listener:', error);
-    }
-  }
-  
-  // Śledź odwiedzinę od razu (dla niezalogowanych lub jeśli auth nie jest dostępne)
-  if (!auth) {
-    await trackVisit(null);
-  } else {
-    // Sprawdź aktualny stan autoryzacji
-    try {
-      const { getAuth } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-      const currentAuth = auth || getAuth();
-      if (currentAuth.currentUser) {
-        userId = currentAuth.currentUser.uid;
+      // Jeśli wystąpił błąd, śledź jako niezalogowany
+      if (!visitTracked) {
+        visitTracked = true;
+        await trackVisit(null);
       }
-      await trackVisit(userId);
-    } catch (error) {
-      // Jeśli nie ma auth, śledź jako niezalogowany
-      await trackVisit(null);
     }
+  } else {
+    // Dla niezalogowanych użytkowników, śledź od razu
+    visitTracked = true;
+    await trackVisit(null);
   }
   
   // Śledź również przy zamknięciu strony (sendBeacon dla niezawodności)

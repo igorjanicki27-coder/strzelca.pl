@@ -79,7 +79,9 @@ module.exports = async (req, res) => {
 
     // Użyj verifiedUserId jeśli jest dostępny, w przeciwnym razie użyj visitorId
     const finalUserId = verifiedUserId || null;
-    const finalVisitorId = visitorId || `visitor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Dla zalogowanych użytkowników visitorId powinien być null
+    // Dla niezalogowanych generujemy visitorId jeśli nie został podany
+    const finalVisitorId = finalUserId ? null : (visitorId || `visitor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
 
     // Pobierz IP użytkownika
     const ipAddress = req.headers['x-forwarded-for']?.split(',')[0]?.trim() 
