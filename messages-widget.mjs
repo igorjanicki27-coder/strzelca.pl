@@ -1114,12 +1114,12 @@ async function main() {
       // więc nie musimy go czytać w transakcji (czytanie nieistniejącego doca powodowało permission-denied).
       await setDoc(convRef, { unreadCounts: { [uid]: 0 } }, { merge: true });
 
-      // batch set isRead = true for up to 200
+      // batch set isRead = true for up to 200 - używamy conversationId dla spójności
       const mSnap = await getDocs(
         query(
           collection(db, "privateMessages"),
+          where("conversationId", "==", conversationId),
           where("senderId", "==", peerId),
-          where("recipientId", "==", uid),
           where("isRead", "==", false),
           limit(200)
         )
@@ -1304,25 +1304,16 @@ async function main() {
     const conversationId = conversationIdFor(uid, peerId);
     state.selectedConversationId = conversationId;
 
-    // Bezpieczniej niż query po conversationId (jeden "zły" dokument potrafi zablokować całą konwersację).
-    // Robimy 2 query: uid->peer i peer->uid, a potem łączymy i sortujemy.
-    const qA = query(
+    // Pobieramy wszystkie wiadomości z jednej konwersacji używając conversationId
+    // To zapewnia, że wszystkie wiadomości między dwoma użytkownikami są w jednej konwersacji
+    const messagesQuery = query(
       collection(db, "privateMessages"),
-      where("senderId", "==", uid),
-      where("recipientId", "==", peerId),
-      orderBy("timestamp", "asc"),
-      limit(200)
-    );
-    const qB = query(
-      collection(db, "privateMessages"),
-      where("senderId", "==", peerId),
-      where("recipientId", "==", uid),
+      where("conversationId", "==", conversationId),
       orderBy("timestamp", "asc"),
       limit(200)
     );
 
-    let aDocs = [];
-    let bDocs = [];
+    let allDocs = [];
 
     function mapDocs(docs) {
       return docs.map((d) => {
@@ -1345,7 +1336,7 @@ async function main() {
     let previousLastMessageTime = 0;
     
     async function recompute() {
-      const merged = [...mapDocs(aDocs), ...mapDocs(bDocs)].sort((x, y) => (x.timestampMs || 0) - (y.timestampMs || 0));
+      const merged = mapDocs(allDocs).sort((x, y) => (x.timestampMs || 0) - (y.timestampMs || 0));
       
       // Sprawdź czy są nowe nieprzeczytane wiadomości od tego użytkownika
       const unreadFromPeer = merged.filter(m => m.senderId === peerId && m.recipientId === uid && !m.isRead);
@@ -1373,39 +1364,11 @@ async function main() {
       }
     }
 
-    const unsubA = onSnapshot(
-      qA,
+    // Jeden snapshot dla wszystkich wiadomości w konwersacji
+    const unsub = onSnapshot(
+      messagesQuery,
       async (snap) => {
-        aDocs = snap.docs;
-        await recompute();
-      },
-      (err) => {
-        const msg = (err?.message || "").toString();
-        // Ignoruj błędy uprawnień - użytkownik może nie mieć dostępu do tej konwersacji
-        if (msg.includes("Missing or insufficient permissions") || 
-            msg.includes("permission-denied") ||
-            msg.includes("Not authenticated")) {
-          console.debug("messages-widget: brak uprawnień do wątku (normalne dla niektórych użytkowników)");
-          try {
-            msgs.innerHTML = `<div class="empty">Brak uprawnień do tej rozmowy.</div>`;
-          } catch {}
-          return;
-        }
-        console.warn("thread snapshot error:", msg || err);
-        try {
-          msgs.innerHTML = `<div class="empty">${
-            msg.includes("requires an index") || msg.includes("index is currently building")
-              ? "Indeks Firestore dla wiadomości jest w trakcie budowania. Odczekaj chwilę (czasem kilka minut) i odśwież."
-              : "Nie udało się załadować rozmowy. Spróbuj odświeżyć."
-          }</div>`;
-        } catch {}
-      }
-    );
-
-    const unsubB = onSnapshot(
-      qB,
-      async (snap) => {
-        bDocs = snap.docs;
+        allDocs = snap.docs;
         await recompute();
       },
       (err) => {
@@ -1432,8 +1395,7 @@ async function main() {
     );
 
     threadUnsub = () => {
-      try { unsubA(); } catch {}
-      try { unsubB(); } catch {}
+      try { unsub(); } catch {}
     };
   }
 
