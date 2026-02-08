@@ -70,6 +70,16 @@ function conversationIdFor(a, b) {
   return [String(a || ""), String(b || "")].sort().join("_");
 }
 
+// Funkcja pomocnicza do uzyskania URL API (zawsze używa głównej domeny)
+function getApiUrl(path) {
+  const isMain = (window.location?.hostname || "") === "strzelca.pl";
+  if (isMain) {
+    return path.startsWith("/") ? path : `/${path}`;
+  }
+  // Na subdomenach zawsze używamy pełnego URL do głównej domeny
+  return `https://strzelca.pl${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 async function getFirebaseApiKey() {
   const isMain = (window.location?.hostname || "") === "strzelca.pl";
   const urls = isMain
@@ -1488,10 +1498,12 @@ async function main() {
     let authToken = null;
     try {
       if (user) {
-        authToken = await user.getIdToken();
+        authToken = await user.getIdToken(false); // false = nie wymuszaj odświeżenia
+      } else {
+        console.warn("fetchSupportThread: No user available");
       }
     } catch (e) {
-      console.debug("fetchSupportThread: Failed to get ID token", e);
+      console.warn("fetchSupportThread: Failed to get ID token", e);
     }
     
     const headers = { "Content-Type": "application/json" };
@@ -1499,26 +1511,48 @@ async function main() {
       headers["Authorization"] = `Bearer ${authToken}`;
     }
     
-    const res = await fetch(`/api/messages/thread?peerId=admin&limit=200`, {
-      method: "GET",
-      credentials: "include",
-      cache: "no-store",
-      headers,
-    });
-    const data = await res.json().catch(() => null);
-    if (!res.ok || !data?.success) throw new Error(data?.error || `HTTP ${res.status}`);
-    const items = Array.isArray(data?.data?.messages) ? data.data.messages : [];
-    // update preview + unread for support item
+    const apiUrl = getApiUrl(`/api/messages/thread?peerId=admin&limit=200`);
     try {
-      const last = items[items.length - 1];
-      state.supportLastText = last?.content ? String(last.content).slice(0, 70) : "Pomoc / zgłoszenia";
-      state.supportUnread = items.filter((m) => m && m.senderId === "admin" && m.isRead === false).length;
-      // Zaktualizuj badge z uwzględnieniem support unread
-      const totalUnreadWithSupport = state.unreadTotal + state.supportUnread;
-      setBadgeEl(badge, totalUnreadWithSupport);
-      renderList();
-    } catch {}
-    return items;
+      const res = await fetch(apiUrl, {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+        headers,
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        console.warn("fetchSupportThread: API error", {
+          status: res.status,
+          statusText: res.statusText,
+          error: data?.error,
+          apiUrl,
+          hasAuthToken: !!authToken,
+          hasUser: !!user
+        });
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      if (!data?.success) {
+        throw new Error(data?.error || "Unknown error");
+      }
+      
+      const items = Array.isArray(data?.data?.messages) ? data.data.messages : [];
+      
+      // update preview + unread for support item
+      try {
+        const last = items[items.length - 1];
+        state.supportLastText = last?.content ? String(last.content).slice(0, 70) : "Pomoc / zgłoszenia";
+        state.supportUnread = items.filter((m) => m && m.senderId === "admin" && m.isRead === false).length;
+        // Zaktualizuj badge z uwzględnieniem support unread
+        const totalUnreadWithSupport = state.unreadTotal + state.supportUnread;
+        setBadgeEl(badge, totalUnreadWithSupport);
+        renderList();
+      } catch {}
+      
+      return items;
+    } catch (e) {
+      console.error("fetchSupportThread: Request failed", e);
+      throw e;
+    }
   }
 
   function renderSupportMessages(items) {
@@ -1564,7 +1598,8 @@ async function main() {
     
     for (const m of toMark.slice(0, 50)) {
       try {
-        await fetch(`/api/messages/${m.id}/read`, { 
+        const apiUrl = getApiUrl(`/api/messages/${m.id}/read`);
+        await fetch(apiUrl, { 
           method: "PUT", 
           credentials: "include",
           headers
@@ -1669,7 +1704,8 @@ async function main() {
           headers["Authorization"] = `Bearer ${authToken}`;
         }
         
-        const res = await fetch("/api/messages", {
+        const apiUrl = getApiUrl("/api/messages");
+        const res = await fetch(apiUrl, {
           method: "POST",
           headers,
           credentials: "include",
