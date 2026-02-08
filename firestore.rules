@@ -37,6 +37,7 @@ service cloud.firestore {
     // =============================================================================
     match /userProfiles/{userId} {
       // Prywatne dane profilu - tylko właściciel lub admin/superadmin
+      // Uwaga: Dla zapytań listowych (getDocs) admin musi mieć dostęp do wszystkich dokumentów
       allow read: if isOwner(userId) || isAdminOrSuperAdmin();
 
       // Tworzenie profilu - tylko dla właściciela podczas rejestracji
@@ -213,6 +214,14 @@ service cloud.firestore {
       allow read, update, delete: if isAdminOrSuperAdmin();
     }
 
+    match /newsletterQueue/{queueId} {
+      // Admin może odczytywać i zarządzać kolejką newslettera
+      allow read, create, update, delete: if isAdminOrSuperAdmin();
+      
+      // System może tworzyć wpisy w kolejce (np. podczas wysyłki)
+      allow create: if isAuthenticated();
+    }
+
     // =============================================================================
     // CONTENT: PRODUCTS, TRAININGS, EVENTS, CHARITY
     // =============================================================================
@@ -308,6 +317,20 @@ service cloud.firestore {
 
     match /pendingTasks/{taskId} {
       allow read, create, update, delete: if isAdminOrSuperAdmin();
+    }
+
+    // =============================================================================
+    // VISITS & ANALYTICS
+    // =============================================================================
+    match /visits/{visitId} {
+      // Admin może odczytywać wszystkie wizyty (dla statystyk)
+      allow read: if isAdminOrSuperAdmin();
+      
+      // Tworzenie wizyt - każdy może tworzyć (tracking odwiedzin)
+      allow create: if true;
+      
+      // Aktualizacja i usuwanie - tylko admin
+      allow update, delete: if isAdminOrSuperAdmin();
     }
 
     // =============================================================================

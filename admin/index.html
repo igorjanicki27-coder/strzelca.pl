@@ -6180,11 +6180,12 @@
           const usersSnapshot = await getDocs(collection(db, "userProfiles"));
           const now = new Date();
           let unblockedCount = 0;
-          const unblockedUsers = []; // Lista użytkowników do zalogowania
+          const unblockedUsers = []; // Lista użytkowników do zalogowania (dla ostatniego batcha)
 
           let batch = writeBatch(db);
           let batchCount = 0;
           const BATCH_LIMIT = 500; // Firestore limit
+          let currentBatchUsers = []; // Użytkownicy w aktualnym batchu
 
           for (const docSnapshot of usersSnapshot.docs) {
             const userData = docSnapshot.data();
@@ -6206,14 +6207,31 @@
                 batchCount++;
                 unblockedCount++;
                 
-                // Zapisz ID użytkownika do późniejszego zalogowania
-                unblockedUsers.push(docSnapshot.id);
+                // Zapisz ID użytkownika do zalogowania
+                currentBatchUsers.push(docSnapshot.id);
 
                 // Jeśli osiągnięto limit batcha, wykonaj i zacznij nowy
                 if (batchCount >= BATCH_LIMIT) {
                   await batch.commit();
+                  
+                  // Zaloguj odblokowania z tego batcha natychmiast po commit
+                  for (const userId of currentBatchUsers) {
+                    try {
+                      await logActivity("system", "USER_UNBLOCKED", {
+                        unblockedBy: "system",
+                        automatic: true,
+                        reason: "Blokada wygasła automatycznie",
+                        targetUser: userId,
+                      }, userId);
+                    } catch (logError) {
+                      console.error(`Błąd podczas logowania automatycznego odblokowania dla użytkownika ${userId}:`, logError);
+                    }
+                  }
+                  
+                  // Rozpocznij nowy batch
                   batch = writeBatch(db);
                   batchCount = 0;
+                  currentBatchUsers = [];
                 }
               }
             }
@@ -6222,14 +6240,9 @@
           // Wykonaj pozostałe operacje
           if (batchCount > 0) {
             await batch.commit();
-          }
-
-          // Zaloguj automatyczne odblokowania dla każdego użytkownika
-          if (unblockedCount > 0) {
-            console.log(`Automatycznie odblokowano ${unblockedCount} wygasłych blokad.`);
             
-            // Zaloguj każde odblokowanie osobno
-            for (const userId of unblockedUsers) {
+            // Zaloguj odblokowania z ostatniego batcha natychmiast po commit
+            for (const userId of currentBatchUsers) {
               try {
                 await logActivity("system", "USER_UNBLOCKED", {
                   unblockedBy: "system",
@@ -6241,6 +6254,11 @@
                 console.error(`Błąd podczas logowania automatycznego odblokowania dla użytkownika ${userId}:`, logError);
               }
             }
+          }
+
+          // Podsumowanie
+          if (unblockedCount > 0) {
+            console.log(`Automatycznie odblokowano ${unblockedCount} wygasłych blokad.`);
           }
 
           return unblockedCount;
