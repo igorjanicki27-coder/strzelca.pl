@@ -2947,6 +2947,7 @@
       let currentUser = null;
       let currentTab = "dashboard";
       let currentUserFilter = "all";
+      let userSearchTerm = "";
       let usersList = [];
       let productsList = [];
       let trainingsList = [];
@@ -3489,6 +3490,13 @@
                 }
               });
             }
+          }, 100);
+        }
+
+        // Specjalna obsługa użytkowników - dodaj event listener dla wyszukiwania
+        if (tabName === "users") {
+          setTimeout(() => {
+            initUserSearch();
           }, 100);
         }
 
@@ -4597,6 +4605,17 @@
         document.getElementById("users-list").innerHTML =
           usersHtml ||
           '<div class="text-center text-zinc-500 py-8">Brak użytkowników</div>';
+      }
+
+      // Inicjalizacja wyszukiwania użytkowników
+      function initUserSearch() {
+        const userSearchInput = document.getElementById("user-search");
+        if (userSearchInput) {
+          userSearchInput.addEventListener("input", function(e) {
+            userSearchTerm = e.target.value;
+            renderUsersList();
+          });
+        }
       }
 
       // Funkcja ładowania subskrybentów newslettera
@@ -9880,13 +9899,17 @@
           messagesFilter.hasFilterListener = true;
           messagesFilter.addEventListener('change', () => {
             console.log('Filter dropdown changed to:', messagesFilter.value);
-            currentFilters.category = messagesFilter.value;
+            window.currentFilters.category = messagesFilter.value;
             loadMessagesWithFilters();
           });
         }
       });
 
       // ==================== NOWE FUNKCJE DLA SYSTEMU WIADOMOŚCI ====================
+
+      // Zmienna do przechowywania aktualnych filtrów wiadomości (globalna)
+      window.currentFilters = window.currentFilters || { search: '', category: 'all', status: 'all' };
+      let currentFilters = window.currentFilters;
 
       // Funkcja ładowania statusu wiadomości
       async function loadMessagesStatus() {
@@ -9968,6 +9991,7 @@
             let categoryButtons = '';
 
             // Dodaj przycisk "Wszystkie"
+            const currentFilters = window.currentFilters || { search: '', category: 'all', status: 'all' };
             const isAllActive = !currentFilters.category || currentFilters.category === 'all' || ['unread', 'completed'].includes(currentFilters.category);
             categoryButtons += `
               <button onclick="filterMessages('all')"
@@ -10005,6 +10029,12 @@
         const messagesContainer = document.getElementById('messages-container');
         if (!messagesContainer) return;
 
+        // Inicjalizuj currentFilters jeśli nie istnieje (użyj window dla globalnego dostępu)
+        if (typeof currentFilters === 'undefined' || !currentFilters) {
+          window.currentFilters = { search: '', category: 'all', status: 'all' };
+        }
+        const currentFilters = window.currentFilters || { search: '', category: 'all', status: 'all' };
+
         messagesContainer.innerHTML = `
           <div class="text-center text-zinc-500 py-12">
             <i class="fa-solid fa-spinner fa-spin text-3xl mb-4 text-zinc-600"></i>
@@ -10017,8 +10047,9 @@
           // Aktualizuj currentFilters.search z wartości pola wyszukiwania
           const searchInput = document.getElementById('messages-search');
           if (searchInput) {
-            currentFilters.search = searchInput.value || '';
+            window.currentFilters.search = searchInput.value || '';
           }
+          const currentFilters = window.currentFilters;
 
           // Buduj query Firestore z filtrami
           let messagesQuery = collection(db, 'messages');
@@ -10792,9 +10823,9 @@
         }
 
         // Aktualizuj currentFilters
-        currentFilters.category = filterType;
-        currentFilters.search = document.getElementById('messages-search')?.value || '';
-        console.log('Updated currentFilters:', currentFilters);
+        window.currentFilters.category = filterType;
+        window.currentFilters.search = document.getElementById('messages-search')?.value || '';
+        console.log('Updated currentFilters:', window.currentFilters);
 
         // Zaktualizuj dropdown filtra
         const filterSelect = document.getElementById('messages-filter');
@@ -10857,7 +10888,7 @@
 
       // Funkcja czyszczenia filtrów
       function clearFilters() {
-        currentFilters = { search: '', category: 'all', status: 'all' };
+        window.currentFilters = { search: '', category: 'all', status: 'all' };
         document.getElementById('messages-search').value = '';
         const filterSelect = document.getElementById('messages-filter');
         if (filterSelect) filterSelect.value = 'all';
@@ -10874,7 +10905,7 @@
           searchInput.value = '';
           searchInput.focus();
         }
-        currentFilters.search = '';
+        window.currentFilters.search = '';
         loadMessagesWithFilters();
         // Ukryj przycisk clear
         const clearBtn = document.getElementById('clear-search-btn');
