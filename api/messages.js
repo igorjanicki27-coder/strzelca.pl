@@ -52,16 +52,48 @@ function getRoutedSegments({ urlObj, queryObj }) {
   return raw.split('/').filter(Boolean);
 }
 
-function getSessionUser(req) {
+async function getSessionUser(req) {
   try {
     initAdmin();
     const cookies = parseCookies(req.headers.cookie || '');
-    const sessionCookie = cookies[getCookieName()];
-    if (!sessionCookie) return null;
-    const decoded = verifyLocalSessionJwt(sessionCookie);
-    if (!decoded?.uid) return null;
-    return { uid: decoded.uid, emailVerified: decoded.emailVerified === true };
-  } catch {
+    const cookieName = getCookieName();
+    const sessionCookie = cookies[cookieName];
+    
+    // Próbuj najpierw cookie SSO
+    if (sessionCookie) {
+      try {
+        const decoded = verifyLocalSessionJwt(sessionCookie);
+        if (decoded?.uid) {
+          return { uid: decoded.uid, emailVerified: decoded.emailVerified === true };
+        }
+      } catch (e) {
+        console.debug('getSessionUser: Cookie SSO verification failed, trying Firebase Auth token', e?.message);
+      }
+    }
+    
+    // Fallback: spróbuj Firebase Auth ID token z nagłówka Authorization
+    const authHeader = req.headers.authorization || '';
+    if (authHeader.startsWith('Bearer ')) {
+      const idToken = authHeader.substring(7);
+      try {
+        const decoded = await admin.auth().verifyIdToken(idToken);
+        if (decoded?.uid) {
+          return { uid: decoded.uid, emailVerified: decoded.email_verified === true };
+        }
+      } catch (e) {
+        console.debug('getSessionUser: Firebase Auth token verification failed', e?.message);
+      }
+    }
+    
+    console.debug('getSessionUser: No valid session found', { 
+      cookieName, 
+      hasCookies: !!req.headers.cookie,
+      hasAuthHeader: !!authHeader,
+      cookieKeys: Object.keys(cookies)
+    });
+    return null;
+  } catch (e) {
+    console.debug('getSessionUser error:', e?.message || e);
     return null;
   }
 }
@@ -108,7 +140,7 @@ module.exports = async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const query = getQuery(req, url);
     const segs = getRoutedSegments({ urlObj: url, queryObj: query });
-    const sessionUser = getSessionUser(req);
+    const sessionUser = await getSessionUser(req);
     const requesterUid = sessionUser?.uid || null;
     const requesterIsAdmin = await isAdminOrSuperAdmin(requesterUid);
 
@@ -339,7 +371,23 @@ async function handleGetThread(req, res, db, { query, requesterUid, requesterIsA
     }
 
     if (!userA) {
-      return res.status(401).json({ success: false, error: 'Not authenticated' });
+      // Dodaj więcej informacji diagnostycznych
+      const cookies = req.headers.cookie || '';
+      const hasCookie = cookies.includes(getCookieName());
+      console.warn('handleGetThread: Not authenticated', {
+        hasCookie,
+        cookieName: getCookieName(),
+        peerId,
+        query: query
+      });
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Not authenticated',
+        debug: process.env.NODE_ENV === 'development' ? {
+          hasCookie,
+          cookieName: getCookieName()
+        } : undefined
+      });
     }
 
     if (!requesterIsAdmin) {

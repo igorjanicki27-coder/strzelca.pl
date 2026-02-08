@@ -1484,11 +1484,26 @@ async function main() {
   // =========================
   let supportTimer = null;
   async function fetchSupportThread() {
+    // Pobierz Firebase Auth ID token jako fallback jeśli cookie SSO nie działa
+    let authToken = null;
+    try {
+      if (user) {
+        authToken = await user.getIdToken();
+      }
+    } catch (e) {
+      console.debug("fetchSupportThread: Failed to get ID token", e);
+    }
+    
+    const headers = { "Content-Type": "application/json" };
+    if (authToken) {
+      headers["Authorization"] = `Bearer ${authToken}`;
+    }
+    
     const res = await fetch(`/api/messages/thread?peerId=admin&limit=200`, {
       method: "GET",
       credentials: "include",
       cache: "no-store",
-      headers: { "Content-Type": "application/json" },
+      headers,
     });
     const data = await res.json().catch(() => null);
     if (!res.ok || !data?.success) throw new Error(data?.error || `HTTP ${res.status}`);
@@ -1531,9 +1546,29 @@ async function main() {
   async function markSupportRead(items) {
     // Oznacz jako przeczytane wiadomości od "admin" do usera
     const toMark = (items || []).filter((m) => m && m.senderId === "admin" && m.isRead === false && m.id);
+    
+    // Pobierz Firebase Auth ID token jako fallback
+    let authToken = null;
+    try {
+      if (user) {
+        authToken = await user.getIdToken();
+      }
+    } catch (e) {
+      console.debug("markSupportRead: Failed to get ID token", e);
+    }
+    
+    const headers = {};
+    if (authToken) {
+      headers["Authorization"] = `Bearer ${authToken}`;
+    }
+    
     for (const m of toMark.slice(0, 50)) {
       try {
-        await fetch(`/api/messages/${m.id}/read`, { method: "PUT", credentials: "include" });
+        await fetch(`/api/messages/${m.id}/read`, { 
+          method: "PUT", 
+          credentials: "include",
+          headers
+        });
       } catch {}
     }
   }
@@ -1619,9 +1654,24 @@ async function main() {
     sendBtn.disabled = true;
     try {
       if (state.selectedPeerId === SUPPORT_PEER_ID) {
+        // Pobierz Firebase Auth ID token jako fallback
+        let authToken = null;
+        try {
+          if (user) {
+            authToken = await user.getIdToken();
+          }
+        } catch (e) {
+          console.debug("doSend: Failed to get ID token", e);
+        }
+        
+        const headers = { "Content-Type": "application/json" };
+        if (authToken) {
+          headers["Authorization"] = `Bearer ${authToken}`;
+        }
+        
         const res = await fetch("/api/messages", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           credentials: "include",
           body: JSON.stringify({ content, recipientId: "admin", status: "in_progress" }),
         });
