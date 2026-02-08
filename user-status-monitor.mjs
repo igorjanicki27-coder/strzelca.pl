@@ -69,6 +69,8 @@ export async function initUserStatusMonitor(auth, db) {
                   isPermanentBlock: null,
                   unblockedAt: new Date(),
                 });
+                console.log("Konto zostało automatycznie odblokowane po wygaśnięciu blokady.");
+                
                 // Zaloguj automatyczne odblokowanie
                 try {
                   await addDoc(collection(db, "activityLogs"), {
@@ -78,16 +80,16 @@ export async function initUserStatusMonitor(auth, db) {
                       unblockedBy: "system",
                       automatic: true,
                       reason: "Blokada wygasła automatycznie",
-                      targetUser: user.uid
+                      targetUser: user.uid,
                     },
                     targetUserId: user.uid,
                     timestamp: new Date(),
-                    userAgent: navigator.userAgent
+                    userAgent: navigator.userAgent,
                   });
                 } catch (logError) {
                   console.error("Błąd podczas logowania automatycznego odblokowania:", logError);
                 }
-                console.log("Konto zostało automatycznie odblokowane po wygaśnięciu blokady.");
+                
                 return;
               } catch (error) {
                 console.error("Błąd podczas automatycznego odblokowania konta:", error);

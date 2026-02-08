@@ -686,6 +686,7 @@
                           isPermanentBlock: null,
                           unblockedAt: new Date()
                         });
+                        
                         // Zaloguj automatyczne odblokowanie
                         try {
                           await addDoc(collection(db, "activityLogs"), {
@@ -695,15 +696,16 @@
                               unblockedBy: "system",
                               automatic: true,
                               reason: "Blokada wygasła automatycznie",
-                              targetUser: user.uid
+                              targetUser: user.uid,
                             },
                             targetUserId: user.uid,
                             timestamp: new Date(),
-                            userAgent: navigator.userAgent
+                            userAgent: navigator.userAgent,
                           });
                         } catch (logError) {
                           console.error("Błąd podczas logowania automatycznego odblokowania:", logError);
                         }
+                        
                         // Pozwól na logowanie - kontynuuj normalny flow
                       } else {
                         blockMessage += "\n\nBlokada jest permanentna.";
@@ -995,6 +997,8 @@
                             blockedUntil: null,
                             blockReason: null 
                           });
+                          console.log("Konto zostało odblokowane pomyślnie");
+                          
                           // Zaloguj automatyczne odblokowanie
                           try {
                             await addDoc(collection(db, "activityLogs"), {
@@ -1004,16 +1008,16 @@
                                 unblockedBy: "system",
                                 automatic: true,
                                 reason: "Blokada wygasła automatycznie",
-                                targetUser: user.uid
+                                targetUser: user.uid,
                               },
                               targetUserId: user.uid,
                               timestamp: new Date(),
-                              userAgent: navigator.userAgent
+                              userAgent: navigator.userAgent,
                             });
                           } catch (logError) {
                             console.error("Błąd podczas logowania automatycznego odblokowania:", logError);
                           }
-                          console.log("Konto zostało odblokowane pomyślnie");
+                          
                           shouldBlock = false;
                           // Pozwól na logowanie - kontynuuj normalny flow
                         } catch (unblockError) {
