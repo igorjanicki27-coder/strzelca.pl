@@ -152,7 +152,11 @@
 
         
       async function getFirebaseApiKey() {
-        const urls = ["/api/firebase-config"];
+        // Używamy pełnego URL, bo sklep jest na subdomenie sklep.strzelca.pl
+        const urls = [
+          "https://strzelca.pl/api/firebase-config",
+          "/api/firebase-config" // fallback dla lokalnego developmentu
+        ];
 
         for (const url of urls) {
           try {
@@ -184,6 +188,19 @@ const firebaseConfig = {
             useFetchStreams: true,
         });
         const auth = getAuth(app);
+
+        // Obsługa błędów CORS z Firestore (często są to fałszywe alarmy)
+        window.addEventListener('unhandledrejection', function(e) {
+            if (e.reason && e.reason.message && (
+                e.reason.message.includes('access control checks') ||
+                e.reason.message.includes('CORS') ||
+                e.reason.message.includes('firestore.googleapis.com')
+            )) {
+                console.warn('Ignored Firebase CORS promise rejection:', e.reason.message);
+                e.preventDefault();
+                return false;
+            }
+        });
 
         // Ustaw trwałość sesji na browserLocalPersistence dla wszystkich subdomen
         await setPersistence(auth, browserLocalPersistence);

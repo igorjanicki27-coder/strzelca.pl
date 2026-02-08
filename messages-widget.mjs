@@ -1639,7 +1639,7 @@ async function main() {
         renderSupportMessages(items);
         
         // Oznacz jako przeczytane jeśli panel jest otwarty i ta konwersacja jest wybrana
-        if (isOpen && state.selectedPeerId === SUPPORT_PEER_ID) {
+        if (isOpen && state.selectedPeerId === SUPPORT_PEER_ID && items.length > 0) {
           await markSupportRead(items);
         }
       } catch (e) {
@@ -1686,6 +1686,7 @@ async function main() {
   async function doSend() {
     const content = (ta.value || "").toString().trim();
     if (!content) return;
+    
     sendBtn.disabled = true;
     try {
       if (state.selectedPeerId === SUPPORT_PEER_ID) {

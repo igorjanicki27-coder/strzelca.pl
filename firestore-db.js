@@ -145,6 +145,7 @@ class FirestoreDatabaseManager {
       }
 
       // Sortowanie i paginacja
+      // Uwaga: orderBy z wieloma where może wymagać złożonego indeksu
       query = query.orderBy('timestamp', 'desc');
 
       if (options.limit) {
@@ -155,12 +156,51 @@ class FirestoreDatabaseManager {
         query = query.offset(options.offset);
       }
 
-      const snapshot = await query.get();
-      const messages = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        timestamp: doc.data().timestamp.toDate().getTime()
-      }));
+      let snapshot;
+      let needsInMemorySort = false;
+      try {
+        snapshot = await query.get();
+      } catch (indexError) {
+        // Jeśli brak indeksu, spróbuj bez orderBy i posortuj w pamięci
+        if (indexError.code === 9 || indexError.message?.includes('index')) {
+          console.warn('getMessages: Index error, retrying without orderBy', indexError.message);
+          needsInMemorySort = true;
+          // Zbuduj zapytanie bez orderBy
+          let retryQuery = db.collection('messages');
+          if (options.recipientId) retryQuery = retryQuery.where('recipientId', '==', options.recipientId);
+          if (options.senderId) retryQuery = retryQuery.where('senderId', '==', options.senderId);
+          if (options.status) retryQuery = retryQuery.where('status', '==', options.status);
+          if (options.categoryId) retryQuery = retryQuery.where('categoryId', '==', options.categoryId);
+          if (typeof options.isRead === 'boolean') retryQuery = retryQuery.where('isRead', '==', options.isRead);
+          if (options.limit) retryQuery = retryQuery.limit(options.limit * 2); // Pobierz więcej, bo posortujemy w pamięci
+          snapshot = await retryQuery.get();
+        } else {
+          throw indexError;
+        }
+      }
+      let messages = snapshot.docs.map(doc => {
+        const data = doc.data();
+        let timestamp = null;
+        try {
+          if (data.timestamp) {
+            if (typeof data.timestamp.toDate === 'function') {
+              timestamp = data.timestamp.toDate().getTime();
+            } else if (typeof data.timestamp === 'number') {
+              timestamp = data.timestamp;
+            } else if (typeof data.timestamp === 'string') {
+              timestamp = Date.parse(data.timestamp);
+            }
+          }
+        } catch (e) {
+          console.warn('Error parsing timestamp for message', doc.id, e);
+          timestamp = Date.now();
+        }
+        return {
+          id: doc.id,
+          ...data,
+          timestamp: timestamp || Date.now()
+        };
+      });
 
       // Pobierz całkowitą liczbę (bez limitów)
       let countQuery = db.collection('messages');

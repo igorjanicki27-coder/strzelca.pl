@@ -310,10 +310,22 @@ async function handlePostMessage(req, res, db, { requesterUid, requesterIsAdmin 
       // User może pisać tylko do admina (support) w tym endpointcie
       recipientId = 'admin';
     } else if (requesterUid && requesterIsAdmin) {
-      // Admin: zawsze wysyłamy jako wspólna "Pomoc STRZELCA.PL"
-      // (wspólny wątek dla wszystkich adminów + stała nazwa nadawcy)
-      senderId = SUPPORT_SENDER_ID;
-      senderName = SUPPORT_SENDER_NAME;
+      // Admin: sprawdź czy wiadomość jest wysyłana z panelu administracyjnego
+      // Jeśli tak, ustaw jako "Pomoc STRZELCA.PL", jeśli nie, jako zwykły użytkownik
+      const isFromAdminPanel = req.headers['x-admin-panel'] === 'true' || 
+                                messageData.fromAdminPanel === true ||
+                                (req.headers.referer && req.headers.referer.includes('/admin/'));
+      
+      if (isFromAdminPanel) {
+        // Z panelu administracyjnego: wysyłamy jako "Pomoc STRZELCA.PL"
+        senderId = SUPPORT_SENDER_ID;
+        senderName = SUPPORT_SENDER_NAME;
+      } else {
+        // Z widgetu: wysyłamy jako zwykły użytkownik (administrator)
+        senderId = requesterUid;
+        senderName = (await getDisplayNameForUid(requesterUid)) || senderName || 'Administrator';
+      }
+      
       recipientId = (messageData.recipientId || '').toString().trim();
       if (!recipientId) {
         return res.status(400).json({ success: false, error: 'Missing required field: recipientId' });
@@ -401,10 +413,41 @@ async function handleGetThread(req, res, db, { query, requesterUid, requesterIsA
       }
     }
 
+    // Administrator może normalnie widzieć swoją konwersację z supportem w widgetcie
+    // (w panelu administracyjnym używa innego endpointu)
+
+    console.log('handleGetThread: Fetching messages', { userA, peerId, limit, requesterIsAdmin });
+    
+    // Walidacja: sprawdź czy db i getMessages istnieją
+    if (!db || typeof db.getMessages !== 'function') {
+      console.error('handleGetThread: db.getMessages is not available', { 
+        hasDb: !!db, 
+        dbType: typeof db,
+        hasGetMessages: db && typeof db.getMessages === 'function'
+      });
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Database not initialized' 
+      });
+    }
+    
     const [aToB, bToA] = await Promise.all([
-      db.getMessages({ senderId: userA, recipientId: peerId, limit }),
-      db.getMessages({ senderId: peerId, recipientId: userA, limit }),
+      db.getMessages({ senderId: userA, recipientId: peerId, limit }).catch(e => {
+        console.error('Error getting messages aToB:', e);
+        console.error('Error details:', { userA, peerId, error: e.message, stack: e.stack });
+        return { messages: [] };
+      }),
+      db.getMessages({ senderId: peerId, recipientId: userA, limit }).catch(e => {
+        console.error('Error getting messages bToA:', e);
+        console.error('Error details:', { peerId, userA, error: e.message, stack: e.stack });
+        return { messages: [] };
+      }),
     ]);
+
+    console.log('handleGetThread: Messages fetched', { 
+      aToBCount: aToB?.messages?.length || 0, 
+      bToACount: bToA?.messages?.length || 0 
+    });
 
     const all = [...(aToB?.messages || []), ...(bToA?.messages || [])].sort((x, y) => (x.timestamp || 0) - (y.timestamp || 0));
 
@@ -418,7 +461,13 @@ async function handleGetThread(req, res, db, { query, requesterUid, requesterIsA
     });
   } catch (error) {
     console.error('Error getting thread:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    console.error('Error stack:', error.stack);
+    console.error('Error context:', { requesterUid, requesterIsAdmin, query });
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error',
+      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 }
 
