@@ -60,7 +60,7 @@ export async function initUserStatusMonitor(auth, db) {
 
             // Jeśli blokada wygasła, odblokuj konto
             if (blockedUntil && blockedUntil <= new Date() && !userData.isPermanentBlock) {
-              const { updateDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+              const { updateDoc, addDoc, collection } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
               try {
                 await updateDoc(userProfileRef, {
                   status: "active",
@@ -69,6 +69,24 @@ export async function initUserStatusMonitor(auth, db) {
                   isPermanentBlock: null,
                   unblockedAt: new Date(),
                 });
+                // Zaloguj automatyczne odblokowanie
+                try {
+                  await addDoc(collection(db, "activityLogs"), {
+                    userId: "system",
+                    action: "USER_UNBLOCKED",
+                    details: {
+                      unblockedBy: "system",
+                      automatic: true,
+                      reason: "Blokada wygasła automatycznie",
+                      targetUser: user.uid
+                    },
+                    targetUserId: user.uid,
+                    timestamp: new Date(),
+                    userAgent: navigator.userAgent
+                  });
+                } catch (logError) {
+                  console.error("Błąd podczas logowania automatycznego odblokowania:", logError);
+                }
                 console.log("Konto zostało automatycznie odblokowane po wygaśnięciu blokady.");
                 return;
               } catch (error) {
