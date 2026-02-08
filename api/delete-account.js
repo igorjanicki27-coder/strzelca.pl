@@ -35,13 +35,14 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const body = readJsonBody(req) || {};
-  const idToken = (body.idToken || "").toString().trim();
+    const body = readJsonBody(req) || {};
+    const idToken = (body.idToken || "").toString().trim();
+    const deleteAllData = body.deleteAllData === true; // Jeśli true, usuwa konwersacje również u drugiej osoby
 
-  if (!idToken) {
-    res.status(400).json({ success: false, error: "Missing idToken" });
-    return;
-  }
+    if (!idToken) {
+      res.status(400).json({ success: false, error: "Missing idToken" });
+      return;
+    }
 
   try {
     initAdmin();
@@ -79,7 +80,75 @@ module.exports = async (req, res) => {
     counts.messages = await deleteDocsByQuery(db, "messages", "senderId", "==", uid).catch(() => 0);
     counts.privateMessagesSent = await deleteDocsByQuery(db, "privateMessages", "senderId", "==", uid).catch(() => 0);
     counts.privateMessagesReceived = await deleteDocsByQuery(db, "privateMessages", "recipientId", "==", uid).catch(() => 0);
-    counts.privateConversations = await deleteDocsByQuery(db, "privateConversations", "participants", "array-contains", uid).catch(() => 0);
+    
+    // Usuwanie konwersacji - jeśli deleteAllData=true, usuwa również u drugiej osoby
+    if (deleteAllData) {
+      // Znajdź wszystkie konwersacje z tym użytkownikiem
+      const convsSnap = await db.collection("privateConversations")
+        .where("participants", "array-contains", uid)
+        .get();
+      
+      let convCount = 0;
+      let messageCount = 0;
+      
+      // Przetwarzaj konwersacje w partiach (Firestore batch limit = 500)
+      for (const convDoc of convsSnap.docs) {
+        const data = convDoc.data();
+        const participants = Array.isArray(data.participants) ? data.participants : [];
+        const otherParticipant = participants.find((p) => p && p !== uid);
+        
+        if (otherParticipant) {
+          const conversationId = convDoc.id;
+          
+          // Usuń wszystkie wiadomości w tej konwersacji (w partiach)
+          let hasMore = true;
+          while (hasMore) {
+            const messagesSnap = await db.collection("privateMessages")
+              .where("conversationId", "==", conversationId)
+              .limit(500)
+              .get();
+            
+            if (messagesSnap.empty) {
+              hasMore = false;
+            } else {
+              const batch = db.batch();
+              messagesSnap.docs.forEach((doc) => {
+                batch.delete(doc.ref);
+                messageCount++;
+              });
+              await batch.commit().catch(() => {});
+              
+              if (messagesSnap.size < 500) {
+                hasMore = false;
+              }
+            }
+          }
+          
+          // Usuń konwersację
+          await convDoc.ref.delete().catch(() => {});
+          convCount++;
+        }
+      }
+      
+      counts.privateConversations = convCount;
+      counts.privateMessagesInConvs = messageCount;
+    } else {
+      // Tylko usuń konwersacje dla tego użytkownika (soft delete przez deletedBy)
+      const convsSnap = await db.collection("privateConversations")
+        .where("participants", "array-contains", uid)
+        .get();
+      
+      const batch = db.batch();
+      let convCount = 0;
+      convsSnap.docs.forEach((doc) => {
+        batch.update(doc.ref, { deletedBy: { [uid]: true } });
+        convCount++;
+      });
+      
+      await batch.commit().catch(() => {});
+      counts.privateConversations = convCount;
+    }
+    
     counts.userReviewsAsRater = await deleteDocsByQuery(db, "userReviews", "raterId", "==", uid).catch(() => 0);
     counts.userReviewsAsRated = await deleteDocsByQuery(db, "userReviews", "ratedId", "==", uid).catch(() => 0);
     if (email) {

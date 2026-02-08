@@ -165,7 +165,8 @@ service cloud.firestore {
 
     match /privateConversations/{conversationId} {
       allow read: if isAdminOrSuperAdmin() || (isAuthenticated() && (
-        request.auth.uid in resource.data.participants
+        request.auth.uid in resource.data.participants &&
+        (!('deletedBy' in resource.data) || !(request.auth.uid in resource.data.deletedBy) || resource.data.deletedBy[request.auth.uid] != true)
       ));
 
       // Tworzenie/aktualizacja: tylko uczestnicy (minimalnie)
@@ -186,9 +187,19 @@ service cloud.firestore {
         );
 
       // Aktualizacja: tylko uczestnicy i bez zmiany participants
+      // Pozwalamy na aktualizację deletedBy dla soft delete
       allow update: if isAuthenticated() &&
         request.auth.uid in resource.data.participants &&
-        request.resource.data.participants == resource.data.participants;
+        request.resource.data.participants == resource.data.participants &&
+        (
+          // Zwykła aktualizacja (bez deletedBy)
+          (!('deletedBy' in request.resource.data) && !('deletedBy' in resource.data)) ||
+          // Soft delete - tylko użytkownik może oznaczyć siebie jako usuwającego
+          ('deletedBy' in request.resource.data && 
+           request.resource.data.deletedBy is map &&
+           request.resource.data.deletedBy[request.auth.uid] == true &&
+           (!('deletedBy' in resource.data) || resource.data.deletedBy[request.auth.uid] != true))
+        );
 
       allow delete: if isAdminOrSuperAdmin();
     }

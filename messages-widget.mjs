@@ -771,6 +771,19 @@ async function main() {
 
   const uid = user.uid;
 
+  // Sprawdź czy użytkownik jest administratorem
+  let isUserAdmin = false;
+  try {
+    const profileRef = doc(db, "userProfiles", uid);
+    const profileSnap = await getDoc(profileRef);
+    if (profileSnap.exists()) {
+      const data = profileSnap.data();
+      isUserAdmin = data.role === "admin" || uid === "nCMUz2fc8MM9WhhMVBLZ1pdR7O43";
+    }
+  } catch (e) {
+    console.debug("checkIfAdmin error:", e);
+  }
+
   // UI
   const host = document.createElement("div");
   host.id = "strzelca-messages-widget";
@@ -921,7 +934,7 @@ async function main() {
     el.textContent = firstLetter(name);
   }
 
-  function renderConvItem({ key, active, name, sub, unread, avatar, letter, onClick }) {
+  function renderConvItem({ key, active, name, sub, unread, avatar, letter, onClick, onDelete, canDelete }) {
     const conv = document.createElement("div");
     conv.className = `conv ${active ? "active" : ""}`;
     conv.dataset.key = key;
@@ -956,6 +969,26 @@ async function main() {
 
     conv.appendChild(av);
     conv.appendChild(text);
+    
+    // Dodaj przycisk usuwania jeśli można usunąć
+    if (canDelete && onDelete) {
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "convDelete";
+      deleteBtn.innerHTML = "×";
+      deleteBtn.setAttribute("aria-label", "Usuń konwersację");
+      deleteBtn.style.cssText = "position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.5); color: #ef4444; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 18px; font-weight: 900;";
+      deleteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (confirm("Czy na pewno chcesz usunąć tę konwersację?")) {
+          onDelete();
+        }
+      });
+      conv.style.position = "relative";
+      conv.addEventListener("mouseenter", () => deleteBtn.style.display = "flex");
+      conv.addEventListener("mouseleave", () => deleteBtn.style.display = "none");
+      conv.appendChild(deleteBtn);
+    }
+    
     conv.addEventListener("click", onClick);
     return conv;
   }
@@ -1004,6 +1037,8 @@ async function main() {
           avatar: c.peerAvatar || null,
           letter: firstLetter(c.peerName || "U"),
           onClick: () => selectPeer(c.peerId, c.peerName || "Rozmowa"),
+          onDelete: () => deleteConversation(c.id, c.peerId),
+          canDelete: true, // Nie można usuwać konwersacji z support (sprawdzane w deleteConversation)
         })
       );
     }
@@ -1187,6 +1222,31 @@ async function main() {
     });
   }
 
+  // Funkcja usuwania konwersacji (soft delete)
+  async function deleteConversation(conversationId, peerId) {
+    try {
+      // Nie można usuwać konwersacji z pomocą STRZELCA.PL
+      if (peerId === SUPPORT_PEER_ID) {
+        alert("Nie można usunąć konwersacji z Pomoc STRZELCA.PL");
+        return;
+      }
+      
+      const convRef = doc(db, "privateConversations", conversationId);
+      // Soft delete - dodajemy deletedBy dla tego użytkownika
+      await setDoc(convRef, { 
+        deletedBy: { [uid]: true }
+      }, { merge: true });
+      
+      // Jeśli konwersacja jest aktualnie wybrana, przełącz na support
+      if (state.selectedPeerId === peerId) {
+        selectPeer(SUPPORT_PEER_ID, "Pomoc STRZELCA.PL");
+      }
+    } catch (e) {
+      console.warn("deleteConversation error:", e);
+      alert("Nie udało się usunąć konwersacji. Spróbuj ponownie.");
+    }
+  }
+
   function subscribeConversations() {
     if (convUnsub) convUnsub();
     const q = query(
@@ -1203,6 +1263,9 @@ async function main() {
         let totalUnread = 0;
         snap.docs.forEach((d) => {
           const data = d.data() || {};
+          // Pomijamy konwersacje usunięte przez tego użytkownika
+          if (data.deletedBy && data.deletedBy[uid]) return;
+          
           const participants = Array.isArray(data.participants) ? data.participants : [];
           const peerId = participants.find((p) => p && p !== uid) || null;
           if (!peerId) return;
