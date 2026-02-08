@@ -8719,10 +8719,14 @@
       }
 
       // Placeholder dla Google Analytics - przygotowanie do integracji
+      // UWAGA: Nie resetujemy wartości odwiedzin tutaj, ponieważ są one już pobierane z Firestore
+      // w funkcji loadActivityStats(). Ta funkcja jest tylko placeholderem dla przyszłej integracji z GA.
       async function fetchGAStatistics() {
         try {
           // TODO: Integracja z Google Analytics Data API
           // Wymaga Service Account i odpowiednich uprawnień
+          // W przyszłości można tutaj dodać dodatkowe statystyki z GA, które nie nadpisują
+          // wartości odwiedzin pobranych z Firestore
 
           const today = new Date().toISOString().split("T")[0];
           const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
@@ -8736,47 +8740,11 @@
             .split("T")[0];
 
           // Placeholder - w rzeczywistości pobierać z GA API
-          const todayVisitsEl = document.getElementById("visits-today");
-          if (!todayVisitsEl) return;
-          todayVisitsEl.textContent = 0;
-
-          const weekVisitsEl = document.getElementById("visits-week");
-          if (!weekVisitsEl) return;
-          weekVisitsEl.textContent = 0;
-
-          const monthVisitsEl = document.getElementById("visits-month");
-          if (!monthVisitsEl) return;
-          monthVisitsEl.textContent = 0;
-
-          const yearVisitsEl = document.getElementById("visits-year");
-          if (!yearVisitsEl) return;
-          yearVisitsEl.textContent = 0;
-
-          const totalVisitsEl = document.getElementById("visits-total");
-          if (totalVisitsEl) totalVisitsEl.textContent = 0;
-
+          // NIE resetujemy wartości odwiedzin - są one już pobierane z Firestore w loadActivityStats()
           console.log("GA Statistics fetched (placeholder implementation)");
         } catch (error) {
           console.error("Error fetching GA statistics:", error);
-          // Fallback wartości
-          const todayVisitsEl = document.getElementById("visits-today");
-          if (!todayVisitsEl) return;
-          todayVisitsEl.textContent = "0";
-
-          const weekVisitsEl = document.getElementById("visits-week");
-          if (!weekVisitsEl) return;
-          weekVisitsEl.textContent = "0";
-
-          const monthVisitsEl = document.getElementById("visits-month");
-          if (!monthVisitsEl) return;
-          monthVisitsEl.textContent = "0";
-
-          const yearVisitsEl = document.getElementById("visits-year");
-          if (!yearVisitsEl) return;
-          yearVisitsEl.textContent = "0";
-
-          const totalVisitsEl = document.getElementById("visits-total");
-          if (totalVisitsEl) totalVisitsEl.textContent = "0";
+          // Nie resetujemy wartości odwiedzin w przypadku błędu
         }
       }
 
