@@ -369,10 +369,20 @@ function makeStyles() {
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
+    .modalField .search {
+      border: 1px solid rgba(193,154,107,0.5);
+    }
+    .modalField .search:focus {
+      border-color: rgba(193,154,107,0.8);
+    }
     .modalField textarea {
       min-height: 80px;
       max-height: 200px;
       resize: vertical;
+      border: 1px solid rgba(193,154,107,0.5);
+    }
+    .modalField textarea:focus {
+      border-color: rgba(193,154,107,0.8);
     }
     .userSearchResults {
       position: absolute;
@@ -856,6 +866,8 @@ async function main() {
     return state.conversations.filter((c) => {
       const n = (c.peerName || "").toLowerCase();
       const l = (c.lastText || "").toLowerCase();
+      // Wyszukiwanie po nicku (nazwie użytkownika) w utworzonych już wiadomościach
+      // peerName zawiera nick użytkownika, więc już jest uwzględnione w n.includes(q)
       return n.includes(q) || l.includes(q);
     });
   }
@@ -1448,12 +1460,14 @@ async function main() {
     };
   }
 
-  // Search: live filter + users below
+  // Search: live filter + users below (wyszukiwanie po nickach w utworzonych już wiadomościach)
   let searchTimer = null;
   searchInput.addEventListener("input", () => {
     state.q = searchInput.value || "";
+    // Natychmiastowe filtrowanie konwersacji (po nickach)
     renderList();
     if (searchTimer) clearTimeout(searchTimer);
+    // Wyszukiwanie użytkowników z opóźnieniem dla lepszej wydajności
     searchTimer = setTimeout(async () => {
       try {
         state.searchUsers = await searchUsersByPrefix(state.q);
@@ -1461,7 +1475,7 @@ async function main() {
         state.searchUsers = [];
       }
       renderList();
-    }, 250);
+    }, 150);
   });
 
   async function doSend() {
@@ -1508,14 +1522,14 @@ async function main() {
         <button class="modalClose" type="button" aria-label="Zamknij">×</button>
       </div>
       <div class="modalField" style="position: relative;">
-        <label class="modalLabel">Wyszukaj użytkownika</label>
+        <label class="modalLabel">WYSZUKAJ UŻYTKOWNIKA</label>
         <input type="text" class="search" id="new-msg-user-search" placeholder="Wpisz nick lub email..." autocomplete="off" />
         <input type="hidden" id="new-msg-user-id" />
         <input type="hidden" id="new-msg-user-email" />
         <div class="userSearchResults" id="new-msg-results"></div>
       </div>
       <div class="modalField">
-        <label class="modalLabel">Wiadomość</label>
+        <label class="modalLabel">WIADOMOŚĆ</label>
         <textarea class="search" id="new-msg-content" placeholder="Wpisz wiadomość..." rows="4" style="resize: vertical;"></textarea>
       </div>
       <div class="modalActions">
@@ -1546,6 +1560,7 @@ async function main() {
       newMsgUserEmail.value = "";
       return;
     }
+    // Wyszukiwanie "live" - zmniejszony timeout dla szybszej reakcji
     newMsgSearchTimer = setTimeout(async () => {
       try {
         const users = await searchUsersByPrefix(q);
@@ -1578,7 +1593,7 @@ async function main() {
         newMsgResults.innerHTML = '<div style="padding: 12px; text-align: center; color: rgba(229,229,229,0.6); font-size: 12px;">Błąd wyszukiwania</div>';
         newMsgResults.classList.add("show");
       }
-    }, 300);
+    }, 150);
   });
 
   document.addEventListener("click", (e) => {
