@@ -297,8 +297,17 @@ service cloud.firestore {
       ));
 
       // Zabezpieczamy przed wpisami "w cudzym imieniu"
+      // Pozwalamy na logi systemowe (userId == "system") dla zalogowanych użytkowników
       allow create: if isAuthenticated() &&
-        (!('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid);
+        (
+          // Użytkownik może logować swoje własne akcje
+          (!('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid) ||
+          // Lub logi systemowe (automatyczne akcje)
+          (request.resource.data.userId == 'system' && 
+           'action' in request.resource.data &&
+           'details' in request.resource.data &&
+           request.resource.data.details.automatic == true)
+        );
 
       allow update, delete: if isAdminOrSuperAdmin();
     }

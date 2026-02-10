@@ -202,6 +202,22 @@ class FirestoreDatabaseManager {
         };
       });
 
+      // Jeśli pobraliśmy bez orderBy, posortuj w pamięci
+      if (needsInMemorySort && messages.length > 0) {
+        messages.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        if (options.limit) {
+          messages = messages.slice(0, options.limit);
+        }
+      }
+
+      console.log('getMessages: Returning', messages.length, 'messages for options:', {
+        recipientId: options.recipientId,
+        senderId: options.senderId,
+        status: options.status,
+        isRead: options.isRead,
+        categoryId: options.categoryId
+      });
+
       // Pobierz całkowitą liczbę (bez limitów)
       let countQuery = db.collection('messages');
       if (options.recipientId) {
@@ -232,8 +248,15 @@ class FirestoreDatabaseManager {
         }
       }
 
-      const countSnapshot = await countQuery.count().get();
-      const total = countSnapshot.data().count;
+      let total = messages.length; // Domyślnie użyj liczby pobranych wiadomości
+      try {
+        const countSnapshot = await countQuery.count().get();
+        total = countSnapshot.data().count;
+      } catch (countError) {
+        console.warn('getMessages: Error getting count, using messages length:', countError.message);
+        // Jeśli nie można pobrać count, użyj liczby pobranych wiadomości
+        total = messages.length;
+      }
 
       return {
         messages,

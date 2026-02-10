@@ -935,36 +935,36 @@
               </div>
                 </div>
 
-                <!-- Prawa część: Sprawy (50% szer, 70% wys) -->
+                <!-- Prawa część: Wiadomości (50% szer, 70% wys) -->
                 <div
                   class="bg-zinc-800/50 rounded-lg p-4 flex flex-col justify-center"
                 >
                   <h3 class="text-lg font-semibold text-white mb-4 text-center">
-                    Sprawy
+                    Wiadomości
                   </h3>
                   <div class="space-y-4 flex-1 flex flex-col justify-center">
               <div class="text-center">
                 <div
                         class="text-2xl font-bold text-red-400 mb-1"
-                        id="pending-issues"
+                        id="messages-unread"
                 >
                   0
                 </div>
-                      <div class="text-sm text-zinc-400">Niezakończone</div>
+                      <div class="text-sm text-zinc-400">Nieprzeczytane</div>
                     </div>
                     <div class="text-center">
                       <div
                         class="text-2xl font-bold text-green-400 mb-1"
-                        id="new-forms-today"
+                        id="messages-read"
                       >
                         0
                       </div>
-                      <div class="text-sm text-zinc-400">Nowe formularze</div>
+                      <div class="text-sm text-zinc-400">Przeczytane</div>
                     </div>
                     <div class="text-center">
                       <div
                         class="text-2xl font-bold text-blue-400 mb-1"
-                        id="total-issues"
+                        id="messages-total"
                       >
                         0
                       </div>
@@ -3080,6 +3080,16 @@
           // Rozpocznij śledzenie aktywności
           startActivityTracking();
           
+          // Automatyczne odblokowywanie wygasłych blokad co 5 minut
+          if (!window.autoUnblockInterval) {
+            // Wywołaj natychmiast przy starcie
+            autoUnblockExpiredBlocks();
+            // Następnie co 5 minut
+            window.autoUnblockInterval = setInterval(() => {
+              autoUnblockExpiredBlocks();
+            }, 5 * 60 * 1000); // 5 minut
+          }
+          
           switchTab("dashboard");
           // Załaduj stats dla SuperAdmin'a
           setTimeout(() => loadDashboardStats(), 100);
@@ -3151,6 +3161,16 @@
 
               // Rozpocznij śledzenie aktywności
               startActivityTracking();
+
+              // Automatyczne odblokowywanie wygasłych blokad co 5 minut
+              if (!window.autoUnblockInterval) {
+                // Wywołaj natychmiast przy starcie
+                autoUnblockExpiredBlocks();
+                // Następnie co 5 minut
+                window.autoUnblockInterval = setInterval(() => {
+                  autoUnblockExpiredBlocks();
+                }, 5 * 60 * 1000); // 5 minut
+              }
 
               // Załaduj dashboard i stats dopiero po zakończeniu ładowania profilu
               switchTab("dashboard");
@@ -7798,21 +7818,44 @@
               if (todayContactsEl) todayContactsEl.textContent = "0";
             }
 
-            // Oczekujące zadania (pending tasks) - używamy messages z statusem in_progress
+            // Wiadomości - liczymy na podstawie isRead
             try {
-              const pendingTasksQuery = query(
+              const messagesQuery = query(
                 collection(db, "messages"),
-                where("recipientId", "==", "admin"),
-                where("status", "==", "in_progress")
+                where("recipientId", "==", "admin")
               );
-              const pendingTasksSnapshot = await getDocs(pendingTasksQuery);
+              const messagesSnapshot = await getDocs(messagesQuery);
 
-              const pendingTasksEl = document.getElementById("pending-issues");
-              if (pendingTasksEl) pendingTasksEl.textContent = pendingTasksSnapshot.size;
+              let unreadCount = 0;
+              let readCount = 0;
+              let totalCount = 0;
+
+              messagesSnapshot.forEach((doc) => {
+                const message = doc.data();
+                totalCount++;
+                if (!message.isRead) {
+                  unreadCount++;
+                } else {
+                  readCount++;
+                }
+              });
+
+              const unreadEl = document.getElementById("messages-unread");
+              if (unreadEl) unreadEl.textContent = unreadCount;
+
+              const readEl = document.getElementById("messages-read");
+              if (readEl) readEl.textContent = readCount;
+
+              const totalEl = document.getElementById("messages-total");
+              if (totalEl) totalEl.textContent = totalCount;
             } catch (error) {
-              console.warn("Could not fetch pending tasks from Firestore:", error);
-              const pendingTasksEl = document.getElementById("pending-issues");
-              if (pendingTasksEl) pendingTasksEl.textContent = "0";
+              console.warn("Could not fetch messages from Firestore:", error);
+              const unreadEl = document.getElementById("messages-unread");
+              if (unreadEl) unreadEl.textContent = "0";
+              const readEl = document.getElementById("messages-read");
+              if (readEl) readEl.textContent = "0";
+              const totalEl = document.getElementById("messages-total");
+              if (totalEl) totalEl.textContent = "0";
             }
 
             // Wizyty w tym tygodniu - unikalni użytkownicy aktywni od początku tygodnia (poniedziałek)
@@ -8803,24 +8846,44 @@
 
       async function loadPendingTasksCount() {
         try {
-          // Pobierz liczbę oczekujących zadań bezpośrednio z Firestore
+          // Pobierz wszystkie wiadomości i policz na podstawie isRead
           const messagesRef = collection(db, 'messages');
           const q = query(
             messagesRef,
-            where('recipientId', '==', 'admin'),
-            where('status', '==', 'in_progress')
+            where('recipientId', '==', 'admin')
           );
           const querySnapshot = await getDocs(q);
 
-          const count = querySnapshot.size;
-          const pendingTasksEl = document.getElementById("pending-issues");
-          if (!pendingTasksEl) return;
-          pendingTasksEl.textContent = count;
+          let unreadCount = 0;
+          let readCount = 0;
+          let totalCount = 0;
+
+          querySnapshot.forEach((doc) => {
+            const message = doc.data();
+            totalCount++;
+            if (!message.isRead) {
+              unreadCount++;
+            } else {
+              readCount++;
+            }
+          });
+
+          const unreadEl = document.getElementById("messages-unread");
+          if (unreadEl) unreadEl.textContent = unreadCount;
+
+          const readEl = document.getElementById("messages-read");
+          if (readEl) readEl.textContent = readCount;
+
+          const totalEl = document.getElementById("messages-total");
+          if (totalEl) totalEl.textContent = totalCount;
         } catch (error) {
-          console.error("Error loading pending tasks count:", error);
-          const pendingTasksEl = document.getElementById("pending-issues");
-          if (!pendingTasksEl) return;
-          pendingTasksEl.textContent = "0";
+          console.error("Error loading messages count:", error);
+          const unreadEl = document.getElementById("messages-unread");
+          if (unreadEl) unreadEl.textContent = "0";
+          const readEl = document.getElementById("messages-read");
+          if (readEl) readEl.textContent = "0";
+          const totalEl = document.getElementById("messages-total");
+          if (totalEl) totalEl.textContent = "0";
         }
       }
 
@@ -9951,6 +10014,23 @@
           totalCountEl.textContent = stats.total || 0;
         }
 
+        // Update messages section in dashboard
+        const messagesUnreadEl = document.getElementById('messages-unread');
+        if (messagesUnreadEl) {
+          messagesUnreadEl.textContent = stats.unread || 0;
+        }
+
+        const messagesReadEl = document.getElementById('messages-read');
+        if (messagesReadEl) {
+          const readCount = (stats.total || 0) - (stats.unread || 0);
+          messagesReadEl.textContent = readCount;
+        }
+
+        const messagesTotalEl = document.getElementById('messages-total');
+        if (messagesTotalEl) {
+          messagesTotalEl.textContent = stats.total || 0;
+        }
+
         // Load categories and create buttons
         const categoryButtonsEl = document.getElementById('category-buttons');
         if (!categoryButtonsEl) return;
@@ -10081,6 +10161,9 @@
           
           const response = await fetch(apiUrl, {
             method: 'GET',
+            headers: {
+              'X-Admin-Panel': 'true' // Identyfikuj żądanie jako pochodzące z panelu admina
+            },
             credentials: 'include',
             cache: 'no-store',
           });
@@ -10091,6 +10174,13 @@
           
           const apiData = await response.json();
           
+          console.log('API response:', {
+            success: apiData.success,
+            messagesCount: apiData.data?.messages?.length || 0,
+            total: apiData.data?.total || 0,
+            error: apiData.error
+          });
+          
           if (!apiData.success) {
             throw new Error(apiData.error || 'Failed to load messages');
           }
@@ -10098,6 +10188,15 @@
           let messages = apiData.data.messages || [];
           
           console.log('Total messages loaded from API:', messages.length);
+          if (messages.length > 0) {
+            console.log('First message sample:', {
+              id: messages[0].id,
+              senderId: messages[0].senderId,
+              recipientId: messages[0].recipientId,
+              content: messages[0].content?.substring(0, 50),
+              timestamp: messages[0].timestamp
+            });
+          }
           
           // Filtruj po wyszukiwaniu w pamięci (jeśli jest)
           if (currentFilters.search && currentFilters.search.trim()) {

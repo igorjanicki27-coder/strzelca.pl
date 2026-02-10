@@ -143,6 +143,13 @@ module.exports = async (req, res) => {
     const sessionUser = await getSessionUser(req);
     const requesterUid = sessionUser?.uid || null;
     const requesterIsAdmin = await isAdminOrSuperAdmin(requesterUid);
+    console.log('API request:', {
+      method: req.method,
+      path: req.url,
+      requesterUid,
+      requesterIsAdmin,
+      hasXAdminPanel: req.headers['x-admin-panel'] === 'true'
+    });
 
     // Ujednolicamy body (Vercel czasem daje string)
     if (req.body && typeof req.body !== 'object') {
@@ -251,6 +258,13 @@ async function handleGetMessages(req, res, db, { query, requesterUid, requesterI
       categoryId: query.categoryId
     };
 
+    console.log('handleGetMessages: Authorization check:', {
+      requesterIsAdmin,
+      requesterUid,
+      recipientId: options.recipientId,
+      senderId: options.senderId
+    });
+    
     // Autoryzacja (dla zalogowanych userów). Admin ma pełen dostęp jak dotychczas.
     if (!requesterIsAdmin) {
       // Jeśli user jest zalogowany: może czytać tylko swoje wiadomości / rozmowę z adminem.
@@ -272,7 +286,12 @@ async function handleGetMessages(req, res, db, { query, requesterUid, requesterI
       }
     }
 
+    console.log('handleGetMessages: Fetching messages with options:', options);
     const result = await db.getMessages(options);
+    console.log('handleGetMessages: Result:', {
+      messagesCount: result?.messages?.length || 0,
+      total: result?.total || 0
+    });
 
     res.json({
       success: true,
@@ -339,6 +358,14 @@ async function handlePostMessage(req, res, db, { requesterUid, requesterIsAdmin 
       recipientId = 'admin';
     }
 
+    console.log('handlePostMessage: Adding message:', {
+      content: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
+      senderId,
+      senderName,
+      recipientId,
+      status: messageData.status || 'pending',
+      categoryId: messageData.categoryId
+    });
     const message = await db.addMessage({
       ...messageData,
       content,
@@ -347,6 +374,7 @@ async function handlePostMessage(req, res, db, { requesterUid, requesterIsAdmin 
       recipientId,
       timestamp: Date.now(),
     });
+    console.log('handlePostMessage: Message added successfully:', message?.id);
 
     if (message) {
       res.json({
