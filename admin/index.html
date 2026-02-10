@@ -9888,6 +9888,9 @@
 
       // ==================== NOWE FUNKCJE DLA SYSTEMU WIADOMOŚCI ====================
 
+      // Zmienna do przechowywania aktualnych filtrów wiadomości
+      let currentFilters = { search: '', category: 'all', status: 'all' };
+
       // Funkcja ładowania statusu wiadomości
       async function loadMessagesStatus() {
         try {
@@ -10005,6 +10008,11 @@
         const messagesContainer = document.getElementById('messages-container');
         if (!messagesContainer) return;
 
+        // Inicjalizuj currentFilters jeśli nie istnieje
+        if (typeof currentFilters === 'undefined') {
+          currentFilters = { search: '', category: 'all', status: 'all' };
+        }
+
         messagesContainer.innerHTML = `
           <div class="text-center text-zinc-500 py-12">
             <i class="fa-solid fa-spinner fa-spin text-3xl mb-4 text-zinc-600"></i>
@@ -10020,21 +10028,26 @@
             currentFilters.search = searchInput.value || '';
           }
 
-          // Buduj query Firestore z filtrami
-          let messagesQuery = collection(db, 'messages');
+          // Użyj API zamiast bezpośredniego zapytania do Firestore (lepsze uprawnienia)
+          console.log('Loading messages via API with filters:', {
+            recipientId: 'admin',
+            category: currentFilters.category,
+            search: currentFilters.search
+          });
 
-          // Zawsze filtruj po recipientId = 'admin'
-          messagesQuery = query(messagesQuery, where('recipientId', '==', 'admin'));
-
-          // Dodaj filtry
+          // Buduj parametry zapytania API
+          const apiParams = new URLSearchParams();
+          apiParams.append('recipientId', 'admin');
+          apiParams.append('limit', '100');
+          
           if (currentFilters.category === 'unread') {
-            messagesQuery = query(messagesQuery, where('isRead', '==', false));
+            apiParams.append('isRead', 'false');
           } else if (currentFilters.category === 'read') {
-            messagesQuery = query(messagesQuery, where('isRead', '==', true));
+            apiParams.append('isRead', 'true');
           } else if (currentFilters.category === 'completed') {
-            messagesQuery = query(messagesQuery, where('status', '==', 'completed'));
+            apiParams.append('status', 'completed');
           } else if (currentFilters.category === 'in_progress') {
-            messagesQuery = query(messagesQuery, where('status', '==', 'in_progress'));
+            apiParams.append('status', 'in_progress');
           } else if (currentFilters.category && !['unread', 'read', 'completed', 'in_progress', 'all'].includes(currentFilters.category)) {
             // To jest filtr kategorii - znajdź ID kategorii po nazwie
             try {
@@ -10052,7 +10065,7 @@
               });
 
               if (categoryId) {
-                messagesQuery = query(messagesQuery, where('categoryId', '==', categoryId));
+                apiParams.append('categoryId', categoryId);
                 console.log('Added categoryId to query:', categoryId);
               } else {
                 console.warn('Category not found for:', currentFilters.category);
@@ -10062,31 +10075,40 @@
             }
           }
 
-          // Sortuj po timestamp malejąco (najnowsze najpierw)
-          // Jeśli brak indeksu, spróbuj bez orderBy i posortuj w pamięci
-          let querySnapshot;
-          try {
-            messagesQuery = query(messagesQuery, orderBy('timestamp', 'desc'), limit(100));
-            querySnapshot = await getDocs(messagesQuery);
-          } catch (indexError) {
-            // Jeśli brak indeksu, pobierz bez orderBy i posortuj w pamięci
-            if (indexError.code === 9 || indexError.message?.includes('index')) {
-              console.warn('Index error, fetching without orderBy and sorting in memory:', indexError.message);
-              messagesQuery = query(messagesQuery, limit(200)); // Pobierz więcej, bo posortujemy w pamięci
-              querySnapshot = await getDocs(messagesQuery);
-            } else {
-              throw indexError;
-            }
-          }
-          const messages = [];
-
-          querySnapshot.forEach((doc) => {
-            messages.push({
-              id: doc.id,
-              ...doc.data(),
-              timestamp: doc.data().timestamp?.toDate?.()?.getTime() || doc.data().timestamp
-            });
+          // Pobierz wiadomości przez API
+          const apiUrl = `/api/messages?${apiParams.toString()}`;
+          console.log('Fetching messages from API:', apiUrl);
+          
+          const response = await fetch(apiUrl, {
+            method: 'GET',
+            credentials: 'include',
+            cache: 'no-store',
           });
+          
+          if (!response.ok) {
+            throw new Error(`API error: ${response.status} ${response.statusText}`);
+          }
+          
+          const apiData = await response.json();
+          
+          if (!apiData.success) {
+            throw new Error(apiData.error || 'Failed to load messages');
+          }
+          
+          let messages = apiData.data.messages || [];
+          
+          console.log('Total messages loaded from API:', messages.length);
+          
+          // Filtruj po wyszukiwaniu w pamięci (jeśli jest)
+          if (currentFilters.search && currentFilters.search.trim()) {
+            const searchTerm = currentFilters.search.toLowerCase().trim();
+            messages = messages.filter(msg => {
+              const content = (msg.content || '').toLowerCase();
+              const senderName = (msg.senderName || '').toLowerCase();
+              return content.includes(searchTerm) || senderName.includes(searchTerm);
+            });
+            console.log('Messages after search filter:', messages.length);
+          }
 
           // Jeśli pobraliśmy bez orderBy, posortuj w pamięci
           if (messages.length > 0 && messages[0].timestamp) {
