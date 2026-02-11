@@ -87,8 +87,17 @@ class FirestoreDatabaseManager {
       };
 
       // Dodaj wiadomość do kolekcji messages
+      console.log('addMessage: Adding message to Firestore:', {
+        senderId: message.senderId,
+        senderName: message.senderName,
+        recipientId: message.recipientId,
+        content: message.content.substring(0, 50) + (message.content.length > 50 ? '...' : ''),
+        status: message.status,
+        collection: 'messages'
+      });
       const messageRef = await db.collection('messages').add(message);
       const messageId = messageRef.id;
+      console.log('addMessage: Message added successfully with ID:', messageId, 'to collection: messages');
 
       // Zaktualizuj lub utwórz dokument konwersacji
       await this.updateConversation(message.senderId, message.categoryId, message);
@@ -106,6 +115,7 @@ class FirestoreDatabaseManager {
 
   async getMessages(options = {}) {
     try {
+      console.log('getMessages: Called with options:', JSON.stringify(options, null, 2));
       const db = await this.initializeFirebase();
       let query = db.collection('messages');
 
@@ -146,37 +156,28 @@ class FirestoreDatabaseManager {
 
       // Sortowanie i paginacja
       // Uwaga: orderBy z wieloma where może wymagać złożonego indeksu
-      query = query.orderBy('timestamp', 'desc');
-
-      if (options.limit) {
-        query = query.limit(options.limit);
-      }
-
-      if (options.offset) {
-        query = query.offset(options.offset);
-      }
-
+      // Najpierw spróbuj bez orderBy, żeby sprawdzić czy wiadomości w ogóle istnieją
       let snapshot;
-      let needsInMemorySort = false;
+      let needsInMemorySort = true; // Zawsze sortuj w pamięci, żeby uniknąć problemów z indeksami
+      
+      // Zbuduj zapytanie bez orderBy (żeby uniknąć problemów z indeksami)
+      let baseQuery = db.collection('messages');
+      if (options.recipientId) baseQuery = baseQuery.where('recipientId', '==', options.recipientId);
+      if (options.senderId) baseQuery = baseQuery.where('senderId', '==', options.senderId);
+      if (options.status) baseQuery = baseQuery.where('status', '==', options.status);
+      if (options.categoryId) baseQuery = baseQuery.where('categoryId', '==', options.categoryId);
+      if (typeof options.isRead === 'boolean') baseQuery = baseQuery.where('isRead', '==', options.isRead);
+      
+      // Pobierz więcej dokumentów, bo posortujemy w pamięci
+      const fetchLimit = options.limit ? options.limit * 2 : 200;
+      baseQuery = baseQuery.limit(fetchLimit);
+      
       try {
-        snapshot = await query.get();
-      } catch (indexError) {
-        // Jeśli brak indeksu, spróbuj bez orderBy i posortuj w pamięci
-        if (indexError.code === 9 || indexError.message?.includes('index')) {
-          console.warn('getMessages: Index error, retrying without orderBy', indexError.message);
-          needsInMemorySort = true;
-          // Zbuduj zapytanie bez orderBy
-          let retryQuery = db.collection('messages');
-          if (options.recipientId) retryQuery = retryQuery.where('recipientId', '==', options.recipientId);
-          if (options.senderId) retryQuery = retryQuery.where('senderId', '==', options.senderId);
-          if (options.status) retryQuery = retryQuery.where('status', '==', options.status);
-          if (options.categoryId) retryQuery = retryQuery.where('categoryId', '==', options.categoryId);
-          if (typeof options.isRead === 'boolean') retryQuery = retryQuery.where('isRead', '==', options.isRead);
-          if (options.limit) retryQuery = retryQuery.limit(options.limit * 2); // Pobierz więcej, bo posortujemy w pamięci
-          snapshot = await retryQuery.get();
-        } else {
-          throw indexError;
-        }
+        snapshot = await baseQuery.get();
+        console.log('getMessages: Fetched', snapshot.size, 'documents from Firestore');
+      } catch (queryError) {
+        console.error('getMessages: Error fetching messages:', queryError);
+        throw queryError;
       }
       let messages = snapshot.docs.map(doc => {
         const data = doc.data();
@@ -207,6 +208,27 @@ class FirestoreDatabaseManager {
         messages.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
         if (options.limit) {
           messages = messages.slice(0, options.limit);
+        }
+      }
+
+      // Debug: sprawdź czy w ogóle są wiadomości w kolekcji
+      if (messages.length === 0 && options.recipientId === 'admin') {
+        try {
+          const allMessagesSnapshot = await db.collection('messages').limit(5).get();
+          console.log('getMessages: DEBUG - Total messages in collection:', allMessagesSnapshot.size);
+          if (allMessagesSnapshot.size > 0) {
+            allMessagesSnapshot.forEach((doc) => {
+              const data = doc.data();
+              console.log('getMessages: DEBUG - Sample message:', {
+                id: doc.id,
+                senderId: data.senderId,
+                recipientId: data.recipientId,
+                content: data.content?.substring(0, 30)
+              });
+            });
+          }
+        } catch (debugError) {
+          console.warn('getMessages: DEBUG - Error checking all messages:', debugError.message);
         }
       }
 
