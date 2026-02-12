@@ -148,7 +148,8 @@ module.exports = async (req, res) => {
       path: req.url,
       requesterUid,
       requesterIsAdmin,
-      hasXAdminPanel: req.headers['x-admin-panel'] === 'true'
+      hasXAdminPanel: req.headers['x-admin-panel'] === 'true',
+      body: req.method === 'POST' ? (typeof req.body === 'object' ? JSON.stringify(req.body).substring(0, 200) : 'not object') : undefined
     });
 
     // Ujednolicamy body (Vercel czasem daje string)

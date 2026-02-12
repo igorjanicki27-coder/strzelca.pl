@@ -95,9 +95,23 @@ class FirestoreDatabaseManager {
         status: message.status,
         collection: 'messages'
       });
-      const messageRef = await db.collection('messages').add(message);
-      const messageId = messageRef.id;
-      console.log('addMessage: Message added successfully with ID:', messageId, 'to collection: messages');
+      try {
+        const messageRef = await db.collection('messages').add(message);
+        const messageId = messageRef.id;
+        console.log('addMessage: Message added successfully with ID:', messageId, 'to collection: messages');
+        
+        // Weryfikuj, czy wiadomość rzeczywiście została zapisana
+        const verifyRef = db.collection('messages').doc(messageId);
+        const verifySnap = await verifyRef.get();
+        if (verifySnap.exists) {
+          console.log('addMessage: Verification - message exists in Firestore');
+        } else {
+          console.error('addMessage: Verification FAILED - message does not exist in Firestore!');
+        }
+      } catch (addError) {
+        console.error('addMessage: Error adding message to Firestore:', addError);
+        throw addError;
+      }
 
       // Zaktualizuj lub utwórz dokument konwersacji
       await this.updateConversation(message.senderId, message.categoryId, message);

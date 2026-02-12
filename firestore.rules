@@ -302,11 +302,13 @@ service cloud.firestore {
         (
           // Użytkownik może logować swoje własne akcje
           (!('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid) ||
-          // Lub logi systemowe (automatyczne akcje)
+          // Lub logi systemowe (automatyczne akcje) - dla adminów
           (request.resource.data.userId == 'system' && 
            'action' in request.resource.data &&
-           'details' in request.resource.data &&
-           request.resource.data.details.automatic == true)
+           isAdminOrSuperAdmin() &&
+           ('details' in request.resource.data) &&
+           (request.resource.data.details is map) &&
+           (request.resource.data.details.automatic == true))
         );
 
       allow update, delete: if isAdminOrSuperAdmin();

@@ -3313,16 +3313,39 @@
             userAgent: navigator.userAgent,
           };
 
+          console.log('[LogActivity] Próba zapisania logu:', {
+            userId,
+            action,
+            details,
+            targetUserId,
+            hasAutomatic: details?.automatic,
+            currentUser: currentUser?.uid
+          });
+
           await addDoc(collection(db, "activityLogs"), activityData);
+          console.log('[LogActivity] ✅ Log zapisany pomyślnie');
         } catch (error) {
           // Dla błędów permission-denied, zapis do userActivity wymaga specyficznych reguł Firestore
+          console.error('[LogActivity] ❌ Błąd podczas zapisywania logu:', {
+            code: error.code,
+            message: error.message,
+            userId,
+            action,
+            details,
+            stack: error.stack
+          });
+          
           if (error.code === 'permission-denied') {
-            console.warn("Permission denied when logging activity to Firestore - check Firestore security rules");
-            // Nie przerywamy wykonania innych skryptów
-          } else {
-            console.error("Error logging activity:", error);
+            console.warn("[LogActivity] Permission denied - sprawdź reguły Firestore");
+            console.warn("[LogActivity] Dane, które próbowano zapisać:", {
+              userId,
+              action,
+              details,
+              targetUserId,
+              hasAutomatic: details?.automatic
+            });
           }
-          // Nie pokazujemy błędu użytkownikowi, żeby nie przeszkadzać w normalnej pracy
+          // Nie przerywamy wykonania innych skryptów
         }
       }
 
@@ -6258,6 +6281,7 @@
       // Funkcja automatycznie odblokowująca wygasłe blokady
       async function autoUnblockExpiredBlocks() {
         try {
+          console.log('[AutoUnblock] Rozpoczynam sprawdzanie wygasłych blokad...');
           const usersSnapshot = await getDocs(collection(db, "userProfiles"));
           const now = new Date();
           let unblockedCount = 0;
@@ -6275,8 +6299,11 @@
             if (userData.status === "blocked" && userData.blockedUntil && !userData.isPermanentBlock) {
               const blockedUntil = userData.blockedUntil.toDate ? userData.blockedUntil.toDate() : new Date(userData.blockedUntil);
               
+              console.log(`[AutoUnblock] Sprawdzam użytkownika ${docSnapshot.id}: blockedUntil=${blockedUntil.toISOString()}, now=${now.toISOString()}`);
+              
               // Jeśli blokada wygasła, odblokuj
               if (blockedUntil <= now) {
+                console.log(`[AutoUnblock] ✅ Blokada wygasła dla użytkownika ${docSnapshot.id}, odblokowuję...`);
                 const userRef = doc(db, "userProfiles", docSnapshot.id);
                 batch.update(userRef, {
                   status: "active",
@@ -6294,18 +6321,21 @@
                 // Jeśli osiągnięto limit batcha, wykonaj i zacznij nowy
                 if (batchCount >= BATCH_LIMIT) {
                   await batch.commit();
+                  console.log(`[AutoUnblock] Zapisano batch ${currentBatchUsers.length} użytkowników, loguję zdarzenia...`);
                   
                   // Zaloguj odblokowania z tego batcha natychmiast po commit
                   for (const userId of currentBatchUsers) {
                     try {
+                      console.log(`[AutoUnblock] Loguję odblokowanie dla użytkownika ${userId}...`);
                       await logActivity("system", "USER_UNBLOCKED", {
                         unblockedBy: "system",
                         automatic: true,
                         reason: "Blokada wygasła automatycznie",
                         targetUser: userId,
                       }, userId);
+                      console.log(`[AutoUnblock] ✅ Zalogowano odblokowanie dla użytkownika ${userId}`);
                     } catch (logError) {
-                      console.error(`Błąd podczas logowania automatycznego odblokowania dla użytkownika ${userId}:`, logError);
+                      console.error(`[AutoUnblock] ❌ Błąd podczas logowania automatycznego odblokowania dla użytkownika ${userId}:`, logError);
                     }
                   }
                   
@@ -6321,30 +6351,35 @@
           // Wykonaj pozostałe operacje
           if (batchCount > 0) {
             await batch.commit();
+            console.log(`[AutoUnblock] Zapisano ostatni batch ${currentBatchUsers.length} użytkowników, loguję zdarzenia...`);
             
             // Zaloguj odblokowania z ostatniego batcha natychmiast po commit
             for (const userId of currentBatchUsers) {
               try {
+                console.log(`[AutoUnblock] Loguję odblokowanie dla użytkownika ${userId}...`);
                 await logActivity("system", "USER_UNBLOCKED", {
                   unblockedBy: "system",
                   automatic: true,
                   reason: "Blokada wygasła automatycznie",
                   targetUser: userId,
                 }, userId);
+                console.log(`[AutoUnblock] ✅ Zalogowano odblokowanie dla użytkownika ${userId}`);
               } catch (logError) {
-                console.error(`Błąd podczas logowania automatycznego odblokowania dla użytkownika ${userId}:`, logError);
+                console.error(`[AutoUnblock] ❌ Błąd podczas logowania automatycznego odblokowania dla użytkownika ${userId}:`, logError);
               }
             }
           }
 
           // Podsumowanie
           if (unblockedCount > 0) {
-            console.log(`Automatycznie odblokowano ${unblockedCount} wygasłych blokad.`);
+            console.log(`[AutoUnblock] ✅ Automatycznie odblokowano ${unblockedCount} wygasłych blokad.`);
+          } else {
+            console.log(`[AutoUnblock] Brak wygasłych blokad do odblokowania.`);
           }
 
           return unblockedCount;
         } catch (error) {
-          console.error("Błąd podczas automatycznego odblokowywania wygasłych blokad:", error);
+          console.error("[AutoUnblock] ❌ Błąd podczas automatycznego odblokowywania wygasłych blokad:", error);
           return 0;
         }
       }
