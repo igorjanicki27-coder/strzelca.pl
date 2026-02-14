@@ -287,15 +287,23 @@ async function handleGetMessages(req, res, db, { query, requesterUid, requesterI
       }
     }
 
-    console.log('handleGetMessages: Fetching messages with options:', options);
+    console.log('handleGetMessages: Fetching messages with options:', JSON.stringify(options, null, 2));
     const result = await db.getMessages(options);
     console.log('handleGetMessages: Result:', {
       messagesCount: result?.messages?.length || 0,
-      total: result?.total || 0
+      total: result?.total || 0,
+      firstMessage: result?.messages?.[0] ? {
+        id: result.messages[0].id,
+        senderId: result.messages[0].senderId,
+        recipientId: result.messages[0].recipientId,
+        content: result.messages[0].content?.substring(0, 50)
+      } : null
     });
 
     res.json({
       success: true,
+      messagesCount: result?.messages?.length || 0,
+      total: result?.total || 0,
       data: result
     });
   } catch (error) {

@@ -307,8 +307,9 @@ service cloud.firestore {
            'action' in request.resource.data &&
            isAdminOrSuperAdmin() &&
            ('details' in request.resource.data) &&
-           (request.resource.data.details is map) &&
-           (request.resource.data.details.automatic == true))
+           (request.resource.data.details is map || request.resource.data.details is string) &&
+           (request.resource.data.details.automatic == true || 
+            (request.resource.data.details is map && request.resource.data.details['automatic'] == true)))
         );
 
       allow update, delete: if isAdminOrSuperAdmin();

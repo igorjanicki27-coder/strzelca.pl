@@ -1689,11 +1689,18 @@ async function main() {
     sendBtn.disabled = true;
     try {
       if (state.selectedPeerId === SUPPORT_PEER_ID) {
+        console.log("doSend: Sending message to support", {
+          content: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
+          userId: uid,
+          peerId: state.selectedPeerId
+        });
+        
         // Pobierz Firebase Auth ID token jako fallback
         let authToken = null;
         try {
           if (user) {
             authToken = await user.getIdToken();
+            console.log("doSend: Got Firebase Auth token", authToken ? "yes" : "no");
           }
         } catch (e) {
           console.debug("doSend: Failed to get ID token", e);
@@ -1705,29 +1712,56 @@ async function main() {
         }
         
         const apiUrl = getApiUrl("/api/messages");
+        const requestBody = { content, recipientId: "admin", status: "in_progress" };
+        console.log("doSend: Sending POST request to", apiUrl, {
+          body: requestBody,
+          headers: Object.keys(headers)
+        });
+        
         const res = await fetch(apiUrl, {
           method: "POST",
           headers,
           credentials: "include",
-          body: JSON.stringify({ content, recipientId: "admin", status: "in_progress" }),
+          body: JSON.stringify(requestBody),
         });
-        const data = await res.json().catch(() => null);
-        if (!res.ok || !data?.success) throw new Error(data?.error || `HTTP ${res.status}`);
+        
+        console.log("doSend: Response status", res.status, res.statusText);
+        const data = await res.json().catch((e) => {
+          console.error("doSend: Failed to parse JSON response", e);
+          return null;
+        });
+        
+        console.log("doSend: Response data", data);
+        
+        if (!res.ok || !data?.success) {
+          const errorMsg = data?.error || `HTTP ${res.status}`;
+          console.error("doSend: Request failed", errorMsg);
+          throw new Error(errorMsg);
+        }
+        
+        console.log("doSend: Message sent successfully", data?.data?.id);
         ta.value = "";
         ta.focus();
         // refresh
         await fetchSupportThread().then((items) => {
+          console.log("doSend: Refreshed support thread, got", items?.length || 0, "messages");
           renderSupportMessages(items);
           return markSupportRead(items);
-        }).catch(() => {});
+        }).catch((e) => {
+          console.error("doSend: Failed to refresh support thread", e);
+        });
       } else {
-        await ensureConversation(state.selectedPeerId).catch(() => {});
+        console.log("doSend: Sending private message to", state.selectedPeerId);
+        await ensureConversation(state.selectedPeerId).catch((e) => {
+          console.error("doSend: Failed to ensure conversation", e);
+        });
         await sendMessageTo(state.selectedPeerId, content);
         ta.value = "";
         ta.focus();
       }
     } catch (e) {
-      console.warn("send failed:", e?.message || e);
+      console.error("doSend: Send failed", e?.message || e, e);
+      alert("Nie udało się wysłać wiadomości: " + (e?.message || "Nieznany błąd"));
     } finally {
       sendBtn.disabled = false;
     }

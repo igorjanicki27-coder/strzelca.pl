@@ -1583,8 +1583,8 @@
                     Wszystkie: <span id="total-count" class="text-white font-semibold">0</span>
                   </div>
                 </div>
-                <button onclick="loadMessagesWithFilters()" class="btn-admin text-sm px-3 py-1" id="refresh-messages-btn">
-                  <i class="fa-solid fa-sync-alt mr-2"></i>
+                <button onclick="refreshMessages()" class="btn-admin text-sm px-3 py-1 flex items-center gap-2" id="refresh-messages-btn">
+                  <i class="fa-solid fa-sync-alt" id="refresh-icon"></i>
                   <span id="refresh-text">Odśwież</span>
                 </button>
               </div>
@@ -6327,15 +6327,31 @@
                   for (const userId of currentBatchUsers) {
                     try {
                       console.log(`[AutoUnblock] Loguję odblokowanie dla użytkownika ${userId}...`);
-                      await logActivity("system", "USER_UNBLOCKED", {
-                        unblockedBy: "system",
-                        automatic: true,
-                        reason: "Blokada wygasła automatycznie",
-                        targetUser: userId,
-                      }, userId);
+                      
+                      // Użyj addDoc bezpośrednio zamiast funkcji logActivity, aby uniknąć problemów z uprawnieniami
+                      await addDoc(collection(db, "activityLogs"), {
+                        userId: "system",
+                        action: "USER_UNBLOCKED",
+                        details: {
+                          unblockedBy: "system",
+                          automatic: true,
+                          reason: "Blokada wygasła automatycznie",
+                          targetUser: userId,
+                        },
+                        targetUserId: userId,
+                        timestamp: new Date(),
+                        adminId: currentUser ? currentUser.uid : null,
+                        userAgent: navigator.userAgent,
+                      });
+                      
                       console.log(`[AutoUnblock] ✅ Zalogowano odblokowanie dla użytkownika ${userId}`);
                     } catch (logError) {
                       console.error(`[AutoUnblock] ❌ Błąd podczas logowania automatycznego odblokowania dla użytkownika ${userId}:`, logError);
+                      console.error(`[AutoUnblock] ❌ Szczegóły błędu:`, {
+                        code: logError.code,
+                        message: logError.message,
+                        currentUser: currentUser?.uid
+                      });
                     }
                   }
                   
@@ -6357,15 +6373,31 @@
             for (const userId of currentBatchUsers) {
               try {
                 console.log(`[AutoUnblock] Loguję odblokowanie dla użytkownika ${userId}...`);
-                await logActivity("system", "USER_UNBLOCKED", {
-                  unblockedBy: "system",
-                  automatic: true,
-                  reason: "Blokada wygasła automatycznie",
-                  targetUser: userId,
-                }, userId);
+                
+                // Użyj addDoc bezpośrednio zamiast funkcji logActivity, aby uniknąć problemów z uprawnieniami
+                await addDoc(collection(db, "activityLogs"), {
+                  userId: "system",
+                  action: "USER_UNBLOCKED",
+                  details: {
+                    unblockedBy: "system",
+                    automatic: true,
+                    reason: "Blokada wygasła automatycznie",
+                    targetUser: userId,
+                  },
+                  targetUserId: userId,
+                  timestamp: new Date(),
+                  adminId: currentUser ? currentUser.uid : null,
+                  userAgent: navigator.userAgent,
+                });
+                
                 console.log(`[AutoUnblock] ✅ Zalogowano odblokowanie dla użytkownika ${userId}`);
               } catch (logError) {
                 console.error(`[AutoUnblock] ❌ Błąd podczas logowania automatycznego odblokowania dla użytkownika ${userId}:`, logError);
+                console.error(`[AutoUnblock] ❌ Szczegóły błędu:`, {
+                  code: logError.code,
+                  message: logError.message,
+                  currentUser: currentUser?.uid
+                });
               }
             }
           }
@@ -10117,6 +10149,48 @@
           categoryButtonsEl.innerHTML = '';
         }
       }
+
+      // Funkcja odświeżania wiadomości z animacją
+      window.refreshMessages = async function refreshMessages() {
+        const refreshBtn = document.getElementById('refresh-messages-btn');
+        const refreshIcon = document.getElementById('refresh-icon');
+        const refreshText = document.getElementById('refresh-text');
+        
+        // Dodaj animację obrotu
+        if (refreshIcon) {
+          refreshIcon.classList.add('fa-spin');
+        }
+        if (refreshBtn) {
+          refreshBtn.disabled = true;
+          refreshBtn.style.opacity = '0.6';
+          refreshBtn.style.cursor = 'not-allowed';
+        }
+        if (refreshText) {
+          refreshText.textContent = 'Odświeżanie...';
+        }
+        
+        try {
+          await loadMessagesWithFilters();
+          await loadMessagesStatus();
+        } catch (error) {
+          console.error('Error refreshing messages:', error);
+        } finally {
+          // Usuń animację po zakończeniu
+          setTimeout(() => {
+            if (refreshIcon) {
+              refreshIcon.classList.remove('fa-spin');
+            }
+            if (refreshBtn) {
+              refreshBtn.disabled = false;
+              refreshBtn.style.opacity = '1';
+              refreshBtn.style.cursor = 'pointer';
+            }
+            if (refreshText) {
+              refreshText.textContent = 'Odśwież';
+            }
+          }, 500);
+        }
+      };
 
       // Funkcja ładowania wiadomości z filtrami
       window.loadMessagesWithFilters = async function loadMessagesWithFilters() {
