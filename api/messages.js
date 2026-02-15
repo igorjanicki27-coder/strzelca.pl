@@ -398,9 +398,17 @@ async function handlePostMessage(req, res, db, { requesterUid, requesterIsAdmin 
     }
   } catch (error) {
     console.error('Error adding message:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      requesterUid,
+      requesterIsAdmin
+    });
     res.status(500).json({
       success: false,
-      error: 'Internal server error'
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 }

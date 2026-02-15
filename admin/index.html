@@ -2900,17 +2900,27 @@
         console.log("[Firebase] Current user:", auth.currentUser?.uid || "brak");
         
         // Sprawdź, czy Firestore działa - test połączenia
+        // Używamy userProfiles zamiast _test, bo admin ma do tego dostęp
         try {
-          const testDoc = doc(db, "_test", "connection");
-          await getDoc(testDoc);
-          console.log("[Firebase] Test połączenia z Firestore: OK");
+          if (auth.currentUser) {
+            const testDoc = doc(db, "userProfiles", auth.currentUser.uid);
+            await getDoc(testDoc);
+            console.log("[Firebase] Test połączenia z Firestore: OK");
+          } else {
+            console.log("[Firebase] Test połączenia pominięty - użytkownik nie jest zalogowany");
+          }
         } catch (testError) {
-          console.warn("[Firebase] Test połączenia z Firestore nie powiódł się:", testError);
-          console.warn("[Firebase] Szczegóły błędu testu:", {
-            code: testError.code,
-            message: testError.message,
-            name: testError.name
-          });
+          // To nie jest krytyczny błąd - może być normalne, jeśli użytkownik nie ma jeszcze profilu
+          if (testError.code === 'permission-denied') {
+            console.warn("[Firebase] Test połączenia z Firestore: Brak uprawnień (może być normalne)");
+          } else {
+            console.warn("[Firebase] Test połączenia z Firestore nie powiódł się:", testError);
+            console.warn("[Firebase] Szczegóły błędu testu:", {
+              code: testError.code,
+              message: testError.message,
+              name: testError.name
+            });
+          }
           
           // Jeśli to błąd CORS, pokaż ostrzeżenie
           if (testError.message?.includes('CORS') || testError.message?.includes('access control')) {
@@ -10272,7 +10282,11 @@
 
           // Pobierz wiadomości przez API
           const apiUrl = `/api/messages?${apiParams.toString()}`;
-          console.log('Fetching messages from API:', apiUrl);
+          console.log('loadMessagesWithFilters: Fetching messages from API:', apiUrl);
+          console.log('loadMessagesWithFilters: Request headers:', {
+            'X-Admin-Panel': 'true',
+            credentials: 'include'
+          });
           
           const response = await fetch(apiUrl, {
             method: 'GET',
@@ -10283,17 +10297,24 @@
             cache: 'no-store',
           });
           
+          console.log('loadMessagesWithFilters: Response status:', response.status, response.statusText);
+          
           if (!response.ok) {
+            const errorText = await response.text().catch(() => '');
+            console.error('loadMessagesWithFilters: API error response:', errorText);
             throw new Error(`API error: ${response.status} ${response.statusText}`);
           }
           
           const apiData = await response.json();
           
-          console.log('API response:', {
+          console.log('loadMessagesWithFilters: API response:', {
             success: apiData.success,
-            messagesCount: apiData.data?.messages?.length || 0,
-            total: apiData.data?.total || 0,
-            error: apiData.error
+            messagesCount: apiData.messagesCount || 0,
+            total: apiData.total || 0,
+            dataMessagesCount: apiData.data?.messages?.length || 0,
+            dataTotal: apiData.data?.total || 0,
+            error: apiData.error,
+            fullResponse: apiData
           });
           
           if (!apiData.success) {

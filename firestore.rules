@@ -124,7 +124,13 @@ service cloud.firestore {
       // Tworzenie (best-effort) — zwykle przez system, ale zostawiamy dla zalogowanych
       allow create: if isAuthenticated();
 
-      allow update, delete: if isAdminOrSuperAdmin();
+      // Aktualizacja: użytkownik może aktualizować swoją konwersację, admin może wszystkie
+      allow update: if isAdminOrSuperAdmin() || (isAuthenticated() && (
+        conversationId == request.auth.uid ||
+        resource.data.userId == request.auth.uid
+      ));
+
+      allow delete: if isAdminOrSuperAdmin();
     }
 
     match /privateMessages/{messageId} {
@@ -357,6 +363,15 @@ service cloud.firestore {
       allow create: if true;
       
       // Aktualizacja i usuwanie - tylko admin
+      allow update, delete: if isAdminOrSuperAdmin();
+    }
+
+    // =============================================================================
+    // TEST COLLECTION (dla testów połączenia)
+    // =============================================================================
+    match /_test/{testId} {
+      // Admin może odczytywać i tworzyć dokumenty testowe
+      allow read, create: if isAdminOrSuperAdmin();
       allow update, delete: if isAdminOrSuperAdmin();
     }
 

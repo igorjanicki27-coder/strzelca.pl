@@ -113,8 +113,13 @@ class FirestoreDatabaseManager {
         throw addError;
       }
 
-      // Zaktualizuj lub utwórz dokument konwersacji
-      await this.updateConversation(message.senderId, message.categoryId, message);
+      // Zaktualizuj lub utwórz dokument konwersacji (opcjonalnie - nie blokuj zapisu wiadomości)
+      try {
+        await this.updateConversation(message.senderId, message.categoryId, message);
+      } catch (convError) {
+        console.warn('addMessage: Error updating conversation (non-critical):', convError);
+        // Nie rzucamy błędu - wiadomość została zapisana, to jest tylko dodatkowa funkcjonalność
+      }
 
       return {
         id: messageId,
@@ -391,23 +396,24 @@ class FirestoreDatabaseManager {
       if (conversationDoc.exists) {
         // Zaktualizuj istniejącą konwersację
         const updateData = {
-          categoryId,
+          categoryId: categoryId || 'general',
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         };
 
         if (lastMessage) {
           updateData.lastMessage = {
             content: lastMessage.content,
-            timestamp: lastMessage.timestamp
+            timestamp: lastMessage.timestamp || admin.firestore.FieldValue.serverTimestamp()
           };
         }
 
         await conversationRef.update(updateData);
+        console.log('updateConversation: Updated existing conversation for user:', userId);
       } else {
         // Utwórz nową konwersację
         const conversationData = {
-          categoryId,
-          userId,
+          categoryId: categoryId || 'general',
+          userId: userId,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           messageCount: 1
@@ -416,14 +422,21 @@ class FirestoreDatabaseManager {
         if (lastMessage) {
           conversationData.lastMessage = {
             content: lastMessage.content,
-            timestamp: lastMessage.timestamp
+            timestamp: lastMessage.timestamp || admin.firestore.FieldValue.serverTimestamp()
           };
         }
 
         await conversationRef.set(conversationData);
+        console.log('updateConversation: Created new conversation for user:', userId);
       }
     } catch (error) {
       console.error('Error updating conversation:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        userId,
+        categoryId
+      });
       throw error;
     }
   }
