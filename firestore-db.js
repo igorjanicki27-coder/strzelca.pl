@@ -193,7 +193,16 @@ class FirestoreDatabaseManager {
       
       try {
         snapshot = await baseQuery.get();
-        console.log('getMessages: Fetched', snapshot.size, 'documents from Firestore');
+        console.log('getMessages: Fetched', snapshot.size, 'documents from Firestore (size)');
+        console.log('getMessages: Fetched', snapshot.docs.length, 'documents from Firestore (docs.length)');
+        console.log('getMessages: Query filters:', {
+          recipientId: options.recipientId,
+          senderId: options.senderId,
+          status: options.status,
+          categoryId: options.categoryId,
+          isRead: options.isRead,
+          limit: fetchLimit
+        });
       } catch (queryError) {
         console.error('getMessages: Error fetching messages:', queryError);
         throw queryError;

@@ -10283,16 +10283,36 @@
           // Pobierz wiadomości przez API
           const apiUrl = `/api/messages?${apiParams.toString()}`;
           console.log('loadMessagesWithFilters: Fetching messages from API:', apiUrl);
+          
+          // Pobierz Firebase Auth token
+          let authToken = null;
+          try {
+            if (auth && auth.currentUser) {
+              authToken = await auth.currentUser.getIdToken();
+              console.log('loadMessagesWithFilters: Got Firebase Auth token');
+            } else {
+              console.warn('loadMessagesWithFilters: No current user in auth');
+            }
+          } catch (tokenError) {
+            console.error('loadMessagesWithFilters: Failed to get Firebase Auth token:', tokenError);
+          }
+          
+          const headers = {
+            'X-Admin-Panel': 'true' // Identyfikuj żądanie jako pochodzące z panelu admina
+          };
+          if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+          }
+          
           console.log('loadMessagesWithFilters: Request headers:', {
             'X-Admin-Panel': 'true',
+            hasAuthToken: !!authToken,
             credentials: 'include'
           });
           
           const response = await fetch(apiUrl, {
             method: 'GET',
-            headers: {
-              'X-Admin-Panel': 'true' // Identyfikuj żądanie jako pochodzące z panelu admina
-            },
+            headers,
             credentials: 'include',
             cache: 'no-store',
           });
@@ -10844,12 +10864,27 @@
           };
           if (categoryId) payload.categoryId = categoryId;
 
+          // Pobierz Firebase Auth token
+          let authToken = null;
+          try {
+            if (auth && auth.currentUser) {
+              authToken = await auth.currentUser.getIdToken();
+            }
+          } catch (tokenError) {
+            console.error('sendChatReply: Failed to get Firebase Auth token:', tokenError);
+          }
+          
+          const headers = { 
+            'Content-Type': 'application/json',
+            'X-Admin-Panel': 'true' // Oznacz, że wiadomość jest z panelu administracyjnego
+          };
+          if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+          }
+          
           const res = await fetch('/api/messages', {
             method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'X-Admin-Panel': 'true' // Oznacz, że wiadomość jest z panelu administracyjnego
-            },
+            headers,
             credentials: 'include',
             body: JSON.stringify(payload),
           });
