@@ -680,26 +680,25 @@ const firebaseConfig = {
               messageError.classList.add('hidden');
           }
 
-          // Zabezpieczenie przed botami - sprawdzenie ostatniej wiadomości z tego samego emaila
+          // Zabezpieczenie przed botami - sprawdzenie ostatniej wiadomości w tej sesji
           try {
-              const { query, collection, where, orderBy, limit, getDocs } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-              
-              const rateLimitQuery = query(
-                  collection(db, "contactForms"),
-                  where("senderEmail", "==", email),
-                  orderBy("timestamp", "desc"),
-                  limit(1)
-              );
+              // Generuj lub pobierz identyfikator sesji
+              let sessionId = sessionStorage.getItem('contactFormSessionId');
+              if (!sessionId) {
+                  // Generuj unikalny identyfikator sesji
+                  sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                  sessionStorage.setItem('contactFormSessionId', sessionId);
+              }
 
-              const lastMessageSnap = await getDocs(rateLimitQuery);
-
-              if (!lastMessageSnap.empty) {
-                  const lastMessage = lastMessageSnap.docs[0].data();
-                  const timeDiff = Date.now() - lastMessage.timestamp;
+              // Sprawdź czas ostatniej wiadomości w tej sesji
+              const lastMessageTime = sessionStorage.getItem('contactFormLastMessageTime');
+              if (lastMessageTime) {
+                  const timeDiff = Date.now() - parseInt(lastMessageTime);
                   const oneMinute = 60 * 1000; // 1 minuta w milisekundach
 
                   if (timeDiff < oneMinute) {
-                      alert('Można wysłać tylko jedną wiadomość na minutę. Spróbuj ponownie za chwilę.');
+                      const remainingSeconds = Math.ceil((oneMinute - timeDiff) / 1000);
+                      alert(`Można wysłać tylko jedną wiadomość na minutę. Spróbuj ponownie za ${remainingSeconds} sekund.`);
                       return;
                   }
               }
@@ -738,17 +737,26 @@ const firebaseConfig = {
 
               const responseData = await apiResponse.json();
 
-              // Zapisz do kolekcji contactForms dla rate limitingu
+              // Zapisz czas wysłania wiadomości w sessionStorage dla rate limitingu
               try {
+                  // Użyj tego samego sessionId, który został wygenerowany wcześniej
+                  const currentSessionId = sessionStorage.getItem('contactFormSessionId') || sessionId;
+                  sessionStorage.setItem('contactFormSessionId', currentSessionId);
+                  sessionStorage.setItem('contactFormLastMessageTime', Date.now().toString());
+
+                  // Opcjonalnie: zapisz do Firestore dla logowania (z identyfikatorem sesji zamiast emaila)
                   const { addDoc, collection } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
                   await addDoc(collection(db, "contactForms"), {
-                      senderEmail: email,
+                      sessionId: currentSessionId,
+                      senderEmail: email, // Dla informacji, ale nie używamy do rate limitingu
                       timestamp: Date.now(),
                       messageId: responseData.data?.id || null
                   });
               } catch (contactFormError) {
                   console.warn('Nie udało się zapisać do contactForms:', contactFormError);
                   // Nie przerywamy procesu - wiadomość została już zapisana
+                  // Zawsze zapisujemy w sessionStorage, nawet jeśli Firestore się nie powiedzie
+                  sessionStorage.setItem('contactFormLastMessageTime', Date.now().toString());
               }
 
               // Wyślij email potwierdzający zgodnie z szablonem z panelu admina

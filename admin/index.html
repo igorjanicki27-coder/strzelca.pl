@@ -899,9 +899,9 @@
 
               <!-- Główny kontener z podziałem na sekcje -->
               <div
-                class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6 mb-6 min-h-[280px]"
+                class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-6 min-h-[280px]"
               >
-                <!-- Lewa część: Aktywność użytkowników (50% szer, 70% wys) -->
+                <!-- Lewa część: Aktywność użytkowników -->
                 <div
                   class="bg-zinc-800/50 rounded-lg p-4 flex flex-col justify-center"
                 >
@@ -939,7 +939,7 @@
               </div>
                 </div>
 
-                <!-- Prawa część: Wiadomości (50% szer, 70% wys) -->
+                <!-- Środkowa część: Wiadomości -->
                 <div
                   class="bg-zinc-800/50 rounded-lg p-4 flex flex-col justify-center"
                 >
@@ -976,6 +976,62 @@
                     </div>
                   </div>
               </div>
+
+                <!-- Prawa część: Zamówienia -->
+                <div
+                  class="bg-zinc-800/50 rounded-lg p-4 flex flex-col justify-center"
+                >
+                  <h3 class="text-lg font-semibold text-white mb-4 text-center">
+                    Zamówienia
+                  </h3>
+                  <div class="space-y-4 flex-1 flex flex-col justify-center">
+                    <div class="text-center">
+                      <div
+                        class="text-2xl font-bold text-yellow-400 mb-1"
+                        id="orders-zlozone"
+                      >
+                        0
+                      </div>
+                      <div class="text-sm text-zinc-400">Złożone</div>
+                    </div>
+                    <div class="text-center">
+                      <div
+                        class="text-2xl font-bold text-orange-400 mb-1"
+                        id="orders-realizacja"
+                      >
+                        0
+                      </div>
+                      <div class="text-sm text-zinc-400">W realizacji</div>
+                    </div>
+                    <div class="text-center">
+                      <div
+                        class="text-2xl font-bold text-blue-400 mb-1"
+                        id="orders-wyslane"
+                      >
+                        0
+                      </div>
+                      <div class="text-sm text-zinc-400">Wysłane</div>
+                    </div>
+                    <div class="text-center">
+                      <div
+                        class="text-2xl font-bold text-green-400 mb-1"
+                        id="orders-zakonczone"
+                      >
+                        0
+                      </div>
+                      <div class="text-sm text-zinc-400">Zakończone</div>
+                    </div>
+                    <div class="text-center">
+                      <div
+                        class="text-2xl font-bold text-coyote mb-1"
+                        id="orders-total"
+                      >
+                        0
+                      </div>
+                      <div class="text-sm text-zinc-400">Razem</div>
+                    </div>
+                  </div>
+                </div>
             </div>
 
               <!-- Dolna część: Odwiedziny (100% szer, 30% wys) -->
@@ -3085,6 +3141,7 @@
       let currentConversationId = null;
       let pendingTasksListener = null;
       let activityLogsListener = null;
+      let statusMonitoringInterval = null; // Interwał do automatycznego odświeżania statusu
       let userFilterColors = {}; // Kolory filtrów zdefiniowane przez użytkownika
       let activityLogsLimit = 20; // Limit logów do wyświetlenia
       let loadedActivityLogs = []; // Załadowane logi
@@ -3649,9 +3706,12 @@
             if (activityContainer) {
               console.log('Dashboard tab switched, loading activity logs...');
               loadDashboardActivityLogs(true);
+              loadDashboardOrdersCount();
             } else {
               console.warn('admin-activity-log container still not found after tab switch');
             }
+            // Załaduj statystyki zamówień
+            loadDashboardOrdersCount();
           }, 300);
         }
 
@@ -4404,6 +4464,11 @@
           // Ustawienie listener dla pending tasks (tylko jeśli jeszcze nie jest ustawiony)
           if (!pendingTasksListener) {
             setupPendingTasksListener();
+          }
+
+          // Ustawienie automatycznego monitorowania statusu (odświeżanie co 30 sekund)
+          if (!statusMonitoringInterval) {
+            setupStatusMonitoring();
           }
         } catch (error) {
           console.error("Error loading dashboard stats:", error);
@@ -8068,6 +8133,9 @@
               if (totalEl) totalEl.textContent = "0";
             }
 
+            // Załaduj statystyki zamówień
+            loadDashboardOrdersCount();
+
             // Wizyty w tym tygodniu - unikalni użytkownicy aktywni od początku tygodnia (poniedziałek)
             try {
               const weekVisitsQuery = query(
@@ -8362,7 +8430,8 @@
         };
 
         // Funkcja sprawdzania głównych usług serwera
-        async function checkMainServicesStatus() {
+        // showStatusNotification - czy wyświetlać powiadomienie (domyślnie true)
+        async function checkMainServicesStatus(showStatusNotification = true) {
           try {
             // Sprawdź Firestore
           const firestoreStatus = document.getElementById("firestore-status");
@@ -8554,7 +8623,10 @@
             // Sprawdź również status subdomen
             await checkSitesStatus();
 
-            showNotification("Status wszystkich usług został zaktualizowany", "success");
+            // Wyświetl powiadomienie tylko jeśli zostało to wymagane (nie przy automatycznym odświeżaniu)
+            if (showStatusNotification) {
+              showNotification("Status wszystkich usług został zaktualizowany", "success");
+            }
           } catch (error) {
             console.error("Error checking main services:", error);
             showNotification("Błąd sprawdzania statusu usług", "error");
@@ -8717,6 +8789,38 @@
             console.error("Initial pending tasks load error:", error);
           }
         }, 2000);
+      }
+
+      // Funkcja do automatycznego odświeżania statusu co 30 sekund
+      function setupStatusMonitoring() {
+        if (statusMonitoringInterval) {
+          clearInterval(statusMonitoringInterval); // Odłącz poprzedni interval
+        }
+
+        // Uruchom sprawdzanie statusu co 30 sekund
+        statusMonitoringInterval = setInterval(async () => {
+          try {
+            // Sprawdź status usług (aktualizuje kolor zakładki status)
+            // false = nie wyświetlaj powiadomienia przy automatycznym odświeżaniu
+            if (typeof checkMainServicesStatus === 'function') {
+              await checkMainServicesStatus(false);
+            }
+          } catch (error) {
+            console.error("Status monitoring error:", error);
+          }
+        }, 30000); // Co 30 sekund
+
+        // Pierwsze wywołanie natychmiastowe (jeśli nie jesteśmy w zakładce status, to i tak zaktualizuje kolor)
+        // false = nie wyświetlaj powiadomienia przy automatycznym odświeżaniu
+        setTimeout(async () => {
+          try {
+            if (typeof checkMainServicesStatus === 'function') {
+              await checkMainServicesStatus(false);
+            }
+          } catch (error) {
+            console.error("Initial status check error:", error);
+          }
+        }, 1000);
       }
 
       // Funkcja renderowania pojedynczego logu aktywności
@@ -9094,6 +9198,55 @@
           if (readEl) readEl.textContent = "0";
           const totalEl = document.getElementById("messages-total");
           if (totalEl) totalEl.textContent = "0";
+        }
+      }
+
+      // Ładowanie statystyk zamówień w dashboardzie
+      async function loadDashboardOrdersCount() {
+        try {
+          const response = await fetch('/api/orders', {
+            method: 'GET',
+            credentials: 'include',
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to load orders');
+          }
+
+          const data = await response.json();
+          if (!data.success) {
+            throw new Error(data.error || 'Failed to load orders');
+          }
+
+          const orders = data.data || [];
+          
+          const stats = {
+            zlozone: 0,
+            realizacja: 0,
+            wyslane: 0,
+            zakonczone: 0,
+            total: orders.length
+          };
+
+          orders.forEach(order => {
+            if (order.status === 'zlozone') stats.zlozone++;
+            else if (order.status === 'realizacja') stats.realizacja++;
+            else if (order.status === 'wyslane') stats.wyslane++;
+            else if (order.status === 'zakonczone') stats.zakonczone++;
+          });
+
+          document.getElementById('orders-zlozone').textContent = stats.zlozone;
+          document.getElementById('orders-realizacja').textContent = stats.realizacja;
+          document.getElementById('orders-wyslane').textContent = stats.wyslane;
+          document.getElementById('orders-zakonczone').textContent = stats.zakonczone;
+          document.getElementById('orders-total').textContent = stats.total;
+        } catch (error) {
+          console.error('Error loading orders count:', error);
+          document.getElementById('orders-zlozone').textContent = '0';
+          document.getElementById('orders-realizacja').textContent = '0';
+          document.getElementById('orders-wyslane').textContent = '0';
+          document.getElementById('orders-zakonczone').textContent = '0';
+          document.getElementById('orders-total').textContent = '0';
         }
       }
 
