@@ -67,7 +67,11 @@ async function getSessionUser(req) {
           return { uid: decoded.uid, emailVerified: decoded.emailVerified === true };
         }
       } catch (e) {
-        console.debug('getSessionUser: Cookie SSO verification failed, trying Firebase Auth token', e?.message);
+        // Nie loguj jako error jeśli brakuje klucza publicznego - to jest normalne gdy SSO nie jest skonfigurowane
+        // System automatycznie fallbackuje do Firebase Auth token verification
+        if (e?.code !== 'SSO_KEY_MISSING') {
+          console.debug('getSessionUser: Cookie SSO verification failed, trying Firebase Auth token', e?.message);
+        }
       }
     }
     

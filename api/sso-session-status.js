@@ -30,6 +30,10 @@ module.exports = async (req, res) => {
     }
 
     const decoded = verifyLocalSessionJwt(sessionCookie);
+    if (!decoded || !decoded.uid) {
+      res.status(200).json({ success: true, authenticated: false });
+      return;
+    }
     res.status(200).json({
       success: true,
       authenticated: true,

@@ -32,8 +32,11 @@ function initAdmin() {
           type: "spki",
           format: "pem",
         });
-      } catch {
+        console.log('[SSO Utils] Public key extracted successfully for SSO cookie verification');
+      } catch (e) {
         __saPublicKeyPem = null;
+        console.warn('[SSO Utils] Failed to extract public key from private_key, SSO cookie verification will not work:', e?.message || e);
+        console.warn('[SSO Utils] System will fallback to Firebase Auth token verification');
       }
     }
     admin.initializeApp({
@@ -109,7 +112,11 @@ function signLocalSessionJwt(payload) {
 }
 
 function verifyLocalSessionJwt(token) {
-  if (!__saPublicKeyPem) throw new Error("Missing public key for verify");
+  if (!__saPublicKeyPem) {
+    // Zwróć null zamiast rzucać błąd - system fallbackuje do Firebase Auth token verification
+    // To jest normalne gdy SSO nie jest skonfigurowane, więc nie traktujemy tego jako błąd
+    return null;
+  }
   const parts = token.split(".");
   if (parts.length !== 3) throw new Error("Invalid token format");
   const [h, p, s] = parts;

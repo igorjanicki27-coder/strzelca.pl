@@ -33,6 +33,10 @@ module.exports = async (req, res) => {
 
     // Lokalna weryfikacja podpisanego cookie SSO
     const decoded = verifyLocalSessionJwt(sessionCookie);
+    if (!decoded || !decoded.uid) {
+      res.status(200).json({ success: true, authenticated: false });
+      return;
+    }
     const customToken = await admin.auth().createCustomToken(decoded.uid);
 
     res.status(200).json({
