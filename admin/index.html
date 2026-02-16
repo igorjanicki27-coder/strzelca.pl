@@ -699,6 +699,10 @@
                 <i class="fa-solid fa-comments mr-2"></i>
                 Wiadomości
               </div>
+              <div class="nav-item" data-tab="orders">
+                <i class="fa-solid fa-shopping-bag mr-2"></i>
+                Zamówienia
+              </div>
               <div class="nav-item" data-tab="users">
                 <i class="fa-solid fa-users mr-2"></i>
                 Użytkownicy
@@ -744,9 +748,9 @@
               <i class="fa-solid fa-file-pdf mr-2"></i>
               Dokumenty
             </div>
-            <div class="nav-item" data-tab="kontakt">
-              <i class="fa-solid fa-address-book mr-2"></i>
-              Kontakt
+            <div class="nav-item" data-tab="email-templates">
+              <i class="fa-solid fa-envelope mr-2"></i>
+              Szablony maili
             </div>
           </div>
         </nav>
@@ -1615,6 +1619,74 @@
             </div>
           </div>
 
+          <!-- Zamówienia -->
+          <div id="tab-orders" class="tab-content">
+            <h1 class="text-3xl font-bold coyote-text mb-8">
+              Zarządzanie Zamówieniami
+            </h1>
+
+            <!-- Statystyki -->
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+              <div class="admin-card text-center">
+                <div class="text-2xl font-bold text-white mb-1" id="orders-count-zlozone">0</div>
+                <div class="text-sm text-zinc-400">Złożone</div>
+              </div>
+              <div class="admin-card text-center">
+                <div class="text-2xl font-bold text-orange-400 mb-1" id="orders-count-realizacja">0</div>
+                <div class="text-sm text-zinc-400">W realizacji</div>
+              </div>
+              <div class="admin-card text-center">
+                <div class="text-2xl font-bold text-blue-400 mb-1" id="orders-count-wyslane">0</div>
+                <div class="text-sm text-zinc-400">Wysłane</div>
+              </div>
+              <div class="admin-card text-center">
+                <div class="text-2xl font-bold text-green-400 mb-1" id="orders-count-zakonczone">0</div>
+                <div class="text-sm text-zinc-400">Zakończone</div>
+              </div>
+              <div class="admin-card text-center">
+                <div class="text-2xl font-bold text-coyote mb-1" id="orders-count-razem">0</div>
+                <div class="text-sm text-zinc-400">Razem</div>
+              </div>
+            </div>
+
+            <div class="admin-card mb-8">
+              <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold mb-0">Lista Zamówień</h2>
+                <button onclick="showAddOrderModal()" class="btn-admin text-sm px-4 py-2">
+                  <i class="fa-solid fa-plus mr-2"></i>
+                  Dodaj zamówienie
+                </button>
+              </div>
+
+              <!-- Filtry -->
+              <div class="flex flex-wrap gap-2 mb-6">
+                <button onclick="filterOrders('all')" class="filter-btn active" data-filter="all">
+                  Wszystkie
+                </button>
+                <button onclick="filterOrders('zlozone')" class="filter-btn" data-filter="zlozone">
+                  Złożone
+                </button>
+                <button onclick="filterOrders('realizacja')" class="filter-btn" data-filter="realizacja">
+                  W realizacji
+                </button>
+                <button onclick="filterOrders('wyslane')" class="filter-btn" data-filter="wyslane">
+                  Wysłane
+                </button>
+                <button onclick="filterOrders('zakonczone')" class="filter-btn" data-filter="zakonczone">
+                  Zakończone
+                </button>
+              </div>
+
+              <!-- Lista zamówień -->
+              <div id="orders-container">
+                <div class="text-center text-zinc-500 py-12">
+                  <i class="fa-solid fa-spinner fa-spin text-3xl mb-4 text-zinc-600"></i>
+                  <h3 class="text-lg font-semibold mb-2">Ładowanie zamówień...</h3>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Bazar -->
           <div id="tab-bazar" class="tab-content">
             <h1 class="text-3xl font-bold coyote-text mb-8">
@@ -1938,80 +2010,129 @@
             </div>
           </div>
 
-          <!-- Kontakt -->
-          <div id="tab-kontakt" class="tab-content">
+          <!-- Szablony maili -->
+          <div id="tab-email-templates" class="tab-content">
             <h1 class="text-3xl font-bold coyote-text mb-8">
-              Zarządzanie Formularzem Kontaktowym
-          </h1>
+              Zarządzanie Szablonami Maili
+            </h1>
 
-          <div class="grid grid-cols-1 gap-8">
-              <!-- Ustawienia formularza -->
-            <div class="admin-card">
-                <h3 class="text-xl font-bold mb-6">Ustawienia Formularza</h3>
+            <div class="grid grid-cols-1 gap-8">
+              <!-- Ustawienia SMTP -->
+              <div class="admin-card">
+                <h3 class="text-xl font-bold mb-6">Ustawienia SMTP</h3>
+                <p class="text-sm text-zinc-400 mb-6">
+                  Konfiguracja serwera pocztowego. Te ustawienia są również dostępne jako zmienne środowiskowe w Vercel.
+                </p>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label class="flex items-center space-x-3 cursor-pointer">
-                <input
-                        type="checkbox"
-                        id="contact-form-enabled"
-                        checked
-                        class="w-4 h-4"
-                      />
-                      <span class="text-sm font-medium">Formularz włączony</span>
-                    </label>
+                    <label class="block text-sm font-medium mb-2">Host SMTP *</label>
+                    <input
+                      type="text"
+                      id="smtp-host"
+                      placeholder="ssl0.ovh.net"
+                      class="w-full"
+                    />
                     <p class="text-xs text-zinc-500 mt-1">
-                      Wyłącz, aby ukryć formularz kontaktowy na stronie
+                      Dla OVH: ssl0.ovh.net (SSL) lub ns0.ovh.net (TLS)
                     </p>
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium mb-2"
-                      >Email odbiorcy</label
-                    >
+                    <label class="block text-sm font-medium mb-2">Port SMTP *</label>
                     <input
-                      type="email"
-                      id="contact-recipient-email"
-                      placeholder="admin@strzelca.pl"
+                      type="number"
+                      id="smtp-port"
+                      placeholder="465"
                       class="w-full"
                     />
+                    <p class="text-xs text-zinc-500 mt-1">
+                      465 (SSL) lub 587 (TLS)
+                    </p>
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium mb-2"
-                      >Temat powiadomień</label
-                    >
-                <input
-                  type="text"
-                      id="contact-notification-subject"
-                      placeholder="Nowa wiadomość z formularza kontaktowego"
+                    <label class="block text-sm font-medium mb-2">Użytkownik (Email) *</label>
+                    <input
+                      type="email"
+                      id="smtp-user"
+                      placeholder="kontakt@strzelca.pl"
                       class="w-full"
                     />
+                    <p class="text-xs text-zinc-500 mt-1">
+                      Pełny adres email (np. kontakt@strzelca.pl)
+                    </p>
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-medium mb-2">Hasło *</label>
+                    <input
+                      type="password"
+                      id="smtp-password"
+                      placeholder="••••••••"
+                      class="w-full"
+                    />
+                    <p class="text-xs text-zinc-500 mt-1">
+                      Hasło do skrzynki email (z panelu OVH)
+                    </p>
+                  </div>
+
+                  <div>
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        id="smtp-secure"
+                        checked
+                        class="w-4 h-4"
+                      />
+                      <span class="text-sm font-medium">Połączenie bezpieczne (SSL/TLS)</span>
+                    </label>
+                    <p class="text-xs text-zinc-500 mt-1">
+                      Zaznacz dla portu 465 (SSL), odznacz dla 587 (TLS)
+                    </p>
                   </div>
                 </div>
-            </div>
 
-              <!-- Zarządzanie kategoriami i tematami -->
-            <div class="admin-card" style="background: linear-gradient(135deg, rgba(193, 154, 107, 0.1), rgba(193, 154, 107, 0.05)); backdrop-filter: blur(20px); border: 1px solid rgba(193, 154, 107, 0.2);">
+                <div class="mt-6 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                  <h4 class="text-sm font-bold text-coyote mb-2">Instrukcja konfiguracji OVH:</h4>
+                  <ol class="text-xs text-zinc-400 space-y-1 list-decimal list-inside">
+                    <li>Zaloguj się do panelu OVH</li>
+                    <li>Przejdź do "E-maile" → wybierz domenę strzelca.pl</li>
+                    <li>Kliknij na skrzynkę kontakt@strzelca.pl</li>
+                    <li>W zakładce "Ogólne" znajdziesz hasło (lub ustaw nowe)</li>
+                    <li>W zakładce "Konfiguracja klienta e-mail" znajdziesz ustawienia SMTP</li>
+                    <li>Dla SSL: Host: ssl0.ovh.net, Port: 465</li>
+                    <li>Dla TLS: Host: ns0.ovh.net, Port: 587</li>
+                  </ol>
+                </div>
+
+                <div class="mt-6">
+                  <button onclick="saveSmtpSettings()" class="btn-admin px-6 py-2">
+                    <i class="fa-solid fa-save mr-2"></i>
+                    Zapisz ustawienia SMTP
+                  </button>
+                </div>
+              </div>
+
+              <!-- Lista szablonów -->
+              <div class="admin-card">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-xl font-bold coyote-text">Zarządzanie Kategoriami i Tematami</h3>
-                    <button onclick="openCategoryModal()" class="btn-admin px-4 py-2">
-                        <i class="fa-solid fa-plus mr-2"></i>
-                        Dodaj kategorię
-                    </button>
+                  <h3 class="text-xl font-bold">Szablony Maili</h3>
+                  <button onclick="loadEmailTemplates()" class="btn-admin text-sm px-4 py-2">
+                    <i class="fa-solid fa-sync-alt mr-2"></i>
+                    Odśwież
+                  </button>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="categories-list">
-                    <!-- Kategorie będą ładowane dynamicznie -->
-                    <div class="text-center text-zinc-500 py-8 col-span-full">
-                        <i class="fa-solid fa-spinner fa-spin text-2xl mb-4 text-zinc-600"></i>
-                        <h4 class="text-lg font-semibold mb-2">Ładowanie kategorii...</h4>
-                        <p class="text-sm">Proszę czekać</p>
-                    </div>
+                <div class="space-y-4" id="templates-list">
+                  <div class="text-center text-zinc-500 py-8">
+                    <i class="fa-solid fa-spinner fa-spin text-2xl mb-4 text-zinc-600"></i>
+                    <h4 class="text-lg font-semibold mb-2">Ładowanie szablonów...</h4>
+                  </div>
                 </div>
+              </div>
             </div>
           </div>
-        </div>
 
           </div>
         </div>
@@ -2904,8 +3025,8 @@
         try {
           if (auth.currentUser) {
             const testDoc = doc(db, "userProfiles", auth.currentUser.uid);
-            await getDoc(testDoc);
-            console.log("[Firebase] Test połączenia z Firestore: OK");
+          await getDoc(testDoc);
+          console.log("[Firebase] Test połączenia z Firestore: OK");
           } else {
             console.log("[Firebase] Test połączenia pominięty - użytkownik nie jest zalogowany");
           }
@@ -2914,12 +3035,12 @@
           if (testError.code === 'permission-denied') {
             console.warn("[Firebase] Test połączenia z Firestore: Brak uprawnień (może być normalne)");
           } else {
-            console.warn("[Firebase] Test połączenia z Firestore nie powiódł się:", testError);
-            console.warn("[Firebase] Szczegóły błędu testu:", {
-              code: testError.code,
-              message: testError.message,
-              name: testError.name
-            });
+          console.warn("[Firebase] Test połączenia z Firestore nie powiódł się:", testError);
+          console.warn("[Firebase] Szczegóły błędu testu:", {
+            code: testError.code,
+            message: testError.message,
+            name: testError.name
+          });
           }
           
           // Jeśli to błąd CORS, pokaż ostrzeżenie
@@ -3355,7 +3476,7 @@
               hasAutomatic: details?.automatic
             });
           }
-          // Nie przerywamy wykonania innych skryptów
+            // Nie przerywamy wykonania innych skryptów
         }
       }
 
@@ -3507,6 +3628,18 @@
         // Dodatkowe akcje dla konkretnych zakładek
         if (tabName === "status") {
           loadEventsLog();
+        }
+
+        if (tabName === "orders") {
+          if (typeof loadOrders === 'function') {
+            loadOrders();
+          }
+        }
+
+        if (tabName === "email-templates") {
+          if (typeof loadEmailTemplates === 'function') {
+            loadEmailTemplates();
+          }
         }
 
         // Specjalna obsługa dashboard - załaduj dziennik aktywności z opóźnieniem
@@ -6343,10 +6476,10 @@
                         userId: "system",
                         action: "USER_UNBLOCKED",
                         details: {
-                          unblockedBy: "system",
-                          automatic: true,
-                          reason: "Blokada wygasła automatycznie",
-                          targetUser: userId,
+                        unblockedBy: "system",
+                        automatic: true,
+                        reason: "Blokada wygasła automatycznie",
+                        targetUser: userId,
                         },
                         targetUserId: userId,
                         timestamp: new Date(),
@@ -6389,10 +6522,10 @@
                   userId: "system",
                   action: "USER_UNBLOCKED",
                   details: {
-                    unblockedBy: "system",
-                    automatic: true,
-                    reason: "Blokada wygasła automatycznie",
-                    targetUser: userId,
+                  unblockedBy: "system",
+                  automatic: true,
+                  reason: "Blokada wygasła automatycznie",
+                  targetUser: userId,
                   },
                   targetUserId: userId,
                   timestamp: new Date(),
@@ -10528,12 +10661,12 @@
                                conversation.categoryName === 'Oferty' ? 'fa-tag' : 'fa-circle';
 
           return `
-            <div class="message-item bg-zinc-800/50 rounded-lg p-4 cursor-pointer hover:bg-zinc-800/70 transition-all duration-200 border ${hasUnread ? 'border-l-4 border-l-coyote glowing-border' : 'border-zinc-700'}"
+            <div class="message-item bg-zinc-800/50 rounded-lg p-4 hover:bg-zinc-800/70 transition-all duration-200 border ${hasUnread ? 'border-l-4 border-l-coyote glowing-border' : 'border-zinc-700'}"
                  data-user-id="${conversation.senderId}"
                  data-user-name="${conversation.senderName}"
                  data-user-email="${conversation.senderEmail}">
               <div class="flex items-start justify-between mb-3">
-                <div class="flex items-center space-x-3">
+                <div class="flex items-center space-x-3 flex-1 cursor-pointer" onclick="openMessageChat('${conversation.senderId}', '${conversation.senderName || ''}', '${conversation.senderEmail || ''}')">
                   <div class="w-10 h-10 bg-coyote rounded-full flex items-center justify-center">
                     <i class="fa-solid fa-user text-black text-sm"></i>
                   </div>
@@ -10547,7 +10680,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="text-right">
+                <div class="text-right flex-shrink-0 ml-4">
                   <div class="text-xs text-zinc-500 mb-2">${date}</div>
                   <div class="flex flex-col items-end space-y-1">
                     <span class="${lastMsg.status === 'completed' ? 'text-green-400' : 'text-orange-400'} text-xs font-medium">
@@ -10561,7 +10694,7 @@
                 </div>
               </div>
 
-              <div class="mb-3">
+              <div class="mb-3 cursor-pointer" onclick="openMessageChat('${conversation.senderId}', '${conversation.senderName || ''}', '${conversation.senderEmail || ''}')">
                 <p class="text-zinc-300 text-sm leading-relaxed">
                   ${lastMsg.topic ? `<strong>${lastMsg.topic}:</strong> ` : ''}
                   ${lastMsg.content.length > 150 ? lastMsg.content.substring(0, 150) + '...' : lastMsg.content}
@@ -10569,7 +10702,13 @@
               </div>
 
               <div class="flex items-center justify-between text-xs text-zinc-500">
-                <span>${conversation.totalMessages} wiadomości</span>
+                <span>${conversation.totalMessages} wiadomości${hasUnread ? ` • <span class="text-coyote font-semibold">${conversation.unreadCount} nieprzeczytanych</span>` : ''}</span>
+                <button onclick="event.stopPropagation(); toggleConversationReadStatus('${conversation.senderId}', ${hasUnread})" 
+                        class="px-3 py-1 rounded text-xs font-medium transition-colors ${hasUnread ? 'bg-coyote text-black hover:bg-coyote/80' : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'}"
+                        title="${hasUnread ? 'Oznacz jako przeczytane' : 'Oznacz jako nieprzeczytane'}">
+                  <i class="fa-solid ${hasUnread ? 'fa-envelope-open' : 'fa-envelope'} mr-1"></i>
+                  ${hasUnread ? 'Przeczytane' : 'Nieprzeczytane'}
+                </button>
               </div>
             </div>
           `;
@@ -10577,19 +10716,197 @@
 
         messagesContainer.innerHTML = messagesHtml;
 
-        // Dodaj event listenery do wszystkich elementów wiadomości
-        const messageItems = messagesContainer.querySelectorAll('.message-item');
-        messageItems.forEach(item => {
-          item.addEventListener('click', function() {
-            const userId = this.getAttribute('data-user-id');
-            const userName = this.getAttribute('data-user-name');
-            const userEmail = this.getAttribute('data-user-email');
-            if (userId && userName && userEmail) {
-              openMessageChat(userId, userName, userEmail);
-            }
+        // Event listenery są już dodane w HTML przez onclick
+      }
+      
+      // Funkcja otwierania czatu - upewnij się, że jest dostępna globalnie
+      window.openMessageChat = async function openMessageChat(userId, userName, userEmail) {
+        currentConversationUser = { id: userId, name: userName, email: userEmail };
+
+        // Pokaż modal
+        document.getElementById('chat-modal').classList.remove('hidden');
+
+        // Ustaw informacje użytkownika
+        const chatNameEl2 = document.getElementById('chat-user-name');
+        if (chatNameEl2) chatNameEl2.textContent = userName || 'Użytkownik';
+        const chatEmailEl2 = document.getElementById('chat-user-email');
+        if (chatEmailEl2) chatEmailEl2.textContent = userEmail || '';
+
+        // Załaduj kategorie do select
+        const categorySelect = document.getElementById('chat-category-select');
+        categorySelect.innerHTML = '<option value="">Ładowanie...</option>';
+        
+        try {
+          const categoriesRef = collection(db, 'messageCategories');
+          const categoriesQuery = query(categoriesRef);
+          const categoriesSnapshot = await getDocs(categoriesQuery);
+          
+          const categories = [];
+          categoriesSnapshot.forEach((doc) => {
+            categories.push({
+              id: doc.id,
+              ...doc.data()
           });
         });
-      }
+          
+          categorySelect.innerHTML = categories.map(cat =>
+            `<option value="${cat.id}">${cat.name}</option>`
+          ).join('');
+
+          // Ustaw aktualną kategorię rozmowy
+          try {
+            // Pobierz Firebase Auth token
+            let authToken = null;
+            try {
+              if (auth && auth.currentUser) {
+                authToken = await auth.currentUser.getIdToken();
+              }
+            } catch (tokenError) {
+              console.error('openMessageChat: Failed to get Firebase Auth token:', tokenError);
+            }
+            
+            const headers = {};
+            if (authToken) {
+              headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            
+            const latest = await fetch(`/api/messages?senderId=${userId}&recipientId=admin&limit=1`, {
+              method: 'GET',
+              headers,
+              credentials: 'include',
+              cache: 'no-store',
+            }).then(r => r.json());
+            if (latest?.success && latest?.data?.messages?.[0]?.categoryId) {
+              categorySelect.value = latest.data.messages[0].categoryId;
+            }
+          } catch (error) {
+            console.error('Error setting current category:', error);
+          }
+        } catch (error) {
+          console.error('Error loading categories for chat:', error);
+          categorySelect.innerHTML = '<option value="">Błąd ładowania</option>';
+        }
+
+        // Załaduj wiadomości konwersacji
+        await loadConversationMessages(userId);
+        
+        // Automatycznie oznacz wszystkie nieprzeczytane wiadomości jako przeczytane
+        await markConversationAsRead(userId);
+      };
+      
+      // Funkcja przełączania statusu przeczytana/nieprzeczytana konwersacji
+      window.toggleConversationReadStatus = async function toggleConversationReadStatus(userId, currentlyUnread) {
+        try {
+          // Pobierz Firebase Auth token
+          let authToken = null;
+          try {
+            if (auth && auth.currentUser) {
+              authToken = await auth.currentUser.getIdToken();
+            }
+          } catch (tokenError) {
+            console.error('toggleConversationReadStatus: Failed to get Firebase Auth token:', tokenError);
+            showNotification('Błąd autoryzacji', 'error');
+            return;
+          }
+          
+          const headers = {
+            'X-Admin-Panel': 'true',
+            'Content-Type': 'application/json'
+          };
+          if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+          }
+          
+          // Wybierz akcję: jeśli są nieprzeczytane, oznacz jako przeczytane, w przeciwnym razie jako nieprzeczytane
+          const action = currentlyUnread ? 'read' : 'unread';
+          
+          const response = await fetch(`/api/messages/conversation/${userId}/${action}`, {
+            method: 'PUT',
+            headers,
+            credentials: 'include'
+          });
+          
+          const data = await response.json();
+          if (!data.success) {
+            throw new Error(data.error || 'Failed to update read status');
+          }
+          
+          // Odśwież listę wiadomości
+          await loadMessagesWithFilters();
+          await loadMessagesStatus();
+          
+          showNotification(
+            currentlyUnread ? 'Konwersacja oznaczona jako przeczytana' : 'Konwersacja oznaczona jako nieprzeczytana',
+            'success'
+          );
+        } catch (error) {
+          console.error('Error toggling conversation read status:', error);
+          showNotification('Błąd zmiany statusu: ' + (error.message || 'Nieznany błąd'), 'error');
+        }
+      };
+      
+      // Funkcja automatycznego oznaczania konwersacji jako przeczytanej
+      async function markConversationAsRead(userId) {
+        try {
+          // Pobierz Firebase Auth token
+          let authToken = null;
+          try {
+            if (auth && auth.currentUser) {
+              authToken = await auth.currentUser.getIdToken();
+            }
+          } catch (tokenError) {
+            console.error('markConversationAsRead: Failed to get Firebase Auth token:', tokenError);
+            return;
+          }
+          
+          const headers = {
+            'X-Admin-Panel': 'true',
+            'Content-Type': 'application/json'
+          };
+          if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+          }
+          
+          // Pobierz wszystkie nieprzeczytane wiadomości od użytkownika
+          const response = await fetch(`/api/messages?senderId=${userId}&recipientId=admin&isRead=false&limit=100`, {
+            method: 'GET',
+            headers,
+            credentials: 'include',
+            cache: 'no-store',
+          });
+          
+          const data = await response.json();
+          if (!data.success || !data.data?.messages) {
+            return;
+          }
+          
+          // Oznacz każdą nieprzeczytaną wiadomość jako przeczytaną
+          const unreadMessages = data.data.messages.filter(msg => !msg.isRead);
+          if (unreadMessages.length === 0) {
+            return;
+          }
+          
+          // Oznacz wszystkie wiadomości jako przeczytane przez API
+          const markPromises = unreadMessages.map(msg => 
+            fetch(`/api/messages/${msg.id}/read`, {
+              method: 'PUT',
+              headers,
+              credentials: 'include'
+            }).catch(err => {
+              console.warn('Failed to mark message as read:', msg.id, err);
+              return null;
+            })
+          );
+          
+          await Promise.all(markPromises);
+          
+          // Odśwież status wiadomości w tle (bez blokowania UI)
+          loadMessagesStatus().catch(err => console.warn('Failed to refresh message status:', err));
+        } catch (error) {
+          console.error('Error marking conversation as read:', error);
+          // Nie pokazuj błędu użytkownikowi - to jest automatyczna operacja w tle
+        }
+      };
 
       // Funkcja otwierania czatu z wiadomością
       async function openMessageChat(userId, userName, userEmail) {
@@ -10881,7 +11198,7 @@
           if (authToken) {
             headers['Authorization'] = `Bearer ${authToken}`;
           }
-          
+
           const res = await fetch('/api/messages', {
             method: 'POST',
             headers,
@@ -11454,6 +11771,832 @@
         } catch (error) {
           console.error('Error updating chat modal colors:', error);
         }
+      }
+
+      // =============================================================================
+      // ZAMÓWIENIA - Funkcje zarządzania zamówieniami
+      // =============================================================================
+      let currentOrderFilter = 'all';
+      let currentEditingOrder = null;
+      let allOrders = [];
+
+      // Ładowanie zamówień
+      window.loadOrders = async function(status = null) {
+        try {
+          const container = document.getElementById('orders-container');
+          if (!container) return;
+
+          container.innerHTML = `
+            <div class="text-center text-zinc-500 py-12">
+              <i class="fa-solid fa-spinner fa-spin text-3xl mb-4 text-zinc-600"></i>
+              <h3 class="text-lg font-semibold mb-2">Ładowanie zamówień...</h3>
+            </div>
+          `;
+
+          const queryParams = new URLSearchParams();
+          if (status && status !== 'all') {
+            queryParams.append('status', status);
+          }
+
+          const response = await fetch(`/api/orders?${queryParams.toString()}`, {
+            method: 'GET',
+            credentials: 'include',
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to load orders');
+          }
+
+          const data = await response.json();
+          if (!data.success) {
+            throw new Error(data.error || 'Failed to load orders');
+          }
+
+          allOrders = data.data || [];
+          updateOrdersStatistics();
+          renderOrders(allOrders);
+        } catch (error) {
+          console.error('Error loading orders:', error);
+          const container = document.getElementById('orders-container');
+          if (container) {
+            container.innerHTML = `
+              <div class="text-center text-red-400 py-12">
+                <i class="fa-solid fa-exclamation-triangle text-4xl mb-4"></i>
+                <h3 class="text-lg font-semibold mb-2">Błąd ładowania zamówień</h3>
+                <p class="text-sm">${error.message}</p>
+              </div>
+            `;
+          }
+          showNotification('Błąd ładowania zamówień: ' + error.message, 'error');
+        }
+      };
+
+      // Aktualizacja statystyk
+      function updateOrdersStatistics() {
+        const stats = {
+          zlozone: 0,
+          realizacja: 0,
+          wyslane: 0,
+          zakonczone: 0,
+          razem: allOrders.length
+        };
+
+        allOrders.forEach(order => {
+          if (order.status === 'zlozone') stats.zlozone++;
+          else if (order.status === 'realizacja') stats.realizacja++;
+          else if (order.status === 'wyslane') stats.wyslane++;
+          else if (order.status === 'zakonczone') stats.zakonczone++;
+        });
+
+        document.getElementById('orders-count-zlozone').textContent = stats.zlozone;
+        document.getElementById('orders-count-realizacja').textContent = stats.realizacja;
+        document.getElementById('orders-count-wyslane').textContent = stats.wyslane;
+        document.getElementById('orders-count-zakonczone').textContent = stats.zakonczone;
+        document.getElementById('orders-count-razem').textContent = stats.razem;
+      }
+
+      // Renderowanie zamówień
+      function renderOrders(orders) {
+        const container = document.getElementById('orders-container');
+        if (!container) return;
+
+        if (orders.length === 0) {
+          container.innerHTML = `
+            <div class="text-center text-zinc-500 py-12">
+              <i class="fa-solid fa-shopping-bag text-4xl mb-4 text-zinc-600"></i>
+              <h3 class="text-lg font-semibold mb-2">Brak zamówień</h3>
+              <p class="text-sm">Nie znaleziono zamówień spełniających kryteria</p>
+            </div>
+          `;
+          return;
+        }
+
+        const statusColors = {
+          zlozone: 'text-yellow-400 bg-yellow-400/20 border-yellow-400/40',
+          realizacja: 'text-orange-400 bg-orange-400/20 border-orange-400/40',
+          wyslane: 'text-blue-400 bg-blue-400/20 border-blue-400/40',
+          zakonczone: 'text-green-400 bg-green-400/20 border-green-400/40'
+        };
+
+        const statusNames = {
+          zlozone: 'Złożone',
+          realizacja: 'W realizacji',
+          wyslane: 'Wysłane',
+          zakonczone: 'Zakończone'
+        };
+
+        container.innerHTML = orders.map(order => {
+          const statusColor = statusColors[order.status] || 'text-zinc-400 bg-zinc-400/20 border-zinc-400/40';
+          const statusName = statusNames[order.status] || order.status;
+          
+          return `
+            <div class="bg-zinc-800/50 rounded-lg p-4 mb-4 border border-zinc-700 hover:border-zinc-600 transition-all">
+              <div class="flex justify-between items-start mb-4">
+                <div>
+                  <div class="flex items-center gap-3 mb-2">
+                    <h3 class="text-lg font-bold text-white">${order.orderNumber || 'Brak numeru'}</h3>
+                    <span class="px-3 py-1 rounded text-xs font-medium border ${statusColor}">
+                      ${statusName}
+                    </span>
+                  </div>
+                  <div class="text-sm text-zinc-400 space-y-1">
+                    ${order.userId ? `<div>Użytkownik: <span class="text-white">${order.userId}</span></div>` : ''}
+                    ${order.email ? `<div>Email: <span class="text-white">${order.email}</span></div>` : ''}
+                    <div>Utworzono: <span class="text-white">${order.createdAtFormatted || 'Brak daty'}</span></div>
+                    ${order.updatedAtFormatted && order.updatedAtFormatted !== order.createdAtFormatted ? 
+                      `<div>Zaktualizowano: <span class="text-white">${order.updatedAtFormatted}</span></div>` : ''}
+                  </div>
+                </div>
+                <div class="flex gap-2">
+                  <button onclick="editOrder('${order.id}')" class="btn-admin text-xs px-3 py-1">
+                    <i class="fa-solid fa-edit mr-1"></i> Edytuj
+                  </button>
+                  <button onclick="deleteOrder('${order.id}', '${order.orderNumber}')" class="btn-danger text-xs px-3 py-1">
+                    <i class="fa-solid fa-trash mr-1"></i> Usuń
+                  </button>
+                </div>
+              </div>
+              
+              <div class="mb-4">
+                <div class="text-sm text-zinc-300 mb-2">
+                  <strong>Zamówienie:</strong> ${order.orderDetails || 'Brak opisu'}
+                </div>
+                ${order.notes ? `<div class="text-sm text-zinc-400 italic">${order.notes}</div>` : ''}
+              </div>
+
+              <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                <div>
+                  <div class="text-zinc-400">Cena</div>
+                  <div class="text-white font-semibold">${(order.price || 0).toFixed(2)} zł</div>
+                </div>
+                <div>
+                  <div class="text-zinc-400">Wysyłka</div>
+                  <div class="text-white font-semibold">${(order.shipping || 0).toFixed(2)} zł</div>
+                </div>
+                <div>
+                  <div class="text-zinc-400">Koszty dodatkowe</div>
+                  <div class="text-white font-semibold">${(order.additionalCosts || 0).toFixed(2)} zł</div>
+                </div>
+                <div>
+                  <div class="text-zinc-400">Podatek</div>
+                  <div class="text-white font-semibold">${(order.tax || 0).toFixed(2)} zł</div>
+                </div>
+                <div>
+                  <div class="text-zinc-400">Razem</div>
+                  <div class="text-coyote font-bold text-lg">${(order.total || 0).toFixed(2)} zł</div>
+                </div>
+              </div>
+
+              ${order.invoiceFile ? `
+                <div class="mt-4 pt-4 border-t border-zinc-700">
+                  <a href="${order.invoiceFile}" target="_blank" class="text-coyote hover:text-coyote/80 text-sm">
+                    <i class="fa-solid fa-file-pdf mr-2"></i> Pobierz fakturę
+                  </a>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Filtrowanie zamówień
+      window.filterOrders = function(status) {
+        currentOrderFilter = status;
+        
+        // Aktualizuj przyciski
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+          btn.classList.remove('active');
+          if (btn.dataset.filter === status) {
+            btn.classList.add('active');
+          }
+        });
+
+        // Filtruj zamówienia
+        let filtered = allOrders;
+        if (status !== 'all') {
+          filtered = allOrders.filter(order => order.status === status);
+        }
+
+        renderOrders(filtered);
+      };
+
+      // Pokazanie modala dodawania zamówienia
+      window.showAddOrderModal = function() {
+        currentEditingOrder = null;
+        showOrderModal();
+      };
+
+      // Edycja zamówienia
+      window.editOrder = async function(orderId) {
+        try {
+          const order = allOrders.find(o => o.id === orderId);
+          if (!order) {
+            showNotification('Zamówienie nie znalezione', 'error');
+            return;
+          }
+
+          currentEditingOrder = order;
+          showOrderModal();
+        } catch (error) {
+          console.error('Error loading order for edit:', error);
+          showNotification('Błąd ładowania zamówienia', 'error');
+        }
+      };
+
+      // Modal zamówienia
+      function showOrderModal() {
+        // Utworzę modal dynamicznie - będzie to duży formularz
+        // Najpierw sprawdzę czy modal już istnieje
+        let modal = document.getElementById('order-modal');
+        if (!modal) {
+          modal = document.createElement('div');
+          modal.id = 'order-modal';
+          modal.className = 'fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl';
+          modal.onclick = function(e) {
+            if (e.target.id === 'order-modal') closeOrderModal();
+          };
+          document.body.appendChild(modal);
+        }
+
+        const isEdit = !!currentEditingOrder;
+        modal.innerHTML = `
+          <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-6">
+              <h2 class="text-2xl font-bold coyote-text">${isEdit ? 'Edytuj zamówienie' : 'Dodaj zamówienie'}</h2>
+              <button onclick="closeOrderModal()" class="text-zinc-400 hover:text-white">
+                <i class="fa-solid fa-times text-xl"></i>
+              </button>
+            </div>
+
+            <form id="order-form" onsubmit="saveOrder(event)">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <label class="block text-sm font-medium mb-2">Użytkownik (ID)</label>
+                  <input type="text" id="order-userId" class="w-full" placeholder="ID użytkownika (opcjonalne)">
+                  <button type="button" onclick="searchUser()" class="mt-2 btn-admin text-xs px-3 py-1">
+                    <i class="fa-solid fa-search mr-1"></i> Szukaj użytkownika
+                  </button>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-2">Email (jeśli brak konta)</label>
+                  <input type="email" id="order-email" class="w-full" placeholder="email@example.com">
+                </div>
+              </div>
+
+              <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Zamówienie *</label>
+                <textarea id="order-details" class="w-full" rows="4" placeholder="Opis zamówienia..." required></textarea>
+              </div>
+
+              <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Uwagi</label>
+                <textarea id="order-notes" class="w-full" rows="3" placeholder="Dodatkowe uwagi..."></textarea>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <label class="block text-sm font-medium mb-2">Paczkomat</label>
+                  <input type="text" id="order-parcelLocker" class="w-full" placeholder="Kod paczkomatu">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-2">Telefon</label>
+                  <input type="text" id="order-phone" class="w-full" placeholder="Nr telefonu">
+                </div>
+              </div>
+
+              <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Adres</label>
+                <div class="grid grid-cols-2 gap-4">
+                  <input type="text" id="order-address-street" class="w-full" placeholder="Ulica">
+                  <input type="text" id="order-address-building" class="w-full" placeholder="Nr budynku">
+                  <input type="text" id="order-address-postal" class="w-full" placeholder="Kod pocztowy">
+                  <input type="text" id="order-address-city" class="w-full" placeholder="Miasto">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                <div>
+                  <label class="block text-sm font-medium mb-2">Cena (zł)</label>
+                  <input type="number" id="order-price" step="0.01" class="w-full" value="0" oninput="calculateOrderTotal()">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-2">Wysyłka (zł)</label>
+                  <input type="number" id="order-shipping" step="0.01" class="w-full" value="0" oninput="calculateOrderTotal()">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-2">Koszty dodatkowe (zł)</label>
+                  <input type="number" id="order-additionalCosts" step="0.01" class="w-full" value="0" oninput="calculateOrderTotal()">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-2">Podatek (zł)</label>
+                  <input type="number" id="order-tax" step="0.01" class="w-full" value="0" oninput="calculateOrderTotal()">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-2">Razem (zł)</label>
+                  <input type="number" id="order-total" step="0.01" class="w-full bg-zinc-800" readonly>
+                </div>
+              </div>
+
+              <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Status</label>
+                <select id="order-status" class="w-full">
+                  <option value="zlozone">Złożone</option>
+                  <option value="realizacja">W realizacji</option>
+                  <option value="wyslane">Wysłane</option>
+                  <option value="zakonczone">Zakończone</option>
+                </select>
+              </div>
+
+              <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Faktura (PDF)</label>
+                <input type="file" id="order-invoice" accept=".pdf" class="w-full">
+                <p class="text-xs text-zinc-400 mt-1">Wymagane dla statusu "Zakończone"</p>
+              </div>
+
+              <div class="flex justify-end gap-4">
+                <button type="button" onclick="closeOrderModal()" class="btn-secondary px-6 py-2">
+                  Anuluj
+                </button>
+                <button type="submit" class="btn-admin px-6 py-2">
+                  <i class="fa-solid fa-save mr-2"></i>
+                  ${isEdit ? 'Zapisz zmiany' : 'Utwórz zamówienie'}
+                </button>
+              </div>
+            </form>
+          </div>
+        `;
+
+        // Wypełnij formularz jeśli edycja
+        if (isEdit) {
+          document.getElementById('order-userId').value = currentEditingOrder.userId || '';
+          document.getElementById('order-email').value = currentEditingOrder.email || '';
+          document.getElementById('order-details').value = currentEditingOrder.orderDetails || '';
+          document.getElementById('order-notes').value = currentEditingOrder.notes || '';
+          document.getElementById('order-parcelLocker').value = currentEditingOrder.parcelLocker || '';
+          document.getElementById('order-phone').value = currentEditingOrder.phone || '';
+          document.getElementById('order-address-street').value = currentEditingOrder.address?.street || '';
+          document.getElementById('order-address-building').value = currentEditingOrder.address?.buildingNumber || '';
+          document.getElementById('order-address-postal').value = currentEditingOrder.address?.postalCode || '';
+          document.getElementById('order-address-city').value = currentEditingOrder.address?.city || '';
+          document.getElementById('order-price').value = currentEditingOrder.price || 0;
+          document.getElementById('order-shipping').value = currentEditingOrder.shipping || 0;
+          document.getElementById('order-additionalCosts').value = currentEditingOrder.additionalCosts || 0;
+          document.getElementById('order-tax').value = currentEditingOrder.tax || 0;
+          document.getElementById('order-status').value = currentEditingOrder.status || 'zlozone';
+          calculateOrderTotal();
+        } else {
+          calculateOrderTotal();
+        }
+
+        modal.classList.remove('hidden');
+      }
+
+      // Obliczanie sumy zamówienia
+      window.calculateOrderTotal = function() {
+        const price = parseFloat(document.getElementById('order-price')?.value || 0);
+        const shipping = parseFloat(document.getElementById('order-shipping')?.value || 0);
+        const additionalCosts = parseFloat(document.getElementById('order-additionalCosts')?.value || 0);
+        const tax = parseFloat(document.getElementById('order-tax')?.value || 0);
+        const total = price + shipping + additionalCosts + tax;
+        const totalInput = document.getElementById('order-total');
+        if (totalInput) {
+          totalInput.value = total.toFixed(2);
+        }
+      };
+
+      // Zamykanie modala
+      window.closeOrderModal = function() {
+        const modal = document.getElementById('order-modal');
+        if (modal) {
+          modal.classList.add('hidden');
+        }
+        currentEditingOrder = null;
+      };
+
+      // Zapisywanie zamówienia
+      window.saveOrder = async function(event) {
+        event.preventDefault();
+        
+        try {
+          const formData = {
+            orderDetails: document.getElementById('order-details').value,
+            notes: document.getElementById('order-notes').value,
+            userId: document.getElementById('order-userId').value || null,
+            email: document.getElementById('order-email').value || null,
+            parcelLocker: document.getElementById('order-parcelLocker').value,
+            phone: document.getElementById('order-phone').value,
+            address: {
+              street: document.getElementById('order-address-street').value,
+              buildingNumber: document.getElementById('order-address-building').value,
+              postalCode: document.getElementById('order-address-postal').value,
+              city: document.getElementById('order-address-city').value,
+            },
+            price: document.getElementById('order-price').value,
+            shipping: document.getElementById('order-shipping').value,
+            additionalCosts: document.getElementById('order-additionalCosts').value,
+            tax: document.getElementById('order-tax').value,
+            status: document.getElementById('order-status').value,
+          };
+
+          // Sprawdź czy faktura jest wymagana dla statusu "zakonczone"
+          const status = document.getElementById('order-status').value;
+          const invoiceFile = document.getElementById('order-invoice').files[0];
+          const existingInvoice = currentEditingOrder?.invoiceFile;
+
+          if (status === 'zakonczone' && !invoiceFile && !existingInvoice) {
+            showNotification('Faktura jest wymagana dla statusu "Zakończone"', 'error');
+            return;
+          }
+
+          // Upload faktury jeśli jest
+          let invoiceUrl = existingInvoice || null;
+          if (invoiceFile) {
+            try {
+              // Konwertuj plik na base64
+              const reader = new FileReader();
+              const base64File = await new Promise((resolve, reject) => {
+                reader.onload = () => {
+                  const result = reader.result;
+                  resolve(result);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(invoiceFile);
+              });
+
+              const orderId = currentEditingOrder?.id || 'new';
+              const uploadResponse = await fetch('/api/upload-invoice', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                  file: base64File,
+                  fileName: invoiceFile.name,
+                  orderId: orderId,
+                }),
+              });
+
+              const uploadData = await uploadResponse.json();
+              if (!uploadData.success) {
+                throw new Error(uploadData.error || 'Failed to upload invoice');
+              }
+
+              invoiceUrl = uploadData.url;
+            } catch (error) {
+              console.error('Error uploading invoice:', error);
+              showNotification('Błąd uploadu faktury: ' + error.message, 'error');
+              return;
+            }
+          }
+
+          const isEdit = !!currentEditingOrder;
+          const url = `/api/orders`;
+          const method = isEdit ? 'PUT' : 'POST';
+
+          if (isEdit) {
+            formData.id = currentEditingOrder.id;
+          }
+
+          formData.invoiceFile = invoiceUrl;
+
+          const response = await fetch(url, {
+            method,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify(formData),
+          });
+
+          const data = await response.json();
+          
+          if (!data.success) {
+            throw new Error(data.error || 'Failed to save order');
+          }
+
+          showNotification(isEdit ? 'Zamówienie zaktualizowane' : 'Zamówienie utworzone', 'success');
+          closeOrderModal();
+          await loadOrders(currentOrderFilter === 'all' ? null : currentOrderFilter);
+          
+          // TODO: Wysyłanie maila o utworzeniu/zmianie statusu
+        } catch (error) {
+          console.error('Error saving order:', error);
+          showNotification('Błąd zapisywania zamówienia: ' + error.message, 'error');
+        }
+      };
+
+      // Usuwanie zamówienia
+      window.deleteOrder = async function(orderId, orderNumber) {
+        if (!confirm(`Czy na pewno chcesz usunąć zamówienie ${orderNumber}?`)) {
+          return;
+        }
+
+        try {
+          const response = await fetch(`/api/orders?id=${orderId}`, {
+            method: 'DELETE',
+            credentials: 'include',
+          });
+
+          const data = await response.json();
+          
+          if (!data.success) {
+            throw new Error(data.error || 'Failed to delete order');
+          }
+
+          showNotification('Zamówienie usunięte', 'success');
+          await loadOrders(currentOrderFilter === 'all' ? null : currentOrderFilter);
+        } catch (error) {
+          console.error('Error deleting order:', error);
+          showNotification('Błąd usuwania zamówienia: ' + error.message, 'error');
+        }
+      };
+
+      // Wyszukiwanie użytkownika (placeholder)
+      window.searchUser = function() {
+        showNotification('Funkcja wyszukiwania użytkownika - w trakcie implementacji', 'info');
+      };
+
+      // =============================================================================
+      // SZABLONY MAILI - Funkcje zarządzania szablonami
+      // =============================================================================
+      
+      // Ładowanie szablonów maili
+      window.loadEmailTemplates = async function() {
+        try {
+          const templatesList = document.getElementById('templates-list');
+          if (!templatesList) return;
+
+          templatesList.innerHTML = `
+            <div class="text-center text-zinc-500 py-8">
+              <i class="fa-solid fa-spinner fa-spin text-2xl mb-4 text-zinc-600"></i>
+              <h4 class="text-lg font-semibold mb-2">Ładowanie szablonów...</h4>
+            </div>
+          `;
+
+          const response = await fetch('/api/email-templates', {
+            method: 'GET',
+            credentials: 'include',
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to load templates');
+          }
+
+          const data = await response.json();
+          if (!data.success) {
+            throw new Error(data.error || 'Failed to load templates');
+          }
+
+          const templates = data.data || {};
+          renderTemplatesList(templates);
+        } catch (error) {
+          console.error('Error loading templates:', error);
+          const templatesList = document.getElementById('templates-list');
+          if (templatesList) {
+            templatesList.innerHTML = `
+              <div class="text-center text-red-400 py-8">
+                <i class="fa-solid fa-exclamation-triangle text-4xl mb-4"></i>
+                <h4 class="text-lg font-semibold mb-2">Błąd ładowania szablonów</h4>
+                <p class="text-sm">${error.message}</p>
+              </div>
+            `;
+          }
+          showNotification('Błąd ładowania szablonów: ' + error.message, 'error');
+        }
+      };
+
+      // Renderowanie listy szablonów
+      function renderTemplatesList(templates) {
+        const templatesList = document.getElementById('templates-list');
+        if (!templatesList) return;
+
+        const templateOrder = [
+          'order_created',
+          'order_status_zlozone',
+          'order_status_realizacja',
+          'order_status_wyslane',
+          'order_status_zakonczone',
+          'contact_form_auto_reply'
+        ];
+
+        templatesList.innerHTML = templateOrder.map(templateId => {
+          const template = templates[templateId];
+          if (!template) return '';
+
+          return `
+            <div class="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700">
+              <div class="flex justify-between items-start mb-4">
+                <div>
+                  <h4 class="text-lg font-bold text-white mb-2">${template.name || templateId}</h4>
+                  <p class="text-sm text-zinc-400">ID: ${templateId}</p>
+                </div>
+                <button onclick="editTemplate('${templateId}')" class="btn-admin text-sm px-4 py-2">
+                  <i class="fa-solid fa-edit mr-2"></i>
+                  Edytuj
+                </button>
+              </div>
+              <div class="mb-4">
+                <div class="text-sm text-zinc-300 mb-2">
+                  <strong>Temat:</strong> ${template.subject || 'Brak tematu'}
+                </div>
+                <div class="text-xs text-zinc-500">
+                  <strong>Zmienne:</strong> ${(template.variables || []).join(', ') || 'Brak zmiennych'}
+                </div>
+              </div>
+              <div class="text-xs text-zinc-400">
+                ${template.html ? template.html.substring(0, 200) + '...' : 'Brak treści'}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Edycja szablonu
+      window.editTemplate = async function(templateId) {
+        try {
+          const response = await fetch('/api/email-templates', {
+            method: 'GET',
+            credentials: 'include',
+          });
+
+          const data = await response.json();
+          if (!data.success) {
+            throw new Error(data.error || 'Failed to load template');
+          }
+
+          const template = data.data[templateId];
+          if (!template) {
+            showNotification('Szablon nie znaleziony', 'error');
+            return;
+          }
+
+          showTemplateModal(templateId, template);
+        } catch (error) {
+          console.error('Error loading template:', error);
+          showNotification('Błąd ładowania szablonu: ' + error.message, 'error');
+        }
+      };
+
+      // Funkcja escape HTML (dla textarea)
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      // Modal edycji szablonu
+      function showTemplateModal(templateId, template) {
+        let modal = document.getElementById('template-modal');
+        if (!modal) {
+          modal = document.createElement('div');
+          modal.id = 'template-modal';
+          modal.className = 'fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl';
+          modal.onclick = function(e) {
+            if (e.target.id === 'template-modal') closeTemplateModal();
+          };
+          document.body.appendChild(modal);
+        }
+
+        modal.innerHTML = `
+          <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-6">
+              <h2 class="text-2xl font-bold coyote-text">Edytuj szablon: ${template.name || templateId}</h2>
+              <button onclick="closeTemplateModal()" class="text-zinc-400 hover:text-white">
+                <i class="fa-solid fa-times text-xl"></i>
+              </button>
+            </div>
+
+            <form id="template-form" onsubmit="saveTemplate(event, '${templateId}')">
+              <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Nazwa szablonu</label>
+                <input type="text" id="template-name" class="w-full" value="${template.name || ''}" required>
+              </div>
+
+              <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Temat maila</label>
+                <input type="text" id="template-subject" class="w-full" value="${(template.subject || '').replace(/"/g, '&quot;')}" required>
+                <p class="text-xs text-zinc-400 mt-1">
+                  Użyj zmiennych: {{variableName}} (np. {{orderNumber}}, {{status}})
+                </p>
+              </div>
+
+              <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Treść HTML</label>
+                <textarea id="template-html" class="w-full font-mono text-sm" rows="15" required>${escapeHtml(template.html || '')}</textarea>
+                <p class="text-xs text-zinc-400 mt-1">
+                  Użyj zmiennych: {{variableName}} (np. {{orderNumber}}, {{orderDetails}})
+                </p>
+              </div>
+
+              <div class="mb-6 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                <h4 class="text-sm font-bold text-coyote mb-2">Dostępne zmienne:</h4>
+                <div class="text-xs text-zinc-400">
+                  ${(template.variables || []).map(v => `<code class="bg-zinc-900 px-2 py-1 rounded">{{${v}}}</code>`).join(' ')}
+                </div>
+              </div>
+
+              <div class="flex justify-end gap-4">
+                <button type="button" onclick="closeTemplateModal()" class="btn-secondary px-6 py-2">
+                  Anuluj
+                </button>
+                <button type="submit" class="btn-admin px-6 py-2">
+                  <i class="fa-solid fa-save mr-2"></i>
+                  Zapisz szablon
+                </button>
+              </div>
+            </form>
+          </div>
+        `;
+
+        modal.classList.remove('hidden');
+      }
+
+      // Zamykanie modala
+      window.closeTemplateModal = function() {
+        const modal = document.getElementById('template-modal');
+        if (modal) {
+          modal.classList.add('hidden');
+        }
+      };
+
+      // Zapisywanie szablonu
+      window.saveTemplate = async function(event, templateId) {
+        event.preventDefault();
+        
+        try {
+          const name = document.getElementById('template-name').value;
+          const subject = document.getElementById('template-subject').value;
+          const html = document.getElementById('template-html').value;
+
+          const response = await fetch('/api/email-templates', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              id: templateId,
+              name,
+              subject,
+              html,
+            }),
+          });
+
+          const data = await response.json();
+          
+          if (!data.success) {
+            throw new Error(data.error || 'Failed to save template');
+          }
+
+          showNotification('Szablon zapisany', 'success');
+          closeTemplateModal();
+          await loadEmailTemplates();
+        } catch (error) {
+          console.error('Error saving template:', error);
+          showNotification('Błąd zapisywania szablonu: ' + error.message, 'error');
+        }
+      };
+
+      // Zapisywanie ustawień SMTP
+      window.saveSmtpSettings = async function() {
+        try {
+          const settings = {
+            host: document.getElementById('smtp-host').value,
+            port: parseInt(document.getElementById('smtp-port').value, 10),
+            user: document.getElementById('smtp-user').value,
+            password: document.getElementById('smtp-password').value,
+            secure: document.getElementById('smtp-secure').checked,
+          };
+
+          if (!settings.host || !settings.port || !settings.user || !settings.password) {
+            showNotification('Wypełnij wszystkie wymagane pola', 'error');
+            return;
+          }
+
+          // Zapisz do Firestore (lub użyj zmiennych środowiskowych)
+          // Na razie tylko informacja - użytkownik musi ustawić w Vercel
+          showNotification('Ustawienia SMTP należy skonfigurować w Vercel jako zmienne środowiskowe:\n' +
+            `SMTP_HOST=${settings.host}\n` +
+            `SMTP_PORT=${settings.port}\n` +
+            `SMTP_USER=${settings.user}\n` +
+            `SMTP_PASSWORD=${settings.password}\n` +
+            `SMTP_SECURE=${settings.secure}`, 'info');
+        } catch (error) {
+          console.error('Error saving SMTP settings:', error);
+          showNotification('Błąd zapisywania ustawień: ' + error.message, 'error');
+        }
+      };
+
+      // Ładowanie szablonów przy przejściu do zakładki
+      if (typeof switchTab === 'function') {
+        const originalSwitchTab = window.switchTab;
+        window.switchTab = function(tab) {
+          originalSwitchTab(tab);
+          if (tab === 'email-templates') {
+            loadEmailTemplates();
+          }
+        };
       }
 
     </script>

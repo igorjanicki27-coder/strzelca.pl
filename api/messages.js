@@ -167,6 +167,9 @@ module.exports = async (req, res) => {
         case 'POST':
           await handlePostMessage(req, res, db, { query, requesterUid, requesterIsAdmin });
           break;
+        case 'DELETE':
+          await handleDeleteMessages(req, res, db, { query, requesterUid, requesterIsAdmin });
+          break;
         default:
           res.status(405).json({ success: false, error: 'Method not allowed' });
       }
@@ -181,6 +184,15 @@ module.exports = async (req, res) => {
       // /api/messages/conversation/category  (NAPRAWA: wcześniej było nieosiągalne)
       if (req.method === 'PUT') {
         await handleUpdateConversationCategory(req, res, db);
+      } else {
+        res.status(405).json({ success: false, error: 'Method not allowed' });
+      }
+    } else if (segs.length === 3 && segs[0] === 'conversation' && (segs[2] === 'read' || segs[2] === 'unread')) {
+      // /api/messages/conversation/:senderId/read lub /api/messages/conversation/:senderId/unread
+      const senderId = segs[1];
+      const action = segs[2];
+      if (req.method === 'PUT') {
+        await handleConversationReadStatus(req, res, db, senderId, action, { requesterUid, requesterIsAdmin });
       } else {
         res.status(405).json({ success: false, error: 'Method not allowed' });
       }
@@ -223,9 +235,11 @@ module.exports = async (req, res) => {
 
       if (req.method === 'PUT') {
         if (action === 'status') {
-          await handleUpdateStatus(req, res, db, messageId);
+          await handleUpdateStatus(req, res, db, messageId, { requesterUid, requesterIsAdmin });
         } else if (action === 'read') {
           await handleMarkRead(req, res, db, messageId, { requesterUid, requesterIsAdmin });
+        } else if (action === 'unread') {
+          await handleMarkUnread(req, res, db, messageId, { requesterUid, requesterIsAdmin });
         } else if (action === 'category') {
           await handleUpdateMessageCategory(req, res, db, messageId);
         } else {
@@ -365,6 +379,12 @@ async function handlePostMessage(req, res, db, { requesterUid, requesterIsAdmin 
       }
       senderId = 'anonymous';
       recipientId = 'admin';
+      
+      // Jeśli to formularz kontaktowy (senderType: 'contact_form'), ustaw flagi
+      if (messageData.senderType === 'contact_form') {
+        messageData.allowReply = false;
+        messageData.isReadOnly = true;
+      }
     }
 
     console.log('handlePostMessage: Adding message:', {
@@ -517,8 +537,13 @@ async function handleGetThread(req, res, db, { query, requesterUid, requesterIsA
 }
 
 // PUT /api/messages/:id/status - aktualizuje status wiadomości
-async function handleUpdateStatus(req, res, db, messageId) {
+async function handleUpdateStatus(req, res, db, messageId, { requesterUid, requesterIsAdmin }) {
   try {
+    // Tylko admin może zmieniać status wiadomości
+    if (!requesterIsAdmin) {
+      return res.status(403).json({ success: false, error: 'Forbidden - admin only' });
+    }
+
     const { status } = req.body;
 
     if (!status) {
@@ -527,6 +552,20 @@ async function handleUpdateStatus(req, res, db, messageId) {
         error: 'Status is required'
       });
     }
+
+    const validStatuses = ['pending', 'in_progress', 'completed'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+      });
+    }
+
+    console.log('handleUpdateStatus: Updating message status:', {
+      messageId,
+      status,
+      requesterUid
+    });
 
     const success = await db.updateMessageStatus(messageId, status);
 
@@ -585,6 +624,81 @@ async function handleMarkRead(req, res, db, messageId, { requesterUid, requester
     }
   } catch (error) {
     console.error('Error marking message as read:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+}
+
+// PUT /api/messages/:id/unread - oznacza wiadomość jako nieprzeczytaną
+async function handleMarkUnread(req, res, db, messageId, { requesterUid, requesterIsAdmin }) {
+  try {
+    // Autoryzacja: recipient lub admin
+    if (!requesterIsAdmin) {
+      if (!requesterUid) return res.status(401).json({ success: false, error: 'Not authenticated' });
+      try {
+        initAdmin();
+        const snap = await admin.firestore().collection('messages').doc(messageId).get();
+        if (!snap.exists) return res.status(404).json({ success: false, error: 'Message not found' });
+        const d = snap.data() || {};
+        if (d.recipientId !== requesterUid) {
+          return res.status(403).json({ success: false, error: 'Forbidden' });
+        }
+      } catch (e) {
+        console.error('Auth check unread failed:', e);
+        return res.status(500).json({ success: false, error: 'Internal server error' });
+      }
+    }
+
+    const success = await db.markAsUnread(messageId);
+
+    if (success) {
+      res.json({
+        success: true,
+        message: 'Message marked as unread'
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        error: 'Message not found'
+      });
+    }
+  } catch (error) {
+    console.error('Error marking message as unread:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+}
+
+// PUT /api/messages/conversation/:senderId/read lub /unread - oznacza całą konwersację jako przeczytaną/nieprzeczytaną
+async function handleConversationReadStatus(req, res, db, senderId, action, { requesterUid, requesterIsAdmin }) {
+  try {
+    // Tylko admin może zmieniać status konwersacji
+    if (!requesterIsAdmin) {
+      return res.status(403).json({ success: false, error: 'Forbidden - admin only' });
+    }
+
+    const recipientId = 'admin'; // Konwersacje z adminem
+
+    let result;
+    if (action === 'read') {
+      result = await db.markConversationAsRead(senderId, recipientId);
+    } else if (action === 'unread') {
+      result = await db.markConversationAsUnread(senderId, recipientId);
+    } else {
+      return res.status(400).json({ success: false, error: 'Invalid action. Must be "read" or "unread"' });
+    }
+
+    res.json({
+      success: true,
+      message: `Conversation marked as ${action}`,
+      data: result
+    });
+  } catch (error) {
+    console.error('Error marking conversation as read/unread:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error'
@@ -755,6 +869,83 @@ async function handleUpdateConversationCategory(req, res, db) {
     }
   } catch (error) {
     console.error('Error updating conversation category:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+}
+
+// DELETE /api/messages - usuwa wiadomości (dla admina)
+async function handleDeleteMessages(req, res, db, { query, requesterUid, requesterIsAdmin }) {
+  try {
+    // Tylko admin może usuwać wiadomości
+    if (!requesterIsAdmin) {
+      return res.status(403).json({ success: false, error: 'Forbidden - admin only' });
+    }
+
+    const senderId = query.senderId;
+    const recipientId = query.recipientId || 'admin';
+
+    if (!senderId) {
+      return res.status(400).json({ success: false, error: 'Missing required field: senderId' });
+    }
+
+    console.log('handleDeleteMessages: Deleting messages:', {
+      senderId,
+      recipientId,
+      requesterUid
+    });
+
+    // Usuń wszystkie wiadomości między senderId a recipientId
+    const dbInstance = await db.initializeFirebase();
+    
+    // Znajdź wszystkie wiadomości w obie strony
+    let deletedCount = 0;
+    
+    // Wiadomości od użytkownika do admina
+    const messagesQuery1 = dbInstance.collection('messages')
+      .where('senderId', '==', senderId)
+      .where('recipientId', '==', recipientId);
+    
+    const snapshot1 = await messagesQuery1.get();
+    
+    if (!snapshot1.empty) {
+      const batch1 = dbInstance.batch();
+      snapshot1.docs.forEach(doc => {
+        batch1.delete(doc.ref);
+      });
+      await batch1.commit();
+      deletedCount += snapshot1.size;
+      console.log('handleDeleteMessages: Deleted', snapshot1.size, 'messages (user -> admin)');
+    }
+    
+    // Wiadomości od admina do użytkownika
+    const messagesQuery2 = dbInstance.collection('messages')
+      .where('senderId', '==', recipientId)
+      .where('recipientId', '==', senderId);
+    
+    const snapshot2 = await messagesQuery2.get();
+    
+    if (!snapshot2.empty) {
+      const batch2 = dbInstance.batch();
+      snapshot2.docs.forEach(doc => {
+        batch2.delete(doc.ref);
+      });
+      await batch2.commit();
+      deletedCount += snapshot2.size;
+      console.log('handleDeleteMessages: Deleted', snapshot2.size, 'messages (admin -> user)');
+    }
+    
+    console.log('handleDeleteMessages: Total deleted:', deletedCount);
+    
+    res.json({
+      success: true,
+      deletedCount: deletedCount,
+      message: 'Messages deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting messages:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error'

@@ -342,6 +342,71 @@ class FirestoreDatabaseManager {
     }
   }
 
+  async markAsUnread(id) {
+    try {
+      const db = await this.initializeFirebase();
+      await db.collection('messages').doc(id).update({ isRead: false });
+      return true;
+    } catch (error) {
+      console.error('Error marking message as unread:', error);
+      throw error;
+    }
+  }
+
+  async markConversationAsRead(senderId, recipientId) {
+    try {
+      const db = await this.initializeFirebase();
+      const messagesRef = db.collection('messages');
+      const snapshot = await messagesRef
+        .where('senderId', '==', senderId)
+        .where('recipientId', '==', recipientId)
+        .where('isRead', '==', false)
+        .get();
+      
+      if (snapshot.empty) {
+        return { updated: 0 };
+      }
+
+      const batch = db.batch();
+      snapshot.docs.forEach(doc => {
+        batch.update(doc.ref, { isRead: true });
+      });
+      await batch.commit();
+      
+      return { updated: snapshot.size };
+    } catch (error) {
+      console.error('Error marking conversation as read:', error);
+      throw error;
+    }
+  }
+
+  async markConversationAsUnread(senderId, recipientId) {
+    try {
+      const db = await this.initializeFirebase();
+      const messagesRef = db.collection('messages');
+      const snapshot = await messagesRef
+        .where('senderId', '==', senderId)
+        .where('recipientId', '==', recipientId)
+        .where('isRead', '==', true)
+        .get();
+      
+      if (snapshot.empty) {
+        return { updated: 0 };
+      }
+
+      const batch = db.batch();
+      snapshot.docs.forEach(doc => {
+        batch.update(doc.ref, { isRead: false });
+      });
+      await batch.commit();
+      
+      return { updated: snapshot.size };
+    } catch (error) {
+      console.error('Error marking conversation as unread:', error);
+      throw error;
+    }
+  }
+
   async updateMessageCategory(id, categoryId) {
     try {
       const db = await this.initializeFirebase();

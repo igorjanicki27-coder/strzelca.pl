@@ -5,6 +5,20 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function isAdmin() {
+      return signedIn() && 
+        exists(/databases/(default)/documents/userProfiles/$(request.auth.uid)) &&
+        get(/databases/(default)/documents/userProfiles/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isSuperAdmin() {
+      return signedIn() && request.auth.uid == 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
+    }
+
+    function isAdminOrSuperAdmin() {
+      return isAdmin() || isSuperAdmin();
+    }
+
     // Avatary użytkowników: zapis tylko właściciel, odczyt publiczny (downloadURL i tak jest publiczny przez token).
     match /avatars/{uid}.jpg {
       allow read: if true;
@@ -12,6 +26,16 @@ service firebase.storage {
         && request.auth.uid == uid
         && request.resource.size < 2 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
+    }
+
+    // Faktury zamówień: tylko admin może uploadować, użytkownicy mogą pobierać swoje faktury
+    match /invoices/{invoiceId} {
+      // Admin może wszystko
+      allow read, write: if isAdminOrSuperAdmin();
+      
+      // Użytkownik może odczytać fakturę jeśli jest przypisana do jego zamówienia
+      // (sprawdzanie odbywa się przez API, tutaj tylko podstawowa kontrola)
+      allow read: if signedIn();
     }
 
     // Domyślnie blokuj wszystko inne.

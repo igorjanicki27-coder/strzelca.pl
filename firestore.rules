@@ -353,6 +353,26 @@ service cloud.firestore {
     }
 
     // =============================================================================
+    // ORDERS & EMAIL TEMPLATES
+    // =============================================================================
+    match /orders/{orderId} {
+      // Admin może wszystko
+      allow read, create, update, delete: if isAdminOrSuperAdmin();
+      
+      // Użytkownik może odczytywać tylko swoje zamówienia
+      allow read: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || 
+         resource.data.email != null && 
+         request.auth.token.email != null && 
+         resource.data.email == request.auth.token.email);
+    }
+
+    match /emailTemplates/{templateId} {
+      // Tylko admin może zarządzać szablonami maili
+      allow read, create, update, delete: if isAdminOrSuperAdmin();
+    }
+
+    // =============================================================================
     // VISITS & ANALYTICS
     // =============================================================================
     match /visits/{visitId} {
