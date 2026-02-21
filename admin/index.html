@@ -2993,6 +2993,26 @@
       })();
     </script>
 
+    <!-- Funkcja zamykania modalu czatu - dostępna globalnie przed modułem -->
+    <script>
+      // Upewnij się, że closeChatModal jest dostępne przed renderowaniem HTML
+      // Funkcja będzie nadpisana w module, ale tutaj zapewniamy podstawową funkcjonalność
+      window.closeChatModal = function() {
+        const modal = document.getElementById('chat-modal');
+        if (modal) {
+          modal.classList.add('hidden');
+        }
+        // currentConversationUser będzie dostępne w module
+        try {
+          if (typeof currentConversationUser !== 'undefined') {
+            currentConversationUser = null;
+          }
+        } catch (e) {
+          // Ignoruj błąd jeśli zmienna nie jest jeszcze zdefiniowana
+        }
+      };
+    </script>
+
     <script type="module">
       import {
         signInWithEmailAndPassword,
@@ -11208,10 +11228,15 @@
         document.getElementById('quick-replies-modal').classList.add('hidden');
       }
 
-      // Funkcja zamykania modalu czatu
+      // Funkcja zamykania modalu czatu - nadpisuje globalną wersję z pełną funkcjonalnością
       window.closeChatModal = function closeChatModal() {
-        document.getElementById('chat-modal').classList.add('hidden');
+        const modal = document.getElementById('chat-modal');
+        if (modal) {
+          modal.classList.add('hidden');
+        }
+        // Ustaw currentConversationUser na null (zmienna jest w scope modułu)
         currentConversationUser = null;
+        console.log('closeChatModal: Modal closed, conversation cleared');
       };
 
       // Funkcja ładowania wiadomości konwersacji
@@ -11241,13 +11266,34 @@
             cache: 'no-store',
           });
           const data = await response.json().catch(() => null);
+          
+          console.log('loadConversationMessages: API response:', {
+            status: response.status,
+            ok: response.ok,
+            data: data,
+            hasMessages: Array.isArray(data?.data?.messages),
+            messagesCount: Array.isArray(data?.data?.messages) ? data.data.messages.length : 0
+          });
+          
           if (!response.ok || !data?.success) {
+            console.error('loadConversationMessages: API error:', {
+              status: response.status,
+              error: data?.error,
+              data: data
+            });
             throw new Error(data?.error || `HTTP ${response.status}`);
           }
 
           const allMessages = Array.isArray(data?.data?.messages) ? data.data.messages : [];
+          
+          console.log('loadConversationMessages: Parsed messages:', {
+            count: allMessages.length,
+            firstMessage: allMessages[0] || null,
+            lastMessage: allMessages[allMessages.length - 1] || null
+          });
 
           if (allMessages.length === 0) {
+            console.warn('loadConversationMessages: No messages found');
             messagesContainer.innerHTML = '<div class="text-center text-zinc-500 py-8">Brak wiadomości w tej konwersacji</div>';
             return;
           }
@@ -11336,7 +11382,17 @@
             `;
           }).join('');
 
+          console.log('loadConversationMessages: Generated HTML length:', messagesHtml.length);
+          console.log('loadConversationMessages: Messages container exists:', !!messagesContainer);
+          
+          if (!messagesContainer) {
+            console.error('loadConversationMessages: messagesContainer not found!');
+            return;
+          }
+          
           messagesContainer.innerHTML = messagesHtml;
+          
+          console.log('loadConversationMessages: HTML set, container innerHTML length:', messagesContainer.innerHTML.length);
 
           // Przewiń na dół
           setTimeout(() => {
@@ -11348,7 +11404,15 @@
 
         } catch (error) {
           console.error('Error loading conversation:', error);
-          messagesContainer.innerHTML = '<div class="text-center text-red-400 py-8">Błąd ładowania konwersacji</div>';
+          console.error('Error details:', {
+            message: error.message,
+            stack: error.stack,
+            userId: userId,
+            messagesContainerExists: !!messagesContainer
+          });
+          if (messagesContainer) {
+            messagesContainer.innerHTML = `<div class="text-center text-red-400 py-8">Błąd ładowania konwersacji: ${error.message}</div>`;
+          }
         }
       }
 
@@ -12995,5 +13059,6 @@
       src="https://strzelca.pl/messages-widget.mjs?v=2026-02-05-14"
     ></script>
   </body>
+</html>
 </html>
 </html>

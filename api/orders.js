@@ -290,40 +290,66 @@ module.exports = async (req, res) => {
     if (req.method === 'GET') {
       const { status, userId } = req.query;
       
-      let query = db.collection('orders');
-      
-      // Użytkownik nie-admin widzi tylko swoje zamówienia
-      if (!isUserAdmin) {
-        // Sprawdź czy ma email w tokenie
-        const userEmail = sessionUser.email || (await admin.auth().getUser(sessionUser.uid)).email;
-        query = query.where('userId', '==', sessionUser.uid);
-        // Alternatywnie: sprawdź też po emailu jeśli userId nie jest ustawione
-        // (dla zamówień bez konta)
+      try {
+        let query = db.collection('orders');
+        let hasWhereClause = false;
+        
+        // Użytkownik nie-admin widzi tylko swoje zamówienia
+        if (!isUserAdmin) {
+          query = query.where('userId', '==', sessionUser.uid);
+          hasWhereClause = true;
+        }
+        
+        if (status && status !== 'all') {
+          query = query.where('status', '==', status);
+          hasWhereClause = true;
+        }
+        
+        if (isUserAdmin && userId) {
+          query = query.where('userId', '==', userId);
+          hasWhereClause = true;
+        }
+        
+        // Używaj orderBy tylko gdy nie ma where (wymaga indeksu złożonego)
+        // W przeciwnym razie sortuj po stronie serwera
+        let snapshot;
+        if (!hasWhereClause) {
+          // Brak filtrów - można użyć orderBy
+          query = query.orderBy('createdAt', 'desc');
+          snapshot = await query.get();
+        } else {
+          // Są filtry - pobierz bez orderBy i posortuj po stronie serwera
+          snapshot = await query.get();
+        }
+        
+        let orders = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAtFormatted: formatDate(data.createdAt),
+            updatedAtFormatted: formatDate(data.updatedAt),
+          };
+        });
+        
+        // Sortuj po stronie serwera (zawsze, dla spójności)
+        orders.sort((a, b) => {
+          const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds || 0) * 1000;
+          const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds || 0) * 1000;
+          return bTime - aTime; // desc
+        });
+        
+        res.status(200).json({ success: true, data: orders });
+        return;
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        res.status(500).json({ 
+          success: false, 
+          error: 'Failed to load orders',
+          details: error.message 
+        });
+        return;
       }
-      
-      if (status && status !== 'all') {
-        query = query.where('status', '==', status);
-      }
-      
-      if (isUserAdmin && userId) {
-        query = query.where('userId', '==', userId);
-      }
-      
-      query = query.orderBy('createdAt', 'desc');
-      
-      const snapshot = await query.get();
-      const orders = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          createdAtFormatted: formatDate(data.createdAt),
-          updatedAtFormatted: formatDate(data.updatedAt),
-        };
-      });
-      
-      res.status(200).json({ success: true, data: orders });
-      return;
     }
 
     // POST - utworzenie zamówienia (tylko admin)
