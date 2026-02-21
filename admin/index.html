@@ -219,6 +219,34 @@
         border-color: var(--coyote);
       }
 
+      /* Style dla przycisków filtrów zamówień */
+      .order-filter-btn {
+        padding: 10px 20px;
+        border: 2px solid #333;
+        border-radius: 8px;
+        background: #1a1a1a;
+        color: #a1a1aa;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .order-filter-btn:hover {
+        border-color: var(--coyote);
+        color: var(--coyote);
+        background: rgba(193, 154, 107, 0.1);
+      }
+
+      .order-filter-btn.active {
+        border-color: var(--coyote);
+        background: rgba(193, 154, 107, 0.2);
+        color: var(--coyote);
+        box-shadow: 0 0 15px rgba(193, 154, 107, 0.3);
+      }
+
       /* Poprawki dla modali - lepsza widoczność */
       #user-details-modal .admin-card,
       #user-delete-modal .admin-card {
@@ -1706,30 +1734,33 @@
             </div>
 
             <div class="admin-card mb-8">
-              <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold mb-0">Lista Zamówień</h2>
+              <div class="flex justify-between items-center mb-6">
+                <!-- Filtry -->
+                <div class="flex flex-wrap gap-3">
+                  <button onclick="filterOrders('all')" class="order-filter-btn active" data-filter="all">
+                    <i class="fa-solid fa-list mr-2"></i>
+                    Wszystkie
+                  </button>
+                  <button onclick="filterOrders('zlozone')" class="order-filter-btn" data-filter="zlozone">
+                    <i class="fa-solid fa-clock mr-2"></i>
+                    Złożone
+                  </button>
+                  <button onclick="filterOrders('realizacja')" class="order-filter-btn" data-filter="realizacja">
+                    <i class="fa-solid fa-cog mr-2"></i>
+                    W realizacji
+                  </button>
+                  <button onclick="filterOrders('wyslane')" class="order-filter-btn" data-filter="wyslane">
+                    <i class="fa-solid fa-truck mr-2"></i>
+                    Wysłane
+                  </button>
+                  <button onclick="filterOrders('zakonczone')" class="order-filter-btn" data-filter="zakonczone">
+                    <i class="fa-solid fa-check-circle mr-2"></i>
+                    Zakończone
+                  </button>
+                </div>
                 <button onclick="showAddOrderModal()" class="btn-admin text-sm px-4 py-2">
                   <i class="fa-solid fa-plus mr-2"></i>
                   Dodaj zamówienie
-                </button>
-              </div>
-
-              <!-- Filtry -->
-              <div class="flex flex-wrap gap-2 mb-6">
-                <button onclick="filterOrders('all')" class="filter-btn active" data-filter="all">
-                  Wszystkie
-                </button>
-                <button onclick="filterOrders('zlozone')" class="filter-btn" data-filter="zlozone">
-                  Złożone
-                </button>
-                <button onclick="filterOrders('realizacja')" class="filter-btn" data-filter="realizacja">
-                  W realizacji
-                </button>
-                <button onclick="filterOrders('wyslane')" class="filter-btn" data-filter="wyslane">
-                  Wysłane
-                </button>
-                <button onclick="filterOrders('zakonczone')" class="filter-btn" data-filter="zakonczone">
-                  Zakończone
                 </button>
               </div>
 
@@ -3690,6 +3721,7 @@
 
         if (tabName === "orders") {
           if (typeof loadOrders === 'function') {
+            initializeOrderFilters();
             loadOrders();
           }
         }
@@ -11177,10 +11209,10 @@
       }
 
       // Funkcja zamykania modalu czatu
-      function closeChatModal() {
+      window.closeChatModal = function closeChatModal() {
         document.getElementById('chat-modal').classList.add('hidden');
         currentConversationUser = null;
-      }
+      };
 
       // Funkcja ładowania wiadomości konwersacji
       async function loadConversationMessages(userId) {
@@ -11188,24 +11220,32 @@
         messagesContainer.innerHTML = '<div class="text-center text-zinc-500 py-8"><i class="fa-solid fa-spinner fa-spin"></i> Ładowanie...</div>';
 
         try {
-          // Pobierz wszystkie wiadomości między adminem a użytkownikiem
-          const [response1, response2] = await Promise.all([
-            fetch(`/api/messages?senderId=${userId}&recipientId=admin&limit=100`),
-            fetch(`/api/messages?senderId=admin&recipientId=${userId}&limit=100`)
-          ]);
-
-          const [data1, data2] = await Promise.all([
-            response1.json(),
-            response2.json()
-          ]);
-
-          if (!data1.success || !data2.success) {
-            throw new Error('Failed to load conversation');
+          // Pobierz Firebase Auth token (żeby API rozpoznało admina) + nagłówek X-Admin-Panel
+          let authToken = null;
+          try {
+            if (auth && auth.currentUser) {
+              authToken = await auth.currentUser.getIdToken();
+            }
+          } catch (tokenError) {
+            console.error('loadConversationMessages: Failed to get Firebase Auth token:', tokenError);
           }
 
-          // Połącz i posortuj wiadomości
-          const allMessages = [...data1.data.messages, ...data2.data.messages]
-            .sort((a, b) => a.timestamp - b.timestamp);
+          const headers = { 'X-Admin-Panel': 'true' };
+          if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+          // Jeden endpoint zwracający wątek w obie strony (unikanie Firestore Listen/channel w przeglądarce)
+          const response = await fetch(`/api/messages/thread?peerId=admin&userId=${encodeURIComponent(userId)}&limit=200`, {
+            method: 'GET',
+            headers,
+            credentials: 'include',
+            cache: 'no-store',
+          });
+          const data = await response.json().catch(() => null);
+          if (!response.ok || !data?.success) {
+            throw new Error(data?.error || `HTTP ${response.status}`);
+          }
+
+          const allMessages = Array.isArray(data?.data?.messages) ? data.data.messages : [];
 
           if (allMessages.length === 0) {
             messagesContainer.innerHTML = '<div class="text-center text-zinc-500 py-8">Brak wiadomości w tej konwersacji</div>';
@@ -11302,16 +11342,6 @@
           setTimeout(() => {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
           }, 100);
-
-          // Oznacz wiadomości jako przeczytane
-          for (const msg of allMessages) {
-            if (msg.senderId === userId && !msg.isRead) {
-              await fetch(`/api/messages/${msg.id}/read`, { method: 'PUT' });
-            }
-          }
-
-          // Odśwież status
-          loadMessagesStatus();
 
           // Aktualizuj przycisk zakończ/rozpocznij
           updateCompleteButton();
@@ -11952,6 +11982,16 @@
       let currentEditingOrder = null;
       let allOrders = [];
 
+      // Inicjalizacja filtrów przy załadowaniu
+      function initializeOrderFilters() {
+        // Ustaw domyślny filtr na "all"
+        currentOrderFilter = 'all';
+        const allBtn = document.querySelector('.order-filter-btn[data-filter="all"]');
+        if (allBtn) {
+          allBtn.classList.add('active');
+        }
+      }
+
       // Ładowanie zamówień
       window.loadOrders = async function(status = null) {
         try {
@@ -12150,24 +12190,19 @@
       }
 
       // Filtrowanie zamówień
-      window.filterOrders = function(status) {
+      window.filterOrders = async function(status) {
         currentOrderFilter = status;
         
         // Aktualizuj przyciski
-        document.querySelectorAll('.filter-btn').forEach(btn => {
+        document.querySelectorAll('.order-filter-btn').forEach(btn => {
           btn.classList.remove('active');
           if (btn.dataset.filter === status) {
             btn.classList.add('active');
           }
         });
 
-        // Filtruj zamówienia
-        let filtered = allOrders;
-        if (status !== 'all') {
-          filtered = allOrders.filter(order => order.status === status);
-        }
-
-        renderOrders(filtered);
+        // Załaduj zamówienia z odpowiednim filtrem
+        await loadOrders(status === 'all' ? null : status);
       };
 
       // Pokazanie modala dodawania zamówienia
@@ -12878,9 +12913,9 @@
     </script>
 
     <!-- Modal czatu -->
-    <div id="chat-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onclick="if(event.target.id === 'chat-modal') closeChatModal()" style="overflow-y: auto;">
-      <div class="admin-card max-w-4xl w-full my-8 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
-        <div class="flex justify-between items-center mb-6">
+    <div id="chat-modal" class="fixed inset-0 z-50 hidden p-2 sm:p-4 bg-black/95 backdrop-blur-xl overflow-y-auto" onclick="if(event.target.id === 'chat-modal') closeChatModal()">
+      <div class="admin-card max-w-4xl w-full mx-auto my-2 sm:my-8 h-[calc(100vh-1rem)] sm:h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-4">
           <div>
             <h2 class="text-2xl font-bold coyote-text" id="chat-user-name">Użytkownik</h2>
             <p class="text-sm text-zinc-400" id="chat-user-email">email@example.com</p>
@@ -12899,18 +12934,18 @@
         </div>
 
         <!-- Wiadomości -->
-        <div id="chat-messages" class="space-y-4 mb-6 min-h-[300px] max-h-[400px] overflow-y-auto p-4 bg-zinc-900/50 rounded-lg">
+        <div id="chat-messages" class="space-y-4 flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 bg-zinc-900/50 rounded-lg">
           <div class="text-center text-zinc-500 py-8">
             <i class="fa-solid fa-spinner fa-spin"></i> Ładowanie...
           </div>
         </div>
 
         <!-- Pole odpowiedzi -->
-        <div class="flex gap-2">
+        <div class="flex gap-2 mt-4">
           <textarea
             id="chat-reply-input"
             placeholder="Napisz odpowiedź..."
-            class="flex-1 min-h-[100px]"
+            class="flex-1 min-h-[80px] max-h-[160px]"
             rows="4"
           ></textarea>
           <div class="flex flex-col gap-2">
