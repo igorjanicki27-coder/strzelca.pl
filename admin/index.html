@@ -3002,6 +3002,9 @@
         if (modal) {
           modal.classList.add('hidden');
         }
+        // Odblokuj scrollowanie strony
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
         // currentConversationUser będzie dostępne w module
         try {
           if (typeof currentConversationUser !== 'undefined') {
@@ -10947,6 +10950,13 @@
       window.openMessageChat = async function openMessageChat(userId, userName, userEmail) {
         currentConversationUser = { id: userId, name: userName, email: userEmail };
 
+        // Zablokuj scrollowanie strony w tle
+        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+        document.body.style.overflow = 'hidden';
+        if (scrollbarWidth > 0) {
+          document.body.style.paddingRight = `${scrollbarWidth}px`;
+        }
+
         // Pokaż modal
         document.getElementById('chat-modal').classList.remove('hidden');
 
@@ -11136,6 +11146,13 @@
       async function openMessageChat(userId, userName, userEmail) {
         currentConversationUser = { id: userId, name: userName, email: userEmail };
 
+        // Zablokuj scrollowanie strony w tle
+        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+        document.body.style.overflow = 'hidden';
+        if (scrollbarWidth > 0) {
+          document.body.style.paddingRight = `${scrollbarWidth}px`;
+        }
+
         // Pokaż modal
         document.getElementById('chat-modal').classList.remove('hidden');
 
@@ -11236,6 +11253,11 @@
         }
         // Ustaw currentConversationUser na null (zmienna jest w scope modułu)
         currentConversationUser = null;
+        
+        // Odblokuj scrollowanie strony
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        
         console.log('closeChatModal: Modal closed, conversation cleared');
       };
 
@@ -12635,9 +12657,233 @@
         }
       };
 
-      // Wyszukiwanie użytkownika (placeholder)
-      window.searchUser = function() {
-        showNotification('Funkcja wyszukiwania użytkownika - w trakcie implementacji', 'info');
+      // Wyszukiwanie użytkownika dla zamówień
+      window.searchUser = async function() {
+        try {
+          // Sprawdź czy modal już istnieje
+          let modal = document.getElementById('user-search-modal');
+          if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'user-search-modal';
+            modal.className = 'fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl';
+            modal.onclick = function(e) {
+              if (e.target.id === 'user-search-modal') closeUserSearchModal();
+            };
+            document.body.appendChild(modal);
+          }
+
+          modal.innerHTML = `
+            <div class="admin-card max-w-2xl w-full max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation()">
+              <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold coyote-text">Wyszukaj użytkownika</h2>
+                <button onclick="closeUserSearchModal()" class="text-zinc-400 hover:text-white">
+                  <i class="fa-solid fa-times text-xl"></i>
+                </button>
+              </div>
+
+              <div class="mb-4">
+                <input 
+                  type="text" 
+                  id="user-search-input" 
+                  class="w-full" 
+                  placeholder="Wpisz nazwę użytkownika lub email..."
+                  autocomplete="off"
+                />
+              </div>
+
+              <div id="user-search-results" class="space-y-2 max-h-96 overflow-y-auto">
+                <div class="text-center text-zinc-400 py-8">
+                  <i class="fa-solid fa-search text-3xl mb-3"></i>
+                  <p>Wpisz nazwę użytkownika lub email, aby rozpocząć wyszukiwanie</p>
+                </div>
+              </div>
+            </div>
+          `;
+
+          modal.classList.remove('hidden');
+
+          // Focus na input
+          const searchInput = document.getElementById('user-search-input');
+          if (searchInput) {
+            searchInput.focus();
+            
+            let searchTimeout;
+            searchInput.addEventListener('input', async (e) => {
+              const searchTerm = e.target.value.trim();
+              
+              clearTimeout(searchTimeout);
+              
+              if (searchTerm.length < 2) {
+                document.getElementById('user-search-results').innerHTML = `
+                  <div class="text-center text-zinc-400 py-8">
+                    <i class="fa-solid fa-search text-3xl mb-3"></i>
+                    <p>Wpisz co najmniej 2 znaki, aby rozpocząć wyszukiwanie</p>
+                  </div>
+                `;
+                return;
+              }
+
+              searchTimeout = setTimeout(async () => {
+                await performUserSearch(searchTerm);
+              }, 300);
+            });
+          }
+        } catch (error) {
+          console.error('Error opening user search modal:', error);
+          showNotification('Błąd podczas otwierania wyszukiwania użytkownika', 'error');
+        }
+      };
+
+      // Funkcja wyszukiwania użytkowników
+      async function performUserSearch(searchTerm) {
+        const resultsContainer = document.getElementById('user-search-results');
+        if (!resultsContainer) return;
+
+        try {
+          resultsContainer.innerHTML = '<div class="text-center text-zinc-400 py-8"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i><p>Wyszukiwanie...</p></div>';
+
+          const usersRef = collection(db, 'userProfiles');
+          const searchLower = searchTerm.toLowerCase();
+
+          // Pobierz użytkowników (limit 100 dla wydajności)
+          const usersSnapshot = await getDocs(query(usersRef, limit(100)));
+          const matchingUsers = [];
+
+          usersSnapshot.forEach((doc) => {
+            const userData = doc.data();
+            const userId = doc.id;
+            const displayName = (userData.displayName || '').toLowerCase();
+            const email = (userData.email || '').toLowerCase();
+
+            // Sprawdź czy wyszukiwany tekst pasuje do nicku lub emailu
+            if (displayName.includes(searchLower) || email.includes(searchLower)) {
+              matchingUsers.push({
+                id: userId,
+                displayName: userData.displayName || userData.email || 'Brak nazwy',
+                email: userData.email || '',
+                avatar: userData.avatar || '',
+                phone: userData.phone || '',
+                parcelLocker: userData.parcelLocker || '',
+                address: userData.address || {}
+              });
+            }
+          });
+
+          // Sortuj: najpierw dokładne dopasowania, potem częściowe
+          matchingUsers.sort((a, b) => {
+            const aName = a.displayName.toLowerCase();
+            const bName = b.displayName.toLowerCase();
+            const aEmail = a.email.toLowerCase();
+            const bEmail = b.email.toLowerCase();
+
+            const aExact = aName === searchLower || aEmail === searchLower;
+            const bExact = bName === searchLower || bEmail === searchLower;
+
+            if (aExact && !bExact) return -1;
+            if (!aExact && bExact) return 1;
+            if (aName.startsWith(searchLower) && !bName.startsWith(searchLower)) return -1;
+            if (!aName.startsWith(searchLower) && bName.startsWith(searchLower)) return 1;
+            return aName.localeCompare(bName);
+          });
+
+          // Wyświetl wyniki
+          if (matchingUsers.length === 0) {
+            resultsContainer.innerHTML = '<div class="text-center text-zinc-400 py-8"><i class="fa-solid fa-user-slash text-3xl mb-3"></i><p>Nie znaleziono użytkowników</p></div>';
+          } else {
+            resultsContainer.innerHTML = matchingUsers.slice(0, 20).map(user => `
+              <div class="p-4 hover:bg-zinc-700 cursor-pointer border border-zinc-700 rounded-lg transition-colors user-search-result-item"
+                   data-user-id="${user.id}"
+                   data-user-email="${user.email || ''}">
+                <div class="flex items-center gap-3">
+                  <div class="w-12 h-12 bg-coyote rounded-full flex items-center justify-center flex-shrink-0">
+                    ${user.avatar ? 
+                      `<img src="${user.avatar}" alt="${user.displayName}" class="w-12 h-12 rounded-full object-cover">` :
+                      `<i class="fa-solid fa-user text-black text-lg"></i>`
+                    }
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-white font-medium truncate">${user.displayName}</div>
+                    ${user.email ? `<div class="text-zinc-400 text-sm truncate">${user.email}</div>` : ''}
+                  </div>
+                  <i class="fa-solid fa-chevron-right text-zinc-400"></i>
+                </div>
+              </div>
+            `).join('');
+
+            // Dodaj event listenery do wyników
+            resultsContainer.querySelectorAll('.user-search-result-item').forEach(item => {
+              item.addEventListener('click', async () => {
+                const userId = item.dataset.userId;
+                const userEmail = item.dataset.userEmail;
+                
+                // Pobierz pełne dane użytkownika
+                await selectUserForOrder(userId, userEmail);
+              });
+            });
+          }
+        } catch (error) {
+          console.error('Error searching users:', error);
+          resultsContainer.innerHTML = '<div class="text-center text-red-400 py-8"><i class="fa-solid fa-exclamation-triangle text-3xl mb-3"></i><p>Błąd wyszukiwania</p></div>';
+        }
+      }
+
+      // Wybór użytkownika i wypełnienie formularza
+      async function selectUserForOrder(userId, userEmail) {
+        try {
+          // Pobierz pełny profil użytkownika
+          const userDoc = await getDoc(doc(db, 'userProfiles', userId));
+          if (!userDoc.exists()) {
+            showNotification('Nie znaleziono profilu użytkownika', 'error');
+            return;
+          }
+
+          const userData = userDoc.data();
+
+          // Odszyfruj dane
+          const decryptedPhone = userData.phone ? atob(userData.phone) : '';
+          const decryptedParcelLocker = userData.parcelLocker ? atob(userData.parcelLocker) : '';
+          const decryptedAddress = {
+            street: userData.address?.street ? atob(userData.address.street) : '',
+            buildingNumber: userData.address?.buildingNumber ? atob(userData.address.buildingNumber) : '',
+            postalCode: userData.address?.postalCode ? atob(userData.address.postalCode) : '',
+            city: userData.address?.city ? atob(userData.address.city) : ''
+          };
+
+          // Wypełnij pola formularza zamówienia
+          const userIdInput = document.getElementById('order-userId');
+          const emailInput = document.getElementById('order-email');
+          const phoneInput = document.getElementById('order-phone');
+          const parcelLockerInput = document.getElementById('order-parcelLocker');
+          const addressStreetInput = document.getElementById('order-address-street');
+          const addressBuildingInput = document.getElementById('order-address-building');
+          const addressPostalInput = document.getElementById('order-address-postal');
+          const addressCityInput = document.getElementById('order-address-city');
+
+          if (userIdInput) userIdInput.value = userId;
+          if (emailInput) emailInput.value = userEmail || '';
+          if (phoneInput) phoneInput.value = decryptedPhone;
+          if (parcelLockerInput) parcelLockerInput.value = decryptedParcelLocker;
+          if (addressStreetInput) addressStreetInput.value = decryptedAddress.street;
+          if (addressBuildingInput) addressBuildingInput.value = decryptedAddress.buildingNumber;
+          if (addressPostalInput) addressPostalInput.value = decryptedAddress.postalCode;
+          if (addressCityInput) addressCityInput.value = decryptedAddress.city;
+
+          // Zamknij modal wyszukiwania
+          closeUserSearchModal();
+
+          showNotification(`Wybrano użytkownika: ${userData.displayName || userEmail}`, 'success');
+        } catch (error) {
+          console.error('Error selecting user:', error);
+          showNotification('Błąd podczas wyboru użytkownika', 'error');
+        }
+      }
+
+      // Zamykanie modala wyszukiwania
+      window.closeUserSearchModal = function() {
+        const modal = document.getElementById('user-search-modal');
+        if (modal) {
+          modal.classList.add('hidden');
+        }
       };
 
       // =============================================================================
@@ -12977,7 +13223,7 @@
     </script>
 
     <!-- Modal czatu -->
-    <div id="chat-modal" class="fixed inset-0 z-50 hidden p-2 sm:p-4 bg-black/95 backdrop-blur-xl overflow-y-auto" onclick="if(event.target.id === 'chat-modal') closeChatModal()">
+    <div id="chat-modal" class="fixed inset-0 z-50 hidden p-2 sm:p-4 bg-black/95 backdrop-blur-xl overflow-hidden" onclick="if(event.target.id === 'chat-modal') closeChatModal()">
       <div class="admin-card max-w-4xl w-full mx-auto my-2 sm:my-8 h-[calc(100vh-1rem)] sm:h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-4">
           <div>
