@@ -200,6 +200,15 @@ module.exports = async (req, res) => {
       } else {
         res.status(405).json({ success: false, error: 'Method not allowed' });
       }
+    } else if (segs.length === 3 && segs[0] === 'conversation' && (segs[2] === 'pin' || segs[2] === 'unpin')) {
+      // /api/messages/conversation/:senderId/pin lub /api/messages/conversation/:senderId/unpin
+      const senderId = segs[1];
+      const action = segs[2];
+      if (req.method === 'PUT') {
+        await handleConversationPinStatus(req, res, db, senderId, action, { requesterUid, requesterIsAdmin });
+      } else {
+        res.status(405).json({ success: false, error: 'Method not allowed' });
+      }
     } else if (segs.length === 1 && segs[0] === 'stats') {
       // /api/messages/stats
       if (req.method === 'GET') {
@@ -703,6 +712,39 @@ async function handleConversationReadStatus(req, res, db, senderId, action, { re
     });
   } catch (error) {
     console.error('Error marking conversation as read/unread:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+}
+
+// PUT /api/messages/conversation/:senderId/pin lub /unpin - przypina/odpina konwersację
+async function handleConversationPinStatus(req, res, db, senderId, action, { requesterUid, requesterIsAdmin }) {
+  try {
+    // Tylko admin może przypinać/odpinać konwersacje
+    if (!requesterIsAdmin) {
+      return res.status(403).json({ success: false, error: 'Forbidden - admin only' });
+    }
+
+    const recipientId = 'admin'; // Konwersacje z adminem
+
+    let result;
+    if (action === 'pin') {
+      result = await db.pinConversation(senderId, recipientId);
+    } else if (action === 'unpin') {
+      result = await db.unpinConversation(senderId, recipientId);
+    } else {
+      return res.status(400).json({ success: false, error: 'Invalid action. Must be "pin" or "unpin"' });
+    }
+
+    res.json({
+      success: true,
+      message: `Conversation ${action === 'pin' ? 'pinned' : 'unpinned'}`,
+      data: result
+    });
+  } catch (error) {
+    console.error('Error pinning/unpinning conversation:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error'

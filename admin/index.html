@@ -1059,7 +1059,7 @@
                       <div class="text-xs text-zinc-400">Razem</div>
                     </div>
                   </div>
-                </div>
+              </div>
             </div>
 
               <!-- Dolna część: Odwiedziny (100% szer, 30% wys) -->
@@ -10389,7 +10389,7 @@
       // ==================== NOWE FUNKCJE DLA SYSTEMU WIADOMOŚCI ====================
 
       // Zmienna do przechowywania aktualnych filtrów wiadomości
-      let currentFilters = { search: '', category: 'all', status: 'all' };
+      let currentFilters = { search: '', status: 'all' };
 
       // Funkcja ładowania statusu wiadomości
       async function loadMessagesStatus() {
@@ -10485,35 +10485,8 @@
             }
           });
 
-            let categoryButtons = '';
-
-            // Dodaj przycisk "Wszystkie"
-            const isAllActive = !currentFilters.category || currentFilters.category === 'all' || ['unread', 'completed'].includes(currentFilters.category);
-            categoryButtons += `
-              <button onclick="filterMessages('all')"
-                      class="px-3 py-2 rounded-lg transition-all duration-200 font-medium liquid-glass-button flex items-center gap-2"
-                      style="color: #6B7280; ${isAllActive ? `background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid #6B728060;` : `background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.1);`}">
-                <i class="fa-solid fa-list text-xs"></i>
-                Wszystkie
-              </button>
-            `;
-
-            categories.forEach(cat => {
-              const isActive = currentFilters.category === cat.name.toLowerCase().replace(/\s+/g, '');
-              const categoryIcon = cat.icon || 'fa-circle';
-              // Użyj koloru zdefiniowanego przez użytkownika, lub domyślnego z bazy danych
-              const categoryColor = userFilterColors[cat.name.toLowerCase().replace(/\s+/g, '')] || cat.color || '#6B7280';
-              categoryButtons += `
-                <button onclick="filterMessages('${cat.name.toLowerCase().replace(/\s+/g, '')}')"
-                        class="px-3 py-2 rounded-lg transition-all duration-200 font-medium liquid-glass-button flex items-center gap-2"
-                        style="color: ${categoryColor}; ${isActive ? `background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid ${categoryColor}60;` : `background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.1);`}">
-                  <i class="fa-solid ${categoryIcon} text-xs"></i>
-                  ${cat.name}
-                </button>
-              `;
-            });
-
-            categoryButtonsEl.innerHTML = categoryButtons;
+            // Usunięto przyciski kategorii - nie są już potrzebne
+            categoryButtonsEl.innerHTML = '';
         } catch (error) {
           console.error('Error loading categories for buttons:', error);
           categoryButtonsEl.innerHTML = '';
@@ -10613,31 +10586,6 @@
             apiParams.append('status', 'completed');
           } else if (currentFilters.category === 'in_progress') {
             apiParams.append('status', 'in_progress');
-          } else if (currentFilters.category && !['unread', 'read', 'completed', 'in_progress', 'all'].includes(currentFilters.category)) {
-            // To jest filtr kategorii - znajdź ID kategorii po nazwie
-            try {
-              console.log('Filtering by category:', currentFilters.category);
-              const categoriesRef = collection(db, 'messageCategories');
-              const categoriesQuery = query(categoriesRef);
-              const categoriesSnapshot = await getDocs(categoriesQuery);
-
-              let categoryId = null;
-              categoriesSnapshot.forEach((doc) => {
-                const category = doc.data();
-                if (category.name.toLowerCase().replace(/\s+/g, '') === currentFilters.category) {
-                  categoryId = doc.id;
-                }
-              });
-
-              if (categoryId) {
-                apiParams.append('categoryId', categoryId);
-                console.log('Added categoryId to query:', categoryId);
-              } else {
-                console.warn('Category not found for:', currentFilters.category);
-              }
-            } catch (error) {
-              console.error('Error loading categories for filtering:', error);
-            }
           }
 
           // Pobierz wiadomości przez API
@@ -10650,7 +10598,7 @@
             if (auth && auth.currentUser) {
               authToken = await auth.currentUser.getIdToken();
               console.log('loadMessagesWithFilters: Got Firebase Auth token');
-            } else {
+              } else {
               console.warn('loadMessagesWithFilters: No current user in auth');
             }
           } catch (tokenError) {
@@ -10823,8 +10771,7 @@
               messages: [],
               unreadCount: 0,
               totalMessages: 0,
-              categoryName: msg.category_name || 'Inne',
-              categoryColor: msg.category_color || '#6B7280'
+              isPinned: false // Domyślnie nieprzypięte, zostanie zaktualizowane z conversations collection
             };
           }
 
@@ -10835,6 +10782,32 @@
             conversations[conversationKey].unreadCount++;
           }
         });
+
+        // Pobierz stan przypięcia z conversations collection
+        try {
+          const conversationsRef = collection(db, 'conversations');
+          const conversationsSnapshot = await getDocs(conversationsRef);
+          
+          conversationsSnapshot.forEach((doc) => {
+            const convData = doc.data();
+            // Sprawdź różne formaty conversationId
+            let participants = [];
+            if (convData.participantA && convData.participantB) {
+              participants = [convData.participantA, convData.participantB].filter(id => id).sort();
+            } else if (convData.userId) {
+              // Stary format - userId jako klucz
+              participants = [convData.userId, 'admin'].filter(id => id).sort();
+            }
+            const conversationKey = participants.join('_');
+            
+            if (conversations[conversationKey]) {
+              conversations[conversationKey].isPinned = convData.isPinned === true;
+            }
+          });
+        } catch (error) {
+          console.warn('Error fetching conversation pin status:', error);
+          // Kontynuuj bez stanu przypięcia - wszystkie będą nieprzypięte
+        }
 
         // Filtruj konwersacje po tekście wyszukiwania (nazwa użytkownika, email lub treść wiadomości)
         const searchTerm = (currentFilters.search || '').toLowerCase().trim();
@@ -10848,21 +10821,22 @@
             const senderEmail = (conversation.senderEmail || '').toLowerCase();
             // Szukaj po treści wiadomości
             const messageContent = (conversation.lastMessage?.content || '').toLowerCase();
-            const messageTopic = (conversation.lastMessage?.topic || '').toLowerCase();
             
             return senderName.includes(searchTerm) || 
                    senderEmail.includes(searchTerm) || 
-                   messageContent.includes(searchTerm) ||
-                   messageTopic.includes(searchTerm);
+                   messageContent.includes(searchTerm);
           });
         }
 
         // Konwertuj na tablicę i posortuj
         const conversationsArray = filteredConversations.sort((a, b) => {
-          // Najpierw nieprzeczytane
+          // Najpierw przypięte
+          if (a.isPinned && !b.isPinned) return -1;
+          if (!a.isPinned && b.isPinned) return 1;
+          // Potem nieprzeczytane
           if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
           if (a.unreadCount === 0 && b.unreadCount > 0) return 1;
-          // Potem po dacie ostatniej wiadomości
+          // Na końcu po dacie ostatniej wiadomości
           return b.lastMessage.timestamp - a.lastMessage.timestamp;
         });
 
@@ -10877,30 +10851,28 @@
           });
 
           const hasUnread = conversation.unreadCount > 0;
-          const statusText = lastMsg.status === 'completed' ? 'Zakończona' : 'Aktywna';
+          const isPinned = conversation.isPinned || false;
 
           // Hierarchia wyświetlania: zawsze nickname/displayName, email tylko jeśli brak nazwy
           const displayName = conversation.senderName || conversation.senderEmail;
           const displaySubtext = conversation.senderName ? conversation.senderEmail : '';
 
-          // Ikona kategorii
-          const categoryIcon = conversation.categoryName === 'Zamówienia' ? 'fa-shopping-cart' :
-                               conversation.categoryName === 'Oferty' ? 'fa-tag' : 'fa-circle';
-
           return `
-            <div class="message-item bg-zinc-800/50 rounded-lg p-4 hover:bg-zinc-800/70 transition-all duration-200 border ${hasUnread ? 'border-l-4 border-l-coyote glowing-border' : 'border-zinc-700'}"
+            <div class="message-item bg-zinc-800/50 rounded-lg p-4 mb-4 hover:bg-zinc-800/70 transition-all duration-200 border ${hasUnread ? 'border-l-4 border-l-coyote glowing-border' : 'border-zinc-700'} ${isPinned ? 'ring-2 ring-coyote/50' : ''}"
                  data-user-id="${conversation.senderId}"
                  data-user-name="${conversation.senderName}"
-                 data-user-email="${conversation.senderEmail}">
+                 data-user-email="${conversation.senderEmail}"
+                 data-is-pinned="${isPinned}">
               <div class="flex items-start justify-between mb-3">
                 <div class="flex items-center space-x-3 flex-1 cursor-pointer" onclick="openMessageChat('${conversation.senderId}', '${conversation.senderName || ''}', '${conversation.senderEmail || ''}')">
-                  <div class="w-10 h-10 bg-coyote rounded-full flex items-center justify-center">
+                  <div class="w-10 h-10 bg-coyote rounded-full flex items-center justify-center relative">
                     <i class="fa-solid fa-user text-black text-sm"></i>
+                    ${isPinned ? '<i class="fa-solid fa-thumbtack text-coyote text-xs absolute -top-1 -right-1"></i>' : ''}
                   </div>
                   <div class="flex items-center space-x-2">
                     <div>
                       <h4 class="font-semibold text-white flex items-center gap-2">
-                        <i class="fa-solid ${categoryIcon} text-xs" style="color: ${conversation.categoryColor}"></i>
+                        ${isPinned ? '<i class="fa-solid fa-thumbtack text-coyote text-xs"></i>' : ''}
                         ${displayName}
                       </h4>
                       ${displaySubtext ? `<p class="text-sm text-zinc-400">${displaySubtext}</p>` : ''}
@@ -10909,21 +10881,16 @@
                 </div>
                 <div class="text-right flex-shrink-0 ml-4">
                   <div class="text-xs text-zinc-500 mb-2">${date}</div>
-                  <div class="flex flex-col items-end space-y-1">
-                    <span class="${lastMsg.status === 'completed' ? 'text-green-400' : 'text-orange-400'} text-xs font-medium">
-                      ${statusText}
-                    </span>
-                    <span class="px-2 py-1 rounded text-xs font-medium"
-                          style="background-color: ${conversation.categoryColor}20; color: ${conversation.categoryColor}; border: 1px solid ${conversation.categoryColor}40;">
-                      ${conversation.categoryName}
-                    </span>
-                  </div>
+                  <button onclick="event.stopPropagation(); toggleConversationPin('${conversation.senderId}', ${isPinned})" 
+                          class="px-2 py-1 rounded text-xs font-medium transition-colors ${isPinned ? 'bg-coyote text-black hover:bg-coyote/80' : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'}"
+                          title="${isPinned ? 'Odepnij konwersację' : 'Przypnij konwersację'}">
+                    <i class="fa-solid fa-thumbtack"></i>
+                  </button>
                 </div>
               </div>
 
               <div class="mb-3 cursor-pointer" onclick="openMessageChat('${conversation.senderId}', '${conversation.senderName || ''}', '${conversation.senderEmail || ''}')">
                 <p class="text-zinc-300 text-sm leading-relaxed">
-                  ${lastMsg.topic ? `<strong>${lastMsg.topic}:</strong> ` : ''}
                   ${lastMsg.content.length > 150 ? lastMsg.content.substring(0, 150) + '...' : lastMsg.content}
                 </p>
               </div>
@@ -10966,13 +10933,7 @@
         const chatEmailEl2 = document.getElementById('chat-user-email');
         if (chatEmailEl2) chatEmailEl2.textContent = userEmail || '';
 
-        // Załaduj kategorie do select
-        const categorySelect = document.getElementById('chat-category-select');
-        categorySelect.innerHTML = '<option value="">Ładowanie...</option>';
-        
-        try {
-          const categoriesRef = collection(db, 'messageCategories');
-          const categoriesQuery = query(categoriesRef);
+        // Usunięto ładowanie kategorii - nie są już potrzebne
           const categoriesSnapshot = await getDocs(categoriesQuery);
           
           const categories = [];
@@ -11029,6 +10990,56 @@
       };
       
       // Funkcja przełączania statusu przeczytana/nieprzeczytana konwersacji
+      // Funkcja przypinania/odpinania konwersacji
+      window.toggleConversationPin = async function toggleConversationPin(userId, currentlyPinned) {
+        try {
+          // Pobierz Firebase Auth token
+          let authToken = null;
+          try {
+            if (auth && auth.currentUser) {
+              authToken = await auth.currentUser.getIdToken();
+            }
+          } catch (tokenError) {
+            console.error('toggleConversationPin: Failed to get Firebase Auth token:', tokenError);
+            showNotification('Błąd autoryzacji', 'error');
+            return;
+          }
+          
+          const headers = {
+            'X-Admin-Panel': 'true',
+            'Content-Type': 'application/json'
+          };
+          if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+          }
+          
+          // Wybierz akcję: jeśli jest przypięta, odepnij, w przeciwnym razie przypnij
+          const action = currentlyPinned ? 'unpin' : 'pin';
+          
+          const response = await fetch(`/api/messages/conversation/${userId}/${action}`, {
+            method: 'PUT',
+            headers,
+            credentials: 'include'
+          });
+          
+          const data = await response.json();
+          if (!data.success) {
+            throw new Error(data.error || 'Failed to update pin status');
+          }
+          
+          // Odśwież listę wiadomości
+          await loadMessagesWithFilters();
+          
+          showNotification(
+            currentlyPinned ? 'Konwersacja odpięta' : 'Konwersacja przypięta',
+            'success'
+          );
+        } catch (error) {
+          console.error('Error toggling conversation pin status:', error);
+          showNotification('Błąd zmiany statusu przypięcia: ' + (error.message || 'Nieznany błąd'), 'error');
+        }
+      };
+
       window.toggleConversationReadStatus = async function toggleConversationReadStatus(userId, currentlyUnread) {
         try {
           // Pobierz Firebase Auth token
@@ -11162,13 +11173,7 @@
         const chatEmailEl2 = document.getElementById('chat-user-email');
         if (chatEmailEl2) chatEmailEl2.textContent = userEmail;
 
-        // Załaduj kategorie do select
-        const categorySelect = document.getElementById('chat-category-select');
-        categorySelect.innerHTML = '<option value="">Ładowanie...</option>';
-
-        try {
-          const categoriesRef = collection(db, "messageCategories");
-          const categoriesSnapshot = await getDocs(categoriesRef);
+        // Usunięto ładowanie kategorii - nie są już potrzebne
           
           const categories = [];
           categoriesSnapshot.forEach((doc) => {
@@ -11213,8 +11218,8 @@
         await loadConversationMessages(userId);
       }
 
-      // Funkcja otwierania modalu szybkich odpowiedzi
-      async function openQuickRepliesMenu() {
+      // Funkcja otwierania modalu szybkich odpowiedzi - dostępna globalnie dla onclick
+      window.openQuickRepliesMenu = async function openQuickRepliesMenu() {
         const modal = document.getElementById('quick-replies-modal');
         const listContainer = document.getElementById('quick-replies-list');
 
@@ -11228,7 +11233,7 @@
           console.error('Error loading quick replies:', error);
           listContainer.innerHTML = '<div class="text-center text-red-400 py-8">Błąd ładowania szablonów</div>';
         }
-      }
+      };
 
       // Funkcja wyboru szybkiej odpowiedzi
       function selectQuickReply(content) {
@@ -11411,7 +11416,7 @@
             console.error('loadConversationMessages: messagesContainer not found!');
             return;
           }
-          
+
           messagesContainer.innerHTML = messagesHtml;
           
           console.log('loadConversationMessages: HTML set, container innerHTML length:', messagesContainer.innerHTML.length);
@@ -11438,8 +11443,8 @@
         }
       }
 
-      // Funkcja wysyłania odpowiedzi
-      async function sendChatReply() {
+      // Funkcja wysyłania odpowiedzi - dostępna globalnie dla onclick
+      window.sendChatReply = async function sendChatReply() {
         if (!currentConversationUser) return;
 
         const input = document.getElementById('chat-reply-input');
@@ -11985,14 +11990,10 @@
         // no-op
       });
 
-      // Inicjalizacja event listenera dla zmiany kategorii czatu
+      // Usunięto event listener dla kategorii - nie są już potrzebne
+      // (zachowano dla kompatybilności, ale nie wykonuje żadnych akcji)
       document.addEventListener('DOMContentLoaded', function() {
-        const categorySelect = document.getElementById('chat-category-select');
-        if (categorySelect && !categorySelect.hasCategoryListener) {
-          categorySelect.hasCategoryListener = true;
-          categorySelect.addEventListener('change', async function() {
-            const selectedCategoryId = this.value;
-            if (!selectedCategoryId) {
+        // no-op
               console.log('No category selected, skipping update');
               return;
             }
@@ -12130,7 +12131,7 @@
 
           allOrders = data.data || [];
           updateOrdersStatistics();
-          renderOrders(allOrders);
+          await renderOrders(allOrders);
         } catch (error) {
           console.error('Error loading orders:', error);
           const container = document.getElementById('orders-container');
@@ -12172,7 +12173,7 @@
       }
 
       // Renderowanie zamówień
-      function renderOrders(orders) {
+      async function renderOrders(orders) {
         const container = document.getElementById('orders-container');
         if (!container) return;
 
@@ -12201,9 +12202,37 @@
           zakonczone: 'Zakończone'
         };
 
+        // Pobierz nazwy użytkowników dla wszystkich zamówień
+        const userIds = orders.filter(o => o.userId).map(o => o.userId);
+        const userNamesMap = {};
+        
+        if (userIds.length > 0) {
+          try {
+            const uniqueUserIds = [...new Set(userIds)];
+            const userPromises = uniqueUserIds.map(async (userId) => {
+              try {
+                const userDoc = await getDoc(doc(db, 'userProfiles', userId));
+                if (userDoc.exists()) {
+                  const userData = userDoc.data();
+                  userNamesMap[userId] = userData.displayName || userData.email || userId;
+                } else {
+                  userNamesMap[userId] = userId;
+                }
+              } catch (error) {
+                console.warn(`Error fetching user ${userId}:`, error);
+                userNamesMap[userId] = userId;
+              }
+            });
+            await Promise.all(userPromises);
+          } catch (error) {
+            console.error('Error fetching user names:', error);
+          }
+        }
+
         container.innerHTML = orders.map(order => {
           const statusColor = statusColors[order.status] || 'text-zinc-400 bg-zinc-400/20 border-zinc-400/40';
           const statusName = statusNames[order.status] || order.status;
+          const userName = order.userId ? (userNamesMap[order.userId] || order.userId) : null;
           
           return `
             <div class="bg-zinc-800/50 rounded-lg p-4 mb-4 border border-zinc-700 hover:border-zinc-600 transition-all">
@@ -12216,7 +12245,7 @@
                     </span>
                   </div>
                   <div class="text-sm text-zinc-400 space-y-1">
-                    ${order.userId ? `<div>Użytkownik: <span class="text-white">${order.userId}</span></div>` : ''}
+                    ${userName ? `<div>Użytkownik: <span class="text-white">${userName}</span></div>` : ''}
                     ${order.email ? `<div>Email: <span class="text-white">${order.email}</span></div>` : ''}
                     <div>Utworzono: <span class="text-white">${order.createdAtFormatted || 'Brak daty'}</span></div>
                     ${order.updatedAtFormatted && order.updatedAtFormatted !== order.createdAtFormatted ? 
@@ -12240,7 +12269,7 @@
                 ${order.notes ? `<div class="text-sm text-zinc-400 italic">${order.notes}</div>` : ''}
               </div>
 
-              <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <div class="text-zinc-400">Cena</div>
                   <div class="text-white font-semibold">${(order.price || 0).toFixed(2)} zł</div>
@@ -12252,10 +12281,6 @@
                 <div>
                   <div class="text-zinc-400">Koszty dodatkowe</div>
                   <div class="text-white font-semibold">${(order.additionalCosts || 0).toFixed(2)} zł</div>
-                </div>
-                <div>
-                  <div class="text-zinc-400">Podatek</div>
-                  <div class="text-white font-semibold">${(order.tax || 0).toFixed(2)} zł</div>
                 </div>
                 <div>
                   <div class="text-zinc-400">Razem</div>
@@ -12452,7 +12477,6 @@
           document.getElementById('order-price').value = currentEditingOrder.price || 0;
           document.getElementById('order-shipping').value = currentEditingOrder.shipping || 0;
           document.getElementById('order-additionalCosts').value = currentEditingOrder.additionalCosts || 0;
-          document.getElementById('order-tax').value = currentEditingOrder.tax || 0;
           document.getElementById('order-status').value = currentEditingOrder.status || 'zlozone';
           calculateOrderTotal();
         } else {
@@ -12467,8 +12491,7 @@
         const price = parseFloat(document.getElementById('order-price')?.value || 0);
         const shipping = parseFloat(document.getElementById('order-shipping')?.value || 0);
         const additionalCosts = parseFloat(document.getElementById('order-additionalCosts')?.value || 0);
-        const tax = parseFloat(document.getElementById('order-tax')?.value || 0);
-        const total = price + shipping + additionalCosts + tax;
+        const total = price + shipping + additionalCosts;
         const totalInput = document.getElementById('order-total');
         if (totalInput) {
           totalInput.value = total.toFixed(2);
@@ -12505,7 +12528,6 @@
             price: document.getElementById('order-price').value,
             shipping: document.getElementById('order-shipping').value,
             additionalCosts: document.getElementById('order-additionalCosts').value,
-            tax: document.getElementById('order-tax').value,
             status: document.getElementById('order-status').value,
           };
 
@@ -13233,14 +13255,6 @@
           <button onclick="closeChatModal()" class="text-zinc-400 hover:text-white">
             <i class="fa-solid fa-times text-xl"></i>
           </button>
-        </div>
-
-        <!-- Wybór kategorii -->
-        <div class="mb-4">
-          <label class="block text-sm font-medium mb-2">Kategoria</label>
-          <select id="chat-category-select" class="w-full">
-            <option value="">Wybierz kategorię...</option>
-          </select>
         </div>
 
         <!-- Wiadomości -->

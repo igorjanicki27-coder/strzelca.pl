@@ -540,6 +540,59 @@ class FirestoreDatabaseManager {
     }
   }
 
+  async pinConversation(senderId, recipientId) {
+    try {
+      const db = await this.initializeFirebase();
+      const conversationId = [senderId, recipientId].sort().join('_');
+      const conversationRef = db.collection('conversations').doc(conversationId);
+
+      const conversationDoc = await conversationRef.get();
+      
+      if (conversationDoc.exists) {
+        await conversationRef.update({
+          isPinned: true,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      } else {
+        // Utwórz konwersację jeśli nie istnieje
+        await conversationRef.set({
+          participantA: senderId,
+          participantB: recipientId,
+          isPinned: true,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error pinning conversation:', error);
+      throw error;
+    }
+  }
+
+  async unpinConversation(senderId, recipientId) {
+    try {
+      const db = await this.initializeFirebase();
+      const conversationId = [senderId, recipientId].sort().join('_');
+      const conversationRef = db.collection('conversations').doc(conversationId);
+
+      const conversationDoc = await conversationRef.get();
+      
+      if (conversationDoc.exists) {
+        await conversationRef.update({
+          isPinned: false,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error unpinning conversation:', error);
+      throw error;
+    }
+  }
+
   // =============================================================================
   // MESSAGE CATEGORIES METHODS (zastępują SQLite message_categories table)
   // =============================================================================

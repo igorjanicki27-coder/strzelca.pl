@@ -373,7 +373,6 @@ module.exports = async (req, res) => {
         price,
         shipping,
         additionalCosts,
-        tax,
         status = 'zlozone',
         parcelLocker,
         address,
@@ -389,8 +388,7 @@ module.exports = async (req, res) => {
       // Oblicz razem
       const total = (parseFloat(price) || 0) + 
                    (parseFloat(shipping) || 0) + 
-                   (parseFloat(additionalCosts) || 0) + 
-                   (parseFloat(tax) || 0);
+                   (parseFloat(additionalCosts) || 0);
 
       const orderNumber = await generateOrderNumber();
       const now = admin.firestore.FieldValue.serverTimestamp();
@@ -404,7 +402,6 @@ module.exports = async (req, res) => {
         price: parseFloat(price) || 0,
         shipping: parseFloat(shipping) || 0,
         additionalCosts: parseFloat(additionalCosts) || 0,
-        tax: parseFloat(tax) || 0,
         total,
         status,
         parcelLocker: parcelLocker || '',
@@ -463,7 +460,6 @@ module.exports = async (req, res) => {
         price,
         shipping,
         additionalCosts,
-        tax,
         status,
         parcelLocker,
         address,
@@ -480,7 +476,6 @@ module.exports = async (req, res) => {
       if (price !== undefined) updateData.price = parseFloat(price) || 0;
       if (shipping !== undefined) updateData.shipping = parseFloat(shipping) || 0;
       if (additionalCosts !== undefined) updateData.additionalCosts = parseFloat(additionalCosts) || 0;
-      if (tax !== undefined) updateData.tax = parseFloat(tax) || 0;
       if (status !== undefined) {
         updateData.status = status;
         // Jeśli status zmienia się na "zakonczone", wymagaj faktury
@@ -502,8 +497,7 @@ module.exports = async (req, res) => {
       const finalPrice = updateData.price !== undefined ? updateData.price : currentData.price;
       const finalShipping = updateData.shipping !== undefined ? updateData.shipping : currentData.shipping;
       const finalAdditionalCosts = updateData.additionalCosts !== undefined ? updateData.additionalCosts : currentData.additionalCosts;
-      const finalTax = updateData.tax !== undefined ? updateData.tax : currentData.tax;
-      updateData.total = finalPrice + finalShipping + finalAdditionalCosts + finalTax;
+      updateData.total = finalPrice + finalShipping + finalAdditionalCosts;
 
       await orderRef.update(updateData);
       
