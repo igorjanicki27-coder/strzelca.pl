@@ -3115,10 +3115,9 @@
           logAuthReady: true,
           logSSO: true,
           firestore: {
-            // Wymuś long polling zamiast WebSocket, aby uniknąć problemów z CORS
-            experimentalForceLongPolling: true,
-            experimentalAutoDetectLongPolling: false,
-            useFetchStreams: false,
+            // Użyj auto-detekcji long polling, aby uniknąć problemów z CORS
+            experimentalAutoDetectLongPolling: true,
+            useFetchStreams: true,
           },
         });
         
@@ -10933,22 +10932,9 @@
         const chatEmailEl2 = document.getElementById('chat-user-email');
         if (chatEmailEl2) chatEmailEl2.textContent = userEmail || '';
 
-        // Usunięto ładowanie kategorii - nie są już potrzebne
-          const categoriesSnapshot = await getDocs(categoriesQuery);
-          
-          const categories = [];
-          categoriesSnapshot.forEach((doc) => {
-            categories.push({
-              id: doc.id,
-              ...doc.data()
-          });
-        });
-          
-          categorySelect.innerHTML = categories.map(cat =>
-            `<option value="${cat.id}">${cat.name}</option>`
-          ).join('');
-
-          // Ustaw aktualną kategorię rozmowy
+        // Ustaw aktualną kategorię rozmowy (jeśli istnieje element categorySelect)
+        const categorySelect = document.getElementById('message-category');
+        if (categorySelect) {
           try {
             // Pobierz Firebase Auth token
             let authToken = null;
@@ -10977,9 +10963,6 @@
           } catch (error) {
             console.error('Error setting current category:', error);
           }
-        } catch (error) {
-          console.error('Error loading categories for chat:', error);
-          categorySelect.innerHTML = '<option value="">Błąd ładowania</option>';
         }
 
         // Załaduj wiadomości konwersacji
