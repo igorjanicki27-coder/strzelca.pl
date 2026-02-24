@@ -11988,49 +11988,6 @@
         // no-op
       });
 
-      // Usunięto event listener dla kategorii - nie są już potrzebne
-      // (zachowano dla kompatybilności, ale nie wykonuje żadnych akcji)
-      document.addEventListener('DOMContentLoaded', function() {
-        // no-op
-              console.log('No category selected, skipping update');
-              return;
-            }
-
-            if (!currentConversationUser || !currentConversationUser.id) {
-              console.error('No current conversation user available');
-              showNotification("Błąd: Brak aktywnej rozmowy", "error");
-              return;
-            }
-
-            try {
-              // Zaktualizuj kategorię rozmowy bezpośrednio w Firestore
-              const conversationRef = doc(db, 'conversations', currentConversationUser.id);
-              await updateDoc(conversationRef, {
-                categoryId: selectedCategoryId,
-                updatedAt: new Date()
-              });
-
-              console.log('Kategoria zmieniona pomyślnie w Firestore');
-              // Zaktualizuj wartość selecta żeby pokazywał nową kategorię
-              this.value = selectedCategoryId;
-
-              showNotification("Kategoria rozmowy została zaktualizowana", "success");
-
-              // Odśwież dane po krótkim opóźnieniu, żeby dać czas na zapisanie zmian
-              setTimeout(() => {
-                loadMessagesWithFilters();
-                updateCategoryButtonsHighlight();
-                // Odśwież kolory w modalu czatu jeśli potrzebne
-                updateChatModalCategoryColors(selectedCategoryId);
-              }, 500);
-            } catch (error) {
-              console.error('Error updating category:', error);
-              showNotification("Błąd podczas aktualizacji kategorii", "error");
-            }
-          });
-        }
-      });
-
       // Funkcja do aktualizacji kolorów w modalu czatu
       function updateChatModalCategoryColors(categoryId) {
         if (!categoryId) return;
