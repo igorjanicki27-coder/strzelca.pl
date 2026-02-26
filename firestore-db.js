@@ -95,9 +95,11 @@ class FirestoreDatabaseManager {
         status: message.status,
         collection: 'messages'
       });
+      
+      let messageId;
       try {
         const messageRef = await db.collection('messages').add(message);
-        const messageId = messageRef.id;
+        messageId = messageRef.id;
         console.log('addMessage: Message added successfully with ID:', messageId, 'to collection: messages');
         
         // Weryfikuj, czy wiadomość rzeczywiście została zapisana
@@ -462,7 +464,18 @@ class FirestoreDatabaseManager {
   async updateConversation(userId, categoryId, lastMessage = null) {
     try {
       const db = await this.initializeFirebase();
-      const conversationRef = db.collection('conversations').doc(userId);
+      // Użyj conversationId zamiast userId dla spójności z pinConversation/unpinConversation
+      // Jeśli lastMessage ma recipientId, użyj go do utworzenia conversationId
+      let conversationId = userId;
+      if (lastMessage && lastMessage.recipientId) {
+        const participants = [userId, lastMessage.recipientId].filter(id => id).sort();
+        conversationId = participants.join('_');
+      } else if (lastMessage && lastMessage.senderId && lastMessage.recipientId) {
+        // Alternatywnie, użyj senderId i recipientId z lastMessage
+        const participants = [lastMessage.senderId, lastMessage.recipientId].filter(id => id).sort();
+        conversationId = participants.join('_');
+      }
+      const conversationRef = db.collection('conversations').doc(conversationId);
 
       // Sprawdź czy konwersacja już istnieje
       const conversationDoc = await conversationRef.get();
@@ -482,15 +495,21 @@ class FirestoreDatabaseManager {
         }
 
         await conversationRef.update(updateData);
-        console.log('updateConversation: Updated existing conversation for user:', userId);
+        console.log('updateConversation: Updated existing conversation:', conversationId);
       } else {
         // Utwórz nową konwersację
+        const participants = lastMessage && lastMessage.recipientId 
+          ? [userId, lastMessage.recipientId].filter(id => id).sort()
+          : [userId, 'admin'].filter(id => id).sort();
+        
         const conversationData = {
           categoryId: categoryId || 'general',
-          userId: userId,
+          participantA: participants[0],
+          participantB: participants[1] || 'admin',
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          messageCount: 1
+          messageCount: 1,
+          isPinned: false
         };
 
         if (lastMessage) {
@@ -501,7 +520,7 @@ class FirestoreDatabaseManager {
         }
 
         await conversationRef.set(conversationData);
-        console.log('updateConversation: Created new conversation for user:', userId);
+        console.log('updateConversation: Created new conversation:', conversationId);
       }
     } catch (error) {
       console.error('Error updating conversation:', error);
@@ -509,9 +528,11 @@ class FirestoreDatabaseManager {
         message: error.message,
         code: error.code,
         userId,
+        conversationId: conversationId || userId,
         categoryId
       });
-      throw error;
+      // Nie rzucaj błędu - to nie powinno blokować zapisywania wiadomości
+      // throw error;
     }
   }
 

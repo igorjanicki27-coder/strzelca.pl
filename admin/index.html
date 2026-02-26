@@ -10791,16 +10791,19 @@
             // Użyj nazwy z wiadomości, jeśli jest, w przeciwnym razie pobierz z userNamesMap
             const senderName = msg.senderName || userNamesMap[msg.senderId] || 'Nieznany';
             
+          // Znajdź userId (nie admin) z uczestników konwersacji
+          const userId = participants.find(id => id !== 'admin' && id !== 'anonymous') || participants[0];
+            
             conversations[conversationKey] = {
               participants: participants,
               senderName: senderName,
               senderEmail: msg.senderEmail || '',
-              senderId: msg.senderId || 'unknown',
+            senderId: userId, // Użyj userId (nie admin) dla spójności z pinConversation
               lastMessage: msg,
               messages: [],
               unreadCount: 0,
               totalMessages: 0,
-              isPinned: false // Domyślnie nieprzypięte, zostanie zaktualizowane z conversations collection
+            isPinned: false // Domyślnie nieprzypięte, zostanie zaktualizowane z conversations collection
             };
           }
 
@@ -10912,7 +10915,8 @@
                   <div class="text-xs text-zinc-500 mb-2">${date}</div>
                   <button onclick="event.stopPropagation(); toggleConversationPin('${conversation.senderId}', ${isPinned})" 
                           class="px-2 py-1 rounded text-xs font-medium transition-colors ${isPinned ? 'bg-coyote text-black hover:bg-coyote/80' : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'}"
-                          title="${isPinned ? 'Odepnij konwersację' : 'Przypnij konwersację'}">
+                          title="${isPinned ? 'Odepnij konwersację' : 'Przypnij konwersację'}"
+                          data-user-id="${conversation.senderId}">
                     <i class="fa-solid fa-thumbtack"></i>
                   </button>
                 </div>
@@ -11006,6 +11010,8 @@
       // Funkcja przypinania/odpinania konwersacji
       window.toggleConversationPin = async function toggleConversationPin(userId, currentlyPinned) {
         try {
+          console.log('toggleConversationPin: Called with userId:', userId, 'currentlyPinned:', currentlyPinned);
+          
           // Pobierz Firebase Auth token
           let authToken = null;
           try {
@@ -11029,6 +11035,8 @@
           // Wybierz akcję: jeśli jest przypięta, odepnij, w przeciwnym razie przypnij
           const action = currentlyPinned ? 'unpin' : 'pin';
           
+          console.log('toggleConversationPin: Making request to:', `/api/messages/conversation/${userId}/${action}`);
+          
           const response = await fetch(`/api/messages/conversation/${userId}/${action}`, {
             method: 'PUT',
             headers,
@@ -11036,8 +11044,10 @@
           });
           
           const data = await response.json();
-          if (!data.success) {
-            throw new Error(data.error || 'Failed to update pin status');
+          console.log('toggleConversationPin: API response:', data, 'status:', response.status);
+          
+          if (!response.ok || !data.success) {
+            throw new Error(data.error || `HTTP ${response.status}`);
           }
           
           // Odśwież listę wiadomości
@@ -11049,6 +11059,12 @@
           );
         } catch (error) {
           console.error('Error toggling conversation pin status:', error);
+          console.error('Error details:', {
+            message: error.message,
+            stack: error.stack,
+            userId: userId,
+            currentlyPinned: currentlyPinned
+          });
           showNotification('Błąd zmiany statusu przypięcia: ' + (error.message || 'Nieznany błąd'), 'error');
         }
       };
