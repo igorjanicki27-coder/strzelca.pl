@@ -32,6 +32,15 @@
         body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e5e5e5; margin: 0; overflow-x: hidden; }
         .main-wrapper { min-height: 100vh; width: 100%; background: linear-gradient(rgba(10,10,10,0.1) 0%, rgba(10,10,10,0.4) 50%, #0a0a0a 100%), url('https://strzelca.pl/tlo.png'); background-size: cover; background-position: top center; display: flex; flex-direction: column; justify-content: space-between; }
         .coyote-text { color: var(--coyote); font-family: 'Orbitron'; }
+        .hero-bg {
+            height: 65vh;
+            background: linear-gradient(rgba(10,10,10,0.1) 0%, rgba(10,10,10,0.4) 50%, #0a0a0a 100%), url('https://strzelca.pl/tlo.png');
+            background-size: cover;
+            background-position: top center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
         .event-card { background: rgba(20, 20, 20, 0.8); border: 1px solid #333; transition: 0.3s; }
         .event-card:hover { border-color: var(--coyote); transform: translateY(-2px); }
         .calendar-day { background: rgba(30, 30, 30, 0.8); border: 1px solid #444; transition: 0.3s; cursor: pointer; min-height: 36px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
@@ -94,19 +103,28 @@
             </a>
         </div>
 
-        <!-- Header -->
-        <header class="container mx-auto px-6 text-center pt-12 md:pt-20">
-            <div class="flex items-center justify-between mb-6">
-                <a href="https://strzelca.pl" class="text-zinc-400 hover:text-white transition text-xl">
-                    <i class="fa-solid fa-arrow-left"></i>
-                </a>
-                <div class="text-sm text-zinc-500">
-                    <i class="fa-solid fa-calendar-alt mr-1"></i>
-                    Aktualizacja: <span id="last-update">ładowanie...</span>
+        <!-- Nawigacja -->
+        <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative" role="navigation" aria-label="Nawigacja główna">
+            <a href="https://strzelca.pl" aria-label="Powrót do centrum dowodzenia" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl z-[60]">
+                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+            </a>
+            <div class="container mx-auto px-6 flex justify-center items-center">
+                <div class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400">
+                    WYDARZENIA.<span class="coyote-text">STRZELCA</span>.PL
                 </div>
             </div>
-            <h1 class="text-4xl md:text-6xl font-black uppercase italic font-[Orbitron] tracking-tighter">WYDARZENIA<span class="coyote-text">.STRZELCA.PL</span></h1>
-            <p class="text-xl text-zinc-300 mt-4 max-w-2xl mx-auto">Kalendarz wydarzeń strzeleckich - zawody, turnieje, szkolenia i eventy</p>
+        </nav>
+
+        <!-- Header -->
+        <header class="hero-bg text-center px-6 uppercase font-[Orbitron] tracking-tighter">
+            <div class="space-y-1">
+                <div class="text-2xl md:text-4xl font-black text-white italic">
+                    WYDARZENIA <span class="coyote-text">STRZELCA</span>
+                </div>
+                <div class="text-xl md:text-3xl font-bold text-zinc-400 italic">
+                    Kalendarz wydarzeń strzeleckich
+                </div>
+            </div>
         </header>
 
         <!-- Fixed Calendar Sidebar -->
@@ -231,11 +249,18 @@
 
         
       async function getFirebaseApiKey() {
-        const urls = ["/api/firebase-config"];
+        // Używamy pełnego URL, bo wydarzenia jest na subdomenie wydarzenia.strzelca.pl
+        const urls = [
+          "https://strzelca.pl/api/firebase-config",
+          "/api/firebase-config" // fallback dla lokalnego developmentu
+        ];
 
         for (const url of urls) {
           try {
-            const res = await fetch(url, { cache: "no-store" });
+            const res = await fetch(url, { 
+              cache: "no-store",
+              credentials: "include" // Włącz cookies dla CORS
+            });
             if (!res.ok) continue;
             const data = await res.json().catch(() => null);
             if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
@@ -432,18 +457,38 @@ const firebaseConfig = {
         // Load events from Firebase
         async function loadEvents() {
             try {
-                const q = query(collection(db, "events"), orderBy("date", "asc"));
-                const querySnapshot = await getDocs(q);
+                // Spróbuj użyć dateStart, jeśli nie działa, użyj date (kompatybilność wsteczna)
+                let querySnapshot;
+                try {
+                    const q = query(collection(db, "events"), orderBy("dateStart", "asc"));
+                    querySnapshot = await getDocs(q);
+                } catch (orderByError) {
+                    // Jeśli orderBy dateStart nie działa (np. niektóre dokumenty nie mają tego pola),
+                    // użyj date jako fallback
+                    console.warn("orderBy dateStart failed, using date:", orderByError);
+                    const q = query(collection(db, "events"), orderBy("date", "asc"));
+                    querySnapshot = await getDocs(q);
+                }
+                
                 allEvents = [];
 
                 querySnapshot.forEach((doc) => {
                     const event = doc.data();
                     if (event.published !== false) { // Allow events without published field or with published=true
+                        // Obsługa nowych pól dateStart/dateEnd oraz starego date
+                        const startDate = event.dateStart?.toDate ? event.dateStart.toDate() : 
+                                         (event.dateStart ? new Date(event.dateStart) : 
+                                         (event.date?.toDate ? event.date.toDate() : new Date(event.date)));
+                        const endDate = event.dateEnd?.toDate ? event.dateEnd.toDate() : 
+                                       (event.dateEnd ? new Date(event.dateEnd) : startDate);
+                        
                         allEvents.push({
                             id: doc.id,
                             ...event,
-                            dateObj: new Date(event.date),
-                            status: event.status || (new Date(event.date) >= new Date() ? 'active' : 'completed'),
+                            dateObj: startDate, // Dla kompatybilności z istniejącym kodem
+                            dateStartObj: startDate,
+                            dateEndObj: endDate,
+                            status: event.status || (endDate >= new Date() ? 'active' : 'completed'),
                             pinned: event.pinned || false
                         });
                     }

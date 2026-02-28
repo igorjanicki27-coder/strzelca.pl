@@ -186,10 +186,17 @@
             } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
             async function getFirebaseApiKey() {
-                const urls = ["/api/firebase-config"];
+                // Używamy pełnego URL, bo szkolenia są na subdomenie szkolenia.strzelca.pl
+                const urls = [
+                    "https://strzelca.pl/api/firebase-config",
+                    "/api/firebase-config" // fallback dla lokalnego developmentu
+                ];
                 for (const url of urls) {
                     try {
-                        const res = await fetch(url, { cache: "no-store" });
+                        const res = await fetch(url, { 
+                            cache: "no-store",
+                            credentials: url.startsWith("http") ? "omit" : "same-origin"
+                        });
                         if (!res.ok) continue;
                         const data = await res.json().catch(() => null);
                         if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
