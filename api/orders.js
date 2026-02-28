@@ -286,52 +286,9 @@ module.exports = async (req, res) => {
     const isUserAdmin = await isAdmin(sessionUser.uid);
     const db = admin.firestore();
 
-    // GET - lista zamówień lub pojedyncze zamówienie
+    // GET - lista zamówień
     if (req.method === 'GET') {
-      const { status, userId, id } = req.query;
-      
-      // Jeśli podano id, zwróć pojedyncze zamówienie
-      if (id) {
-        try {
-          const orderDoc = await db.collection('orders').doc(id).get();
-          
-          if (!orderDoc.exists) {
-            res.status(404).json({ success: false, error: 'Order not found' });
-            return;
-          }
-
-          const orderData = orderDoc.data();
-          
-          // Sprawdź uprawnienia - użytkownik może zobaczyć tylko swoje zamówienia
-          if (!isUserAdmin && orderData.userId !== sessionUser.uid) {
-            res.status(403).json({ success: false, error: 'Forbidden' });
-            return;
-          }
-
-          // Sprawdź czy faktura istnieje
-          const invoiceDoc = await db.collection('invoices').doc(id).get();
-          const hasInvoice = invoiceDoc.exists;
-
-          const order = {
-            id: orderDoc.id,
-            ...orderData,
-            invoiceFile: hasInvoice ? `/api/download-invoice?orderId=${orderDoc.id}` : null,
-            createdAtFormatted: formatDate(orderData.createdAt),
-            updatedAtFormatted: formatDate(orderData.updatedAt),
-          };
-
-          res.status(200).json({ success: true, data: [order] });
-          return;
-        } catch (error) {
-          console.error('Error fetching order:', error);
-          res.status(500).json({ 
-            success: false, 
-            error: 'Failed to load order',
-            details: error.message 
-          });
-          return;
-        }
-      }
+      const { status, userId } = req.query;
       
       try {
         let query = db.collection('orders');

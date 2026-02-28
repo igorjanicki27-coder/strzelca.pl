@@ -936,9 +936,6 @@ async function handleDeleteMessages(req, res, db, { query, requesterUid, request
     if (!senderId) {
       return res.status(400).json({ success: false, error: 'Missing required field: senderId' });
     }
-    
-    // Zezwól na usuwanie wiadomości z "anonymous" jako recipientId (wiadomości od admina do anonymous)
-    // To pozwala usunąć stare wiadomości testowe lub z formularza kontaktowego
 
     console.log('handleDeleteMessages: Deleting messages:', {
       senderId,
