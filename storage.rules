@@ -38,6 +38,14 @@ service firebase.storage {
       allow read: if signedIn();
     }
 
+    // Zdjęcia produktów: tylko admin może uploadować, odczyt publiczny
+    match /products/{imageId} {
+      allow read: if true;
+      allow write: if isAdminOrSuperAdmin()
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
     // Domyślnie blokuj wszystko inne.
     match /{allPaths=**} {
       allow read, write: if false;

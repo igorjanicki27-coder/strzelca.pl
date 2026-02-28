@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="pl">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <!-- Cookies/zgody + warunkowe ładowanie analityki -->
+        <script src="https://strzelca.pl/consent.js?v=2026-02-06-1"></script>
+        <meta name="description" content="Kurs strzelca.pl - profesjonalne szkolenia strzeleckie online" />
+        <meta name="robots" content="noindex, nofollow" />
+        
+        <title>Kurs - STRZELCA.PL</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+        <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-02-06-1" />
+        <style>
+            :root {
+                --coyote: #c19a6b;
+            }
+            body {
+                font-family: "Inter", sans-serif;
+                background-color: #0a0a0a;
+                color: #e5e5e5;
+            }
+            .coyote-text {
+                color: var(--coyote);
+                font-family: "Orbitron";
+            }
+            .lesson-content {
+                line-height: 1.8;
+            }
+            .lesson-content ul, .lesson-content ol {
+                margin: 1rem 0;
+                padding-left: 2rem;
+            }
+            .lesson-content img {
+                max-width: 100%;
+                height: auto;
+                border-radius: 8px;
+                margin: 1rem 0;
+            }
+            .lesson-content h1, .lesson-content h2, .lesson-content h3 {
+                margin: 1.5rem 0 1rem 0;
+                font-weight: bold;
+            }
+            .lesson-content h1 { font-size: 2rem; }
+            .lesson-content h2 { font-size: 1.5rem; }
+            .lesson-content h3 { font-size: 1.25rem; }
+            .lesson-content p {
+                margin: 1rem 0;
+            }
+            .video-container {
+                position: relative;
+                padding-bottom: 56.25%;
+                height: 0;
+                overflow: hidden;
+                margin: 2rem 0;
+                border-radius: 8px;
+            }
+            .video-container iframe {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+            }
+            .progress-bar {
+                height: 4px;
+                background: #1f1f1f;
+                border-radius: 2px;
+                overflow: hidden;
+            }
+            .progress-fill {
+                height: 100%;
+                background: linear-gradient(90deg, var(--coyote), #b18a5f);
+                transition: width 0.3s ease;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Panel użytkownika -->
+        <div id="user-panel" class="fixed top-4 right-4 z-50 hidden">
+            <div class="relative">
+                <button
+                    id="user-avatar-button"
+                    class="w-12 h-12 rounded-full bg-coyote flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-80 transition shadow-lg overflow-hidden"
+                    onclick="toggleUserMenu()"
+                >
+                    <div id="user-avatar" class="w-full h-full flex items-center justify-center">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                </button>
+                
+                <div
+                    id="user-menu"
+                    class="absolute top-14 right-0 bg-zinc-900/95 backdrop-blur-md border border-zinc-700 rounded-2xl p-4 shadow-2xl min-w-[200px] hidden"
+                >
+                    <div class="space-y-2">
+                        <div id="user-display-name" class="text-white font-semibold text-sm mb-3 pb-3 border-b border-zinc-700"></div>
+                        <a href="https://konto.strzelca.pl/profil.html" class="block text-zinc-300 hover:text-coyote transition text-sm">
+                            <i class="fa-solid fa-user mr-2"></i>Mój profil
+                        </a>
+                        <button onclick="logout()" class="block w-full text-left text-zinc-300 hover:text-red-400 transition text-sm">
+                            <i class="fa-solid fa-sign-out-alt mr-2"></i>Wyloguj się
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Przycisk logowania -->
+        <div id="login-button" class="fixed top-4 right-4 z-50">
+            <a href="https://konto.strzelca.pl/login.html" class="bg-coyote text-black w-10 h-10 rounded-full flex items-center justify-center hover:bg-white transition shadow-lg" title="Zaloguj się">
+                <i class="fa-solid fa-sign-in-alt text-lg"></i>
+            </a>
+        </div>
+
+        <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative">
+            <a href="index.html" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl z-[60]">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div class="container mx-auto px-6 flex justify-center items-center">
+                <div class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400">
+                    KURS.<span class="coyote-text">STRZELCA</span>.PL
+                </div>
+            </div>
+        </nav>
+
+        <div class="container mx-auto px-4 md:px-6 py-8 max-w-7xl">
+            <!-- Nagłówek kursu -->
+            <div id="course-header" class="mb-8">
+                <h1 id="course-title" class="text-3xl md:text-4xl font-bold coyote-text mb-2 font-[Orbitron]">Ładowanie...</h1>
+                <div class="flex items-center gap-4 text-sm text-zinc-400">
+                    <span id="course-progress-text">0% ukończone</span>
+                    <div class="progress-bar flex-1 max-w-xs">
+                        <div id="course-progress-fill" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <!-- Sidebar z lekcjami -->
+                <aside class="lg:col-span-1">
+                    <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 sticky top-24">
+                        <h2 class="text-lg font-bold mb-4">Lekcje</h2>
+                        <div id="lessons-sidebar" class="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
+                            <div class="text-center text-zinc-500 py-8">
+                                <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
+                                <p>Ładowanie lekcji...</p>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Główna treść -->
+                <main class="lg:col-span-3">
+                    <div id="lesson-content-area" class="bg-zinc-900 border border-zinc-800 rounded-lg p-6 md:p-8">
+                        <div class="text-center text-zinc-500 py-12">
+                            <i class="fa-solid fa-spinner fa-spin text-3xl mb-4"></i>
+                            <p>Ładowanie lekcji...</p>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <footer class="text-center py-12 border-t border-zinc-900 text-zinc-700 text-[10px] uppercase font-bold tracking-[0.5em] mt-12">
+            <a href="https://strzelca.pl" class="hover:text-white transition">STRZELCA.PL</a>
+        </footer>
+
+        <script type="module">
+            import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+            import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+            import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
+            import {
+                initializeFirestore,
+                collection,
+                getDocs,
+                doc,
+                getDoc,
+                query,
+                orderBy,
+                where,
+                setDoc,
+                serverTimestamp
+            } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+            async function getFirebaseApiKey() {
+                const urls = ["/api/firebase-config"];
+                for (const url of urls) {
+                    try {
+                        const res = await fetch(url, { cache: "no-store" });
+                        if (!res.ok) continue;
+                        const data = await res.json().catch(() => null);
+                        if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
+                            return data.apiKey;
+                        }
+                    } catch (_) {}
+                }
+                throw new Error("Nie udało się pobrać FIREBASE_WEB_API_KEY");
+            }
+
+            const firebaseConfig = {
+                apiKey: await getFirebaseApiKey(),
+                authDomain: "strzelca-pl.firebaseapp.com",
+                projectId: "strzelca-pl",
+                storageBucket: "strzelca-pl.appspot.com",
+                messagingSenderId: "511362047688",
+                appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
+            };
+
+            const app = initializeApp(firebaseConfig);
+            const db = initializeFirestore(app, {
+                experimentalAutoDetectLongPolling: true,
+                useFetchStreams: true,
+            });
+            const auth = getAuth(app);
+            await setPersistence(auth, browserLocalPersistence);
+
+            try {
+                await ensureFirebaseSSO(auth);
+            } catch (e) {
+                console.warn("SSO ensure failed:", e?.message || e);
+            }
+
+            let currentUser = null;
+            let currentTrainingId = null;
+            let lessons = [];
+            let completedLessons = new Set();
+            let currentLessonIndex = 0;
+
+            // Funkcje UI
+            window.toggleUserMenu = () => {
+                const menu = document.getElementById("user-menu");
+                if (menu) menu.classList.toggle("hidden");
+            };
+
+            window.logout = async () => {
+                try {
+                    await fetch("https://strzelca.pl/api/sso-session-logout", {
+                        method: "POST",
+                        credentials: "include",
+                    });
+                } catch (e) {}
+                const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+                await signOut(auth);
+                window.location.href = "index.html";
+            };
+
+            async function updateUserInterface(user) {
+                const loginBtn = document.getElementById("login-button");
+                const userPanel = document.getElementById("user-panel");
+                const userDisplayName = document.getElementById("user-display-name");
+                const userAvatar = document.getElementById("user-avatar");
+
+                if (user) {
+                    if (loginBtn) loginBtn.classList.add("hidden");
+                    if (userPanel) userPanel.classList.remove("hidden");
+                    if (userDisplayName) {
+                        const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
+                        if (profileDoc.exists()) {
+                            const profile = profileDoc.data();
+                            userDisplayName.textContent = profile.displayName || user.email.split("@")[0];
+                            if (userAvatar) {
+                                if (profile.avatar) {
+                                    userAvatar.innerHTML = `<img src="${profile.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
+                                } else {
+                                    userAvatar.innerHTML = '<i class="fa-solid fa-user text-white"></i>';
+                                }
+                            }
+                        } else {
+                            if (userDisplayName) userDisplayName.textContent = user.email.split("@")[0];
+                        }
+                    }
+                } else {
+                    if (loginBtn) loginBtn.classList.remove("hidden");
+                    if (userPanel) userPanel.classList.add("hidden");
+                }
+            }
+
+            // Pobierz ID kursu z URL
+            const urlParams = new URLSearchParams(window.location.search);
+            currentTrainingId = urlParams.get('id');
+
+            if (!currentTrainingId) {
+                document.body.innerHTML = '<div class="container mx-auto px-6 py-20 text-center"><h1 class="text-2xl font-bold text-red-400 mb-4">Błąd</h1><p class="text-zinc-400">Nie podano ID kursu.</p><a href="index.html" class="text-coyote hover:underline mt-4 inline-block">Powrót do szkoleń</a></div>';
+            } else {
+                // Sprawdź dostęp i załaduj kurs
+                onAuthStateChanged(auth, async (user) => {
+                    currentUser = user;
+                    await updateUserInterface(user);
+                    
+                    if (user) {
+                        await checkAccessAndLoadCourse();
+                    } else {
+                        document.body.innerHTML = '<div class="container mx-auto px-6 py-20 text-center"><h1 class="text-2xl font-bold text-red-400 mb-4">Wymagane logowanie</h1><p class="text-zinc-400 mb-4">Musisz być zalogowany, aby przeglądać kurs.</p><a href="https://konto.strzelca.pl/login.html?redirect=' + encodeURIComponent(window.location.href) + '" class="text-coyote hover:underline">Zaloguj się</a></div>';
+                    }
+                });
+            }
+
+            async function checkAccessAndLoadCourse() {
+                try {
+                    // Sprawdź dostęp użytkownika
+                    const trainingDoc = await getDoc(doc(db, "trainings", currentTrainingId));
+                    if (!trainingDoc.exists()) {
+                        showError("Kurs nie istnieje.");
+                        return;
+                    }
+
+                    const training = trainingDoc.data();
+                    const isAvailableForAll = training.available === true;
+                    
+                    let hasAccess = isAvailableForAll;
+                    if (!hasAccess && currentUser) {
+                        const accessRef = collection(db, "trainingAccess");
+                        const accessQuery = query(
+                            accessRef,
+                            where("trainingId", "==", currentTrainingId),
+                            where("userId", "==", currentUser.uid)
+                        );
+                        const accessSnap = await getDocs(accessQuery);
+                        hasAccess = !accessSnap.empty;
+                    }
+
+                    if (!hasAccess) {
+                        showError("Nie masz dostępu do tego kursu.");
+                        return;
+                    }
+
+                    // Załaduj kurs
+                    document.getElementById("course-title").textContent = training.title || "Kurs";
+                    await loadLessons();
+                    await loadProgress();
+                } catch (error) {
+                    console.error("Error checking access:", error);
+                    showError("Błąd podczas sprawdzania dostępu.");
+                }
+            }
+
+            async function loadLessons() {
+                try {
+                    const lessonsRef = collection(db, "courseLessons");
+                    const lessonsQuery = query(
+                        lessonsRef,
+                        where("trainingId", "==", currentTrainingId),
+                        orderBy("order", "asc")
+                    );
+                    const snapshot = await getDocs(lessonsQuery);
+                    
+                    lessons = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+
+                    renderLessonsSidebar();
+                    if (lessons.length > 0) {
+                        loadLesson(0);
+                    } else {
+                        document.getElementById("lesson-content-area").innerHTML = '<div class="text-center text-zinc-500 py-12"><i class="fa-solid fa-book-open text-4xl mb-4"></i><p>Ten kurs nie ma jeszcze lekcji.</p></div>';
+                    }
+                } catch (error) {
+                    console.error("Error loading lessons:", error);
+                    showError("Błąd ładowania lekcji.");
+                }
+            }
+
+            function renderLessonsSidebar() {
+                const sidebar = document.getElementById("lessons-sidebar");
+                if (!sidebar) return;
+
+                if (lessons.length === 0) {
+                    sidebar.innerHTML = '<div class="text-sm text-zinc-500 text-center py-4">Brak lekcji</div>';
+                    return;
+                }
+
+                sidebar.innerHTML = lessons.map((lesson, index) => {
+                    const isCompleted = completedLessons.has(lesson.id);
+                    const isActive = index === currentLessonIndex;
+                    
+                    return `
+                        <div class="flex items-center gap-2 p-2 rounded-lg cursor-pointer transition ${isActive ? 'bg-coyote/20 border border-coyote' : 'hover:bg-zinc-800'} ${isCompleted ? 'opacity-75' : ''}" 
+                             onclick="loadLesson(${index})">
+                            <div class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs ${isCompleted ? 'bg-green-500 text-white' : isActive ? 'bg-coyote text-black' : 'bg-zinc-700 text-zinc-400'}">
+                                ${isCompleted ? '<i class="fa-solid fa-check"></i>' : index + 1}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm font-medium truncate ${isActive ? 'text-coyote' : 'text-white'}">${lesson.title || "Bez tytułu"}</div>
+                                ${lesson.duration ? `<div class="text-xs text-zinc-500">${lesson.duration} min</div>` : ''}
+                            </div>
+                            ${lesson.videoUrl ? '<i class="fa-solid fa-video text-coyote text-xs flex-shrink-0"></i>' : ''}
+                        </div>
+                    `;
+                }).join("");
+            }
+
+            window.loadLesson = async (index) => {
+                if (index < 0 || index >= lessons.length) return;
+                
+                currentLessonIndex = index;
+                const lesson = lessons[index];
+                
+                // Oznacz lekcję jako ukończoną
+                if (currentUser && !completedLessons.has(lesson.id)) {
+                    await markLessonCompleted(lesson.id);
+                }
+
+                // Renderuj treść lekcji
+                const contentArea = document.getElementById("lesson-content-area");
+                if (!contentArea) return;
+
+                let videoHtml = '';
+                if (lesson.videoUrl) {
+                    videoHtml = `
+                        <div class="video-container">
+                            <iframe 
+                                src="${lesson.videoUrl}" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen
+                            ></iframe>
+                        </div>
+                    `;
+                }
+
+                contentArea.innerHTML = `
+                    <div class="mb-6">
+                        <h2 class="text-2xl md:text-3xl font-bold mb-2">${lesson.title || "Bez tytułu"}</h2>
+                        ${lesson.description ? `<p class="text-zinc-400">${lesson.description}</p>` : ''}
+                    </div>
+                    ${videoHtml}
+                    <div class="lesson-content custom-render">
+                        ${lesson.content || '<p class="text-zinc-500">Brak treści.</p>'}
+                    </div>
+                    <div class="flex justify-between items-center mt-8 pt-6 border-t border-zinc-800">
+                        <button 
+                            onclick="loadLesson(${index - 1})" 
+                            class="px-4 py-2 border border-zinc-700 rounded-lg hover:bg-zinc-800 transition ${index === 0 ? 'opacity-50 cursor-not-allowed' : ''}"
+                            ${index === 0 ? 'disabled' : ''}
+                        >
+                            <i class="fa-solid fa-arrow-left mr-2"></i>Poprzednia
+                        </button>
+                        <button 
+                            onclick="loadLesson(${index + 1})" 
+                            class="px-4 py-2 bg-coyote text-black rounded-lg font-bold hover:bg-opacity-90 transition ${index === lessons.length - 1 ? 'opacity-50 cursor-not-allowed' : ''}"
+                            ${index === lessons.length - 1 ? 'disabled' : ''}
+                        >
+                            Następna<i class="fa-solid fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                `;
+
+                renderLessonsSidebar();
+                await updateProgress();
+            };
+
+            async function markLessonCompleted(lessonId) {
+                if (!currentUser) return;
+                
+                try {
+                    const progressRef = doc(db, "courseProgress", `${currentUser.uid}_${currentTrainingId}`);
+                    const progressSnap = await getDoc(progressRef);
+                    
+                    let completed = [];
+                    if (progressSnap.exists()) {
+                        completed = progressSnap.data().completedLessons || [];
+                    }
+                    
+                    if (!completed.includes(lessonId)) {
+                        completed.push(lessonId);
+                        await setDoc(progressRef, {
+                            userId: currentUser.uid,
+                            trainingId: currentTrainingId,
+                            completedLessons: completed,
+                            lastUpdated: serverTimestamp()
+                        }, { merge: true });
+                        
+                        completedLessons.add(lessonId);
+                    }
+                } catch (error) {
+                    console.error("Error marking lesson completed:", error);
+                }
+            }
+
+            async function loadProgress() {
+                if (!currentUser) return;
+                
+                try {
+                    const progressRef = doc(db, "courseProgress", `${currentUser.uid}_${currentTrainingId}`);
+                    const progressSnap = await getDoc(progressRef);
+                    
+                    if (progressSnap.exists()) {
+                        const progress = progressSnap.data();
+                        completedLessons = new Set(progress.completedLessons || []);
+                    }
+                    
+                    await updateProgress();
+                } catch (error) {
+                    console.error("Error loading progress:", error);
+                }
+            }
+
+            async function updateProgress() {
+                if (lessons.length === 0) return;
+                
+                const completed = Array.from(completedLessons).length;
+                const total = lessons.length;
+                const percentage = Math.round((completed / total) * 100);
+                
+                const progressText = document.getElementById("course-progress-text");
+                const progressFill = document.getElementById("course-progress-fill");
+                
+                if (progressText) {
+                    progressText.textContent = `${percentage}% ukończone (${completed}/${total})`;
+                }
+                if (progressFill) {
+                    progressFill.style.width = `${percentage}%`;
+                }
+            }
+
+            function showError(message) {
+                document.body.innerHTML = `
+                    <div class="container mx-auto px-6 py-20 text-center">
+                        <h1 class="text-2xl font-bold text-red-400 mb-4">Błąd</h1>
+                        <p class="text-zinc-400 mb-4">${message}</p>
+                        <a href="index.html" class="text-coyote hover:underline">Powrót do szkoleń</a>
+                    </div>
+                `;
+            }
+
+            // Zamykanie menu po kliknięciu poza nim
+            document.addEventListener("click", (event) => {
+                const userPanel = document.getElementById("user-panel");
+                const userMenu = document.getElementById("user-menu");
+                if (userPanel && userMenu && !userPanel.contains(event.target) && !userMenu.classList.contains("hidden")) {
+                    userMenu.classList.add("hidden");
+                }
+            });
+        </script>
+        <script type="module" src="https://strzelca.pl/auth-widget.mjs?v=2026-02-06-1"></script>
+        <script type="module" src="https://strzelca.pl/messages-widget.mjs?v=2026-02-05-14"></script>
+    </body>
+</html>

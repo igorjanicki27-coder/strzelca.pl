@@ -493,6 +493,241 @@ const firebaseConfig = {
                 window.location.href = offerUrl;
             };
 
+            // Funkcja do obsługi zamówienia szkolenia
+            window.handleTrainingOrder = async (trainingName, trainingPrice = null) => {
+                const user = auth.currentUser;
+                
+                if (!user) {
+                    // Użytkownik niezalogowany - pokaż modal
+                    showTrainingOrderLoginModal(trainingName);
+                    return;
+                }
+
+                // Użytkownik zalogowany - pokaż formularz zamówienia
+                showTrainingOrderForm(trainingName, trainingPrice);
+            };
+
+            // Modal dla niezalogowanych użytkowników
+            function showTrainingOrderLoginModal(trainingName) {
+                const modal = document.createElement('div');
+                modal.id = 'training-order-login-modal';
+                modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md';
+                modal.onclick = function(e) {
+                    if (e.target.id === 'training-order-login-modal') {
+                        modal.remove();
+                    }
+                };
+
+                modal.innerHTML = `
+                    <div class="bg-zinc-900 p-8 rounded-2xl max-w-md w-full border border-zinc-800 shadow-2xl" onclick="event.stopPropagation()">
+                        <h2 class="text-2xl font-bold coyote-text mb-4">Zamówienie szkolenia</h2>
+                        <p class="text-zinc-300 mb-6">
+                            Aby złożyć zamówienie szkolenia <strong>${trainingName}</strong>, musisz być zalogowany.
+                        </p>
+                        <div class="space-y-3">
+                            <a href="https://konto.strzelca.pl/logowanie.html?redirect=${encodeURIComponent(window.location.href)}" 
+                               class="block w-full bg-coyote text-black px-6 py-3 rounded-lg font-bold text-center hover:bg-opacity-90 transition">
+                                <i class="fa-solid fa-sign-in-alt mr-2"></i>
+                                Zaloguj się
+                            </a>
+                            <a href="https://kontakt.strzelca.pl?topic=Zamówienie szkolenia&product=${encodeURIComponent(trainingName)}" 
+                               class="block w-full border border-zinc-700 text-zinc-300 px-6 py-3 rounded-lg font-bold text-center hover:bg-zinc-800 transition">
+                                <i class="fa-solid fa-envelope mr-2"></i>
+                                Przejdź do formularza kontaktowego
+                            </a>
+                            <button onclick="this.closest('#training-order-login-modal').remove()" 
+                                    class="block w-full text-zinc-400 px-6 py-2 text-sm hover:text-white transition">
+                                Anuluj
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(modal);
+            }
+
+            // Formularz zamówienia dla zalogowanych
+            async function showTrainingOrderForm(trainingName, trainingPrice = null) {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                // Pobierz dane z profilu
+                let userProfile = null;
+                try {
+                    const profileDoc = await getDoc(doc(db, 'userProfiles', user.uid));
+                    if (profileDoc.exists()) {
+                        userProfile = profileDoc.data();
+                    }
+                } catch (error) {
+                    console.error('Error loading user profile:', error);
+                }
+
+                // Funkcja dekodowania base64
+                function b64DecodeUtf8(str) {
+                    if (!str) return '';
+                    try {
+                        return decodeURIComponent(escape(atob(str)));
+                    } catch {
+                        return '';
+                    }
+                }
+
+                const modal = document.createElement('div');
+                modal.id = 'training-order-form-modal';
+                modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md';
+                modal.style.overflowY = 'auto';
+                modal.onclick = function(e) {
+                    if (e.target.id === 'training-order-form-modal') {
+                        modal.remove();
+                    }
+                };
+
+                const address = userProfile?.address || {};
+                const decodedAddress = {
+                    street: b64DecodeUtf8(address.street || ''),
+                    buildingNumber: b64DecodeUtf8(address.buildingNumber || ''),
+                    postalCode: b64DecodeUtf8(address.postalCode || ''),
+                    city: b64DecodeUtf8(address.city || '')
+                };
+
+                modal.innerHTML = `
+                    <div class="bg-zinc-900 p-6 md:p-8 rounded-2xl max-w-2xl w-full border border-zinc-800 shadow-2xl my-8" onclick="event.stopPropagation()">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold coyote-text">Złóż zamówienie</h2>
+                            <button onclick="document.getElementById('training-order-form-modal').remove()" 
+                                    class="text-zinc-400 hover:text-white">
+                                <i class="fa-solid fa-times text-xl"></i>
+                            </button>
+                        </div>
+
+                        <form id="training-order-form" onsubmit="submitTrainingOrder(event, '${trainingName}', ${trainingPrice || 0})">
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium mb-2">Szkolenie *</label>
+                                <input type="text" value="${trainingName}" class="w-full bg-zinc-800" readonly>
+                                ${trainingPrice ? `<p class="text-coyote font-bold text-lg mt-2">Cena: ${trainingPrice} PLN</p>` : ''}
+                            </div>
+
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium mb-2">Email *</label>
+                                <input type="email" id="training-order-email" value="${userProfile?.email || user.email || ''}" 
+                                       class="w-full" required>
+                            </div>
+
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium mb-2">Telefon</label>
+                                <input type="text" id="training-order-phone" 
+                                       value="${userProfile?.phone ? b64DecodeUtf8(userProfile.phone) : ''}" 
+                                       class="w-full">
+                            </div>
+
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium mb-2">Paczkomat</label>
+                                <input type="text" id="training-order-parcelLocker" 
+                                       value="${userProfile?.parcelLocker ? b64DecodeUtf8(userProfile.parcelLocker) : ''}" 
+                                       class="w-full" placeholder="Kod paczkomatu">
+                            </div>
+
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium mb-2">Adres</label>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <input type="text" id="training-order-address-street" 
+                                           value="${decodedAddress.street}" 
+                                           class="w-full" placeholder="Ulica">
+                                    <input type="text" id="training-order-address-building" 
+                                           value="${decodedAddress.buildingNumber}" 
+                                           class="w-full" placeholder="Nr budynku">
+                                    <input type="text" id="training-order-address-postal" 
+                                           value="${decodedAddress.postalCode}" 
+                                           class="w-full" placeholder="Kod pocztowy">
+                                    <input type="text" id="training-order-address-city" 
+                                           value="${decodedAddress.city}" 
+                                           class="w-full" placeholder="Miasto">
+                                </div>
+                            </div>
+
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium mb-2">Uwagi</label>
+                                <textarea id="training-order-notes" class="w-full" rows="3" 
+                                          placeholder="Dodatkowe uwagi dotyczące zamówienia..."></textarea>
+                            </div>
+
+                            <div class="mb-6 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                                <p class="text-xs text-zinc-400">
+                                    <strong>Uwaga:</strong> Zamówienie może nie zostać zaakceptowane. 
+                                    Regulamin zamówień dostępny w <a href="https://dokumenty.strzelca.pl" 
+                                    target="_blank" class="text-coyote hover:underline">dokumentach strzelca.pl</a>.
+                                </p>
+                            </div>
+
+                            <div class="flex justify-end gap-4">
+                                <button type="button" onclick="document.getElementById('training-order-form-modal').remove()" 
+                                        class="px-6 py-2 border border-zinc-700 rounded-lg hover:bg-zinc-800 transition">
+                                    Anuluj
+                                </button>
+                                <button type="submit" class="px-6 py-2 bg-coyote text-black rounded-lg font-bold hover:bg-opacity-90 transition">
+                                    <i class="fa-solid fa-shopping-cart mr-2"></i>
+                                    Złóż zamówienie
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                `;
+
+                document.body.appendChild(modal);
+            }
+
+            // Wysyłanie zamówienia szkolenia
+            window.submitTrainingOrder = async function(event, trainingName, trainingPrice) {
+                event.preventDefault();
+                
+                try {
+                    const user = auth.currentUser;
+                    if (!user) {
+                        alert('Musisz być zalogowany, aby złożyć zamówienie');
+                        return;
+                    }
+
+                    const { addDoc, collection, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+
+                    const orderData = {
+                        userId: user.uid,
+                        email: document.getElementById('training-order-email').value,
+                        orderDetails: `Szkolenie: ${trainingName}${trainingPrice ? ` (${trainingPrice} PLN)` : ''}`,
+                        notes: document.getElementById('training-order-notes').value || '',
+                        phone: document.getElementById('training-order-phone').value || '',
+                        parcelLocker: document.getElementById('training-order-parcelLocker').value || '',
+                        address: {
+                            street: document.getElementById('training-order-address-street').value || '',
+                            buildingNumber: document.getElementById('training-order-address-building').value || '',
+                            postalCode: document.getElementById('training-order-address-postal').value || '',
+                            city: document.getElementById('training-order-address-city').value || ''
+                        },
+                        status: 'zlozone',
+                        createdAt: serverTimestamp(),
+                        type: 'training'
+                    };
+
+                    await addDoc(collection(db, 'orders'), orderData);
+
+                    // Zamknij modal
+                    document.getElementById('training-order-form-modal').remove();
+
+                    // Pokaż powiadomienie
+                    alert('Zamówienie zostało złożone! Skontaktujemy się z Tobą wkrótce.');
+
+                    // Opcjonalnie: przekieruj do strony zamówień lub odśwież
+                    // window.location.href = '/zamowienia';
+                } catch (error) {
+                    console.error('Error submitting training order:', error);
+                    alert('Wystąpił błąd podczas składania zamówienia. Spróbuj ponownie.');
+                }
+            };
+
+            // Funkcja otwierania kursu
+            window.openTraining = (trainingId) => {
+                window.location.href = `kurs.html?id=${trainingId}`;
+            };
+
             const fetchAll = async () => {
                 const q = query(
                     collection(db, "trainings"),
@@ -518,6 +753,8 @@ const firebaseConfig = {
                     }
                 }
 
+                // Przygotuj listę szkoleń z informacją o dostępie
+                const trainings = [];
                 snap.forEach((d) => {
                     const t = d.data();
                     // Szkolenie jest dostępne jeśli:
@@ -527,18 +764,40 @@ const firebaseConfig = {
                     const hasUserAccess = user && userAccessList.includes(d.id);
                     const isAvailable = isAvailableForAll || hasUserAccess;
 
-                    // Pokaż tylko dostępne szkolenia
-                    if (!isAvailable) return;
+                    trainings.push({
+                        id: d.id,
+                        data: t,
+                        isAvailable: isAvailable
+                    });
+                });
+
+                // Sortuj: najpierw dostępne, potem niedostępne (zachowując order w każdej grupie)
+                trainings.sort((a, b) => {
+                    if (a.isAvailable && !b.isAvailable) return -1;
+                    if (!a.isAvailable && b.isAvailable) return 1;
+                    return 0; // Zachowaj oryginalny order dla szkoleń w tej samej kategorii dostępności
+                });
+
+                // Renderuj szkolenia
+                trainings.forEach(({ id, data: t, isAvailable }) => {
+                    const unavailableClass = isAvailable ? '' : 'training-unavailable';
+                    const clickHandler = isAvailable 
+                        ? `window.openTraining('${id}')` 
+                        : `window.showTrainingDetails('${id}')`;
+                    const buttonText = isAvailable ? 'Otwórz kurs' : 'Złóż zamówienie';
+                    const buttonClass = isAvailable 
+                        ? 'w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition'
+                        : 'w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition';
 
                     grid.innerHTML += `
-                <article class="card-dark flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50" role="article">
+                <article class="card-dark flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50 ${unavailableClass}" role="article">
                     <div class="h-48 md:h-64 training-img-container"><img src="${t.img}" alt="${t.title}" loading="lazy"></div>
                     <div class="p-4 md:p-8 flex flex-col flex-grow text-center">
                         <h3 class="text-lg md:text-xl font-bold uppercase mb-2 font-[Orbitron] text-white tracking-tight">${t.title}</h3>
                         <p class="coyote-text font-black text-xl md:text-2xl mb-6 md:mb-8" aria-label="Cena: ${t.price} złotych">${t.price} PLN</p>
                         <div class="mt-auto flex flex-col gap-2 md:gap-3">
-                            <button onclick="window.showTrainingDetails('${d.id}')" aria-label="Zobacz szczegóły szkolenia ${t.title}" class="w-full py-2 md:py-3 border border-zinc-800 text-[9px] md:text-[10px] uppercase font-bold hover:bg-zinc-800 transition rounded tracking-widest text-zinc-400">Szczegóły</button>
-                            <button onclick="window.handleOfferInquiry('${t.title}')" aria-label="Zapytaj o ofertę szkolenia ${t.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Zapytaj o ofertę</button>
+                            <button onclick="window.showTrainingDetails('${id}')" aria-label="Zobacz szczegóły szkolenia ${t.title}" class="w-full py-2 md:py-3 border border-zinc-800 text-[9px] md:text-[10px] uppercase font-bold hover:bg-zinc-800 transition rounded tracking-widest text-zinc-400">Szczegóły</button>
+                            <button onclick="${isAvailable ? clickHandler : `window.handleTrainingOrder('${t.title}', '${t.price}')`}" aria-label="${isAvailable ? 'Otwórz kurs' : 'Złóż zamówienie'} ${t.title}" class="${buttonClass}">${buttonText}</button>
                         </div>
                     </div>
                 </article>`;

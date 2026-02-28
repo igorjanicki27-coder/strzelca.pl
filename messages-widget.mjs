@@ -337,6 +337,8 @@ function makeStyles() {
       outline: none;
       font: inherit;
       font-size: 13px;
+      line-height: 1.4;
+      box-sizing: border-box;
     }
     textarea:focus { border-color: rgba(193,154,107,0.7); }
     .send {
@@ -348,6 +350,12 @@ function makeStyles() {
       font-weight: 900;
       cursor: pointer;
       padding: 10px 14px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      white-space: nowrap;
     }
     .send:disabled { opacity: 0.45; cursor: not-allowed; }
     .empty { color: rgba(229,229,229,0.70); font-size: 13px; padding: 18px; }
@@ -919,6 +927,7 @@ async function main() {
   let convUnsub = null;
   let threadUnsub = null;
   let badgeTimer = null;
+  let conversationsRefreshTimer = null; // Timer do auto-odświeżania listy konwersacji
   let previousUnreadTotal = 0; // Śledzenie poprzedniej liczby nieprzeczytanych wiadomości
 
   let state = {
@@ -1368,6 +1377,82 @@ async function main() {
     } catch {
       // jeśli nie ma indeksu / permissions, nie spamuj konsoli
       setBadgeEl(badge, 0);
+    }
+  }
+
+  // Funkcja do odświeżania listy konwersacji (używana gdy panel jest zamknięty)
+  async function refreshConversationsList() {
+    try {
+      // Odśwież wiadomości "Pomoc STRZELCA.PL" (support)
+      try {
+        const supportItems = await fetchSupportThread();
+        const unreadFromAdmin = (supportItems || []).filter(m => m && m.senderId === "admin" && m.isRead === false);
+        state.supportUnread = unreadFromAdmin.length;
+        const lastSupportMsg = supportItems?.[supportItems.length - 1];
+        state.supportLastText = lastSupportMsg?.content ? String(lastSupportMsg.content).slice(0, 70) : "Pomoc / zgłoszenia";
+      } catch (err) {
+        console.debug("refreshConversationsList: Failed to fetch support thread", err);
+      }
+      
+      const snap = await getDocs(
+        query(
+          collection(db, "privateConversations"),
+          where("participants", "array-contains", uid),
+          orderBy("updatedAt", "desc"),
+          limit(40)
+        )
+      );
+      const list = [];
+      let totalUnread = 0;
+      snap.docs.forEach((d) => {
+        const data = d.data() || {};
+        // Pomijamy konwersacje usunięte przez tego użytkownika
+        if (data.deletedBy && data.deletedBy[uid]) return;
+        
+        const participants = Array.isArray(data.participants) ? data.participants : [];
+        const peerId = participants.find((p) => p && p !== uid) || null;
+        if (!peerId) return;
+        const names = data.participantNames || {};
+        const avatars = data.participantAvatars || {};
+        const peerName =
+          (typeof names?.[peerId] === "string" ? names[peerId] : null) ||
+          "Użytkownik";
+        const peerAvatar = typeof avatars?.[peerId] === "string" ? avatars[peerId] : null;
+        const unread = Number((data.unreadCounts || {})[uid] || 0) || 0;
+        totalUnread += unread;
+        const lastText = data.lastMessage?.content ? String(data.lastMessage.content).slice(0, 70) : "";
+        list.push({
+          id: d.id,
+          peerId,
+          peerName,
+          peerAvatar,
+          lastText,
+          unread,
+        });
+      });
+
+      state.conversations = list;
+      state.unreadTotal = totalUnread;
+      
+      // Dodaj nieprzeczytane wiadomości support do całkowitej liczby
+      const supportUnread = Number(state.supportUnread || 0) || 0;
+      const totalUnreadWithSupport = totalUnread + supportUnread;
+      
+      setBadgeEl(badge, totalUnreadWithSupport);
+      
+      // Odtwórz dźwięk jeśli liczba nieprzeczytanych wiadomości wzrosła
+      if (totalUnreadWithSupport > previousUnreadTotal && previousUnreadTotal >= 0) {
+        playMessageSound();
+      }
+      previousUnreadTotal = totalUnreadWithSupport;
+      
+      // Odśwież listę tylko jeśli panel jest otwarty (gdy zamknięty, nie ma potrzeby renderować)
+      if (isOpen) {
+        renderList();
+      }
+    } catch (err) {
+      // Ignoruj błędy - użytkownik może nie mieć dostępu do wszystkich konwersacji
+      console.debug("refreshConversationsList error:", err);
     }
   }
 
@@ -1940,6 +2025,12 @@ async function main() {
 
     if (badgeTimer) clearInterval(badgeTimer);
     badgeTimer = null;
+    
+    // Zatrzymaj timer odświeżania listy (używamy onSnapshot gdy panel jest otwarty)
+    if (conversationsRefreshTimer) {
+      clearInterval(conversationsRefreshTimer);
+      conversationsRefreshTimer = null;
+    }
   }
 
   function closePanel() {
@@ -1956,15 +2047,32 @@ async function main() {
     badgeTimer = setInterval(() => {
       if (!isOpen) refreshUnreadBadgeOnce().catch(() => {});
     }, 30000);
+    
+    // Uruchom auto-odświeżanie listy konwersacji co 10 sekund gdy panel jest zamknięty
+    if (conversationsRefreshTimer) clearInterval(conversationsRefreshTimer);
+    conversationsRefreshTimer = setInterval(() => {
+      if (!isOpen) {
+        refreshConversationsList().catch(() => {});
+      }
+    }, 10000); // Co 10 sekund
   }
 
   // init
   renderList();
   // Bez Listen na starcie: tylko badge (best-effort)
   refreshUnreadBadgeOnce().catch(() => {});
+  refreshConversationsList().catch(() => {}); // Odśwież listę konwersacji na starcie
   badgeTimer = setInterval(() => {
     if (!isOpen) refreshUnreadBadgeOnce().catch(() => {});
   }, 30000);
+  
+  // Auto-odświeżanie listy konwersacji co 10 sekund (gdy panel jest zamknięty)
+  conversationsRefreshTimer = setInterval(() => {
+    if (!isOpen) {
+      refreshConversationsList().catch(() => {});
+    }
+  }, 10000); // Co 10 sekund
+  
   if (isOpen) openPanel();
 }
 
