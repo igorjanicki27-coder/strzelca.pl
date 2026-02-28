@@ -113,7 +113,14 @@ module.exports = async (req, res) => {
     const fileBuffer = Buffer.from(base64Data, 'base64');
 
     // Upload do Firebase Storage
-    const bucket = admin.storage().bucket();
+    // Użyj jawnej nazwy bucketa z konfiguracji
+    const projectId = process.env.FIREBASE_PROJECT_ID || "strzelca-pl";
+    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || 
+                         process.env.FIREBASE_STORAGE_BUCKET_NAME || 
+                         process.env.GCLOUD_STORAGE_BUCKET ||
+                         `${projectId}.appspot.com`;
+    
+    const bucket = admin.storage().bucket(storageBucket);
     const filePath = `invoices/${orderId}_${Date.now()}_${fileName}`;
     const fileRef = bucket.file(filePath);
 

@@ -1756,9 +1756,9 @@
             </div>
 
             <div class="admin-card mb-8">
-              <div class="flex items-center justify-between gap-4 mb-6">
-                <!-- Filtry (zawsze w jednej linii; gdy brak miejsca, przewijanie poziome) -->
-                <div class="flex gap-3 overflow-x-auto whitespace-nowrap hide-scrollbar flex-1 pr-2">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                <!-- Filtry (responsywne - zawijają się na małych ekranach) -->
+                <div class="flex flex-wrap gap-3 flex-1">
                   <button onclick="filterOrders('all')" class="order-filter-btn active" data-filter="all">
                     <i class="fa-solid fa-list mr-2"></i>
                     Wszystkie
@@ -1784,7 +1784,7 @@
                     Anulowane
                   </button>
                 </div>
-                <button onclick="showAddOrderModal()" class="btn-admin text-sm px-4 py-2">
+                <button onclick="showAddOrderModal()" class="btn-admin text-sm px-4 py-2 flex-shrink-0">
                   <i class="fa-solid fa-plus mr-2"></i>
                   Dodaj zamówienie
                 </button>
@@ -7562,6 +7562,13 @@
 
       // Usuwanie konwersacji "Pomoc STRZELCA.PL" (kolekcja messages) przez API z potwierdzeniem
       window.deleteSupportConversation = async (userId, label = '') => {
+        // Walidacja: nie można usunąć konwersacji z "admin"
+        if (!userId || userId === 'admin' || userId === 'anonymous') {
+          console.error('deleteSupportConversation: Invalid userId:', userId);
+          showNotification('Nie można usunąć tej konwersacji', 'error');
+          return;
+        }
+
         const name = (label || userId || '').toString().trim();
         const ok = confirm(
           `Czy na pewno chcesz usunąć całą konwersację${name ? ` z "${name}"` : ''}?\n\n` +
@@ -10609,8 +10616,8 @@
       };
 
       // Funkcja ładowania wiadomości z filtrami
-      window.loadMessagesWithFilters = async function loadMessagesWithFilters() {
-        console.log('loadMessagesWithFilters: Function called');
+      window.loadMessagesWithFilters = async function loadMessagesWithFilters(isAutoRefresh = false) {
+        console.log('loadMessagesWithFilters: Function called', { isAutoRefresh });
         const messagesContainer = document.getElementById('messages-container');
         if (!messagesContainer) {
           console.error('loadMessagesWithFilters: messages-container not found');
@@ -10624,6 +10631,8 @@
         
         console.log('loadMessagesWithFilters: Starting with filters:', currentFilters);
 
+        // Podczas auto-odświeżania NIE pokazuj spinnera - zachowaj obecną listę
+        if (!isAutoRefresh) {
         messagesContainer.innerHTML = `
           <div class="text-center text-zinc-500 py-12">
             <i class="fa-solid fa-spinner fa-spin text-3xl mb-4 text-zinc-600"></i>
@@ -10631,6 +10640,7 @@
             <p class="text-sm">Proszę czekać</p>
           </div>
         `;
+        }
 
         try {
           // Aktualizuj currentFilters.search z wartości pola wyszukiwania
@@ -10754,7 +10764,7 @@
           }
 
           console.log('Loaded messages:', messages.length, messages);
-          await displayMessages(messages);
+          await displayMessages(messages, isAutoRefresh);
 
         } catch (error) {
           console.error('Error loading messages with filters:', error);
@@ -10783,11 +10793,13 @@
       };
 
       // Funkcja wyświetlania wiadomości
-      async function displayMessages(messages) {
+      async function displayMessages(messages, isAutoRefresh = false) {
         const messagesContainer = document.getElementById('messages-container');
         if (!messagesContainer) return;
 
         if (messages.length === 0) {
+          // Podczas auto-odświeżania nie pokazuj "Brak wiadomości" jeśli już są wiadomości
+          if (!isAutoRefresh) {
           messagesContainer.innerHTML = `
             <div class="text-center text-zinc-500 py-12">
               <i class="fa-solid fa-inbox text-4xl mb-4 text-zinc-600"></i>
@@ -10795,6 +10807,7 @@
               <p class="text-sm">Nie znaleziono wiadomości spełniających kryteria</p>
             </div>
           `;
+          }
           return;
         }
 
@@ -10836,7 +10849,16 @@
             const senderName = msg.senderName || userNamesMap[msg.senderId] || 'Nieznany';
             
           // Znajdź userId (nie admin) z uczestników konwersacji
-          const userId = participants.find(id => id !== 'admin' && id !== 'anonymous') || participants[0];
+          // Jeśli wszystkie wiadomości są od admina, użyj recipientId jako userId
+          let userId = participants.find(id => id !== 'admin' && id !== 'anonymous');
+          if (!userId || userId === 'admin') {
+            // Jeśli nie znaleziono userId lub jest "admin", użyj recipientId z wiadomości
+            userId = msg.recipientId && msg.recipientId !== 'admin' ? msg.recipientId : msg.senderId;
+            // Jeśli nadal jest "admin", użyj pierwszego uczestnika (fallback)
+            if (userId === 'admin' || !userId) {
+              userId = participants.find(id => id !== 'admin' && id !== 'anonymous') || participants[0];
+            }
+          }
             
             conversations[conversationKey] = {
               participants: participants,
@@ -11069,6 +11091,13 @@
       window.toggleConversationPin = async function toggleConversationPin(userId, currentlyPinned) {
         try {
           console.log('toggleConversationPin: Called with userId:', userId, 'currentlyPinned:', currentlyPinned);
+          
+          // Walidacja: nie można przypiąć konwersacji z "admin"
+          if (!userId || userId === 'admin' || userId === 'anonymous') {
+            console.error('toggleConversationPin: Invalid userId:', userId);
+            showNotification('Nie można przypiąć tej konwersacji', 'error');
+            return;
+          }
           
           // Pobierz Firebase Auth token
           let authToken = null;
@@ -11897,19 +11926,25 @@
 
         messagesAutoRefresh = setInterval(() => {
           if (currentTab === 'messages' && !isUserTyping) {
-            // Odświeżaj listę TYLKO jeśli user nie wyszukuje (żeby nie przeszkadzać)
+            // Sprawdź czy użytkownik wyszukuje
             const searchInput = document.getElementById('messages-search');
             const searchValue = (searchInput?.value || '').toString().trim();
             const isSearchFocused = document.activeElement === searchInput;
             const isSearching = isSearchFocused || searchValue.length > 0;
 
-            if (!isSearching) {
-              if (window.loadMessagesWithFilters) {
-                window.loadMessagesWithFilters();
+            // Podczas wyszukiwania odświeżaj tylko liczniki, nie listę
+            if (isSearching) {
+              if (window.loadMessagesStatus) {
+                window.loadMessagesStatus();
               }
-            }
-            if (window.loadMessagesStatus) {
-              window.loadMessagesStatus();
+            } else {
+              // Gdy nie wyszukuje, odśwież listę w sposób niewidoczny (bez spinnera)
+              if (window.loadMessagesWithFilters) {
+                window.loadMessagesWithFilters(true); // true = auto-refresh
+              }
+              if (window.loadMessagesStatus) {
+                window.loadMessagesStatus();
+              }
             }
             // Odśwież konwersację jeśli jest otwarta
             if (currentConversationUser && window.loadConversationMessages) {
