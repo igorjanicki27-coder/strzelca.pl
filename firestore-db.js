@@ -20,21 +20,31 @@ if (!admin.apps.length) {
       serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
     }
     
+    const projectId = process.env.FIREBASE_PROJECT_ID || 'strzelca-pl';
+    const storageBucket =
+      process.env.FIREBASE_STORAGE_BUCKET ||
+      process.env.FIREBASE_STORAGE_BUCKET_NAME ||
+      process.env.GCLOUD_STORAGE_BUCKET ||
+      `${projectId}.appspot.com`;
+
     if (serviceAccount) {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        projectId: process.env.FIREBASE_PROJECT_ID || 'strzelca-pl'
+        projectId,
+        storageBucket,
       });
     } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
       admin.initializeApp({
         credential: admin.credential.applicationDefault(),
-        projectId: process.env.FIREBASE_PROJECT_ID || 'strzelca-pl'
+        projectId,
+        storageBucket,
       });
     } else {
       // Fallback dla developmentu - wymagane skonfigurowanie credentials
       console.warn('Firebase credentials not found. Please set FIREBASE_SERVICE_ACCOUNT_KEY, GOOGLE_APPLICATION_CREDENTIALS_JSON, or GOOGLE_APPLICATION_CREDENTIALS');
       admin.initializeApp({
-        projectId: process.env.FIREBASE_PROJECT_ID || 'strzelca-pl'
+        projectId,
+        storageBucket,
       });
     }
   } catch (error) {

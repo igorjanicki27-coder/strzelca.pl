@@ -15,9 +15,17 @@ function initAdmin() {
     serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
   }
 
+  const projectId = process.env.FIREBASE_PROJECT_ID || "strzelca-pl";
+  // Storage bucket: prefer env, fallback to default "<projectId>.appspot.com"
+  const storageBucket =
+    process.env.FIREBASE_STORAGE_BUCKET ||
+    process.env.FIREBASE_STORAGE_BUCKET_NAME ||
+    process.env.GCLOUD_STORAGE_BUCKET ||
+    `${projectId}.appspot.com`;
+
   if (serviceAccount) {
     __ssoProjectInfo = {
-      configuredProjectId: process.env.FIREBASE_PROJECT_ID || "strzelca-pl",
+      configuredProjectId: projectId,
       credentialProjectId: serviceAccount.project_id || null,
     };
     // Przygotuj klucz do lokalnego podpisywania cookie SSO (żeby nie zależeć od IAM/Google API)
@@ -41,30 +49,33 @@ function initAdmin() {
     }
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      projectId: process.env.FIREBASE_PROJECT_ID || "strzelca-pl",
+      projectId,
+      storageBucket,
     });
     return;
   }
 
   if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     __ssoProjectInfo = {
-      configuredProjectId: process.env.FIREBASE_PROJECT_ID || "strzelca-pl",
+      configuredProjectId: projectId,
       credentialProjectId: null,
     };
     admin.initializeApp({
       credential: admin.credential.applicationDefault(),
-      projectId: process.env.FIREBASE_PROJECT_ID || "strzelca-pl",
+      projectId,
+      storageBucket,
     });
     return;
   }
 
   // Fallback (dev) - bez credentials verifyIdToken/verifySessionCookie nie zadziała
   __ssoProjectInfo = {
-    configuredProjectId: process.env.FIREBASE_PROJECT_ID || "strzelca-pl",
+    configuredProjectId: projectId,
     credentialProjectId: null,
   };
   admin.initializeApp({
-    projectId: process.env.FIREBASE_PROJECT_ID || "strzelca-pl",
+    projectId,
+    storageBucket,
   });
 }
 

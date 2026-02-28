@@ -247,6 +247,15 @@
         box-shadow: 0 0 15px rgba(193, 154, 107, 0.3);
       }
 
+      /* Ukrywanie scrollbara (poziome przewijanie filtrów bez „brzydkiego paska”) */
+      .hide-scrollbar {
+        -ms-overflow-style: none; /* IE / Edge */
+        scrollbar-width: none; /* Firefox */
+      }
+      .hide-scrollbar::-webkit-scrollbar {
+        display: none; /* Chrome / Safari */
+      }
+
       /* Poprawki dla modali - lepsza widoczność */
       #user-details-modal .admin-card,
       #user-delete-modal .admin-card {
@@ -1747,9 +1756,9 @@
             </div>
 
             <div class="admin-card mb-8">
-              <div class="flex justify-between items-center mb-6">
-                <!-- Filtry -->
-                <div class="flex flex-wrap gap-3">
+              <div class="flex items-center justify-between gap-4 mb-6">
+                <!-- Filtry (zawsze w jednej linii; gdy brak miejsca, przewijanie poziome) -->
+                <div class="flex gap-3 overflow-x-auto whitespace-nowrap hide-scrollbar flex-1 pr-2">
                   <button onclick="filterOrders('all')" class="order-filter-btn active" data-filter="all">
                     <i class="fa-solid fa-list mr-2"></i>
                     Wszystkie
@@ -7551,37 +7560,47 @@
         advancedFilters.classList.toggle("hidden");
       };
 
-      // Funkcja usunięcia konwersacji
-      window.deleteConversation = async (conversationKey) => {
-        if (!confirm('Czy na pewno chcesz usunąć tę konwersację? Tej operacji nie można cofnąć.')) {
-          return;
-        }
+      // Usuwanie konwersacji "Pomoc STRZELCA.PL" (kolekcja messages) przez API z potwierdzeniem
+      window.deleteSupportConversation = async (userId, label = '') => {
+        const name = (label || userId || '').toString().trim();
+        const ok = confirm(
+          `Czy na pewno chcesz usunąć całą konwersację${name ? ` z "${name}"` : ''}?\n\n` +
+          `Ta operacja jest nieodwracalna.`
+        );
+        if (!ok) return;
 
         try {
-          // Rozdziel conversationKey na uczestników
-          const participants = conversationKey.split('_');
+          // Pobierz Firebase Auth token
+          let authToken = null;
+          try {
+            if (auth && auth.currentUser) {
+              authToken = await auth.currentUser.getIdToken();
+            }
+          } catch (tokenError) {
+            console.error('deleteSupportConversation: Failed to get Firebase Auth token:', tokenError);
+          }
 
-          // Pobierz wszystkie wiadomości tej konwersacji
-          const messagesQuery = query(
-            collection(db, "privateMessages"),
-            where("senderId", "in", participants),
-            where("receiverId", "in", participants)
-          );
+          const headers = { 'X-Admin-Panel': 'true' };
+          if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
-          const snapshot = await getDocs(messagesQuery);
+          const url = `/api/messages?senderId=${encodeURIComponent(userId)}&recipientId=admin`;
+          const res = await fetch(url, {
+            method: 'DELETE',
+            headers,
+            credentials: 'include',
+          });
+          const data = await res.json().catch(() => null);
+          if (!res.ok || !data?.success) {
+            throw new Error(data?.error || `HTTP ${res.status}`);
+          }
 
-          // Usuń wszystkie wiadomości tej konwersacji
-          const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
-          await Promise.all(deletePromises);
-
-          showNotification("Konwersacja została usunięta", "success");
-
-          // Odśwież listę konwersacji
-          await loadConversations();
-
+          showNotification('Konwersacja została usunięta', 'success');
+          // Odśwież listę
+          if (window.loadMessagesWithFilters) await window.loadMessagesWithFilters();
+          if (window.loadMessagesStatus) await window.loadMessagesStatus();
         } catch (error) {
-          console.error("Error deleting conversation:", error);
-          showNotification("Błąd podczas usuwania konwersacji", "error");
+          console.error('Error deleting support conversation:', error);
+          showNotification('Błąd podczas usuwania konwersacji: ' + (error.message || 'Nieznany błąd'), 'error');
         }
       };
 
@@ -10926,7 +10945,7 @@
                  data-user-email="${conversation.senderEmail}"
                  data-is-pinned="${isPinned}"
                  onclick="openMessageChat('${conversation.senderId}', '${conversation.senderName || ''}', '${conversation.senderEmail || ''}')">
-              <div class="flex items-start justify-between mb-3" onclick="event.stopPropagation()">
+              <div class="flex items-start justify-between mb-3">
                 <div class="flex items-center space-x-3 flex-1">
                   <div class="w-10 h-10 bg-coyote rounded-full flex items-center justify-center relative">
                     <i class="fa-solid fa-user text-black text-sm"></i>
@@ -10942,7 +10961,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="text-right flex-shrink-0 ml-4">
+                <div class="text-right flex-shrink-0 ml-4 flex items-start gap-2">
                   <div class="text-xs text-zinc-500 mb-2">${date}</div>
                   <button onclick="event.stopPropagation(); toggleConversationPin('${conversation.senderId}', ${isPinned})" 
                           class="px-2 py-1 rounded text-xs font-medium transition-colors ${isPinned ? 'bg-coyote text-black hover:bg-coyote/80' : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'}"
@@ -10950,16 +10969,21 @@
                           data-user-id="${conversation.senderId}">
                     <i class="fa-solid fa-thumbtack"></i>
                   </button>
+                  <button onclick="event.stopPropagation(); deleteSupportConversation('${conversation.senderId}', '${displayName.replace(/'/g, "\\'")}')" 
+                          class="px-2 py-1 rounded text-xs font-medium transition-colors bg-red-900/30 text-red-300 hover:bg-red-900/50 border border-red-500/30"
+                          title="Usuń konwersację">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
                 </div>
               </div>
 
-              <div class="mb-3" onclick="event.stopPropagation()">
+              <div class="mb-3">
                 <p class="text-zinc-300 text-sm leading-relaxed">
                   ${lastMsg.content.length > 150 ? lastMsg.content.substring(0, 150) + '...' : lastMsg.content}
                 </p>
               </div>
 
-              <div class="flex items-center justify-between text-xs text-zinc-500" onclick="event.stopPropagation()">
+              <div class="flex items-center justify-between text-xs text-zinc-500">
                 <span>${conversation.totalMessages} wiadomości${hasUnread ? ` • <span class="text-coyote font-semibold">${conversation.unreadCount} nieprzeczytanych</span>` : ''}</span>
                 <button onclick="event.stopPropagation(); toggleConversationReadStatus('${conversation.senderId}', ${hasUnread})" 
                         class="px-3 py-1 rounded text-xs font-medium transition-colors ${hasUnread ? 'bg-coyote text-black hover:bg-coyote/80' : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'}"
@@ -11873,9 +11897,16 @@
 
         messagesAutoRefresh = setInterval(() => {
           if (currentTab === 'messages' && !isUserTyping) {
-            // Odśwież listę wiadomości
-            if (window.loadMessagesWithFilters) {
-              window.loadMessagesWithFilters();
+            // Odświeżaj listę TYLKO jeśli user nie wyszukuje (żeby nie przeszkadzać)
+            const searchInput = document.getElementById('messages-search');
+            const searchValue = (searchInput?.value || '').toString().trim();
+            const isSearchFocused = document.activeElement === searchInput;
+            const isSearching = isSearchFocused || searchValue.length > 0;
+
+            if (!isSearching) {
+              if (window.loadMessagesWithFilters) {
+                window.loadMessagesWithFilters();
+              }
             }
             if (window.loadMessagesStatus) {
               window.loadMessagesStatus();
