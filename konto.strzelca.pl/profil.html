@@ -2498,11 +2498,27 @@ const firebaseConfig = {
             headers['Authorization'] = `Bearer ${authToken}`;
           }
 
-          const response = await fetch('/api/orders', {
+          // Zawsze używaj pełnego URL dla subdomen (Vercel nie routuje /api/* z subdomen)
+          const isMain = (window.location?.hostname || "") === "strzelca.pl";
+          const apiUrl = isMain 
+            ? "/api/orders" 
+            : "https://strzelca.pl/api/orders";
+
+          console.log('Fetching orders from:', apiUrl);
+          
+          const response = await fetch(apiUrl, {
             method: 'GET',
             headers,
-            credentials: 'include',
+            credentials: apiUrl.startsWith("http") ? "include" : "same-origin",
           });
+
+          console.log('Orders API response status:', response.status);
+
+          if (!response.ok) {
+            const errorText = await response.text().catch(() => '');
+            console.error('Failed to load orders:', response.status, errorText);
+            throw new Error(`Failed to load orders: HTTP ${response.status}${errorText ? ' - ' + errorText : ''}`);
+          }
 
           if (!response.ok) {
             throw new Error('Failed to load orders');
@@ -2571,8 +2587,8 @@ const firebaseConfig = {
                   <div class="text-sm text-zinc-400">
                     Razem: <span class="text-coyote font-bold text-lg">${(order.total || 0).toFixed(2)} zł</span>
                   </div>
-                  ${order.invoiceFile ? `
-                    <a href="${order.invoiceFile}" target="_blank" class="text-coyote hover:text-coyote/80 text-sm">
+                  ${order.invoiceFile || order.id ? `
+                    <a href="https://strzelca.pl/api/download-invoice?orderId=${order.id}" target="_blank" class="text-coyote hover:text-coyote/80 text-sm">
                       <i class="fa-solid fa-file-pdf mr-2"></i> Pobierz fakturę
                     </a>
                   ` : ''}

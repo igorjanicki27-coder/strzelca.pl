@@ -108,44 +108,58 @@ module.exports = async (req, res) => {
 
     const { file, fileName, orderId } = body;
 
-    // Konwertuj base64 na buffer
+    // Konwertuj base64 na string (usuń prefix jeśli istnieje)
     const base64Data = file.replace(/^data:application\/pdf;base64,/, '');
-    const fileBuffer = Buffer.from(base64Data, 'base64');
-
-    // Upload do Firebase Storage
-    // Użyj jawnej nazwy bucketa z konfiguracji
-    const projectId = process.env.FIREBASE_PROJECT_ID || "strzelca-pl";
-    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || 
-                         process.env.FIREBASE_STORAGE_BUCKET_NAME || 
-                         process.env.GCLOUD_STORAGE_BUCKET ||
-                         `${projectId}.appspot.com`;
     
-    const bucket = admin.storage().bucket(storageBucket);
-    const filePath = `invoices/${orderId}_${Date.now()}_${fileName}`;
-    const fileRef = bucket.file(filePath);
+    // Sprawdź rozmiar (Firestore ma limit ~1MB na pole, więc dla większych plików trzeba użyć zewnętrznego serwisu)
+    const fileSizeBytes = Buffer.from(base64Data, 'base64').length;
+    const maxSizeBytes = 900 * 1024; // ~900KB dla bezpieczeństwa (zostawiamy margines)
+    
+    if (fileSizeBytes > maxSizeBytes) {
+      res.status(400).json({ 
+        success: false, 
+        error: `Plik jest za duży (${Math.round(fileSizeBytes / 1024)}KB). Maksymalny rozmiar: ${Math.round(maxSizeBytes / 1024)}KB. Użyj zewnętrznego serwisu do przechowywania większych plików.` 
+      });
+      return;
+    }
 
-    await fileRef.save(fileBuffer, {
-      metadata: {
-        contentType: 'application/pdf',
-        metadata: {
-          orderId: orderId,
-          uploadedBy: sessionUser.uid,
-          uploadedAt: new Date().toISOString(),
-        },
-      },
-    });
+    // Przechowuj fakturę w Firestore jako base64 (dla darmowej wersji Firebase)
+    // Alternatywnie można użyć zewnętrznego serwisu jak Cloudinary, ImgBB, lub własnego hostingu
+    const db = admin.firestore();
+    const invoiceDoc = {
+      orderId: orderId,
+      fileName: fileName,
+      fileData: base64Data, // Base64 string
+      contentType: 'application/pdf',
+      uploadedBy: sessionUser.uid,
+      uploadedAt: admin.firestore.FieldValue.serverTimestamp(),
+      size: fileSizeBytes
+    };
 
-    // Ustaw uprawnienia do odczytu
-    await fileRef.makePublic();
+    // Zapisz w kolekcji invoices
+    const invoiceRef = db.collection('invoices').doc(orderId);
+    await invoiceRef.set(invoiceDoc);
 
-    // Pobierz publiczny URL
-    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+    // Zaktualizuj zamówienie, aby wskazywało na fakturę
+    try {
+      const orderRef = db.collection('orders').doc(orderId);
+      await orderRef.update({
+        invoiceFile: `/api/download-invoice?orderId=${orderId}`
+      });
+    } catch (e) {
+      console.warn('Could not update order with invoice file reference:', e);
+      // Nie blokuj - faktura została zapisana
+    }
+
+    // URL do pobrania faktury przez API
+    const downloadUrl = `${process.env.VERCEL_URL || 'https://strzelca.pl'}/api/download-invoice?orderId=${orderId}`;
 
     res.status(200).json({ 
       success: true, 
-      url: publicUrl,
+      url: downloadUrl,
       fileName: fileName,
-      message: 'Invoice uploaded successfully' 
+      size: fileSizeBytes,
+      message: 'Invoice uploaded successfully (stored in Firestore)' 
     });
   } catch (error) {
     console.error('Error uploading invoice:', error);

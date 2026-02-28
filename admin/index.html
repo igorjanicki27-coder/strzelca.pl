@@ -455,22 +455,35 @@
         background: #111;
         border: 1px solid #222;
         border-radius: 8px;
-        padding: 8px;
+        padding: 10px;
         margin-bottom: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
       }
       .toolbar button {
         background: #222;
-        border: none;
+        border: 1px solid #333;
         color: white;
-        padding: 8px 12px;
-        margin: 0 2px;
-        border-radius: 4px;
+        padding: 10px 14px;
+        border-radius: 6px;
         cursor: pointer;
-        transition: 0.3s;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        flex: 1;
       }
       .toolbar button:hover {
         background: var(--coyote);
         color: black;
+        border-color: var(--coyote);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(193, 154, 107, 0.3);
+      }
+      .toolbar button:active {
+        transform: translateY(0);
       }
 
       .status-active {
@@ -1186,7 +1199,10 @@
           <div class="admin-card mb-8">
             <h3 class="text-xl font-bold mb-4">Najnowsi użytkownicy</h3>
             <div id="recent-users" class="space-y-3">
-              <!-- Najnowsi użytkownicy będą ładowani dynamicznie -->
+              <div class="text-center text-zinc-500 py-4">
+                <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-zinc-600"></i>
+                <p class="text-sm">Ładowanie najnowszych użytkowników...</p>
+              </div>
             </div>
           </div>
 
@@ -1285,6 +1301,25 @@
                   placeholder="Cena (np. 299.99)"
                   required
                 />
+
+                <!-- Sekcja zarządzania zdjęciami -->
+                <div class="border border-zinc-700 rounded-lg p-4">
+                  <label class="block text-sm font-medium mb-3">Zdjęcia produktu</label>
+                  <div id="product-images-container" class="space-y-3 mb-3">
+                    <!-- Zdjęcia będą dodawane dynamicznie -->
+                  </div>
+                  <button
+                    type="button"
+                    onclick="addProductImage()"
+                    class="w-full py-2 border border-zinc-600 rounded text-sm hover:bg-zinc-800 transition"
+                  >
+                    <i class="fa-solid fa-plus mr-2"></i>
+                    Dodaj zdjęcie
+                  </button>
+                  <p class="text-xs text-zinc-500 mt-2">
+                    Pierwsze zdjęcie na liście będzie zdjęciem głównym (widocznym w sklepie)
+                  </p>
+                </div>
 
                 <div class="toolbar">
                   <button type="button" onclick="formatText('bold')">
@@ -1504,68 +1539,24 @@
                 <p>Brak akcji charytatywnych</p>
           </div>
         </div>
-
-            <!-- Statystyki pomocy -->
-            <div class="admin-card mt-6">
-              <h3 class="text-xl font-bold mb-6">Statystyki Pomocy</h3>
-
-              <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div class="text-center">
-                  <div
-                    class="text-2xl font-bold coyote-text"
-                    id="total-charity-actions"
-                  >
-                    0
-                  </div>
-                  <div class="text-sm text-zinc-400">Razem akcji</div>
-                </div>
-                <div class="text-center">
-                  <div
-                    class="text-2xl font-bold text-green-400"
-                    id="active-charity-actions"
-                  >
-                    0
-                  </div>
-                  <div class="text-sm text-zinc-400">Aktywnych</div>
-                </div>
-                <div class="text-center">
-                  <div
-                    class="text-2xl font-bold text-blue-400"
-                    id="total-donations"
-                  >
-                    0
-                  </div>
-                  <div class="text-sm text-zinc-400">Zebranych środków</div>
-                </div>
-                <div class="text-center">
-                  <div
-                    class="text-2xl font-bold text-yellow-400"
-                    id="charity-views"
-                  >
-                    0
-                  </div>
-                  <div class="text-sm text-zinc-400">Wyświetleń</div>
-                </div>
-              </div>
-            </div>
           </div>
 
           <!-- Newsletter -->
           <div id="tab-newsletter" class="tab-content">
-          <h1 class="text-3xl font-bold coyote-text mb-8">
+            <h1 class="text-3xl font-bold coyote-text mb-8">
               Zarządzanie Newsletter'em
-          </h1>
+            </h1>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 xl:gap-8">
               <!-- Edytor newsletter'a -->
-          <div class="admin-card">
+              <div class="admin-card">
                 <h3 class="text-xl font-bold mb-6">Edytor Newsletter'a</h3>
 
-                <div class="space-y-4">
+                <div class="space-y-6">
                   <div>
-                    <label class="block text-sm font-medium mb-2"
-                      >Temat wiadomości</label
-                    >
+                    <label class="block text-sm font-medium mb-2 text-zinc-300">
+                      Temat wiadomości
+                    </label>
                     <input
                       type="text"
                       id="newsletter-subject"
@@ -1575,52 +1566,52 @@
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium mb-2"
-                      >Treść wiadomości</label
-                    >
-                    <div class="toolbar mb-2">
-                      <button onclick="formatText('bold')" title="Pogrubienie">
+                    <label class="block text-sm font-medium mb-3 text-zinc-300">
+                      Treść wiadomości
+                    </label>
+                    <div class="toolbar mb-3 flex flex-wrap gap-2">
+                      <button onclick="formatText('bold')" title="Pogrubienie" class="flex-1 min-w-[60px]">
                         <i class="fa-solid fa-bold"></i>
                       </button>
-                      <button onclick="formatText('italic')" title="Kursywa">
+                      <button onclick="formatText('italic')" title="Kursywa" class="flex-1 min-w-[60px]">
                         <i class="fa-solid fa-italic"></i>
                       </button>
-                      <button onclick="formatText('underline')" title="Podkreślenie">
+                      <button onclick="formatText('underline')" title="Podkreślenie" class="flex-1 min-w-[60px]">
                         <i class="fa-solid fa-underline"></i>
                       </button>
-                      <button onclick="insertLink()" title="Wstaw link">
+                      <button onclick="insertLink()" title="Wstaw link" class="flex-1 min-w-[60px]">
                         <i class="fa-solid fa-link"></i>
                       </button>
-                      <button onclick="insertImage()" title="Wstaw obraz">
+                      <button onclick="insertImage()" title="Wstaw obraz" class="flex-1 min-w-[60px]">
                         <i class="fa-solid fa-image"></i>
                       </button>
                     </div>
                     <div
                       id="newsletter-editor"
-                      class="editor-content min-h-[300px]"
+                      class="editor-content min-h-[400px] max-h-[500px] overflow-y-auto"
                       contenteditable="true"
                       placeholder="Wpisz treść newsletter'a..."
                     ></div>
                   </div>
 
-                  <div class="flex space-x-4">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                     <button
                       onclick="previewNewsletter()"
-                      class="btn-admin flex-1"
+                      class="btn-admin w-full"
                     >
                       <i class="fa-solid fa-eye mr-2"></i>
                       Podgląd
                     </button>
                     <button
                       onclick="saveNewsletterDraft()"
-                      class="btn-admin flex-1"
+                      class="btn-admin w-full"
                     >
                       <i class="fa-solid fa-save mr-2"></i>
                       Zapisz wersję roboczą
                     </button>
                     <button
                       onclick="loadNewsletterDraft()"
-                      class="btn-admin flex-1"
+                      class="btn-admin w-full"
                       title="Załaduj zapisaną wersję roboczą"
                     >
                       <i class="fa-solid fa-folder-open mr-2"></i>
@@ -1628,7 +1619,7 @@
                     </button>
                     <button
                       onclick="sendNewsletter()"
-                      class="btn-admin flex-1"
+                      class="btn-admin w-full bg-gradient-to-r from-coyote to-coyote/80 hover:from-coyote/90 hover:to-coyote"
                     >
                       <i class="fa-solid fa-paper-plane mr-2"></i>
                       Wyślij Newsletter
@@ -1638,31 +1629,31 @@
               </div>
 
               <!-- Lista subskrybentów -->
-              <div class="admin-card">
+              <div class="admin-card flex flex-col">
                 <h3 class="text-xl font-bold mb-6">Subskrybenci Newsletter'a</h3>
 
-                <div class="mb-4">
+                <div class="mb-6">
                   <input
                     type="text"
                     id="newsletter-search"
                     placeholder="Szukaj subskrybentów..."
-                    class="w-full mb-4"
+                    class="w-full"
                   />
                 </div>
 
                 <div
                   id="newsletter-subscribers"
-                  class="space-y-3 max-h-[400px] overflow-y-auto"
+                  class="space-y-3 flex-1 overflow-y-auto min-h-[300px] max-h-[500px] pr-2"
                 >
                   <!-- Lista subskrybentów będzie ładowana dynamicznie -->
                 </div>
 
                 <div class="mt-6 pt-4 border-t border-zinc-700">
                   <div
-                    class="flex justify-between items-center text-sm text-zinc-400 mb-4"
+                    class="flex justify-between items-center text-sm mb-4"
                   >
-                    <span>Łącznie subskrybentów:</span>
-                    <span id="subscribers-count">0</span>
+                    <span class="text-zinc-400">Łącznie subskrybentów:</span>
+                    <span id="subscribers-count" class="text-white font-bold text-lg">0</span>
                   </div>
                   <button onclick="exportNewsletter()" class="btn-admin w-full">
                     <i class="fa-solid fa-download mr-2"></i>
@@ -1969,20 +1960,14 @@
                   <h4 class="text-lg font-bold mb-4">Zarządzanie dostępem</h4>
                   <div class="space-y-4">
                     <div>
-                      <label class="block text-sm font-medium mb-2">Dodaj dostęp dla użytkownika</label>
-                      <div class="flex gap-2">
-                        <select id="training-user-select" class="flex-1">
-                          <option value="">Wybierz użytkownika...</option>
-                        </select>
-                        <button
-                          type="button"
-                          onclick="addTrainingAccess()"
-                          class="btn-admin"
-                        >
-                          <i class="fa-solid fa-plus mr-2"></i>
-                          Dodaj
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onclick="openTrainingUserDialog()"
+                        class="btn-admin w-full"
+                      >
+                        <i class="fa-solid fa-user-plus mr-2"></i>
+                        Dodaj użytkownika
+                      </button>
                     </div>
                     <div>
                       <label class="block text-sm font-medium mb-2">Użytkownicy z dostępem</label>
@@ -2021,7 +2006,7 @@
 
           <!-- Blog -->
           <div id="tab-blog" class="tab-content">
-          <h1 class="text-3xl font-bold coyote-text mb-8">
+            <h1 class="text-3xl font-bold coyote-text mb-8">
               Zarządzanie Blogiem
             </h1>
 
@@ -2032,13 +2017,13 @@
               </p>
               <button onclick="addNewBlogPost()" class="btn-admin">
                 <i class="fa-solid fa-plus mr-2"></i>
-                Dodaj wpis
+                DODAJ WPIS
               </button>
             </div>
 
             <!-- Filtry -->
-            <div class="admin-card mb-8">
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="admin-card mb-8 max-w-2xl">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label class="block text-sm font-medium mb-2">Status</label>
                   <select id="blog-status-filter" class="w-full">
@@ -2058,12 +2043,12 @@
                     <option value="reviews">Recenzje</option>
                   </select>
                 </div>
-                <div class="flex items-end">
-                  <button onclick="applyBlogFilters()" class="btn-admin w-full">
-                    <i class="fa-solid fa-filter mr-2"></i>
-                    Filtruj
-                  </button>
-                </div>
+              </div>
+              <div class="mt-4">
+                <button onclick="applyBlogFilters()" class="btn-admin w-full md:w-auto">
+                  <i class="fa-solid fa-filter mr-2"></i>
+                  FILTRUJ
+                </button>
               </div>
             </div>
 
@@ -2102,6 +2087,78 @@
               </button>
             </div>
 
+            <!-- Formularz dodawania/edycji dokumentu -->
+            <div id="document-form-section" class="admin-card mb-8 hidden">
+              <h3 class="text-xl font-bold mb-4" id="document-form-title">Dodaj/Edytuj Dokument</h3>
+              <form id="document-form" class="space-y-4">
+                <input type="hidden" id="document-id" />
+                
+                <div>
+                  <label class="block text-sm font-medium mb-2">Tytuł dokumentu *</label>
+                  <input
+                    type="text"
+                    id="document-title"
+                    placeholder="Np. Regulamin Platformy"
+                    class="w-full"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">Opis</label>
+                  <textarea
+                    id="document-description"
+                    placeholder="Krótki opis dokumentu"
+                    class="w-full"
+                    rows="3"
+                  ></textarea>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">URL do pliku PDF *</label>
+                  <input
+                    type="url"
+                    id="document-url"
+                    placeholder="https://example.com/document.pdf"
+                    class="w-full"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">Kategoria</label>
+                  <input
+                    type="text"
+                    id="document-category"
+                    placeholder="Np. Regulaminy, Polityki, Dokumenty"
+                    class="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">Kolejność wyświetlania</label>
+                  <input
+                    type="number"
+                    id="document-order"
+                    placeholder="0"
+                    class="w-full"
+                    min="0"
+                  />
+                </div>
+
+                <div class="flex space-x-4">
+                  <button type="submit" class="btn-admin">
+                    <i class="fa-solid fa-save mr-2"></i>
+                    Zapisz dokument
+                  </button>
+                  <button type="button" onclick="clearDocumentForm()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
+                    <i class="fa-solid fa-times mr-2"></i>
+                    Anuluj
+                  </button>
+                </div>
+              </form>
+            </div>
+
             <!-- Lista dokumentów -->
             <div class="admin-card">
               <div id="documents-list" class="space-y-4">
@@ -2129,7 +2186,7 @@
               Zarządzanie Szablonami Maili
           </h1>
 
-          <div class="grid grid-cols-1 gap-8">
+            <div class="grid grid-cols-1 gap-8 max-w-4xl mx-auto">
               <!-- Ustawienia SMTP -->
             <div class="admin-card">
                 <h3 class="text-xl font-bold mb-6">Ustawienia SMTP</h3>
@@ -2204,28 +2261,28 @@
                       Zaznacz dla portu 465 (SSL), odznacz dla 587 (TLS)
                     </p>
                 </div>
-            </div>
-
-                <div class="mt-6 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
-                  <h4 class="text-sm font-bold text-coyote mb-2">Instrukcja konfiguracji OVH:</h4>
-                  <ol class="text-xs text-zinc-400 space-y-1 list-decimal list-inside">
-                    <li>Zaloguj się do panelu OVH</li>
-                    <li>Przejdź do "E-maile" → wybierz domenę strzelca.pl</li>
-                    <li>Kliknij na skrzynkę kontakt@strzelca.pl</li>
-                    <li>W zakładce "Ogólne" znajdziesz hasło (lub ustaw nowe)</li>
-                    <li>W zakładce "Konfiguracja klienta e-mail" znajdziesz ustawienia SMTP</li>
-                    <li>Dla SSL: Host: ssl0.ovh.net, Port: 465</li>
-                    <li>Dla TLS: Host: ns0.ovh.net, Port: 587</li>
-                  </ol>
-                </div>
-
-                <div class="mt-6">
-                  <button onclick="saveSmtpSettings()" class="btn-admin px-6 py-2">
-                    <i class="fa-solid fa-save mr-2"></i>
-                    Zapisz ustawienia SMTP
-                  </button>
-                </div>
               </div>
+
+              <div class="mt-6 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                <h4 class="text-sm font-bold text-coyote mb-2">Instrukcja konfiguracji OVH:</h4>
+                <ol class="text-xs text-zinc-400 space-y-1 list-decimal list-inside">
+                  <li>Zaloguj się do panelu OVH</li>
+                  <li>Przejdź do "E-maile" → wybierz domenę strzelca.pl</li>
+                  <li>Kliknij na skrzynkę kontakt@strzelca.pl</li>
+                  <li>W zakładce "Ogólne" znajdziesz hasło (lub ustaw nowe)</li>
+                  <li>W zakładce "Konfiguracja klienta e-mail" znajdziesz ustawienia SMTP</li>
+                  <li>Dla SSL: Host: ssl0.ovh.net, Port: 465</li>
+                  <li>Dla TLS: Host: ns0.ovh.net, Port: 587</li>
+                </ol>
+              </div>
+
+              <div class="mt-6">
+                <button onclick="saveSmtpSettings()" class="btn-admin px-6 py-2">
+                  <i class="fa-solid fa-save mr-2"></i>
+                  Zapisz ustawienia SMTP
+                </button>
+              </div>
+            </div>
 
               <!-- Lista szablonów -->
               <div class="admin-card">
@@ -3246,6 +3303,7 @@
       let usersList = [];
       let productsList = [];
       let trainingsList = [];
+      let documentsList = [];
       let currentTrainingId = null;
       let currentConversationId = null;
       let currentConversationUser = null; // Aktualna konwersacja (użytkownik)
@@ -3893,10 +3951,10 @@
             loadTrainings();
             break;
           case "blog":
-            // Brak specjalnej funkcji ładowania dla tej zakładki
+            loadBlogPosts();
             break;
           case "dokumenty":
-            // Brak specjalnej funkcji ładowania dla tej zakładki
+            loadDocuments();
             break;
           case "kontakt":
             loadQuickReplies();
@@ -4813,11 +4871,199 @@
 
 
           renderUsersList();
+          // Załaduj najnowszych użytkowników
+          loadRecentUsers();
         } catch (error) {
           console.error("Error loading users:", error);
           showNotification("Błąd ładowania użytkowników.", "error");
         }
       }
+
+      // Funkcja do ładowania najnowszych użytkowników
+      async function loadRecentUsers() {
+        try {
+          const recentUsersRef = collection(db, "userProfiles");
+          const q = query(recentUsersRef, orderBy("createdAt", "desc"), limit(10));
+          const snapshot = await getDocs(q);
+          
+          const recentUsers = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+
+          // Pobierz informacje o weryfikacji emaila dla użytkowników
+          const usersWithEmailVerification = await Promise.all(
+            recentUsers.map(async (user) => {
+              let emailVerified = false;
+              try {
+                // Spróbuj pobrać informację o weryfikacji emaila z API
+                const response = await fetch(`https://strzelca.pl/api/user-email-verified?uid=${user.id}`, {
+                  credentials: "include",
+                });
+                if (response.ok) {
+                  const data = await response.json();
+                  emailVerified = data.emailVerified === true;
+                }
+              } catch (error) {
+                console.warn(`Nie udało się sprawdzić weryfikacji emaila dla użytkownika ${user.id}:`, error);
+              }
+              return { ...user, emailVerified };
+            })
+          );
+
+          // Wyświetl 3 najnowszych użytkowników
+          renderRecentUsers(usersWithEmailVerification.slice(0, 3));
+          
+          // Zapisz wszystkich 10 najnowszych użytkowników do użycia w dialogu
+          window.recentUsersList = usersWithEmailVerification;
+        } catch (error) {
+          console.error("Error loading recent users:", error);
+          const container = document.getElementById("recent-users");
+          if (container) {
+            container.innerHTML = `
+              <div class="text-center text-zinc-500 py-4">
+                <i class="fa-solid fa-exclamation-triangle text-yellow-400 mb-2"></i>
+                <p class="text-sm">Błąd ładowania najnowszych użytkowników</p>
+              </div>
+            `;
+          }
+        }
+      }
+
+      // Funkcja do renderowania najnowszych użytkowników
+      function renderRecentUsers(users) {
+        const container = document.getElementById("recent-users");
+        if (!container) return;
+
+        if (users.length === 0) {
+          container.innerHTML = `
+            <div class="text-center text-zinc-500 py-4">
+              <i class="fa-solid fa-users text-2xl mb-2 text-zinc-600"></i>
+              <p class="text-sm">Brak użytkowników</p>
+            </div>
+          `;
+          return;
+        }
+
+        const usersHtml = users.map((user) => {
+          const createdAt = user.createdAt?.toDate ? user.createdAt.toDate() : new Date(user.createdAt);
+          const createdAtFormatted = createdAt.toLocaleString("pl-PL", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+
+          const emailVerifiedBadge = user.emailVerified
+            ? '<span class="px-2 py-1 text-xs rounded bg-green-500/20 text-green-400 border border-green-500/50"><i class="fa-solid fa-check-circle mr-1"></i>Email zweryfikowany</span>'
+            : '<span class="px-2 py-1 text-xs rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/50"><i class="fa-solid fa-exclamation-circle mr-1"></i>Email niezweryfikowany</span>';
+
+          return `
+            <div class="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700/50 hover:bg-zinc-800 transition cursor-pointer" onclick="viewUserDetails('${user.id}')">
+              <div class="flex justify-between items-start mb-2">
+                <div class="flex-1">
+                  <h4 class="text-white font-bold mb-1">${user.displayName || "Brak nazwy"}</h4>
+                  <div class="text-sm text-zinc-400 mb-2">${user.email || "Brak emaila"}</div>
+                  <div class="flex items-center gap-2 mb-2">
+                    ${emailVerifiedBadge}
+                  </div>
+                  <div class="text-xs text-zinc-500">
+                    <i class="fa-solid fa-calendar mr-1"></i>
+                    ${createdAtFormatted}
+                  </div>
+                </div>
+                <div class="text-zinc-400 hover:text-coyote transition">
+                  <i class="fa-solid fa-chevron-right"></i>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        // Dodaj przycisk do otwarcia dialogu z wszystkimi najnowszymi użytkownikami
+        container.innerHTML = usersHtml + `
+          <div class="text-center mt-4">
+            <button onclick="showRecentUsersDialog()" class="text-coyote hover:text-coyote/80 text-sm font-semibold transition">
+              <i class="fa-solid fa-eye mr-1"></i>
+              Zobacz wszystkich najnowszych użytkowników
+            </button>
+          </div>
+        `;
+      }
+
+      // Funkcja do wyświetlania dialogu z 10 najnowszymi użytkownikami
+      window.showRecentUsersDialog = function() {
+        if (!window.recentUsersList || window.recentUsersList.length === 0) {
+          showNotification("Brak najnowszych użytkowników do wyświetlenia.", "info");
+          return;
+        }
+
+        const users = window.recentUsersList;
+        const usersHtml = users.map((user) => {
+          const createdAt = user.createdAt?.toDate ? user.createdAt.toDate() : new Date(user.createdAt);
+          const createdAtFormatted = createdAt.toLocaleString("pl-PL", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+
+          const emailVerifiedBadge = user.emailVerified
+            ? '<span class="px-2 py-1 text-xs rounded bg-green-500/20 text-green-400 border border-green-500/50"><i class="fa-solid fa-check-circle mr-1"></i>Email zweryfikowany</span>'
+            : '<span class="px-2 py-1 text-xs rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/50"><i class="fa-solid fa-exclamation-circle mr-1"></i>Email niezweryfikowany</span>';
+
+          return `
+            <div class="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700/50 hover:bg-zinc-800 transition cursor-pointer" onclick="viewUserDetails('${user.id}'); closeRecentUsersDialog();">
+              <div class="flex justify-between items-start mb-2">
+                <div class="flex-1">
+                  <h4 class="text-white font-bold mb-1">${user.displayName || "Brak nazwy"}</h4>
+                  <div class="text-sm text-zinc-400 mb-2">${user.email || "Brak emaila"}</div>
+                  <div class="flex items-center gap-2 mb-2">
+                    ${emailVerifiedBadge}
+                  </div>
+                  <div class="text-xs text-zinc-500">
+                    <i class="fa-solid fa-calendar mr-1"></i>
+                    ${createdAtFormatted}
+                  </div>
+                </div>
+                <div class="text-zinc-400 hover:text-coyote transition">
+                  <i class="fa-solid fa-chevron-right"></i>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        const modalHtml = `
+          <div id="recent-users-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onclick="if(event.target.id === 'recent-users-modal') closeRecentUsersDialog();">
+            <div class="bg-zinc-900 rounded-lg border border-zinc-700 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation();">
+              <div class="sticky top-0 bg-zinc-900 border-b border-zinc-700 p-4 flex justify-between items-center">
+                <h3 class="text-xl font-bold text-white">Najnowsi użytkownicy</h3>
+                <button onclick="closeRecentUsersDialog()" class="text-zinc-400 hover:text-white transition">
+                  <i class="fa-solid fa-times text-xl"></i>
+                </button>
+              </div>
+              <div class="p-4 space-y-3">
+                ${usersHtml}
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.body.insertAdjacentHTML("beforeend", modalHtml);
+        document.body.style.overflow = "hidden";
+      };
+
+      // Funkcja do zamykania dialogu
+      window.closeRecentUsersDialog = function() {
+        const modal = document.getElementById("recent-users-modal");
+        if (modal) {
+          modal.remove();
+          document.body.style.overflow = "";
+        }
+      };
 
       // Uwaga: ten plik działa jako ES module (<script type="module">),
       // więc funkcje NIE są automatycznie dostępne dla inline onclick.
@@ -6943,6 +7189,101 @@
         }
       };
 
+      // Zarządzanie zdjęciami produktu
+      let productImages = [];
+
+      window.addProductImage = () => {
+        const url = prompt("Wprowadź URL zdjęcia:");
+        if (url && url.trim()) {
+          productImages.push({
+            url: url.trim(),
+            order: productImages.length
+          });
+          renderProductImages();
+        }
+      };
+
+      window.removeProductImage = (index) => {
+        if (confirm("Czy na pewno chcesz usunąć to zdjęcie?")) {
+          productImages.splice(index, 1);
+          // Przepisz kolejność
+          productImages.forEach((img, idx) => {
+            img.order = idx;
+          });
+          renderProductImages();
+        }
+      };
+
+      window.moveImageUp = (index) => {
+        if (index > 0) {
+          [productImages[index], productImages[index - 1]] = [productImages[index - 1], productImages[index]];
+          productImages.forEach((img, idx) => {
+            img.order = idx;
+          });
+          renderProductImages();
+        }
+      };
+
+      window.moveImageDown = (index) => {
+        if (index < productImages.length - 1) {
+          [productImages[index], productImages[index + 1]] = [productImages[index + 1], productImages[index]];
+          productImages.forEach((img, idx) => {
+            img.order = idx;
+          });
+          renderProductImages();
+        }
+      };
+
+      function renderProductImages() {
+        const container = document.getElementById("product-images-container");
+        if (!container) return;
+
+        if (productImages.length === 0) {
+          container.innerHTML = '<p class="text-sm text-zinc-500 text-center py-4">Brak zdjęć. Kliknij "Dodaj zdjęcie" aby dodać pierwsze zdjęcie.</p>';
+          return;
+        }
+
+        container.innerHTML = productImages.map((img, index) => `
+          <div class="flex items-center gap-3 p-3 bg-zinc-800 rounded-lg border ${index === 0 ? 'border-coyote' : 'border-zinc-700'}">
+            <div class="flex-shrink-0 w-20 h-20 bg-zinc-900 rounded overflow-hidden">
+              <img src="${img.url}" alt="Zdjęcie ${index + 1}" class="w-full h-full object-cover" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\'%3E%3Crect fill=\\'%23333\\' width=\\'100\\' height=\\'100\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%23666\\' font-family=\\'Arial\\' font-size=\\'12\\'%3EBłąd%3C/text%3E%3C/svg%3E';">
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-xs text-zinc-400 mb-1">Kolejność: ${index + 1}${index === 0 ? ' <span class="text-coyote font-bold">(Główne)</span>' : ''}</div>
+              <div class="text-xs text-zinc-500 truncate" title="${img.url}">${img.url}</div>
+            </div>
+            <div class="flex flex-col gap-1">
+              <button
+                type="button"
+                onclick="moveImageUp(${index})"
+                class="px-2 py-1 text-xs border border-zinc-600 rounded hover:bg-zinc-700 transition ${index === 0 ? 'opacity-50 cursor-not-allowed' : ''}"
+                ${index === 0 ? 'disabled' : ''}
+                title="Przenieś w górę"
+              >
+                <i class="fa-solid fa-arrow-up"></i>
+              </button>
+              <button
+                type="button"
+                onclick="moveImageDown(${index})"
+                class="px-2 py-1 text-xs border border-zinc-600 rounded hover:bg-zinc-700 transition ${index === productImages.length - 1 ? 'opacity-50 cursor-not-allowed' : ''}"
+                ${index === productImages.length - 1 ? 'disabled' : ''}
+                title="Przenieś w dół"
+              >
+                <i class="fa-solid fa-arrow-down"></i>
+              </button>
+              <button
+                type="button"
+                onclick="removeProductImage(${index})"
+                class="px-2 py-1 text-xs border border-red-600 text-red-400 rounded hover:bg-red-900/20 transition"
+                title="Usuń zdjęcie"
+              >
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        `).join('');
+      }
+
       // Wiadomości zostały przeniesione do floating widget
 
       async function loadMessages() {
@@ -7615,15 +7956,728 @@
 
 
 
+      // Lista wydarzeń
+      let eventsList = [];
+
       async function loadEvents() {
-        document.getElementById("events-list").innerHTML =
-          '<div class="text-center text-zinc-500 py-8">Ładowanie wydarzeń...</div>';
+        const loadingEl = document.getElementById("events-loading");
+        const emptyEl = document.getElementById("events-empty");
+        const listEl = document.getElementById("events-list");
+
+        if (loadingEl) loadingEl.classList.remove("hidden");
+        if (emptyEl) emptyEl.classList.add("hidden");
+
+        try {
+          const q = query(collection(db, "events"), orderBy("date", "desc"));
+          const snapshot = await getDocs(q);
+          eventsList = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            dateObj: doc.data().date?.toDate ? doc.data().date.toDate() : new Date(doc.data().date),
+          }));
+
+          renderEventsList();
+          updateEventsStats();
+
+          if (loadingEl) loadingEl.classList.add("hidden");
+          if (eventsList.length === 0 && emptyEl) {
+            emptyEl.classList.remove("hidden");
+          }
+        } catch (error) {
+          console.error("Error loading events:", error);
+          showNotification("Błąd ładowania wydarzeń.", "error");
+          if (loadingEl) loadingEl.classList.add("hidden");
+          if (listEl) {
+            listEl.innerHTML = '<div class="text-center text-red-400 py-8">Błąd ładowania wydarzeń</div>';
+          }
+        }
       }
 
-      async function loadCharity() {
-        document.getElementById("charity-content").innerHTML =
-          '<div class="text-center text-zinc-500 py-8">Ładowanie zawartości pomocy charytatywnej...</div>';
+      function renderEventsList() {
+        const listEl = document.getElementById("events-list");
+        if (!listEl) return;
+
+        if (eventsList.length === 0) {
+          listEl.innerHTML = '<div class="text-center text-zinc-500 py-4">Brak wydarzeń</div>';
+          return;
+        }
+
+        const eventsHtml = eventsList
+          .map((event) => {
+            const eventDate = event.dateObj || new Date(event.date);
+            const isPast = eventDate < new Date();
+            const isPinned = event.pinned || false;
+            const category = event.category || "other";
+            const categoryLabels = {
+              training: "Szkolenia",
+              meeting: "Spotkania",
+              competition: "Zawody",
+              other: "Inne",
+            };
+
+            return `
+              <div class="flex justify-between items-center p-4 bg-zinc-800 rounded-lg border ${isPinned ? 'border-coyote' : 'border-zinc-700'}">
+                <div class="flex-1">
+                  <div class="flex items-center gap-2 mb-2">
+                    ${isPinned ? '<i class="fa-solid fa-thumbtack text-coyote" title="Przypięte"></i>' : ''}
+                    <div class="font-semibold text-white">${event.title || "Bez tytułu"}</div>
+                    <span class="text-xs px-2 py-1 rounded bg-zinc-700 text-zinc-300">${categoryLabels[category] || category}</span>
+                    ${isPast ? '<span class="text-xs px-2 py-1 rounded bg-red-900/30 text-red-400">Przeszłe</span>' : '<span class="text-xs px-2 py-1 rounded bg-green-900/30 text-green-400">Nadchodzące</span>'}
+                  </div>
+                  <div class="text-sm text-zinc-400 mb-1">
+                    <i class="fa-solid fa-calendar mr-1"></i>
+                    ${eventDate.toLocaleString("pl-PL", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                  ${event.description ? `<div class="text-sm text-zinc-500 mt-2 line-clamp-2">${event.description.substring(0, 100)}${event.description.length > 100 ? "..." : ""}</div>` : ""}
+                </div>
+                <div class="flex space-x-2 ml-4">
+                  <button onclick="editEvent('${event.id}')" class="text-blue-400 hover:text-blue-300 px-3 py-1 border border-blue-400 rounded text-sm transition">
+                    <i class="fa-solid fa-edit mr-1"></i>Edytuj
+                  </button>
+                  <button onclick="deleteEventItem('${event.id}')" class="text-red-400 hover:text-red-300 px-3 py-1 border border-red-400 rounded text-sm transition">
+                    <i class="fa-solid fa-trash mr-1"></i>Usuń
+                  </button>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+
+        listEl.innerHTML = eventsHtml;
       }
+
+      function updateEventsStats() {
+        const total = eventsList.length;
+        const now = new Date();
+        const upcoming = eventsList.filter((e) => e.dateObj >= now).length;
+        const past = eventsList.filter((e) => e.dateObj < now).length;
+        const pinned = eventsList.filter((e) => e.pinned).length;
+
+        const totalEl = document.getElementById("total-events");
+        const upcomingEl = document.getElementById("upcoming-events");
+        const pastEl = document.getElementById("past-events");
+        const pinnedEl = document.getElementById("pinned-events");
+
+        if (totalEl) totalEl.textContent = total;
+        if (upcomingEl) upcomingEl.textContent = upcoming;
+        if (pastEl) pastEl.textContent = past;
+        if (pinnedEl) pinnedEl.textContent = pinned;
+      }
+
+      // Funkcja otwierająca modal do dodawania/edycji wydarzenia
+      window.addNewEvent = () => {
+        openEventModal();
+      };
+
+      function openEventModal(eventId = null) {
+        const event = eventId ? eventsList.find((e) => e.id === eventId) : null;
+
+        const modalHtml = `
+          <div id="event-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onclick="if(event.target.id === 'event-form-modal') closeEventFormModal()">
+            <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+              <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold coyote-text">${event ? "Edytuj wydarzenie" : "Dodaj nowe wydarzenie"}</h2>
+                <button onclick="closeEventFormModal()" class="text-zinc-400 hover:text-white transition-colors">
+                  <i class="fa-solid fa-times text-xl"></i>
+                </button>
+              </div>
+
+              <form id="event-form" class="space-y-4">
+                <input type="hidden" id="event-id" value="${event ? event.id : ""}" />
+                
+                <div>
+                  <label class="block text-sm font-medium mb-2">Tytuł wydarzenia *</label>
+                  <input
+                    type="text"
+                    id="event-title"
+                    placeholder="Nazwa wydarzenia"
+                    value="${event ? (event.title || "") : ""}"
+                    required
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">Data i godzina *</label>
+                  <input
+                    type="datetime-local"
+                    id="event-date"
+                    value="${event ? formatDateTimeForInput(event.dateObj) : ""}"
+                    required
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">Kategoria</label>
+                  <select
+                    id="event-category"
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                  >
+                    <option value="training" ${event && event.category === "training" ? "selected" : ""}>Szkolenia</option>
+                    <option value="meeting" ${event && event.category === "meeting" ? "selected" : ""}>Spotkania</option>
+                    <option value="competition" ${event && event.category === "competition" ? "selected" : ""}>Zawody</option>
+                    <option value="other" ${event && event.category === "other" ? "selected" : (!event ? "selected" : "")}>Inne</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">Opis</label>
+                  <textarea
+                    id="event-description"
+                    rows="4"
+                    placeholder="Opis wydarzenia..."
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                  >${event ? (event.description || "") : ""}</textarea>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="event-pinned"
+                    ${event && event.pinned ? "checked" : ""}
+                    class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote"
+                  />
+                  <label for="event-pinned" class="text-sm">Przypnij wydarzenie (będzie wyświetlane na górze)</label>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="event-published"
+                    ${event && event.published !== false ? "checked" : (!event ? "checked" : "")}
+                    class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote"
+                  />
+                  <label for="event-published" class="text-sm">Opublikuj wydarzenie</label>
+                </div>
+
+                <div class="flex space-x-4 pt-4">
+                  <button type="submit" class="btn-admin flex-1">
+                    <i class="fa-solid fa-save mr-2"></i>
+                    ${event ? "Zaktualizuj" : "Dodaj"} wydarzenie
+                  </button>
+                  <button
+                    type="button"
+                    onclick="closeEventFormModal()"
+                    class="px-4 py-2 border border-zinc-600 rounded-lg text-white hover:bg-zinc-800 transition"
+                  >
+                    Anuluj
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `;
+
+        // Usuń istniejący modal jeśli jest
+        const existingModal = document.getElementById("event-form-modal");
+        if (existingModal) existingModal.remove();
+
+        document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+        // Dodaj obsługę formularza
+        const form = document.getElementById("event-form");
+        if (form) {
+          form.addEventListener("submit", handleEventFormSubmit);
+        }
+
+        // Dodaj obsługę klawisza ESC
+        const handleEscape = (e) => {
+          if (e.key === "Escape") {
+            closeEventFormModal();
+            document.removeEventListener("keydown", handleEscape);
+          }
+        };
+        document.addEventListener("keydown", handleEscape);
+      }
+
+      function formatDateTimeForInput(date) {
+        if (!date) return "";
+        const d = date instanceof Date ? date : new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        const hours = String(d.getHours()).padStart(2, "0");
+        const minutes = String(d.getMinutes()).padStart(2, "0");
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      }
+
+      window.closeEventFormModal = () => {
+        const modal = document.getElementById("event-form-modal");
+        if (modal) {
+          modal.remove();
+        }
+      };
+
+      async function handleEventFormSubmit(e) {
+        e.preventDefault();
+
+        const eventId = document.getElementById("event-id").value;
+        const title = document.getElementById("event-title").value.trim();
+        const dateTime = document.getElementById("event-date").value;
+        const category = document.getElementById("event-category").value;
+        const description = document.getElementById("event-description").value.trim();
+        const pinned = document.getElementById("event-pinned").checked;
+        const published = document.getElementById("event-published").checked;
+
+        if (!title || !dateTime) {
+          showNotification("Wypełnij wszystkie wymagane pola.", "error");
+          return;
+        }
+
+        try {
+          const eventDate = new Date(dateTime);
+          const eventData = {
+            title,
+            date: eventDate,
+            category,
+            description: description || "",
+            pinned,
+            published,
+            updatedAt: new Date(),
+          };
+
+          if (eventId) {
+            // Aktualizacja istniejącego wydarzenia
+            await updateDoc(doc(db, "events", eventId), eventData);
+            showNotification("Wydarzenie zostało zaktualizowane.", "success");
+          } else {
+            // Dodanie nowego wydarzenia
+            eventData.createdAt = new Date();
+            await addDoc(collection(db, "events"), eventData);
+            showNotification("Wydarzenie zostało dodane.", "success");
+          }
+
+          closeEventFormModal();
+          await loadEvents();
+        } catch (error) {
+          console.error("Error saving event:", error);
+          showNotification("Błąd zapisywania wydarzenia.", "error");
+        }
+      }
+
+      window.editEvent = (eventId) => {
+        openEventModal(eventId);
+      };
+
+      window.deleteEventItem = async (eventId) => {
+        if (!confirm("Czy na pewno chcesz usunąć to wydarzenie?")) return;
+
+        try {
+          await deleteDoc(doc(db, "events", eventId));
+          showNotification("Wydarzenie zostało usunięte.", "success");
+          await loadEvents();
+        } catch (error) {
+          console.error("Error deleting event:", error);
+          showNotification("Błąd usuwania wydarzenia.", "error");
+        }
+      };
+
+      window.applyEventsFilters = () => {
+        const statusFilter = document.getElementById("events-status-filter")?.value || "all";
+        const categoryFilter = document.getElementById("events-category-filter")?.value || "all";
+        const sortFilter = document.getElementById("events-sort-filter")?.value || "date-desc";
+
+        let filtered = [...eventsList];
+
+        // Filtrowanie po statusie
+        if (statusFilter !== "all") {
+          const now = new Date();
+          if (statusFilter === "upcoming") {
+            filtered = filtered.filter((e) => e.dateObj >= now);
+          } else if (statusFilter === "past") {
+            filtered = filtered.filter((e) => e.dateObj < now);
+          } else if (statusFilter === "pinned") {
+            filtered = filtered.filter((e) => e.pinned);
+          }
+        }
+
+        // Filtrowanie po kategorii
+        if (categoryFilter !== "all") {
+          filtered = filtered.filter((e) => (e.category || "other") === categoryFilter);
+        }
+
+        // Sortowanie
+        if (sortFilter === "date-asc") {
+          filtered.sort((a, b) => a.dateObj - b.dateObj);
+        } else if (sortFilter === "date-desc") {
+          filtered.sort((a, b) => b.dateObj - a.dateObj);
+        } else if (sortFilter === "title") {
+          filtered.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+        } else if (sortFilter === "pinned") {
+          filtered.sort((a, b) => {
+            if (a.pinned && !b.pinned) return -1;
+            if (!a.pinned && b.pinned) return 1;
+            return b.dateObj - a.dateObj;
+          });
+        }
+
+        // Renderuj przefiltrowaną listę
+        const listEl = document.getElementById("events-list");
+        if (!listEl) return;
+
+        if (filtered.length === 0) {
+          listEl.innerHTML = '<div class="text-center text-zinc-500 py-4">Brak wydarzeń spełniających kryteria</div>';
+          return;
+        }
+
+        const eventsHtml = filtered
+          .map((event) => {
+            const eventDate = event.dateObj || new Date(event.date);
+            const isPast = eventDate < new Date();
+            const isPinned = event.pinned || false;
+            const category = event.category || "other";
+            const categoryLabels = {
+              training: "Szkolenia",
+              meeting: "Spotkania",
+              competition: "Zawody",
+              other: "Inne",
+            };
+
+            return `
+              <div class="flex justify-between items-center p-4 bg-zinc-800 rounded-lg border ${isPinned ? "border-coyote" : "border-zinc-700"}">
+                <div class="flex-1">
+                  <div class="flex items-center gap-2 mb-2">
+                    ${isPinned ? '<i class="fa-solid fa-thumbtack text-coyote" title="Przypięte"></i>' : ""}
+                    <div class="font-semibold text-white">${event.title || "Bez tytułu"}</div>
+                    <span class="text-xs px-2 py-1 rounded bg-zinc-700 text-zinc-300">${categoryLabels[category] || category}</span>
+                    ${isPast ? '<span class="text-xs px-2 py-1 rounded bg-red-900/30 text-red-400">Przeszłe</span>' : '<span class="text-xs px-2 py-1 rounded bg-green-900/30 text-green-400">Nadchodzące</span>'}
+                  </div>
+                  <div class="text-sm text-zinc-400 mb-1">
+                    <i class="fa-solid fa-calendar mr-1"></i>
+                    ${eventDate.toLocaleString("pl-PL", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                  ${event.description ? `<div class="text-sm text-zinc-500 mt-2 line-clamp-2">${event.description.substring(0, 100)}${event.description.length > 100 ? "..." : ""}</div>` : ""}
+                </div>
+                <div class="flex space-x-2 ml-4">
+                  <button onclick="editEvent('${event.id}')" class="text-blue-400 hover:text-blue-300 px-3 py-1 border border-blue-400 rounded text-sm transition">
+                    <i class="fa-solid fa-edit mr-1"></i>Edytuj
+                  </button>
+                  <button onclick="deleteEventItem('${event.id}')" class="text-red-400 hover:text-red-300 px-3 py-1 border border-red-400 rounded text-sm transition">
+                    <i class="fa-solid fa-trash mr-1"></i>Usuń
+                  </button>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+
+        listEl.innerHTML = eventsHtml;
+      };
+
+      // Funkcje zarządzania akcjami charytatywnymi
+      let charityActionsList = [];
+
+      async function loadCharity() {
+        // Funkcja do ładowania akcji charytatywnych
+        const loadingEl = document.getElementById("charity-loading");
+        const listEl = document.getElementById("charity-actions-list");
+        const emptyEl = document.getElementById("charity-empty");
+        
+        if (loadingEl) loadingEl.classList.remove("hidden");
+        if (listEl) listEl.innerHTML = "";
+        if (emptyEl) emptyEl.classList.add("hidden");
+        
+        try {
+          const { collection, getDocs, query, orderBy } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+          const q = query(collection(db, "charity"), orderBy("order", "asc"));
+          const snap = await getDocs(q);
+          
+          if (loadingEl) loadingEl.classList.add("hidden");
+          
+          if (snap.empty) {
+            if (emptyEl) emptyEl.classList.remove("hidden");
+            return;
+          }
+          
+          if (emptyEl) emptyEl.classList.add("hidden");
+          
+          // Resetuj listę akcji
+          charityActionsList = [];
+          
+          snap.forEach(docSnapshot => {
+            const data = docSnapshot.data();
+            const charityItem = { id: docSnapshot.id, ...data };
+            charityActionsList.push(charityItem);
+            
+            if (listEl) {
+              const eventDate = new Date(data.date || Date.now());
+              const isPast = eventDate < new Date();
+              
+              listEl.innerHTML += `
+                <div class="border border-zinc-700 rounded-lg p-4">
+                  <div class="flex justify-between items-start mb-3">
+                    <h4 class="text-lg font-bold coyote-text">${data.title || 'Bez tytułu'}</h4>
+                    <div class="flex space-x-2">
+                      <button onclick="editCharityAction('${docSnapshot.id}')" class="text-blue-400 text-sm hover:underline">Edytuj</button>
+                      <button onclick="deleteCharityAction('${docSnapshot.id}')" class="text-red-400 text-sm hover:underline">Usuń</button>
+                    </div>
+                  </div>
+                  <div class="text-sm text-zinc-400 mb-2">
+                    📅 ${eventDate.toLocaleDateString('pl-PL')}
+                    ${isPast ? '<span class="ml-2 px-2 py-1 bg-red-600 text-white text-xs rounded">Zakończona</span>' : '<span class="ml-2 px-2 py-1 bg-green-600 text-white text-xs rounded">Aktywna</span>'}
+                    ${data.active ? '' : '<span class="ml-2 px-2 py-1 bg-zinc-600 text-white text-xs rounded">Nieaktywna</span>'}
+                  </div>
+                  ${data.image ? `<img src="${data.image}" alt="${data.title}" class="w-full h-48 object-cover rounded mb-3">` : ''}
+                  <p class="text-zinc-300 text-sm">${data.description || 'Brak opisu'}</p>
+                </div>
+              `;
+            }
+          });
+        } catch (error) {
+          console.error("Error loading charity actions:", error);
+          if (loadingEl) loadingEl.classList.add("hidden");
+          if (listEl) {
+            listEl.innerHTML = '<div class="text-center text-red-400 py-4">Błąd podczas ładowania akcji charytatywnych</div>';
+          }
+        }
+      }
+
+      window.addNewCharityAction = () => {
+        openCharityModal();
+      };
+
+      function openCharityModal(charityId = null) {
+        const charity = charityId ? charityActionsList.find((c) => c.id === charityId) : null;
+
+        const modalHtml = `
+          <div id="charity-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onclick="if(event.target.id === 'charity-form-modal') closeCharityFormModal()">
+            <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+              <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold coyote-text">${charity ? "Edytuj akcję charytatywną" : "Dodaj nową akcję charytatywną"}</h2>
+                <button onclick="closeCharityFormModal()" class="text-zinc-400 hover:text-white transition-colors">
+                  <i class="fa-solid fa-times text-xl"></i>
+                </button>
+              </div>
+
+              <form id="charity-form" class="space-y-4">
+                <input type="hidden" id="charity-id" value="${charity ? charity.id : ""}" />
+                
+                <div>
+                  <label class="block text-sm font-medium mb-2">Tytuł akcji *</label>
+                  <input
+                    type="text"
+                    id="charity-title"
+                    placeholder="Nazwa akcji charytatywnej"
+                    value="${charity ? (charity.title || "") : ""}"
+                    required
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">Data akcji *</label>
+                  <input
+                    type="date"
+                    id="charity-date"
+                    value="${charity && charity.date ? (new Date(charity.date).toISOString().split('T')[0]) : ""}"
+                    required
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">Opis</label>
+                  <textarea
+                    id="charity-description"
+                    rows="4"
+                    placeholder="Opis akcji charytatywnej..."
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                  >${charity ? (charity.description || "") : ""}</textarea>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">Zdjęcie (URL lub base64)</label>
+                  <input
+                    type="text"
+                    id="charity-image-url"
+                    placeholder="URL zdjęcia lub zostaw puste"
+                    value="${charity && charity.image ? charity.image : ""}"
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                  />
+                  <p class="text-xs text-zinc-500 mt-1">Możesz też użyć pola poniżej do przesłania pliku</p>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">Lub wybierz plik</label>
+                  <input
+                    type="file"
+                    id="charity-image-file"
+                    accept="image/*"
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                  />
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="charity-active"
+                    ${charity && charity.active !== false ? "checked" : (!charity ? "checked" : "")}
+                    class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote"
+                  />
+                  <label for="charity-active" class="text-sm">Akcja aktywna (będzie widoczna na stronie)</label>
+                </div>
+
+                <div class="flex space-x-4 pt-4">
+                  <button type="submit" class="btn-admin flex-1">
+                    <i class="fa-solid fa-save mr-2"></i>
+                    ${charity ? "Zaktualizuj" : "Dodaj"} akcję
+                  </button>
+                  <button
+                    type="button"
+                    onclick="closeCharityFormModal()"
+                    class="px-4 py-2 border border-zinc-600 rounded-lg text-white hover:bg-zinc-800 transition"
+                  >
+                    Anuluj
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `;
+
+        // Usuń istniejący modal jeśli jest
+        const existingModal = document.getElementById("charity-form-modal");
+        if (existingModal) existingModal.remove();
+
+        document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+        // Dodaj obsługę formularza
+        const form = document.getElementById("charity-form");
+        if (form) {
+          form.addEventListener("submit", handleCharityFormSubmit);
+        }
+
+        // Dodaj obsługę klawisza ESC
+        const handleEscape = (e) => {
+          if (e.key === "Escape") {
+            closeCharityFormModal();
+            document.removeEventListener("keydown", handleEscape);
+          }
+        };
+        document.addEventListener("keydown", handleEscape);
+      }
+
+      window.closeCharityFormModal = () => {
+        const modal = document.getElementById("charity-form-modal");
+        if (modal) {
+          modal.remove();
+        }
+      };
+
+      async function compressImage(file) {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = (e) => {
+            const img = new Image();
+            img.src = e.target.result;
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const MAX_W = 800;
+              let w = img.width, h = img.height;
+              if (w > MAX_W) {
+                h *= MAX_W / w;
+                w = MAX_W;
+              }
+              canvas.width = w;
+              canvas.height = h;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, w, h);
+              resolve(canvas.toDataURL('image/jpeg', 0.7));
+            };
+          };
+        });
+      }
+
+      async function handleCharityFormSubmit(e) {
+        e.preventDefault();
+
+        const charityId = document.getElementById("charity-id").value;
+        const title = document.getElementById("charity-title").value.trim();
+        const date = document.getElementById("charity-date").value;
+        const description = document.getElementById("charity-description").value.trim();
+        const imageUrl = document.getElementById("charity-image-url").value.trim();
+        const imageFile = document.getElementById("charity-image-file").files[0];
+        const active = document.getElementById("charity-active").checked;
+
+        if (!title || !date) {
+          showNotification("Wypełnij wszystkie wymagane pola.", "error");
+          return;
+        }
+
+        try {
+          let finalImageUrl = imageUrl;
+          
+          // Jeśli wybrano plik, użyj go (ma priorytet nad URL)
+          if (imageFile) {
+            finalImageUrl = await compressImage(imageFile);
+          } else if (charityId && !imageUrl) {
+            // Jeśli edytujemy i nie podano nowego obrazu, zachowaj stary
+            const existing = charityActionsList.find(c => c.id === charityId);
+            if (existing) {
+              finalImageUrl = existing.image || "";
+            }
+          }
+
+          const charityData = {
+            title,
+            date,
+            description: description || "",
+            image: finalImageUrl || "",
+            active,
+            order: charityId ? (charityActionsList.find(c => c.id === charityId)?.order || charityActionsList.length) : charityActionsList.length,
+            updatedAt: new Date(),
+          };
+
+          if (charityId) {
+            // Aktualizacja istniejącej akcji
+            await setDoc(doc(db, "charity", charityId), charityData);
+            showNotification("Akcja charytatywna została zaktualizowana.", "success");
+          } else {
+            // Dodanie nowej akcji
+            charityData.created = Date.now();
+            const newId = Date.now().toString();
+            await setDoc(doc(db, "charity", newId), charityData);
+            showNotification("Akcja charytatywna została dodana.", "success");
+          }
+
+          closeCharityFormModal();
+          await loadCharity();
+        } catch (error) {
+          console.error("Error saving charity action:", error);
+          showNotification("Błąd zapisywania akcji charytatywnej.", "error");
+        }
+      }
+
+      window.editCharityAction = (charityId) => {
+        openCharityModal(charityId);
+      };
+
+      window.deleteCharityAction = async (charityId) => {
+        if (!confirm("Czy na pewno chcesz usunąć tę akcję charytatywną?")) return;
+
+        try {
+          await deleteDoc(doc(db, "charity", charityId));
+          showNotification("Akcja charytatywna została usunięta.", "success");
+          await loadCharity();
+        } catch (error) {
+          console.error("Error deleting charity action:", error);
+          showNotification("Błąd usuwania akcji charytatywnej.", "error");
+        }
+      };
 
       async function loadSettings() {
         // Ładowanie ustawień kontaktowych i tematów
@@ -7687,11 +8741,11 @@
         let sitesStatus = {};
         let lastStatusCheck = new Date();
 
-        // Stan usług główych (dla logowania zmian)
+        // Stan usług główych (dla logowania zmian) - przechowuje faktyczny status (online/offline)
         let previousServicesStatus = {
-          firestore: true,
-          auth: true,
-          domain: true
+          firestore: null, // null = nieznany, true = online, false = offline
+          auth: null,
+          domain: null
         };
 
       // Sprawdzanie pojedynczej subdomeny - tylko status dostępności
@@ -8029,8 +9083,8 @@
             };
             sitesStatus[site] = errorStatus;
 
-            // Loguj tylko zmiany stanu: online -> offline
-            if (!previousStatus || previousStatus.online) {
+            // Loguj tylko zmiany stanu: online -> offline (nie przy pierwszym sprawdzeniu)
+            if (previousStatus && previousStatus.online) {
               logSystemEvent('site_offline', site, null, `Strona stała się niedostępna: ${result.reason.message}`, 'error');
             }
           }
@@ -8620,11 +9674,13 @@
               // Jeśli dotarliśmy tutaj, Firestore jest dostępne
               const firestoreOnline = true;
 
-              // Sprawdź czy już istnieje zdarzenie service_online (jeśli nie, utwórz)
-              const lastOnlineEvent = await getLastEventForService('Baza danych', 'service_online');
-              if (!lastOnlineEvent) {
+              // Twórz zdarzenie tylko jeśli status się zmienił (z offline na online)
+              if (previousServicesStatus.firestore === false) {
                 logSystemEvent('service_online', null, 'Baza danych', 'Baza danych Firestore przywrócona', 'success');
               }
+
+              // Zaktualizuj poprzedni status
+              previousServicesStatus.firestore = true;
 
               firestoreIcon.className = "fa-solid fa-check-circle text-lg text-green-400";
               firestoreText.className = "text-green-400 font-semibold text-sm";
@@ -8633,11 +9689,13 @@
               console.error("Firestore error:", error);
               const firestoreOnline = false;
 
-              // Sprawdź czy już istnieje zdarzenie service_offline (jeśli nie, utwórz)
-              const lastOfflineEvent = await getLastEventForService('Baza danych', 'service_offline');
-              if (!lastOfflineEvent) {
+              // Twórz zdarzenie tylko jeśli status się zmienił (z online na offline)
+              if (previousServicesStatus.firestore === true) {
                 logSystemEvent('service_offline', null, 'Baza danych', 'Baza danych Firestore niedostępna: ' + error.message, 'error');
               }
+
+              // Zaktualizuj poprzedni status
+              previousServicesStatus.firestore = false;
 
               firestoreIcon.className = "fa-solid fa-times-circle text-lg text-red-400";
               firestoreText.className = "text-red-400 font-semibold text-sm";
@@ -8652,24 +9710,28 @@
                 // Jest zalogowany rzeczywisty użytkownik - Auth działa
                 const authOnline = true;
 
-                  // Sprawdź czy już istnieje zdarzenie service_online
-                  const lastOnlineEvent = await getLastEventForService('Logowanie', 'service_online');
-                  if (!lastOnlineEvent) {
-                    logSystemEvent('service_online', null, 'Logowanie', 'System logowania przywrócony', 'success');
-                  }
+                // Twórz zdarzenie tylko jeśli status się zmienił (z offline na online)
+                if (previousServicesStatus.auth === false) {
+                  logSystemEvent('service_online', null, 'Logowanie', 'System logowania przywrócony', 'success');
+                }
 
-                  authIcon.className = "fa-solid fa-check-circle text-lg text-green-400";
+                // Zaktualizuj poprzedni status
+                previousServicesStatus.auth = true;
+
+                authIcon.className = "fa-solid fa-check-circle text-lg text-green-400";
                 authText.className = "text-green-400 font-semibold text-sm";
                 authText.textContent = "Połączony";
               } else {
                   // Nikt nie jest zalogowany
                   const authOnline = false;
 
-                  // Sprawdź czy już istnieje zdarzenie service_offline
-                  const lastOfflineEvent = await getLastEventForService('Logowanie', 'service_offline');
-                  if (!lastOfflineEvent) {
+                  // Twórz zdarzenie tylko jeśli status się zmienił (z online na offline)
+                  if (previousServicesStatus.auth === true) {
                     logSystemEvent('service_offline', null, 'Logowanie', 'Brak zalogowanych użytkowników w systemie', 'warning');
                   }
+
+                  // Zaktualizuj poprzedni status
+                  previousServicesStatus.auth = false;
 
                   authIcon.className = "fa-solid fa-times-circle text-lg text-orange-400";
                   authText.className = "text-orange-400 font-semibold text-sm";
@@ -8680,11 +9742,13 @@
               console.error("Auth error:", error);
               const authOnline = false;
 
-              // Sprawdź czy już istnieje zdarzenie service_offline
-              const lastOfflineEvent = await getLastEventForService('Logowanie', 'service_offline');
-              if (!lastOfflineEvent) {
+              // Twórz zdarzenie tylko jeśli status się zmienił (z online na offline)
+              if (previousServicesStatus.auth === true) {
                 logSystemEvent('service_offline', null, 'Logowanie', 'Błąd systemu logowania: ' + error.message, 'error');
               }
+
+              // Zaktualizuj poprzedni status
+              previousServicesStatus.auth = false;
 
               authIcon.className = "fa-solid fa-times-circle text-lg text-red-400";
               authText.className = "text-red-400 font-semibold text-sm";
@@ -8702,11 +9766,13 @@
               if (response.ok) {
                 const domainOnline = true;
 
-                // Sprawdź czy już istnieje zdarzenie service_online
-                const lastOnlineEvent = await getLastEventForService('Domena', 'service_online');
-                if (!lastOnlineEvent) {
+                // Twórz zdarzenie tylko jeśli status się zmienił (z offline na online)
+                if (previousServicesStatus.domain === false) {
                   logSystemEvent('service_online', null, 'Domena', 'Domena główna przywrócona', 'success');
                 }
+
+                // Zaktualizuj poprzedni status
+                previousServicesStatus.domain = true;
 
                 domainIcon.className = "fa-solid fa-check-circle text-lg text-green-400";
               domainText.className = "text-green-400 font-semibold text-sm";
@@ -8714,11 +9780,13 @@
               } else {
                 const domainOnline = false;
 
-                // Sprawdź czy już istnieje zdarzenie service_offline
-                const lastOfflineEvent = await getLastEventForService('Domena', 'service_offline');
-                if (!lastOfflineEvent) {
+                // Twórz zdarzenie tylko jeśli status się zmienił (z online na offline)
+                if (previousServicesStatus.domain === true) {
                   logSystemEvent('service_offline', null, 'Domena', 'Domena główna niedostępna (HTTP ' + response.status + ')', 'error');
                 }
+
+                // Zaktualizuj poprzedni status
+                previousServicesStatus.domain = false;
 
                 domainIcon.className = "fa-solid fa-times-circle text-lg text-red-400";
                 domainText.className = "text-red-400 font-semibold text-sm";
@@ -8729,11 +9797,13 @@
               console.error("Domain error:", error);
               const domainOnline = false;
 
-              // Sprawdź czy już istnieje zdarzenie service_offline
-              const lastOfflineEvent = await getLastEventForService('Domena', 'service_offline');
-              if (!lastOfflineEvent) {
+              // Twórz zdarzenie tylko jeśli status się zmienił (z online na offline)
+              if (previousServicesStatus.domain === true) {
                 logSystemEvent('service_offline', null, 'Domena', 'Błąd dostępu do domeny głównej: ' + error.message, 'error');
               }
+
+              // Zaktualizuj poprzedni status
+              previousServicesStatus.domain = false;
 
               domainIcon.className = "fa-solid fa-times-circle text-lg text-red-400";
               domainText.className = "text-red-400 font-semibold text-sm";
@@ -9444,6 +10514,32 @@
         document.getElementById("product-description").innerHTML =
           product.description || "";
 
+        // Załaduj zdjęcia produktu
+        if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+          productImages = product.images.map((img, idx) => ({
+            url: typeof img === 'string' ? img : img.url,
+            order: typeof img === 'string' ? idx : (img.order !== undefined ? img.order : idx)
+          })).sort((a, b) => a.order - b.order);
+        } else {
+          // Jeśli nie ma tablicy images, spróbuj wyciągnąć zdjęcia z opisu lub użyj starego pola img
+          productImages = [];
+          if (product.img) {
+            productImages.push({ url: product.img, order: 0 });
+          }
+          // Wyciągnij zdjęcia z opisu (HTML)
+          if (product.description) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = product.description;
+            const imgs = tempDiv.querySelectorAll('img');
+            imgs.forEach((img, idx) => {
+              if (img.src && !productImages.find(p => p.url === img.src)) {
+                productImages.push({ url: img.src, order: productImages.length });
+              }
+            });
+          }
+        }
+        renderProductImages();
+
         // Scroll do formularza
         document
           .querySelector("#tab-products")
@@ -9494,12 +10590,23 @@
           }
 
           try {
+            // Przygotuj tablicę zdjęć
+            const images = productImages.map((img, idx) => ({
+              url: img.url,
+              order: idx
+            }));
+
+            // Zdjęcie główne to pierwsze zdjęcie (dla kompatybilności wstecznej)
+            const mainImage = images.length > 0 ? images[0].url : null;
+
             const productData = {
               title,
               price,
               description,
               date: Date.now(),
               order: productsList.length,
+              images: images,
+              img: mainImage, // Zachowaj dla kompatybilności wstecznej
             };
 
             if (productId) {
@@ -9523,6 +10630,8 @@
             document.getElementById("product-form").reset();
             document.getElementById("product-description").innerHTML = "";
             document.getElementById("product-id").value = "";
+            productImages = [];
+            renderProductImages();
 
             loadProducts();
           } catch (error) {
@@ -9535,6 +10644,8 @@
         document.getElementById("product-form").reset();
         document.getElementById("product-description").innerHTML = "";
         document.getElementById("product-id").value = "";
+        productImages = [];
+        renderProductImages();
       };
 
       // Funkcje zarządzania szkoleniami
@@ -9603,9 +10714,6 @@
 
         // Pokaż sekcję zarządzania dostępem
         document.getElementById("training-access-section").classList.remove("hidden");
-        
-        // Załaduj listę użytkowników do selecta
-        await loadTrainingUsersSelect();
         
         // Załaduj listę użytkowników z dostępem
         await loadTrainingAccessList(trainingId);
@@ -9705,30 +10813,493 @@
         }
       };
 
-      async function loadTrainingUsersSelect() {
-        const select = document.getElementById("training-user-select");
-        if (!select) return;
+      let allTrainingUsers = [];
+      let selectedTrainingUsers = new Set();
+      let filteredTrainingUsers = [];
 
+      async function loadTrainingUsers() {
         try {
           const snapshot = await getDocs(collection(db, "userProfiles"));
-          const users = [];
+          allTrainingUsers = [];
           snapshot.forEach((doc) => {
             const userData = doc.data();
-            users.push({
+            allTrainingUsers.push({
               id: doc.id,
               name: userData.displayName || userData.email || "Użytkownik",
               email: userData.email || "",
             });
           });
 
-          select.innerHTML = '<option value="">Wybierz użytkownika...</option>' +
-            users.map(user => 
-              `<option value="${user.id}">${user.name} (${user.email})</option>`
-            ).join("");
+          // Sortuj alfabetycznie po nazwie
+          allTrainingUsers.sort((a, b) => a.name.localeCompare(b.name));
+          filteredTrainingUsers = [...allTrainingUsers];
+          renderTrainingUsersList();
         } catch (error) {
           console.error("Error loading users for training access:", error);
+          const list = document.getElementById("training-users-list");
+          if (list) {
+            list.innerHTML = '<div class="text-center text-red-400 py-8">Błąd ładowania użytkowników</div>';
+          }
         }
       }
+
+      function renderTrainingUsersList() {
+        const list = document.getElementById("training-users-list");
+        if (!list) return;
+
+        if (filteredTrainingUsers.length === 0) {
+          list.innerHTML = '<div class="text-center text-zinc-500 py-8">Nie znaleziono użytkowników</div>';
+          return;
+        }
+
+        // Pobierz listę użytkowników którzy już mają dostęp
+        const accessList = document.getElementById("training-access-list");
+        const existingUserIds = new Set();
+        if (accessList) {
+          accessList.querySelectorAll("[data-user-id]").forEach(el => {
+            existingUserIds.add(el.getAttribute("data-user-id"));
+          });
+        }
+
+        list.innerHTML = filteredTrainingUsers.map(user => {
+          const isSelected = selectedTrainingUsers.has(user.id);
+          const hasAccess = existingUserIds.has(user.id);
+          const isDisabled = hasAccess;
+          
+          return `
+            <div class="flex items-center justify-between p-3 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition ${isDisabled ? 'opacity-50' : ''}">
+              <div class="flex-1">
+                <div class="font-medium text-white">${user.name}</div>
+                <div class="text-sm text-zinc-400">${user.email}</div>
+              </div>
+              <div class="flex items-center gap-2">
+                ${hasAccess ? '<span class="text-xs text-green-400 px-2 py-1 bg-green-400/20 rounded">Ma dostęp</span>' : ''}
+                <button
+                  onclick="${isDisabled ? '' : `toggleTrainingUser('${user.id}')`}"
+                  class="px-3 py-1 rounded transition ${isSelected ? 'bg-coyote text-black' : isDisabled ? 'bg-zinc-600 text-zinc-400 cursor-not-allowed' : 'bg-zinc-700 text-white hover:bg-zinc-600'}"
+                  ${isDisabled ? 'disabled' : ''}
+                >
+                  <i class="fa-solid fa-${isSelected ? 'check' : 'plus'}"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      // ==================== FUNKCJE ZARZĄDZANIA BLOGIEM ====================
+      
+      let blogPostsList = [];
+      let filteredBlogPosts = [];
+      let currentBlogPostId = null;
+
+      async function loadBlogPosts() {
+        const loadingEl = document.getElementById("blog-loading");
+        const emptyEl = document.getElementById("blog-empty");
+        const listEl = document.getElementById("blog-posts-list");
+
+        if (loadingEl) loadingEl.classList.remove("hidden");
+        if (emptyEl) emptyEl.classList.add("hidden");
+        if (listEl) listEl.innerHTML = "";
+
+        try {
+          const q = query(collection(db, "blogPosts"), orderBy("createdAt", "desc"));
+          const snapshot = await getDocs(q);
+          blogPostsList = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate?.() || new Date(),
+          }));
+
+          filteredBlogPosts = [...blogPostsList];
+          renderBlogPostsList();
+          
+          if (loadingEl) loadingEl.classList.add("hidden");
+          if (blogPostsList.length === 0 && emptyEl) {
+            emptyEl.classList.remove("hidden");
+          }
+        } catch (error) {
+          console.error("Error loading blog posts:", error);
+          showNotification("Błąd ładowania wpisów bloga.", "error");
+          if (loadingEl) loadingEl.classList.add("hidden");
+          if (listEl) {
+            listEl.innerHTML = '<div class="text-center text-red-400 py-8">Błąd ładowania wpisów</div>';
+          }
+        }
+      }
+
+      function renderBlogPostsList() {
+        const listEl = document.getElementById("blog-posts-list");
+        if (!listEl) return;
+
+        if (filteredBlogPosts.length === 0) {
+          listEl.innerHTML = '<div class="text-center text-zinc-500 py-8">Brak wpisów do wyświetlenia</div>';
+          return;
+        }
+
+        const postsHtml = filteredBlogPosts.map((post) => {
+          const statusLabels = {
+            published: "Opublikowany",
+            draft: "Szkic",
+            archived: "Zarchiwizowany",
+          };
+          const statusColors = {
+            published: "bg-green-900/30 text-green-400",
+            draft: "bg-yellow-900/30 text-yellow-400",
+            archived: "bg-zinc-900/30 text-zinc-400",
+          };
+          const categoryLabels = {
+            news: "Aktualności",
+            tips: "Porady",
+            tutorials: "Poradniki",
+            reviews: "Recenzje",
+          };
+
+          const status = post.status || "draft";
+          const category = post.category || "news";
+          const createdAt = post.createdAt instanceof Date 
+            ? post.createdAt 
+            : new Date(post.createdAt);
+
+          return `
+            <div class="flex justify-between items-start p-4 bg-zinc-800 rounded-lg border border-zinc-700 hover:border-coyote transition">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-2">
+                  <h3 class="font-semibold text-white text-lg">${post.title || "Bez tytułu"}</h3>
+                  <span class="text-xs px-2 py-1 rounded ${statusColors[status] || statusColors.draft}">
+                    ${statusLabels[status] || status}
+                  </span>
+                  <span class="text-xs px-2 py-1 rounded bg-zinc-700 text-zinc-300">
+                    ${categoryLabels[category] || category}
+                  </span>
+                </div>
+                ${post.excerpt ? `<p class="text-sm text-zinc-400 mb-2 line-clamp-2">${post.excerpt}</p>` : ""}
+                <div class="text-xs text-zinc-500">
+                  <i class="fa-solid fa-calendar mr-1"></i>
+                  ${createdAt.toLocaleDateString("pl-PL", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </div>
+              </div>
+              <div class="flex space-x-2 ml-4">
+                <button onclick="editBlogPost('${post.id}')" class="text-blue-400 hover:text-blue-300 px-3 py-1 border border-blue-400 rounded text-sm transition">
+                  <i class="fa-solid fa-edit mr-1"></i>Edytuj
+                </button>
+                <button onclick="deleteBlogPost('${post.id}')" class="text-red-400 hover:text-red-300 px-3 py-1 border border-red-400 rounded text-sm transition">
+                  <i class="fa-solid fa-trash mr-1"></i>Usuń
+                </button>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        listEl.innerHTML = postsHtml;
+      }
+
+      window.addNewBlogPost = () => {
+        currentBlogPostId = null;
+        showNotification("Funkcja dodawania wpisu będzie dostępna wkrótce.", "info");
+        // TODO: Otwórz modal do dodawania/edycji wpisu
+      };
+
+      window.editBlogPost = (postId) => {
+        currentBlogPostId = postId;
+        showNotification("Funkcja edycji wpisu będzie dostępna wkrótce.", "info");
+        // TODO: Otwórz modal do edycji wpisu
+      };
+
+      window.deleteBlogPost = async (postId) => {
+        if (!confirm("Czy na pewno chcesz usunąć ten wpis?")) {
+          return;
+        }
+
+        try {
+          await deleteDoc(doc(db, "blogPosts", postId));
+          showNotification("Wpis został usunięty.", "success");
+          await loadBlogPosts();
+        } catch (error) {
+          console.error("Error deleting blog post:", error);
+          showNotification("Błąd usuwania wpisu.", "error");
+        }
+      };
+
+      window.applyBlogFilters = () => {
+        const statusFilter = document.getElementById("blog-status-filter")?.value || "all";
+        const categoryFilter = document.getElementById("blog-category-filter")?.value || "all";
+
+        filteredBlogPosts = blogPostsList.filter((post) => {
+          const statusMatch = statusFilter === "all" || (post.status || "draft") === statusFilter;
+          const categoryMatch = categoryFilter === "all" || (post.category || "news") === categoryFilter;
+          return statusMatch && categoryMatch;
+        });
+
+        renderBlogPostsList();
+      };
+
+      // ==================== FUNKCJE ZARZĄDZANIA DOKUMENTAMI ====================
+      
+      let currentDocumentId = null;
+
+      async function loadDocuments() {
+        const loadingEl = document.getElementById("documents-loading");
+        const emptyEl = document.getElementById("documents-empty");
+        const listEl = document.getElementById("documents-list");
+
+        if (loadingEl) loadingEl.classList.remove("hidden");
+        if (emptyEl) emptyEl.classList.add("hidden");
+        if (listEl) listEl.innerHTML = "";
+
+        try {
+          const q = query(collection(db, "documents"), orderBy("order", "asc"));
+          const snapshot = await getDocs(q);
+          documentsList = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+
+          renderDocumentsList();
+          
+          if (loadingEl) loadingEl.classList.add("hidden");
+          if (documentsList.length === 0 && emptyEl) {
+            emptyEl.classList.remove("hidden");
+          }
+        } catch (error) {
+          console.error("Error loading documents:", error);
+          showNotification("Błąd ładowania dokumentów.", "error");
+          if (loadingEl) loadingEl.classList.add("hidden");
+          if (listEl) {
+            listEl.innerHTML = '<div class="text-center text-red-400 py-8">Błąd ładowania dokumentów</div>';
+          }
+        }
+      }
+
+      function renderDocumentsList() {
+        const listEl = document.getElementById("documents-list");
+        if (!listEl) return;
+
+        if (documentsList.length === 0) {
+          listEl.innerHTML = '<div class="text-center text-zinc-500 py-8">Brak dokumentów do wyświetlenia</div>';
+          return;
+        }
+
+        const documentsHtml = documentsList.map((document) => {
+          return `
+            <div class="flex justify-between items-center p-4 bg-zinc-800 rounded-lg border border-zinc-700 hover:border-coyote transition">
+              <div class="flex-1">
+                <div class="font-semibold text-white text-lg mb-1">${document.title || "Bez tytułu"}</div>
+                ${document.description ? `<p class="text-sm text-zinc-400 mb-2">${document.description}</p>` : ""}
+                <div class="flex items-center gap-4 text-xs text-zinc-500">
+                  ${document.category ? `<span><i class="fa-solid fa-folder mr-1"></i>${document.category}</span>` : ""}
+                  ${document.url ? `<a href="${document.url}" target="_blank" class="text-coyote hover:text-coyote/80"><i class="fa-solid fa-external-link mr-1"></i>Otwórz PDF</a>` : ""}
+                </div>
+              </div>
+              <div class="flex space-x-2 ml-4">
+                <button onclick="editDocument('${document.id}')" class="text-blue-400 hover:text-blue-300 px-3 py-1 border border-blue-400 rounded text-sm transition">
+                  <i class="fa-solid fa-edit mr-1"></i>Edytuj
+                </button>
+                <button onclick="deleteDocument('${document.id}')" class="text-red-400 hover:text-red-300 px-3 py-1 border border-red-400 rounded text-sm transition">
+                  <i class="fa-solid fa-trash mr-1"></i>Usuń
+                </button>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        listEl.innerHTML = documentsHtml;
+      }
+
+      window.addNewDocument = () => {
+        currentDocumentId = null;
+        document.getElementById("document-id").value = "";
+        document.getElementById("document-title").value = "";
+        document.getElementById("document-description").value = "";
+        document.getElementById("document-url").value = "";
+        document.getElementById("document-category").value = "";
+        document.getElementById("document-order").value = documentsList.length;
+        
+        // Pokaż formularz
+        const formSection = document.getElementById("document-form-section");
+        if (formSection) {
+          formSection.classList.remove("hidden");
+          formSection.scrollIntoView({ behavior: "smooth" });
+        }
+      };
+
+      window.editDocument = (documentId) => {
+        const document = documentsList.find((d) => d.id === documentId);
+        if (!document) return;
+
+        currentDocumentId = documentId;
+        document.getElementById("document-id").value = document.id;
+        document.getElementById("document-title").value = document.title || "";
+        document.getElementById("document-description").value = document.description || "";
+        document.getElementById("document-url").value = document.url || "";
+        document.getElementById("document-category").value = document.category || "";
+        document.getElementById("document-order").value = document.order !== undefined ? document.order : documentsList.length;
+        
+        // Pokaż formularz
+        const formSection = document.getElementById("document-form-section");
+        if (formSection) {
+          formSection.classList.remove("hidden");
+          formSection.scrollIntoView({ behavior: "smooth" });
+        }
+      };
+
+      window.deleteDocument = async (documentId) => {
+        if (!confirm("Czy na pewno chcesz usunąć ten dokument?")) {
+          return;
+        }
+
+        try {
+          await deleteDoc(doc(db, "documents", documentId));
+          showNotification("Dokument został usunięty.", "success");
+          await loadDocuments();
+        } catch (error) {
+          console.error("Error deleting document:", error);
+          showNotification("Błąd usuwania dokumentu.", "error");
+        }
+      };
+
+      window.openTrainingUserDialog = async () => {
+        if (!currentTrainingId) {
+          showNotification("Najpierw wybierz szkolenie.", "error");
+          return;
+        }
+
+        selectedTrainingUsers.clear();
+        const dialog = document.getElementById("training-user-dialog");
+        const searchInput = document.getElementById("training-user-search");
+        if (dialog) {
+          dialog.classList.remove("hidden");
+          if (searchInput) {
+            searchInput.value = "";
+            searchInput.focus();
+          }
+          await loadTrainingUsers();
+          updateSelectedUsersDisplay();
+        }
+      };
+
+      window.closeTrainingUserDialog = () => {
+        const dialog = document.getElementById("training-user-dialog");
+        if (dialog) {
+          dialog.classList.add("hidden");
+          selectedTrainingUsers.clear();
+          const searchInput = document.getElementById("training-user-search");
+          if (searchInput) searchInput.value = "";
+          updateSelectedUsersDisplay();
+        }
+      };
+
+      window.filterTrainingUsers = () => {
+        const searchInput = document.getElementById("training-user-search");
+        if (!searchInput) return;
+
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        
+        if (searchTerm === "") {
+          filteredTrainingUsers = [...allTrainingUsers];
+        } else {
+          filteredTrainingUsers = allTrainingUsers.filter(user => 
+            user.name.toLowerCase().includes(searchTerm) ||
+            user.email.toLowerCase().includes(searchTerm)
+          );
+        }
+
+        renderTrainingUsersList();
+      };
+
+      window.toggleTrainingUser = (userId) => {
+        if (selectedTrainingUsers.has(userId)) {
+          selectedTrainingUsers.delete(userId);
+        } else {
+          selectedTrainingUsers.add(userId);
+        }
+        renderTrainingUsersList();
+        updateSelectedUsersDisplay();
+      };
+
+      function updateSelectedUsersDisplay() {
+        const container = document.getElementById("training-selected-users");
+        if (!container) return;
+
+        if (selectedTrainingUsers.size === 0) {
+          container.innerHTML = '<div class="text-sm text-zinc-500">Brak wybranych użytkowników</div>';
+          return;
+        }
+
+        const selectedUsers = Array.from(selectedTrainingUsers).map(userId => {
+          const user = allTrainingUsers.find(u => u.id === userId);
+          return user || { id: userId, name: "Nieznany", email: "" };
+        });
+
+        container.innerHTML = selectedUsers.map(user => `
+          <div class="flex items-center gap-2 px-3 py-1 bg-coyote/20 border border-coyote rounded-full text-sm">
+            <span class="text-white">${user.name}</span>
+            <button
+              onclick="toggleTrainingUser('${user.id}')"
+              class="text-coyote hover:text-white ml-1"
+            >
+              <i class="fa-solid fa-times text-xs"></i>
+            </button>
+          </div>
+        `).join("");
+      }
+
+      window.addSelectedTrainingUsers = async () => {
+        if (selectedTrainingUsers.size === 0) {
+          showNotification("Wybierz przynajmniej jednego użytkownika.", "error");
+          return;
+        }
+
+        if (!currentTrainingId) {
+          showNotification("Błąd: brak wybranego szkolenia.", "error");
+          return;
+        }
+
+        try {
+          const accessRef = collection(db, "trainingAccess");
+          let addedCount = 0;
+          let skippedCount = 0;
+
+          for (const userId of selectedTrainingUsers) {
+            // Sprawdź czy użytkownik już ma dostęp
+            const accessQuery = query(
+              accessRef,
+              where("trainingId", "==", currentTrainingId),
+              where("userId", "==", userId)
+            );
+            const existingAccess = await getDocs(accessQuery);
+
+            if (existingAccess.empty) {
+              await addDoc(accessRef, {
+                trainingId: currentTrainingId,
+                userId: userId,
+                grantedAt: new Date(),
+                grantedBy: currentUser.uid,
+              });
+              addedCount++;
+            } else {
+              skippedCount++;
+            }
+          }
+
+          if (addedCount > 0) {
+            showNotification(`${addedCount} użytkownik${addedCount === 1 ? '' : addedCount < 5 ? 'ów' : 'ów'} zostało dodanych.`);
+          }
+          if (skippedCount > 0) {
+            showNotification(`${skippedCount} użytkownik${skippedCount === 1 ? '' : skippedCount < 5 ? 'ów' : 'ów'} już ma dostęp.`, "warning");
+          }
+
+          await loadTrainingAccessList(currentTrainingId);
+          closeTrainingUserDialog();
+        } catch (error) {
+          console.error("Error adding training access:", error);
+          showNotification("Błąd dodawania dostępu.", "error");
+        }
+      };
 
       async function loadTrainingAccessList(trainingId) {
         const accessList = document.getElementById("training-access-list");
@@ -9758,7 +11329,7 @@
             accessList.innerHTML = '<div class="text-sm text-zinc-500">Brak użytkowników z dostępem</div>';
           } else {
             accessList.innerHTML = accessUsers.map(user => `
-              <div class="flex justify-between items-center p-2 bg-zinc-800 rounded">
+              <div class="flex justify-between items-center p-2 bg-zinc-800 rounded" data-user-id="${user.id}">
                 <div>
                   <div class="text-sm font-medium">${user.name}</div>
                   <div class="text-xs text-zinc-400">${user.email}</div>
@@ -9778,43 +11349,6 @@
         }
       }
 
-      window.addTrainingAccess = async () => {
-        const userId = document.getElementById("training-user-select").value;
-        if (!userId || !currentTrainingId) {
-          showNotification("Wybierz użytkownika i szkolenie.", "error");
-          return;
-        }
-
-        try {
-          // Sprawdź czy użytkownik już ma dostęp
-          const accessRef = collection(db, "trainingAccess");
-          const accessQuery = query(
-            accessRef,
-            where("trainingId", "==", currentTrainingId),
-            where("userId", "==", userId)
-          );
-          const existingAccess = await getDocs(accessQuery);
-
-          if (!existingAccess.empty) {
-            showNotification("Ten użytkownik już ma dostęp do tego szkolenia.", "error");
-            return;
-          }
-
-          await addDoc(accessRef, {
-            trainingId: currentTrainingId,
-            userId: userId,
-            grantedAt: new Date(),
-            grantedBy: currentUser.uid,
-          });
-
-          showNotification("Dostęp został dodany.");
-          document.getElementById("training-user-select").value = "";
-          await loadTrainingAccessList(currentTrainingId);
-        } catch (error) {
-          console.error("Error adding training access:", error);
-          showNotification("Błąd dodawania dostępu.", "error");
-        }
-      };
 
       window.removeTrainingAccess = async (accessId, userName) => {
         if (!confirm(`Czy na pewno chcesz usunąć dostęp dla ${userName}?`)) return;
@@ -9869,7 +11403,6 @@
               showNotification("Szkolenie zostało dodane.");
               // Pokaż sekcję zarządzania dostępem
               document.getElementById("training-access-section").classList.remove("hidden");
-              await loadTrainingUsersSelect();
             }
 
             // Wyczyść formularz tylko jeśli nie edytujemy
@@ -10681,7 +12214,7 @@
             if (auth && auth.currentUser) {
               authToken = await auth.currentUser.getIdToken();
               console.log('loadMessagesWithFilters: Got Firebase Auth token');
-              } else {
+            } else {
               console.warn('loadMessagesWithFilters: No current user in auth');
             }
           } catch (tokenError) {
@@ -10848,23 +12381,48 @@
             // Użyj nazwy z wiadomości, jeśli jest, w przeciwnym razie pobierz z userNamesMap
             const senderName = msg.senderName || userNamesMap[msg.senderId] || 'Nieznany';
             
-          // Znajdź userId (nie admin) z uczestników konwersacji
-          // Jeśli wszystkie wiadomości są od admina, użyj recipientId jako userId
-          let userId = participants.find(id => id !== 'admin' && id !== 'anonymous');
-          if (!userId || userId === 'admin') {
-            // Jeśli nie znaleziono userId lub jest "admin", użyj recipientId z wiadomości
-            userId = msg.recipientId && msg.recipientId !== 'admin' ? msg.recipientId : msg.senderId;
-            // Jeśli nadal jest "admin", użyj pierwszego uczestnika (fallback)
-            if (userId === 'admin' || !userId) {
-              userId = participants.find(id => id !== 'admin' && id !== 'anonymous') || participants[0];
+            // Znajdź userId (nie admin, nie anonymous) z uczestników konwersacji
+            // Sprawdź oba uczestników - jeśli jeden to admin, drugi to userId
+            let userId = null;
+            if (msg.senderId === 'admin' && msg.recipientId && msg.recipientId !== 'admin' && msg.recipientId !== 'anonymous') {
+              userId = msg.recipientId;
+            } else if (msg.recipientId === 'admin' && msg.senderId && msg.senderId !== 'admin' && msg.senderId !== 'anonymous') {
+              userId = msg.senderId;
+            } else {
+              // Fallback: znajdź w participants
+              userId = participants.find(id => id !== 'admin' && id !== 'anonymous');
             }
-          }
+            
+            // Jeśli nadal nie znaleziono, sprawdź wszystkie wiadomości w tej konwersacji
+            if (!userId || userId === 'admin' || userId === 'anonymous') {
+              const allMsgsInConv = messages.filter(m => {
+                const p = [m.senderId, m.recipientId].filter(id => id).sort();
+                return p.join('_') === conversationKey;
+              });
+              
+              // Znajdź prawdziwy userId z dowolnej wiadomości w konwersacji
+              for (const m of allMsgsInConv) {
+                if (m.senderId && m.senderId !== 'admin' && m.senderId !== 'anonymous') {
+                  userId = m.senderId;
+                  break;
+                }
+                if (m.recipientId && m.recipientId !== 'admin' && m.recipientId !== 'anonymous') {
+                  userId = m.recipientId;
+                  break;
+                }
+              }
+            }
+            
+            // Ostateczny fallback - jeśli wszystko zawodzi, użyj pierwszego uczestnika (ale to nie powinno się zdarzyć)
+            if (!userId || userId === 'admin' || userId === 'anonymous') {
+              userId = participants.find(id => id !== 'admin' && id !== 'anonymous') || null;
+            }
             
             conversations[conversationKey] = {
               participants: participants,
               senderName: senderName,
               senderEmail: msg.senderEmail || '',
-            senderId: userId, // Użyj userId (nie admin) dla spójności z pinConversation
+            senderId: userId, // Użyj userId (nie admin, nie anonymous) dla spójności z pinConversation
               lastMessage: msg,
               messages: [],
               unreadCount: 0,
@@ -10960,6 +12518,9 @@
           const displayName = conversation.senderName || conversation.senderEmail;
           const displaySubtext = conversation.senderName ? conversation.senderEmail : '';
 
+          // Jeśli userId jest null, nie pokazuj przycisków przypinania/usuwania
+          const canPinOrDelete = conversation.senderId && conversation.senderId !== 'admin' && conversation.senderId !== 'anonymous';
+
           return `
             <div class="message-item bg-zinc-800/50 rounded-lg p-4 mb-4 hover:bg-zinc-800/70 transition-all duration-200 border ${hasUnread ? 'border-coyote/60' : 'border-zinc-700'} ${isPinned ? 'ring-2 ring-coyote/50' : ''} cursor-pointer"
                  data-user-id="${conversation.senderId}"
@@ -10985,6 +12546,7 @@
                 </div>
                 <div class="text-right flex-shrink-0 ml-4 flex items-start gap-2">
                   <div class="text-xs text-zinc-500 mb-2">${date}</div>
+                  ${canPinOrDelete ? `
                   <button onclick="event.stopPropagation(); toggleConversationPin('${conversation.senderId}', ${isPinned})" 
                           class="px-2 py-1 rounded text-xs font-medium transition-colors ${isPinned ? 'bg-coyote text-black hover:bg-coyote/80' : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'}"
                           title="${isPinned ? 'Odepnij konwersację' : 'Przypnij konwersację'}"
@@ -10996,6 +12558,7 @@
                           title="Usuń konwersację">
                     <i class="fa-solid fa-trash"></i>
                   </button>
+                  ` : ''}
                 </div>
               </div>
 
@@ -12407,9 +13970,9 @@
                 </div>
               </div>
 
-              ${order.invoiceFile ? `
+              ${order.invoiceFile || order.id ? `
                 <div class="mt-4 pt-4 border-t border-zinc-700">
-                  <a href="${order.invoiceFile}" target="_blank" class="text-coyote hover:text-coyote/80 text-sm">
+                  <a href="/api/download-invoice?orderId=${order.id}" target="_blank" class="text-coyote hover:text-coyote/80 text-sm">
                     <i class="fa-solid fa-file-pdf mr-2"></i> Pobierz fakturę
                   </a>
                 </div>
@@ -12672,12 +14235,28 @@
                 reader.readAsDataURL(invoiceFile);
               });
 
+              // Pobierz token autoryzacyjny
+              let authToken = null;
+              try {
+                if (auth && auth.currentUser) {
+                  authToken = await auth.currentUser.getIdToken();
+                }
+              } catch (tokenError) {
+                console.error('Failed to get Firebase Auth token:', tokenError);
+              }
+
+              const headers = {
+                'Content-Type': 'application/json',
+                'X-Admin-Panel': 'true'
+              };
+              if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+              }
+
               const orderId = currentEditingOrder?.id || 'new';
               const uploadResponse = await fetch('/api/upload-invoice', {
                 method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
+                headers,
                 credentials: 'include',
                 body: JSON.stringify({
                   file: base64File,
@@ -13413,6 +14992,54 @@
         </div>
         <div id="quick-replies-list" class="space-y-2">
           <!-- Lista będzie ładowana dynamicznie -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal wyboru użytkowników do szkoleń -->
+    <div id="training-user-dialog" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onclick="if(event.target.id === 'training-user-dialog') closeTrainingUserDialog()">
+      <div class="admin-card max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold coyote-text">Dodaj użytkowników do szkolenia</h2>
+          <button onclick="closeTrainingUserDialog()" class="text-zinc-400 hover:text-white">
+            <i class="fa-solid fa-times text-xl"></i>
+          </button>
+        </div>
+        
+        <!-- Wyszukiwarka -->
+        <div class="mb-4">
+          <input
+            type="text"
+            id="training-user-search"
+            placeholder="Wyszukaj użytkownika po nazwie lub emailu..."
+            class="w-full"
+            oninput="filterTrainingUsers()"
+          />
+        </div>
+
+        <!-- Lista użytkowników -->
+        <div id="training-users-list" class="flex-1 overflow-y-auto space-y-2 min-h-0">
+          <div class="text-center text-zinc-500 py-8">
+            <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
+            <p>Ładowanie użytkowników...</p>
+          </div>
+        </div>
+
+        <!-- Lista wybranych użytkowników -->
+        <div class="mt-4 pt-4 border-t border-zinc-700">
+          <h3 class="text-lg font-bold mb-2">Wybrani użytkownicy:</h3>
+          <div id="training-selected-users" class="flex flex-wrap gap-2 min-h-[60px] p-2 bg-zinc-800 rounded">
+            <div class="text-sm text-zinc-500">Brak wybranych użytkowników</div>
+          </div>
+          <div class="flex gap-2 mt-4">
+            <button onclick="addSelectedTrainingUsers()" class="btn-admin flex-1">
+              <i class="fa-solid fa-check mr-2"></i>
+              Dodaj wybranych
+            </button>
+            <button onclick="closeTrainingUserDialog()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
+              Anuluj
+            </button>
+          </div>
         </div>
       </div>
     </div>

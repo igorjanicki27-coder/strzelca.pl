@@ -322,11 +322,33 @@ module.exports = async (req, res) => {
           snapshot = await query.get();
         }
         
+        // Sprawdź które zamówienia mają faktury (batch check dla wydajności)
+        const orderIds = snapshot.docs.map(doc => doc.id);
+        const invoiceChecks = await Promise.all(
+          orderIds.map(async (orderId) => {
+            try {
+              const invoiceDoc = await db.collection('invoices').doc(orderId).get();
+              return { orderId, hasInvoice: invoiceDoc.exists };
+            } catch (e) {
+              return { orderId, hasInvoice: false };
+            }
+          })
+        );
+        
+        const invoicesMap = {};
+        invoiceChecks.forEach(check => {
+          invoicesMap[check.orderId] = check.hasInvoice;
+        });
+
         let orders = snapshot.docs.map(doc => {
           const data = doc.data();
+          // Sprawdź czy faktura istnieje w kolekcji invoices lub w polu invoiceFile
+          const hasInvoice = invoicesMap[doc.id] || !!data.invoiceFile;
           return {
             id: doc.id,
             ...data,
+            // URL do pobrania faktury (jeśli istnieje)
+            invoiceFile: hasInvoice ? `/api/download-invoice?orderId=${doc.id}` : null,
             createdAtFormatted: formatDate(data.createdAt),
             updatedAtFormatted: formatDate(data.updatedAt),
           };
@@ -407,7 +429,8 @@ module.exports = async (req, res) => {
         parcelLocker: parcelLocker || '',
         address: address || {},
         phone: phone || '',
-        invoiceFile: invoiceFile || null,
+        // Ustaw flagę że faktura istnieje (jeśli została przesłana)
+        invoiceFile: invoiceFile ? `/api/download-invoice?orderId=${orderRef.id}` : null,
         createdAt: now,
         updatedAt: now,
         createdBy: sessionUser.uid,
@@ -479,12 +502,23 @@ module.exports = async (req, res) => {
       if (status !== undefined) {
         updateData.status = status;
         // Jeśli status zmienia się na "zakonczone", wymagaj faktury
-        if (status === 'zakonczone' && !invoiceFile && !orderDoc.data().invoiceFile) {
-          res.status(400).json({ 
-            success: false, 
-            error: 'Invoice file is required for completed orders' 
-          });
-          return;
+        if (status === 'zakonczone') {
+          // Sprawdź czy faktura istnieje w kolekcji invoices lub została przesłana
+          const invoiceDoc = await db.collection('invoices').doc(body.id).get();
+          const hasInvoice = invoiceDoc.exists || invoiceFile || orderDoc.data().invoiceFile;
+          
+          if (!hasInvoice) {
+            res.status(400).json({ 
+              success: false, 
+              error: 'Invoice file is required for completed orders' 
+            });
+            return;
+          }
+          
+          // Ustaw flagę że faktura istnieje (dla kompatybilności)
+          if (!updateData.invoiceFile) {
+            updateData.invoiceFile = `/api/download-invoice?orderId=${body.id}`;
+          }
         }
       }
       if (parcelLocker !== undefined) updateData.parcelLocker = parcelLocker;

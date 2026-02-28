@@ -44,6 +44,15 @@
         
         .product-img-container img { width: 100%; height: 100%; object-fit: contain; background: #080808; }
 
+        .product-gallery { position: relative; width: 100%; height: 400px; background: #080808; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+        .product-gallery img { width: 100%; height: 100%; object-fit: contain; }
+        .gallery-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.7); color: white; border: none; padding: 12px 16px; cursor: pointer; font-size: 18px; z-index: 10; transition: background 0.3s; }
+        .gallery-nav:hover { background: rgba(193, 154, 107, 0.9); }
+        .gallery-nav.prev { left: 10px; }
+        .gallery-nav.next { right: 10px; }
+        .gallery-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+        .gallery-counter { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; }
+
         .custom-render ul { list-style-type: disc !important; padding-left: 20px !important; margin: 10px 0 !important; }
         .custom-render li { margin-bottom: 5px !important; display: list-item !important; }
         .custom-render b, .custom-render strong { font-weight: bold !important; color: var(--coyote) !important; }
@@ -630,9 +639,14 @@ const firebaseConfig = {
             
             snap.forEach(d => {
                 const p = d.data();
+                // Pobierz zdjęcie główne - pierwsze z tablicy images lub fallback do img
+                let mainImage = p.img || '';
+                if (p.images && Array.isArray(p.images) && p.images.length > 0) {
+                    mainImage = typeof p.images[0] === 'string' ? p.images[0] : p.images[0].url;
+                }
                 grid.innerHTML += `
                 <article class="card-dark flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50" role="article">
-                    <div class="h-48 md:h-64 product-img-container"><img src="${p.img}" alt="${p.title}" loading="lazy"></div>
+                    <div class="h-48 md:h-64 product-img-container"><img src="${mainImage}" alt="${p.title}" loading="lazy"></div>
                     <div class="p-4 md:p-8 flex flex-col flex-grow text-center">
                         <h3 class="text-lg md:text-xl font-bold uppercase mb-2 font-[Orbitron] text-white tracking-tight">${p.title}</h3>
                         <p class="coyote-text font-black text-xl md:text-2xl mb-6 md:mb-8" aria-label="Cena: ${p.price} złotych">${p.price} PLN</p>
@@ -648,16 +662,136 @@ const firebaseConfig = {
         window.showDetails = async (id) => {
             const d = await getDoc(doc(db, "products", id));
             const p = d.data();
+            
+            // Pobierz zdjęcia produktu
+            let images = [];
+            if (p.images && Array.isArray(p.images) && p.images.length > 0) {
+                images = p.images.map(img => typeof img === 'string' ? img : img.url);
+            } else if (p.img) {
+                // Fallback dla starych produktów
+                images = [p.img];
+            }
+            
+            // Jeśli nie ma zdjęć w tablicy, spróbuj wyciągnąć z opisu
+            if (images.length === 0 && p.description) {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = p.description;
+                const imgs = tempDiv.querySelectorAll('img');
+                imgs.forEach(img => {
+                    if (img.src && !images.includes(img.src)) {
+                        images.push(img.src);
+                    }
+                });
+            }
+            
+            // Generuj HTML galerii
+            let galleryHTML = '';
+            if (images.length > 0) {
+                galleryHTML = `
+                    <div class="product-gallery" id="product-gallery">
+                        <img id="gallery-main-img" src="${images[0]}" alt="${p.title}" />
+                        ${images.length > 1 ? `
+                            <button class="gallery-nav prev" onclick="changeGalleryImage(-1, ${images.length})" id="gallery-prev" style="opacity: 0.3; cursor: not-allowed;">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <button class="gallery-nav next" onclick="changeGalleryImage(1, ${images.length})" id="gallery-next">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                            <div class="gallery-counter">
+                                <span id="gallery-current">1</span> / <span id="gallery-total">${images.length}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                // Zapisz zdjęcia w zmiennej globalnej dla funkcji nawigacji
+                window.currentProductImages = images;
+                window.currentGalleryIndex = 0;
+                
+                // Dodaj obsługę klawiatury dla nawigacji
+                const handleKeyPress = (e) => {
+                    if (e.key === 'ArrowLeft' && window.currentGalleryIndex > 0) {
+                        changeGalleryImage(-1, images.length);
+                    } else if (e.key === 'ArrowRight' && window.currentGalleryIndex < images.length - 1) {
+                        changeGalleryImage(1, images.length);
+                    }
+                };
+                
+                // Usuń poprzedni listener jeśli istnieje
+                if (window.galleryKeyHandler) {
+                    document.removeEventListener('keydown', window.galleryKeyHandler);
+                }
+                
+                window.galleryKeyHandler = handleKeyPress;
+                document.addEventListener('keydown', handleKeyPress);
+            }
+            
+            // Przygotuj opis - usuń zdjęcia, które są już w galerii
+            let descriptionHTML = p.description || p.desc || '';
+            if (descriptionHTML && images.length > 0) {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = descriptionHTML;
+                const imgs = tempDiv.querySelectorAll('img');
+                imgs.forEach(img => {
+                    if (images.includes(img.src)) {
+                        img.remove();
+                    }
+                });
+                descriptionHTML = tempDiv.innerHTML;
+            }
+            
             document.getElementById('details-content').innerHTML = `
                 <h2 class="text-2xl font-black uppercase mb-4 font-[Orbitron] text-white">${p.title}</h2>
+                ${galleryHTML}
                 <div class="text-zinc-400 text-sm mb-8 custom-render details-scroll-area leading-relaxed">
-                    ${p.desc}
+                    ${descriptionHTML}
                 </div>
                 <div class="flex justify-between items-center border-t border-zinc-800 pt-6">
                     <p class="text-3xl font-black coyote-text">${p.price} PLN</p>
                     <button onclick="window.handleOrder('${p.title}', ${p.price || 0})" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition">Złóż zamówienie</button>
                 </div>`;
             document.getElementById('details-modal').classList.remove('hidden');
+        };
+        
+        // Funkcja zmiany zdjęcia w galerii
+        window.changeGalleryImage = (direction, total) => {
+            if (!window.currentProductImages || window.currentProductImages.length === 0) return;
+            
+            const newIndex = window.currentGalleryIndex + direction;
+            if (newIndex < 0 || newIndex >= total) return; // Nie pozwól wyjść poza zakres
+            
+            window.currentGalleryIndex = newIndex;
+            const img = document.getElementById('gallery-main-img');
+            const counter = document.getElementById('gallery-current');
+            
+            if (img) {
+                img.src = window.currentProductImages[window.currentGalleryIndex];
+            }
+            if (counter) {
+                counter.textContent = window.currentGalleryIndex + 1;
+            }
+            
+            // Aktualizuj stan przycisków (ukryj jeśli na początku/końcu)
+            const prevBtn = document.getElementById('gallery-prev');
+            const nextBtn = document.getElementById('gallery-next');
+            if (prevBtn) {
+                if (window.currentGalleryIndex === 0) {
+                    prevBtn.style.opacity = '0.3';
+                    prevBtn.style.cursor = 'not-allowed';
+                } else {
+                    prevBtn.style.opacity = '1';
+                    prevBtn.style.cursor = 'pointer';
+                }
+            }
+            if (nextBtn) {
+                if (window.currentGalleryIndex === total - 1) {
+                    nextBtn.style.opacity = '0.3';
+                    nextBtn.style.cursor = 'not-allowed';
+                } else {
+                    nextBtn.style.opacity = '1';
+                    nextBtn.style.cursor = 'pointer';
+                }
+            }
         };
 
         fetchAll();

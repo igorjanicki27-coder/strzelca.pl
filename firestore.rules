@@ -266,6 +266,11 @@ service cloud.firestore {
       allow create, update, delete: if isAdminOrSuperAdmin();
     }
 
+    match /documents/{documentId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminOrSuperAdmin();
+    }
+
     match /trainingAccess/{accessId} {
       allow read: if isAuthenticated() && (
         resource.data.userId == request.auth.uid ||
@@ -303,19 +308,17 @@ service cloud.firestore {
       ));
 
       // Zabezpieczamy przed wpisami "w cudzym imieniu"
-      // Pozwalamy na logi systemowe (userId == "system") dla zalogowanych użytkowników
+      // Pozwalamy na logi systemowe (userId == "system") dla adminów
       allow create: if isAuthenticated() &&
         (
           // Użytkownik może logować swoje własne akcje
           (!('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid) ||
-          // Lub logi systemowe (automatyczne akcje) - dla adminów
+          // Lub logi systemowe - dla adminów (bez wymagania pola automatic)
           (request.resource.data.userId == 'system' && 
            'action' in request.resource.data &&
            isAdminOrSuperAdmin() &&
            ('details' in request.resource.data) &&
-           (request.resource.data.details is map || request.resource.data.details is string) &&
-           (request.resource.data.details.automatic == true || 
-            (request.resource.data.details is map && request.resource.data.details['automatic'] == true)))
+           (request.resource.data.details is map || request.resource.data.details is string))
         );
 
       allow update, delete: if isAdminOrSuperAdmin();
@@ -370,6 +373,22 @@ service cloud.firestore {
     match /emailTemplates/{templateId} {
       // Tylko admin może zarządzać szablonami maili
       allow read, create, update, delete: if isAdminOrSuperAdmin();
+    }
+
+    // =============================================================================
+    // INVOICES (Faktury)
+    // =============================================================================
+    match /invoices/{invoiceId} {
+      // Użytkownik może odczytać fakturę tylko dla swoich zamówień
+      // Admin może odczytać wszystkie faktury
+      allow read: if isAuthenticated() && (
+        isAdminOrSuperAdmin() ||
+        (exists(/databases/$(database)/documents/orders/$(invoiceId)) &&
+         get(/databases/$(database)/documents/orders/$(invoiceId)).data.userId == request.auth.uid)
+      );
+      
+      // Tylko admin może tworzyć i aktualizować faktury
+      allow create, update, delete: if isAdminOrSuperAdmin();
     }
 
     // =============================================================================
