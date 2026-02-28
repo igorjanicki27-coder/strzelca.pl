@@ -1012,7 +1012,7 @@
                   <h3 class="text-lg font-semibold text-white mb-4 text-center">
                     Zamówienia
                   </h3>
-                  <div class="grid grid-cols-5 gap-2 md:gap-3 flex-1 items-center">
+                  <div class="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3 flex-1 items-center">
                     <div class="text-center">
                       <div
                         class="text-lg md:text-xl font-bold text-yellow-400 mb-1"
@@ -1048,6 +1048,15 @@
                         0
                       </div>
                       <div class="text-xs text-zinc-400">Zakończone</div>
+                    </div>
+                    <div class="text-center">
+                      <div
+                        class="text-lg md:text-xl font-bold text-red-400 mb-1"
+                        id="orders-anulowane"
+                      >
+                        0
+                      </div>
+                      <div class="text-xs text-zinc-400">Anulowane</div>
                     </div>
                     <div class="text-center">
                       <div
@@ -1710,7 +1719,7 @@
             </h1>
 
             <!-- Statystyki -->
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
               <div class="admin-card text-center">
                 <div class="text-2xl font-bold text-white mb-1" id="orders-count-zlozone">0</div>
                 <div class="text-sm text-zinc-400">Złożone</div>
@@ -1726,6 +1735,10 @@
               <div class="admin-card text-center">
                 <div class="text-2xl font-bold text-green-400 mb-1" id="orders-count-zakonczone">0</div>
                 <div class="text-sm text-zinc-400">Zakończone</div>
+              </div>
+              <div class="admin-card text-center">
+                <div class="text-2xl font-bold text-red-400 mb-1" id="orders-count-anulowane">0</div>
+                <div class="text-sm text-zinc-400">Anulowane</div>
               </div>
               <div class="admin-card text-center">
                 <div class="text-2xl font-bold text-coyote mb-1" id="orders-count-razem">0</div>
@@ -1756,6 +1769,10 @@
                   <button onclick="filterOrders('zakonczone')" class="order-filter-btn" data-filter="zakonczone">
                     <i class="fa-solid fa-check-circle mr-2"></i>
                     Zakończone
+                  </button>
+                  <button onclick="filterOrders('anulowane')" class="order-filter-btn" data-filter="anulowane">
+                    <i class="fa-solid fa-times-circle mr-2"></i>
+                    Anulowane
                   </button>
                 </div>
                 <button onclick="showAddOrderModal()" class="btn-admin text-sm px-4 py-2">
@@ -3845,6 +3862,8 @@
             if (window.loadMessagesStatus) {
               window.loadMessagesStatus();
             }
+            // Uruchom auto-odświeżanie wiadomości
+            startMessagesAutoRefresh();
             break;
           case "products":
             loadProducts();
@@ -7455,11 +7474,14 @@
 
         // Obsługa klawisza Enter w polu czatu
         const chatInput = document.getElementById('chat-reply-input');
-        if (chatInput) {
+        if (chatInput && !chatInput.hasEnterListener) {
+          chatInput.hasEnterListener = true;
           chatInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
-              sendChatReply();
+              if (window.sendChatReply) {
+                window.sendChatReply();
+              }
             }
           });
         }
@@ -9328,6 +9350,7 @@
             realizacja: 0,
             wyslane: 0,
             zakonczone: 0,
+            anulowane: 0,
             total: orders.length
           };
 
@@ -9336,12 +9359,14 @@
             else if (order.status === 'realizacja') stats.realizacja++;
             else if (order.status === 'wyslane') stats.wyslane++;
             else if (order.status === 'zakonczone') stats.zakonczone++;
+            else if (order.status === 'anulowane') stats.anulowane++;
           });
 
           document.getElementById('orders-zlozone').textContent = stats.zlozone;
           document.getElementById('orders-realizacja').textContent = stats.realizacja;
           document.getElementById('orders-wyslane').textContent = stats.wyslane;
           document.getElementById('orders-zakonczone').textContent = stats.zakonczone;
+          document.getElementById('orders-anulowane').textContent = stats.anulowane;
           document.getElementById('orders-total').textContent = stats.total;
         } catch (error) {
           console.error('Error loading orders count:', error);
@@ -10832,7 +10857,12 @@
             }
             const conversationKey = participants.join('_');
             
-            if (conversations[conversationKey]) {
+            // Sprawdź również czy conversationId w dokumencie pasuje do conversationKey
+            const docId = doc.id;
+            if (docId === conversationKey && conversations[conversationKey]) {
+              conversations[conversationKey].isPinned = convData.isPinned === true;
+            } else if (conversations[conversationKey]) {
+              // Fallback - sprawdź czy docId pasuje do któregoś conversationKey
               conversations[conversationKey].isPinned = convData.isPinned === true;
             }
           });
@@ -10890,13 +10920,14 @@
           const displaySubtext = conversation.senderName ? conversation.senderEmail : '';
 
           return `
-            <div class="message-item bg-zinc-800/50 rounded-lg p-4 mb-4 hover:bg-zinc-800/70 transition-all duration-200 border ${hasUnread ? 'border-l-4 border-l-coyote glowing-border' : 'border-zinc-700'} ${isPinned ? 'ring-2 ring-coyote/50' : ''}"
+            <div class="message-item bg-zinc-800/50 rounded-lg p-4 mb-4 hover:bg-zinc-800/70 transition-all duration-200 border ${hasUnread ? 'border-coyote/60' : 'border-zinc-700'} ${isPinned ? 'ring-2 ring-coyote/50' : ''} cursor-pointer"
                  data-user-id="${conversation.senderId}"
                  data-user-name="${conversation.senderName}"
                  data-user-email="${conversation.senderEmail}"
-                 data-is-pinned="${isPinned}">
-              <div class="flex items-start justify-between mb-3">
-                <div class="flex items-center space-x-3 flex-1 cursor-pointer" onclick="openMessageChat('${conversation.senderId}', '${conversation.senderName || ''}', '${conversation.senderEmail || ''}')">
+                 data-is-pinned="${isPinned}"
+                 onclick="openMessageChat('${conversation.senderId}', '${conversation.senderName || ''}', '${conversation.senderEmail || ''}')">
+              <div class="flex items-start justify-between mb-3" onclick="event.stopPropagation()">
+                <div class="flex items-center space-x-3 flex-1">
                   <div class="w-10 h-10 bg-coyote rounded-full flex items-center justify-center relative">
                     <i class="fa-solid fa-user text-black text-sm"></i>
                     ${isPinned ? '<i class="fa-solid fa-thumbtack text-coyote text-xs absolute -top-1 -right-1"></i>' : ''}
@@ -10922,13 +10953,13 @@
                 </div>
               </div>
 
-              <div class="mb-3 cursor-pointer" onclick="openMessageChat('${conversation.senderId}', '${conversation.senderName || ''}', '${conversation.senderEmail || ''}')">
+              <div class="mb-3" onclick="event.stopPropagation()">
                 <p class="text-zinc-300 text-sm leading-relaxed">
                   ${lastMsg.content.length > 150 ? lastMsg.content.substring(0, 150) + '...' : lastMsg.content}
                 </p>
               </div>
 
-              <div class="flex items-center justify-between text-xs text-zinc-500">
+              <div class="flex items-center justify-between text-xs text-zinc-500" onclick="event.stopPropagation()">
                 <span>${conversation.totalMessages} wiadomości${hasUnread ? ` • <span class="text-coyote font-semibold">${conversation.unreadCount} nieprzeczytanych</span>` : ''}</span>
                 <button onclick="event.stopPropagation(); toggleConversationReadStatus('${conversation.senderId}', ${hasUnread})" 
                         class="px-3 py-1 rounded text-xs font-medium transition-colors ${hasUnread ? 'bg-coyote text-black hover:bg-coyote/80' : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'}"
@@ -11004,6 +11035,9 @@
         
         // Automatycznie oznacz wszystkie nieprzeczytane wiadomości jako przeczytane
         await markConversationAsRead(userId);
+        
+        // Uruchom auto-odświeżanie konwersacji
+        startConversationAutoRefresh();
       };
       
       // Funkcja przełączania statusu przeczytana/nieprzeczytana konwersacji
@@ -11277,8 +11311,33 @@
         document.body.style.overflow = '';
         document.body.style.paddingRight = '';
         
+        // Zatrzymaj auto-odświeżanie konwersacji
+        stopConversationAutoRefresh();
+        
         console.log('closeChatModal: Modal closed, conversation cleared');
       };
+      
+      // Auto-odświeżanie konwersacji
+      let conversationAutoRefresh = null;
+      
+      function startConversationAutoRefresh() {
+        if (conversationAutoRefresh) {
+          clearInterval(conversationAutoRefresh);
+        }
+        
+        conversationAutoRefresh = setInterval(() => {
+          if (currentConversationUser && window.loadConversationMessages) {
+            loadConversationMessages(currentConversationUser.id);
+          }
+        }, 3000); // Co 3 sekundy
+      }
+      
+      function stopConversationAutoRefresh() {
+        if (conversationAutoRefresh) {
+          clearInterval(conversationAutoRefresh);
+          conversationAutoRefresh = null;
+        }
+      }
 
       // Funkcja ładowania wiadomości konwersacji
       async function loadConversationMessages(userId) {
@@ -11806,17 +11865,35 @@
       let typingTimeout = null;
       let messagesAutoRefresh = null; // Deklaracja zmiennej dla auto-odświeżania wiadomości
 
-      // Funkcja automatycznego odświeżania
-      function startAutoRefresh() {
+      // Funkcja automatycznego odświeżania wiadomości
+      function startMessagesAutoRefresh() {
         if (messagesAutoRefresh) {
           clearInterval(messagesAutoRefresh);
         }
 
         messagesAutoRefresh = setInterval(() => {
           if (currentTab === 'messages' && !isUserTyping) {
-            loadMessages(); // Odśwież wszystkie wiadomości
+            // Odśwież listę wiadomości
+            if (window.loadMessagesWithFilters) {
+              window.loadMessagesWithFilters();
+            }
+            if (window.loadMessagesStatus) {
+              window.loadMessagesStatus();
+            }
+            // Odśwież konwersację jeśli jest otwarta
+            if (currentConversationUser && window.loadConversationMessages) {
+              loadConversationMessages(currentConversationUser.id);
+            }
           }
-        }, 60000); // Co 60 sekund
+        }, 5000); // Co 5 sekund
+      }
+      
+      // Funkcja zatrzymania auto-odświeżania wiadomości
+      function stopMessagesAutoRefresh() {
+        if (messagesAutoRefresh) {
+          clearInterval(messagesAutoRefresh);
+          messagesAutoRefresh = null;
+        }
       }
 
       // Funkcja zatrzymania auto-odświeżania
@@ -12126,6 +12203,7 @@
           realizacja: 0,
           wyslane: 0,
           zakonczone: 0,
+          anulowane: 0,
           razem: allOrders.length
         };
 
@@ -12134,12 +12212,14 @@
           else if (order.status === 'realizacja') stats.realizacja++;
           else if (order.status === 'wyslane') stats.wyslane++;
           else if (order.status === 'zakonczone') stats.zakonczone++;
+          else if (order.status === 'anulowane') stats.anulowane++;
         });
 
         document.getElementById('orders-count-zlozone').textContent = stats.zlozone;
         document.getElementById('orders-count-realizacja').textContent = stats.realizacja;
         document.getElementById('orders-count-wyslane').textContent = stats.wyslane;
         document.getElementById('orders-count-zakonczone').textContent = stats.zakonczone;
+        document.getElementById('orders-count-anulowane').textContent = stats.anulowane;
         document.getElementById('orders-count-razem').textContent = stats.razem;
       }
 
@@ -12163,14 +12243,16 @@
           zlozone: 'text-yellow-400 bg-yellow-400/20 border-yellow-400/40',
           realizacja: 'text-orange-400 bg-orange-400/20 border-orange-400/40',
           wyslane: 'text-blue-400 bg-blue-400/20 border-blue-400/40',
-          zakonczone: 'text-green-400 bg-green-400/20 border-green-400/40'
+          zakonczone: 'text-green-400 bg-green-400/20 border-green-400/40',
+          anulowane: 'text-red-400 bg-red-400/20 border-red-400/40'
         };
 
         const statusNames = {
           zlozone: 'Złożone',
           realizacja: 'W realizacji',
           wyslane: 'Wysłane',
-          zakonczone: 'Zakończone'
+          zakonczone: 'Zakończone',
+          anulowane: 'Anulowane'
         };
 
         // Pobierz nazwy użytkowników dla wszystkich zamówień
@@ -12381,7 +12463,7 @@
                 </div>
               </div>
 
-              <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div>
                   <label class="block text-sm font-medium mb-2">Cena (zł)</label>
                   <input type="number" id="order-price" step="0.01" class="w-full" value="0" oninput="calculateOrderTotal()">
@@ -12393,10 +12475,6 @@
                 <div>
                   <label class="block text-sm font-medium mb-2">Koszty dodatkowe (zł)</label>
                   <input type="number" id="order-additionalCosts" step="0.01" class="w-full" value="0" oninput="calculateOrderTotal()">
-                </div>
-                <div>
-                  <label class="block text-sm font-medium mb-2">Podatek (zł)</label>
-                  <input type="number" id="order-tax" step="0.01" class="w-full" value="0" oninput="calculateOrderTotal()">
                 </div>
                 <div>
                   <label class="block text-sm font-medium mb-2">Razem (zł)</label>
@@ -12411,6 +12489,7 @@
                   <option value="realizacja">W realizacji</option>
                   <option value="wyslane">Wysłane</option>
                   <option value="zakonczone">Zakończone</option>
+                  <option value="anulowane">Anulowane</option>
                 </select>
               </div>
 

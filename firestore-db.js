@@ -564,25 +564,38 @@ class FirestoreDatabaseManager {
   async pinConversation(senderId, recipientId) {
     try {
       const db = await this.initializeFirebase();
-      const conversationId = [senderId, recipientId].sort().join('_');
+      // Upewnij się, że conversationId jest tworzony tak samo jak w displayMessages
+      const participants = [senderId, recipientId].filter(id => id).sort();
+      const conversationId = participants.join('_');
       const conversationRef = db.collection('conversations').doc(conversationId);
+
+      console.log('pinConversation: Pinning conversation', {
+        senderId,
+        recipientId,
+        conversationId,
+        participants
+      });
 
       const conversationDoc = await conversationRef.get();
       
       if (conversationDoc.exists) {
         await conversationRef.update({
           isPinned: true,
+          participantA: participants[0],
+          participantB: participants[1] || 'admin',
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
+        console.log('pinConversation: Updated existing conversation');
       } else {
         // Utwórz konwersację jeśli nie istnieje
         await conversationRef.set({
-          participantA: senderId,
-          participantB: recipientId,
+          participantA: participants[0],
+          participantB: participants[1] || 'admin',
           isPinned: true,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
+        console.log('pinConversation: Created new conversation');
       }
 
       return { success: true };
@@ -595,8 +608,17 @@ class FirestoreDatabaseManager {
   async unpinConversation(senderId, recipientId) {
     try {
       const db = await this.initializeFirebase();
-      const conversationId = [senderId, recipientId].sort().join('_');
+      // Upewnij się, że conversationId jest tworzony tak samo jak w displayMessages
+      const participants = [senderId, recipientId].filter(id => id).sort();
+      const conversationId = participants.join('_');
       const conversationRef = db.collection('conversations').doc(conversationId);
+
+      console.log('unpinConversation: Unpinning conversation', {
+        senderId,
+        recipientId,
+        conversationId,
+        participants
+      });
 
       const conversationDoc = await conversationRef.get();
       
@@ -605,6 +627,7 @@ class FirestoreDatabaseManager {
           isPinned: false,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
+        console.log('unpinConversation: Updated conversation');
       }
 
       return { success: true };

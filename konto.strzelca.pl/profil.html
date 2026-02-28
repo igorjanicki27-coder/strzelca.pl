@@ -2480,8 +2480,27 @@ const firebaseConfig = {
             </div>
           `;
 
+          // Pobierz token autoryzacyjny
+          let authToken = null;
+          try {
+            if (currentUser) {
+              authToken = await currentUser.getIdToken();
+            }
+          } catch (tokenError) {
+            console.error('Failed to get Firebase Auth token:', tokenError);
+            throw new Error('Błąd autoryzacji');
+          }
+
+          const headers = {
+            'Content-Type': 'application/json'
+          };
+          if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+          }
+
           const response = await fetch('/api/orders', {
             method: 'GET',
+            headers,
             credentials: 'include',
           });
 
@@ -2511,14 +2530,16 @@ const firebaseConfig = {
             zlozone: 'Złożone',
             realizacja: 'W realizacji',
             wyslane: 'Wysłane',
-            zakonczone: 'Zakończone'
+            zakonczone: 'Zakończone',
+            anulowane: 'Anulowane'
           };
 
           const statusColors = {
             zlozone: 'text-yellow-400 bg-yellow-400/20 border-yellow-400/40',
             realizacja: 'text-orange-400 bg-orange-400/20 border-orange-400/40',
             wyslane: 'text-blue-400 bg-blue-400/20 border-blue-400/40',
-            zakonczone: 'text-green-400 bg-green-400/20 border-green-400/40'
+            zakonczone: 'text-green-400 bg-green-400/20 border-green-400/40',
+            anulowane: 'text-red-400 bg-red-400/20 border-red-400/40'
           };
 
           ordersList.innerHTML = orders.map(order => {
