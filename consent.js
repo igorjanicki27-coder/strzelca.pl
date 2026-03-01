@@ -456,12 +456,22 @@
       createOverlayIfMissing();
     }
 
-    // Po gotowości DOM: UI, menu i ew. modal
-    document.addEventListener("DOMContentLoaded", function () {
+    // Funkcja inicjalizująca UI
+    function initUI() {
       injectSettingsIntoUserMenus();
       enhanceCookieSettingsLinks();
       handleEntry();
-    });
+    }
+
+    // Sprawdź, czy DOM jest już gotowy
+    if (document.readyState === "loading") {
+      // DOM jeszcze się ładuje - czekaj na DOMContentLoaded
+      document.addEventListener("DOMContentLoaded", initUI);
+    } else {
+      // DOM jest już gotowy - wywołaj od razu
+      // Użyj setTimeout, żeby upewnić się, że DOM jest w pełni gotowy
+      setTimeout(initUI, 0);
+    }
 
     // Dodatkowo: jak coś doładuje menu później, spróbuj ponownie po chwili
     setTimeout(function () {
