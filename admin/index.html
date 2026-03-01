@@ -909,36 +909,6 @@
               >
               </div>
             </div>
-
-            <!-- Sekcja Zdarzenia -->
-            <div class="admin-card mb-8">
-              <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold coyote-text">Zdarzenia</h2>
-                <div class="flex space-x-2">
-                <button
-                  onclick="loadDashboardActivityLogs()"
-                  class="text-zinc-400 hover:text-coyote transition-colors p-2"
-                  id="refresh-events-btn"
-                >
-                  <i class="fa-solid fa-sync-alt text-lg" id="refresh-events-icon"></i>
-                </button>
-                  <button
-                    onclick="clearAllEvents()"
-                    class="btn-danger text-sm px-3 py-1"
-                  >
-                    <i class="fa-solid fa-trash mr-1"></i>
-                    Usuń wszystkie
-                </button>
-                </div>
-              </div>
-
-              <div id="events-log-container">
-                <!-- Tabela zdarzeń będzie ładowana dynamicznie -->
-                <div class="text-center text-zinc-400 py-4">
-                  <i class="fa-solid fa-spinner fa-spin mr-2"></i>Ładowanie logów...
-                </div>
-              </div>
-            </div>
           </div>
 
         <!-- Dashboard -->
@@ -958,33 +928,33 @@
                   <h3 class="text-lg font-semibold text-white mb-4 text-center">
                     Aktywność
                   </h3>
-                  <div class="space-y-3 md:space-y-4 flex-1 flex flex-col justify-center">
+                  <div class="grid grid-cols-3 gap-2 md:gap-3 flex-1 items-center">
               <div class="text-center">
                 <div
-                        class="text-2xl md:text-3xl font-bold coyote-text mb-1"
+                        class="text-xl md:text-2xl font-bold coyote-text mb-1"
                         id="active-logged-users"
                 >
                   0
                 </div>
-                      <div class="text-sm text-zinc-400">Zalogowani</div>
+                      <div class="text-xs text-zinc-400">Zalogowani</div>
               </div>
               <div class="text-center">
                 <div
-                        class="text-2xl md:text-3xl font-bold coyote-text mb-1"
+                        class="text-xl md:text-2xl font-bold coyote-text mb-1"
                         id="active-guests"
                 >
                   0
                 </div>
-                      <div class="text-sm text-zinc-400">Goście</div>
+                      <div class="text-xs text-zinc-400">Goście</div>
               </div>
               <div class="text-center">
                 <div
-                        class="text-2xl md:text-3xl font-bold text-green-400 mb-1"
+                        class="text-xl md:text-2xl font-bold text-green-400 mb-1"
                         id="active-total"
                 >
                   0
                 </div>
-                      <div class="text-sm text-zinc-400">Razem</div>
+                      <div class="text-xs text-zinc-400">Razem</div>
                 </div>
               </div>
                 </div>
@@ -996,33 +966,33 @@
                   <h3 class="text-lg font-semibold text-white mb-4 text-center">
                     Wiadomości
                   </h3>
-                  <div class="space-y-3 md:space-y-4 flex-1 flex flex-col justify-center">
+                  <div class="grid grid-cols-3 gap-2 md:gap-3 flex-1 items-center">
               <div class="text-center">
                 <div
-                        class="text-2xl md:text-3xl font-bold text-red-400 mb-1"
+                        class="text-xl md:text-2xl font-bold text-red-400 mb-1"
                         id="messages-unread"
                 >
                   0
                 </div>
-                      <div class="text-sm text-zinc-400">Nieprzeczytane</div>
+                      <div class="text-xs text-zinc-400">Nieprzeczytane</div>
                     </div>
                     <div class="text-center">
                       <div
-                        class="text-2xl md:text-3xl font-bold text-green-400 mb-1"
+                        class="text-xl md:text-2xl font-bold text-green-400 mb-1"
                         id="messages-read"
                       >
                         0
                       </div>
-                      <div class="text-sm text-zinc-400">Przeczytane</div>
+                      <div class="text-xs text-zinc-400">Przeczytane</div>
                     </div>
                     <div class="text-center">
                       <div
-                        class="text-2xl md:text-3xl font-bold text-blue-400 mb-1"
+                        class="text-xl md:text-2xl font-bold text-blue-400 mb-1"
                         id="messages-total"
                       >
                         0
                       </div>
-                      <div class="text-sm text-zinc-400">Razem</div>
+                      <div class="text-xs text-zinc-400">Razem</div>
                     </div>
                   </div>
               </div>
@@ -3852,7 +3822,8 @@
 
         // Dodatkowe akcje dla konkretnych zakładek
         if (tabName === "status") {
-          loadDashboardActivityLogs();
+          // Sprawdź status usług przy przełączeniu na zakładkę Status
+          checkMainServicesStatus();
         }
 
         if (tabName === "orders") {
@@ -4358,7 +4329,6 @@
 
       // Udostępnij funkcję globalnie
       window.refreshDashboardWithLoading = refreshDashboardWithLoading;
-      window.loadDashboardActivityLogs = loadDashboardActivityLogs;
 
       // Funkcja odświeżania dziennika aktywności z animacją przycisku
       window.refreshActivityLogs = async () => {
@@ -4647,104 +4617,6 @@
         }
       }
 
-      // Funkcja ładowania dziennika zdarzeń dla zakładki Status (tylko zdarzenia systemowe)
-      async function loadDashboardActivityLogs(reset = false) {
-        const container = document.getElementById('events-log-container');
-        const refreshBtn = document.getElementById('refresh-events-btn');
-        console.log('loadDashboardActivityLogs (events) called, container exists:', !!container);
-        if (!container) {
-          console.warn('events-log-container not found, skipping events loading');
-          return;
-        }
-
-        if (refreshBtn) {
-          refreshBtn.disabled = true;
-          refreshBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i><span id="refresh-text">Ładowanie...</span>';
-        }
-
-        console.log('Loading system events...');
-
-        try {
-          // Pobierz activity logs bezpośrednio z Firestore
-          const eventsRef = collection(db, 'activityLogs');
-          const q = query(eventsRef, orderBy('timestamp', 'desc'), limit(200));
-          
-          const querySnapshot = await getDocs(q);
-
-          // Filtruj tylko zdarzenia związane z usługami (service_online, service_offline, site_online, site_offline)
-          const serviceActions = ['service_online', 'service_offline', 'site_online', 'site_offline'];
-          const eventsLog = [];
-          querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            const action = data.action || data.type;
-            // Tylko zdarzenia związane z usługami
-            if (serviceActions.includes(action)) {
-              eventsLog.push({
-                id: doc.id,
-                ...data,
-                timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : (data.timestamp || new Date())
-              });
-            }
-          });
-
-          if (eventsLog.length === 0) {
-            container.innerHTML = '<div class="text-center text-zinc-400 py-4">Brak zdarzeń w logach</div>';
-            if (refreshBtn) {
-              refreshBtn.disabled = false;
-              refreshBtn.innerHTML = '<i class="fa-solid fa-sync-alt text-lg" id="refresh-events-icon"></i>';
-            }
-            return;
-          }
-
-          // Sortuj po czasie (najnowsze na górze)
-          if (Array.isArray(eventsLog)) {
-            eventsLog.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-          }
-
-          const eventsHtmlPromises = eventsLog.map(async event => {
-            const eventDate = new Date(event.timestamp);
-            const formattedDate = eventDate.toLocaleString('pl-PL');
-            const eventAction = event.action || 'Zdarzenie';
-            const eventDetails = event.details || {};
-            const eventUser = getUserDisplayName(event);
-            const activityLog = renderActivityLog ? await renderActivityLog(event) : { description: eventAction, content: '' };
-
-            return `
-            <div class="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg mb-2 animate-fade-in">
-                <div class="flex items-center space-x-3">
-                  <span class="text-blue-400"><i class="fa-solid fa-info-circle"></i></span>
-                  <div>
-                    <div class="text-sm font-medium">${activityLog.description || eventAction}</div>
-                    <div class="text-xs text-zinc-500">${formattedDate}</div>
-                    ${activityLog.content ? `<div class="text-xs text-zinc-400 mt-1">${activityLog.content}</div>` : ''}
-                  </div>
-                </div>
-                <button
-                onclick="deleteEvent('${event.id}', this)"
-                class="text-zinc-400 hover:text-red-400 p-1 transition-colors duration-200"
-                  title="Usuń zdarzenie"
-                id="delete-btn-${event.id}"
-                >
-                  <i class="fa-solid fa-trash"></i>
-                </button>
-              </div>
-            `;
-          });
-          const eventsHtml = (await Promise.all(eventsHtmlPromises)).join('');
-
-          container.innerHTML = eventsHtml;
-          showNotification("Logi zdarzeń zostały odświeżone", "success");
-        } catch (error) {
-          console.error('Błąd podczas ładowania logów zdarzeń:', error);
-          container.innerHTML = '<div class="text-center text-red-400 py-4">Błąd ładowania logów</div>';
-          showNotification("Błąd ładowania logów zdarzeń", "error");
-        } finally {
-          if (refreshBtn) {
-            refreshBtn.disabled = false;
-            refreshBtn.innerHTML = '<i class="fa-solid fa-sync-alt text-lg" id="refresh-events-icon"></i>';
-          }
-        }
-      }
 
       // Funkcja ładowania dziennika aktywności dla dashboardu (wszystkie aktywności)
       async function loadEventsLog(reset = false) {
@@ -9015,26 +8887,26 @@
         }
 
         try {
-          // Usuń zdarzenie bezpośrednio z Firestore
+          // Usuń aktywność bezpośrednio z Firestore
           const eventRef = doc(db, 'activityLogs', eventId);
           await deleteDoc(eventRef);
 
           // Animacja usunięcia elementu
-          const eventElement = buttonElement.closest('.flex.items-center.justify-between');
+          const eventElement = buttonElement ? buttonElement.closest('.p-4.bg-zinc-800') : null;
           if (eventElement) {
             eventElement.style.transition = 'all 0.3s ease';
             eventElement.style.opacity = '0';
             eventElement.style.transform = 'translateX(-20px)';
             setTimeout(() => {
-            // Odśwież tabelę
-            loadDashboardActivityLogs();
+            // Odśwież dziennik aktywności
+            loadEventsLog(true);
             }, 300);
           } else {
             // Jeśli nie ma elementu, odśwież od razu
-            loadDashboardActivityLogs();
+            loadEventsLog(true);
           }
 
-          showNotification("Zdarzenie zostało usunięte", "success");
+          showNotification("Aktywność została usunięta", "success");
 
           } catch (error) {
             console.error('Błąd podczas usuwania zdarzenia:', error);
@@ -9051,53 +8923,114 @@
         }
       }
 
-        // Sprawdzanie statusu wszystkich stron
+        // Sprawdzanie statusu wszystkich stron - używa API endpoint (unikamy CORS)
       async function checkSitesStatus() {
         const statusContainer = document.getElementById("sites-status");
-        statusContainer.innerHTML =
-          '<div class="col-span-full text-center text-zinc-400 py-4"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Sprawdzanie statusów...</div>';
+        if (statusContainer) {
+          statusContainer.innerHTML =
+            '<div class="col-span-full text-center text-zinc-400 py-4"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Sprawdzanie statusów...</div>';
+        }
 
-        // Sprawdź wszystkie strony równolegle dla lepszej wydajności
-        const promises = SITES_TO_CHECK.map((site) =>
-          checkSubdomainStatus(site),
-        );
-        const results = await Promise.allSettled(promises);
+        try {
+          // Użyj endpointu API zamiast bezpośrednich fetch (unikamy CORS)
+          const response = await fetch('/api/status', {
+            method: 'GET',
+            cache: 'no-cache',
+          });
 
-        // Zapisz wyniki i loguj zdarzenia
-        SITES_TO_CHECK.forEach((site, index) => {
-          const result = results[index];
-          const previousStatus = sitesStatus[site];
+          if (!response.ok) {
+            throw new Error(`API returned status ${response.status}`);
+          }
 
-          if (result.status === "fulfilled") {
-            const currentStatus = result.value;
-            sitesStatus[site] = currentStatus;
+          const data = await response.json();
+          
+          if (!data.success || !data.data || !data.data.services) {
+            throw new Error('Invalid API response format');
+          }
 
-            // Loguj tylko zmiany stanu: offline -> online
-            if (previousStatus && !previousStatus.online && currentStatus.online) {
-              logSystemEvent('site_online', site, null, 'Strona wróciła do działania', 'success');
+          // Mapuj wyniki z API do formatu używanego przez aplikację
+          const apiResults = data.data.services;
+          const siteMap = {}; // Mapowanie nazwy z API na nazwę subdomeny
+          
+          // Utwórz mapę wyników z API
+          apiResults.forEach(service => {
+            // Usuń 'https://' z URL jeśli istnieje
+            const siteName = service.url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+            siteMap[siteName] = service;
+          });
+
+          // Zapisz wyniki i loguj zdarzenia
+          SITES_TO_CHECK.forEach((site) => {
+            const previousStatus = sitesStatus[site];
+            const apiResult = siteMap[site];
+
+            if (apiResult) {
+              const currentStatus = {
+                online: apiResult.status === 'online',
+                lastCheck: new Date(),
+                status: apiResult.status === 'online' ? 200 : 0,
+                responseTime: apiResult.responseTime || 0,
+                error: apiResult.error || null
+              };
+              
+              sitesStatus[site] = currentStatus;
+
+              // Loguj tylko zmiany stanu: offline -> online
+              if (previousStatus && !previousStatus.online && currentStatus.online) {
+                logSystemEvent('site_online', site, null, 'Strona wróciła do działania', 'success');
+              }
+              // Loguj tylko zmiany stanu: online -> offline (nie przy pierwszym sprawdzeniu)
+              if (previousStatus && previousStatus.online && !currentStatus.online) {
+                logSystemEvent('site_offline', site, null, `Strona stała się niedostępna: ${apiResult.error || 'Unknown error'}`, 'error');
+              }
+            } else {
+              // Jeśli nie znaleziono w wynikach API, ustaw jako offline
+              const errorStatus = {
+                online: false,
+                lastCheck: new Date(),
+                error: 'Service not found in API response',
+              };
+              sitesStatus[site] = errorStatus;
+
+              // Loguj tylko zmiany stanu: online -> offline
+              if (previousStatus && previousStatus.online) {
+                logSystemEvent('site_offline', site, null, 'Service not found in API response', 'error');
+              }
             }
+          });
 
-          } else {
+          renderSitesStatus();
+          lastStatusCheck = new Date();
+          const lastStatusCheckEl = document.getElementById("last-status-check");
+          if (lastStatusCheckEl) lastStatusCheckEl.textContent = lastStatusCheck.toLocaleString("pl-PL");
+          
+        } catch (error) {
+          console.error('Error checking sites status via API:', error);
+          
+          // Fallback: ustaw wszystkie jako offline w przypadku błędu
+          SITES_TO_CHECK.forEach((site) => {
+            const previousStatus = sitesStatus[site];
             const errorStatus = {
               online: false,
               lastCheck: new Date(),
-              error: result.reason.message,
+              error: error.message,
             };
             sitesStatus[site] = errorStatus;
 
-            // Loguj tylko zmiany stanu: online -> offline (nie przy pierwszym sprawdzeniu)
+            // Loguj tylko zmiany stanu: online -> offline
             if (previousStatus && previousStatus.online) {
-              logSystemEvent('site_offline', site, null, `Strona stała się niedostępna: ${result.reason.message}`, 'error');
+              logSystemEvent('site_offline', site, null, `Błąd sprawdzania statusu: ${error.message}`, 'error');
             }
-          }
-        });
+          });
 
           renderSitesStatus();
-          loadDashboardActivityLogs();
-          lastStatusCheck = new Date();
-        const lastStatusCheckEl = document.getElementById("last-status-check");
-        if (lastStatusCheckEl) lastStatusCheckEl.textContent = lastStatusCheck.toLocaleString("pl-PL");
+          
+          if (statusContainer) {
+            statusContainer.innerHTML = 
+              '<div class="col-span-full text-center text-red-400 py-4"><i class="fa-solid fa-exclamation-triangle mr-2"></i>Błąd sprawdzania statusów</div>';
+          }
         }
+      }
 
         function renderSitesStatus() {
         const statusContainer = document.getElementById("sites-status");
@@ -9464,8 +9397,9 @@
         }
 
         async function renderRecentEvents() {
-        const eventsContainer = document.getElementById("events-log-container");
-        if (!eventsContainer) return;
+        // Funkcja przestarzała - sekcja "Zdarzenia" została usunięta
+        // Zdarzenia systemowe są teraz wyświetlane w dzienniku aktywności
+        return;
           const recentEvents = eventsData.slice(0, 10); // Pokaż 10 najnowszych
 
         const eventsHtmlPromises = recentEvents
@@ -9840,35 +9774,9 @@
 
 
         async function clearAllEvents() {
-          if (!confirm('Czy na pewno chcesz usunąć WSZYSTKIE zdarzenia? Tej operacji nie można cofnąć.')) {
-            return;
-          }
-
-          try {
-            // Pobierz wszystkie zdarzenia systemowe i usuń je
-            const eventsRef = collection(db, 'system_events');
-            const querySnapshot = await getDocs(eventsRef);
-
-            if (querySnapshot.empty) {
-              showNotification("Brak zdarzeń do usunięcia", "info");
-              return;
-            }
-
-            // Usuń wszystkie dokumenty wsadowo
-            const batch = writeBatch(db);
-            querySnapshot.docs.forEach((document) => {
-              batch.delete(document.ref);
-            });
-            await batch.commit();
-
-            showNotification(`Usunięto ${querySnapshot.docs.length} zdarzeń`, "success");
-          } catch (error) {
-            console.error('Error clearing events:', error);
-            showNotification("Błąd podczas usuwania zdarzeń", "error");
-          }
-
-          // Odśwież tabelę
-          loadDashboardActivityLogs();
+          // Ta funkcja nie jest już używana po usunięciu sekcji "Zdarzenia"
+          // Zachowana dla kompatybilności wstecznej, ale nie powinna być wywoływana
+          console.warn('clearAllEvents() is deprecated - use clearAllActivityLogs() instead');
         }
 
         window.checkSitesStatus = checkSitesStatus;
@@ -9891,21 +9799,13 @@
           }
         }
 
-        // Inicjalizacja - załaduj logi zdarzeń jeśli jesteśmy w zakładce status
-        if (document.querySelector('#tab-status.active')) {
-          setTimeout(async () => {
-            const apiAvailable = await checkApiAvailability();
-            if (!apiAvailable) {
-              console.warn('API niedostępne - niektóre funkcje mogą nie działać');
-              const container = document.getElementById('events-log-container');
-              if (container) {
-                container.innerHTML = '<div class="text-center text-orange-400 py-4"><i class="fa-solid fa-exclamation-triangle mr-2"></i>API serwera niedostępne - sprawdź konfigurację</div>';
-              }
-            } else {
-              loadDashboardActivityLogs();
-            }
-          }, 100);
-        }
+        // Inicjalizacja - sprawdź dostępność API przy starcie
+        setTimeout(async () => {
+          const apiAvailable = await checkApiAvailability();
+          if (!apiAvailable) {
+            console.warn('API niedostępne - niektóre funkcje mogą nie działać');
+          }
+        }, 100);
         window.openEventsPanel = () => {
           // TODO: Implement full events panel with filtering
         alert("Panel wszystkich zdarzeń będzie dostępny wkrótce");

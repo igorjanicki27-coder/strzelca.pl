@@ -84,36 +84,84 @@ class AdminCommon {
   async checkSubdomainStatus() {
     const results = [];
 
-    for (const subdomain of this.subdomains) {
-      try {
-        const startTime = Date.now();
-        const response = await fetch(`https://${subdomain}`, {
-          method: 'HEAD',
-          mode: 'no-cors',
-          timeout: 10000
-        });
+    try {
+      // Użyj endpointu API zamiast bezpośrednich fetch (unikamy CORS)
+      const response = await fetch('/api/status', {
+        method: 'GET',
+        cache: 'no-cache',
+      });
 
-        const responseTime = Date.now() - startTime;
-        const isOnline = responseTime < 10000; // Uproszczona logika
+      if (!response.ok) {
+        throw new Error(`API returned status ${response.status}`);
+      }
 
-        results.push({
-          name: subdomain,
-          status: isOnline ? 'online' : 'offline',
-          responseTime: responseTime,
-          timestamp: new Date().toISOString()
-        });
+      const data = await response.json();
+      
+      if (!data.success || !data.data || !data.data.services) {
+        throw new Error('Invalid API response format');
+      }
 
-        // Jeśli subdomena jest offline, dodaj do listy awarii
-        if (!isOnline) {
+      // Mapuj wyniki z API do formatu używanego przez tę funkcję
+      const apiResults = data.data.services;
+      const siteMap = {}; // Mapowanie nazwy z API na nazwę subdomeny
+      
+      // Utwórz mapę wyników z API
+      apiResults.forEach(service => {
+        // Usuń 'https://' z URL jeśli istnieje
+        const siteName = service.url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+        siteMap[siteName] = service;
+      });
+
+      // Przetwórz wyniki dla każdej subdomeny
+      for (const subdomain of this.subdomains) {
+        const apiResult = siteMap[subdomain];
+        
+        if (apiResult) {
+          const result = {
+            name: subdomain,
+            status: apiResult.status === 'online' ? 'online' : 'offline',
+            responseTime: apiResult.responseTime || 0,
+            timestamp: apiResult.timestamp || new Date().toISOString()
+          };
+          
+          results.push(result);
+
+          // Jeśli subdomena jest offline, dodaj do listy awarii
+          if (result.status === 'offline') {
+            this.addOutage({
+              subdomain: subdomain,
+              timestamp: result.timestamp,
+              responseTime: result.responseTime,
+              error: apiResult.error || 'Unknown error',
+              status: 'unresolved'
+            });
+          }
+        } else {
+          // Jeśli nie znaleziono w wynikach API, ustaw jako offline
+          results.push({
+            name: subdomain,
+            status: 'offline',
+            responseTime: 0,
+            timestamp: new Date().toISOString(),
+            error: 'Service not found in API response'
+          });
+
+          // Dodaj awarię
           this.addOutage({
             subdomain: subdomain,
             timestamp: new Date().toISOString(),
-            responseTime: responseTime,
+            responseTime: 0,
+            error: 'Service not found in API response',
             status: 'unresolved'
           });
         }
+      }
 
-      } catch (error) {
+    } catch (error) {
+      console.error('Error checking subdomain status via API:', error);
+      
+      // Fallback: ustaw wszystkie jako offline w przypadku błędu
+      for (const subdomain of this.subdomains) {
         results.push({
           name: subdomain,
           status: 'offline',
