@@ -4494,7 +4494,7 @@
             const activityLog = renderActivityLog ? await renderActivityLog(logWithName) : { description: log.action || 'Aktywność', content: log.details || '' };
 
             return `
-              <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="showEventDetails ? showEventDetails('${log.id}') : null">
+              <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="if(window.showEventDetails) window.showEventDetails('${log.id}')">
                 <div class="flex justify-between items-start mb-2">
                   <div class="font-semibold text-white">${activityLog.description}</div>
                   <div class="text-xs text-zinc-500">${timeAgo}</div>
@@ -4736,7 +4736,7 @@
 
                 return {
                   html: `
-                  <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="showEventDetails ? showEventDetails('${log.id}') : null">
+                  <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="if(window.showEventDetails) window.showEventDetails('${log.id}')">
                     <div class="flex justify-between items-start mb-2">
                         <div class="font-semibold text-white">${activityLog.description}</div>
                       <div class="text-xs text-zinc-500">${timeAgo}</div>
@@ -9455,7 +9455,7 @@
             const activityLog = await renderActivityLog(event);
             const userDisplayName = getUserDisplayName(event);
             return `
-              <div class="p-4 bg-zinc-800 rounded-lg cursor-pointer hover:bg-zinc-700 transition" onclick="showEventDetails('${event.id}')">
+              <div class="p-4 bg-zinc-800 rounded-lg cursor-pointer hover:bg-zinc-700 transition" onclick="if(window.showEventDetails) window.showEventDetails('${event.id}')">
                 <div class="flex justify-between items-start mb-2">
                   <div class="font-semibold text-white">${userDisplayName}</div>
                   <div class="text-xs text-zinc-500">${timeAgo}</div>
@@ -9500,8 +9500,37 @@
 
         // Modal ze szczegółami zdarzenia
         async function showEventDetails(eventId) {
-        const event = eventsData.find((e) => e.id === eventId);
-          if (!event) return;
+          // Najpierw sprawdź w loadedActivityLogs (dziennik aktywności)
+          let event = loadedActivityLogs.find((e) => e.id === eventId);
+          
+          // Jeśli nie znaleziono, sprawdź w eventsData
+          if (!event) {
+            event = eventsData.find((e) => e.id === eventId);
+          }
+          
+          // Jeśli nadal nie znaleziono, pobierz bezpośrednio z Firestore
+          if (!event) {
+            try {
+              const eventRef = doc(db, 'activityLogs', eventId);
+              const eventDoc = await getDoc(eventRef);
+              if (eventDoc.exists()) {
+                event = {
+                  id: eventDoc.id,
+                  ...eventDoc.data(),
+                  timestamp: eventDoc.data().timestamp?.toDate?.() || eventDoc.data().timestamp
+                };
+              }
+            } catch (error) {
+              console.error('Error fetching event details:', error);
+              showNotification('Nie można załadować szczegółów zdarzenia', 'error');
+              return;
+            }
+          }
+          
+          if (!event) {
+            showNotification('Nie znaleziono zdarzenia', 'error');
+            return;
+          }
 
         // Pobierz nick użytkownika docelowego jeśli to USER_BLOCKED lub USER_UNBLOCKED
         if ((event.action === "USER_BLOCKED" || event.action === "USER_UNBLOCKED") && (event.targetUserId || (event.details && event.details.targetUser))) {
@@ -9975,7 +10004,7 @@
 
               return {
                 html: `
-                <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="showEventDetails ? showEventDetails('${log.id}') : null">
+                <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="if(window.showEventDetails) window.showEventDetails('${log.id}')">
                   <div class="flex justify-between items-start mb-2">
                       <div class="font-semibold text-white">${activityLog.description}</div>
                     <div class="text-xs text-zinc-500">${timeAgo}</div>
@@ -12509,11 +12538,26 @@
           const conversationsRef = collection(db, 'conversations');
           const conversationsSnapshot = await getDocs(conversationsRef);
           
+          console.log('displayMessages: Loading pin status', {
+            conversationsCount: conversationsSnapshot.size,
+            conversationKeys: Object.keys(conversations),
+            conversationKeysCount: Object.keys(conversations).length
+          });
+          
           // Dla każdego dokumentu konwersacji, znajdź pasującą konwersację w obiekcie conversations
           conversationsSnapshot.forEach((doc) => {
             const convData = doc.data();
             const docId = doc.id;
             const isPinned = convData.isPinned === true;
+            
+            console.log('displayMessages: Processing conversation doc', {
+              docId,
+              isPinned,
+              participantA: convData.participantA,
+              participantB: convData.participantB,
+              userId: convData.userId,
+              hasDirectMatch: !!conversations[docId]
+            });
             
             // Pobierz uczestników z dokumentu
             let docParticipants = [];
@@ -12530,31 +12574,72 @@
               }
             }
             
+            console.log('displayMessages: Extracted participants', {
+              docId,
+              docParticipants,
+              conversationKeyFromParticipants: docParticipants.join('_')
+            });
+            
             // Znajdź pasującą konwersację w obiekcie conversations
             // Najpierw sprawdź bezpośrednie dopasowanie przez docId
             if (conversations[docId]) {
               conversations[docId].isPinned = isPinned;
+              console.log('displayMessages: ✅ Direct match by docId', { docId, isPinned });
             } else if (docParticipants.length === 2) {
               // Sprawdź wszystkie klucze konwersacji i dopasuj na podstawie uczestników
+              let matched = false;
               for (const key in conversations) {
                 const keyParts = key.split('_');
                 if (keyParts.length === 2) {
                   const sortedKeyParts = keyParts.filter(id => id).sort();
                   const sortedDocParticipants = [...docParticipants].sort();
                   
+                  console.log('displayMessages: Comparing', {
+                    key,
+                    sortedKeyParts,
+                    sortedDocParticipants,
+                    match: sortedKeyParts.length === 2 && sortedDocParticipants.length === 2 &&
+                           sortedKeyParts[0] === sortedDocParticipants[0] &&
+                           sortedKeyParts[1] === sortedDocParticipants[1]
+                  });
+                  
                   // Porównaj posortowanych uczestników
                   if (sortedKeyParts.length === 2 && sortedDocParticipants.length === 2 &&
                       sortedKeyParts[0] === sortedDocParticipants[0] &&
                       sortedKeyParts[1] === sortedDocParticipants[1]) {
                     conversations[key].isPinned = isPinned;
+                    matched = true;
+                    console.log('displayMessages: ✅ Matched by participants', { key, docId, isPinned });
                     break;
                   }
                 }
               }
+              if (!matched) {
+                console.warn('displayMessages: ⚠️ No match found for conversation', {
+                  docId,
+                  docParticipants,
+                  availableKeys: Object.keys(conversations)
+                });
+              }
+            } else {
+              console.warn('displayMessages: ⚠️ Could not extract participants', {
+                docId,
+                convData,
+                docParticipants
+              });
             }
           });
+          
+          // Sprawdź finalny stan przypięcia
+          console.log('displayMessages: Final pin status', {
+            conversations: Object.keys(conversations).map(key => ({
+              key,
+              isPinned: conversations[key].isPinned,
+              senderId: conversations[key].senderId
+            }))
+          });
         } catch (error) {
-          console.warn('Error fetching conversation pin status:', error);
+          console.error('Error fetching conversation pin status:', error);
           // Kontynuuj bez stanu przypięcia - wszystkie będą nieprzypięte
         }
 
