@@ -916,7 +916,7 @@
                 <h2 class="text-2xl font-bold coyote-text">Zdarzenia</h2>
                 <div class="flex space-x-2">
                 <button
-                  onclick="loadEventsLog()"
+                  onclick="loadDashboardActivityLogs()"
                   class="text-zinc-400 hover:text-coyote transition-colors p-2"
                   id="refresh-events-btn"
                 >
@@ -947,11 +947,11 @@
             <!-- Sekcja 1: Aktywność -->
             <div class="admin-card mb-8">
 
-              <!-- Główny kontener z podziałem na sekcje -->
+              <!-- Główny kontener z podziałem na sekcje - grid 2x2 -->
               <div
-                class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 mb-6"
+                class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6"
               >
-                <!-- Lewa część: Aktywność użytkowników -->
+                <!-- Lewa góra: Aktywność użytkowników -->
                 <div
                   class="bg-zinc-800/50 rounded-lg p-4 md:p-6 flex flex-col h-full"
                 >
@@ -989,7 +989,7 @@
               </div>
                 </div>
 
-                <!-- Środkowa część: Wiadomości -->
+                <!-- Prawa góra: Wiadomości -->
                 <div
                   class="bg-zinc-800/50 rounded-lg p-4 md:p-6 flex flex-col h-full"
                 >
@@ -1027,7 +1027,7 @@
                   </div>
               </div>
 
-                <!-- Prawa część: Zamówienia -->
+                <!-- Lewa dół: Zamówienia -->
                 <div
                   class="bg-zinc-800/50 rounded-lg p-4 md:p-6 flex flex-col h-full"
                 >
@@ -1091,19 +1091,18 @@
                     </div>
                   </div>
               </div>
-            </div>
 
-              <!-- Dolna część: Odwiedziny (100% szer, 30% wys) -->
-              <div class="bg-zinc-800/50 rounded-lg p-4 min-h-[120px]">
+              <!-- Prawa dół: Odwiedziny -->
+              <div class="bg-zinc-800/50 rounded-lg p-4 md:p-6 flex flex-col h-full">
                 <h3 class="text-lg font-semibold text-white mb-4 text-center">
                   Odwiedziny
                 </h3>
                 <div
-                  class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 h-full"
+                  class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 md:gap-3 flex-1 items-center"
                 >
               <div class="text-center">
                 <div
-                  class="text-xl font-bold text-blue-400 mb-1"
+                  class="text-xl md:text-2xl font-bold text-blue-400 mb-1"
                       id="visits-today"
                 >
                   0
@@ -1112,7 +1111,7 @@
               </div>
               <div class="text-center">
                 <div
-                  class="text-xl font-bold text-blue-400 mb-1"
+                  class="text-xl md:text-2xl font-bold text-blue-400 mb-1"
                       id="visits-week"
                 >
                   0
@@ -1121,7 +1120,7 @@
               </div>
               <div class="text-center">
                 <div
-                  class="text-xl font-bold text-blue-400 mb-1"
+                  class="text-xl md:text-2xl font-bold text-blue-400 mb-1"
                       id="visits-month"
                 >
                   0
@@ -1130,7 +1129,7 @@
               </div>
                   <div class="text-center">
                     <div
-                      class="text-xl font-bold text-blue-400 mb-1"
+                      class="text-xl md:text-2xl font-bold text-blue-400 mb-1"
                       id="visits-year"
                     >
                       0
@@ -1139,7 +1138,7 @@
                   </div>
                   <div class="text-center">
                     <div
-                      class="text-xl font-bold text-blue-400 mb-1"
+                      class="text-xl md:text-2xl font-bold text-blue-400 mb-1"
                       id="visits-total"
                     >
                       0
@@ -1148,6 +1147,7 @@
                   </div>
             </div>
           </div>
+            </div>
 
             <!-- Dziennik Aktywności -->
             <div class="admin-card mt-8" style="background: linear-gradient(135deg, rgba(193, 154, 107, 0.1), rgba(193, 154, 107, 0.05)); backdrop-filter: blur(20px); border: 1px solid rgba(193, 154, 107, 0.2);">
@@ -3852,7 +3852,7 @@
 
         // Dodatkowe akcje dla konkretnych zakładek
         if (tabName === "status") {
-          loadEventsLog();
+          loadDashboardActivityLogs();
         }
 
         if (tabName === "orders") {
@@ -3874,7 +3874,7 @@
             const activityContainer = document.getElementById('admin-activity-log');
             if (activityContainer) {
               console.log('Dashboard tab switched, loading activity logs...');
-              loadDashboardActivityLogs(true);
+              loadEventsLog(true);
               loadDashboardOrdersCount();
             } else {
               console.warn('admin-activity-log container still not found after tab switch');
@@ -4369,7 +4369,7 @@
         }
 
         try {
-          await loadDashboardActivityLogs(true); // Reset i załaduj od nowa
+          await loadEventsLog(true); // Reset i załaduj od nowa
         } finally {
           if (refreshBtn) {
             refreshBtn.disabled = false;
@@ -4381,7 +4381,7 @@
       // Funkcja ładowania więcej logów aktywności
       window.loadMoreActivityLogs = async () => {
         activityLogsLimit += 20; // Zwiększ limit o 20
-        await loadDashboardActivityLogs(false); // Nie resetuj, tylko załaduj więcej
+        await loadEventsLog(false); // Nie resetuj, tylko załaduj więcej
       };
 
       // Funkcja otwierania modala wszystkich logów aktywności
@@ -4591,7 +4591,7 @@
           showNotification(`Pomyślnie usunięto wszystkie logi aktywności (${deletedCount} rekordów).`, "success");
           
           // Odśwież listę logów
-          await loadDashboardActivityLogs(true);
+          await loadEventsLog(true);
         } catch (error) {
           console.error("Error clearing activity logs:", error);
           showNotification("Błąd podczas usuwania logów aktywności.", "error");
@@ -4622,7 +4622,7 @@
           await loadContactFormsCount();
 
           // Ładowanie dziennika aktywności
-          await loadDashboardActivityLogs(true);
+          await loadEventsLog(true);
 
           // Ładowanie statystyk Google Analytics
           await fetchGAStatistics();
@@ -4647,10 +4647,109 @@
         }
       }
 
-      // Funkcja ładowania dziennika aktywności dla dashboardu
+      // Funkcja ładowania dziennika zdarzeń dla zakładki Status (tylko zdarzenia systemowe)
       async function loadDashboardActivityLogs(reset = false) {
+        const container = document.getElementById('events-log-container');
+        const refreshBtn = document.getElementById('refresh-events-btn');
+        console.log('loadDashboardActivityLogs (events) called, container exists:', !!container);
+        if (!container) {
+          console.warn('events-log-container not found, skipping events loading');
+          return;
+        }
+
+        if (refreshBtn) {
+          refreshBtn.disabled = true;
+          refreshBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i><span id="refresh-text">Ładowanie...</span>';
+        }
+
+        console.log('Loading system events...');
+
+        try {
+          // Pobierz activity logs bezpośrednio z Firestore
+          const eventsRef = collection(db, 'activityLogs');
+          const q = query(eventsRef, orderBy('timestamp', 'desc'), limit(200));
+          
+          const querySnapshot = await getDocs(q);
+
+          // Filtruj tylko zdarzenia związane z usługami (service_online, service_offline, site_online, site_offline)
+          const serviceActions = ['service_online', 'service_offline', 'site_online', 'site_offline'];
+          const eventsLog = [];
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            const action = data.action || data.type;
+            // Tylko zdarzenia związane z usługami
+            if (serviceActions.includes(action)) {
+              eventsLog.push({
+                id: doc.id,
+                ...data,
+                timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : (data.timestamp || new Date())
+              });
+            }
+          });
+
+          if (eventsLog.length === 0) {
+            container.innerHTML = '<div class="text-center text-zinc-400 py-4">Brak zdarzeń w logach</div>';
+            if (refreshBtn) {
+              refreshBtn.disabled = false;
+              refreshBtn.innerHTML = '<i class="fa-solid fa-sync-alt text-lg" id="refresh-events-icon"></i>';
+            }
+            return;
+          }
+
+          // Sortuj po czasie (najnowsze na górze)
+          if (Array.isArray(eventsLog)) {
+            eventsLog.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          }
+
+          const eventsHtmlPromises = eventsLog.map(async event => {
+            const eventDate = new Date(event.timestamp);
+            const formattedDate = eventDate.toLocaleString('pl-PL');
+            const eventAction = event.action || 'Zdarzenie';
+            const eventDetails = event.details || {};
+            const eventUser = getUserDisplayName(event);
+            const activityLog = renderActivityLog ? await renderActivityLog(event) : { description: eventAction, content: '' };
+
+            return `
+            <div class="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg mb-2 animate-fade-in">
+                <div class="flex items-center space-x-3">
+                  <span class="text-blue-400"><i class="fa-solid fa-info-circle"></i></span>
+                  <div>
+                    <div class="text-sm font-medium">${activityLog.description || eventAction}</div>
+                    <div class="text-xs text-zinc-500">${formattedDate}</div>
+                    ${activityLog.content ? `<div class="text-xs text-zinc-400 mt-1">${activityLog.content}</div>` : ''}
+                  </div>
+                </div>
+                <button
+                onclick="deleteEvent('${event.id}', this)"
+                class="text-zinc-400 hover:text-red-400 p-1 transition-colors duration-200"
+                  title="Usuń zdarzenie"
+                id="delete-btn-${event.id}"
+                >
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            `;
+          });
+          const eventsHtml = (await Promise.all(eventsHtmlPromises)).join('');
+
+          container.innerHTML = eventsHtml;
+          showNotification("Logi zdarzeń zostały odświeżone", "success");
+        } catch (error) {
+          console.error('Błąd podczas ładowania logów zdarzeń:', error);
+          container.innerHTML = '<div class="text-center text-red-400 py-4">Błąd ładowania logów</div>';
+          showNotification("Błąd ładowania logów zdarzeń", "error");
+        } finally {
+          if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '<i class="fa-solid fa-sync-alt text-lg" id="refresh-events-icon"></i>';
+          }
+        }
+      }
+
+      // Funkcja ładowania dziennika aktywności dla dashboardu (wszystkie aktywności)
+      async function loadEventsLog(reset = false) {
         const container = document.getElementById('admin-activity-log');
-        console.log('loadDashboardActivityLogs called, container exists:', !!container);
+        console.log('loadEventsLog (activities) called, container exists:', !!container);
         if (!container) {
           console.warn('admin-activity-log container not found, skipping activity logs loading');
           return;
@@ -4665,7 +4764,7 @@
             activityLogsLimit = 20;
           }
 
-          // Pobierz activity logs bezpośrednio z Firestore
+          // Pobierz activity logs bezpośrednio z Firestore (WSZYSTKIE aktywności, bez filtrowania)
           const activityLogsRef = collection(db, 'activityLogs');
           const q = query(activityLogsRef, orderBy('timestamp', 'desc'), limit(activityLogsLimit));
           
@@ -8906,103 +9005,6 @@
           await logSystemEvent(eventType, site, service, details, severity);
         }
 
-        async function loadEventsLog() {
-          const container = document.getElementById('events-log-container');
-          const refreshBtn = document.getElementById('refresh-events-btn');
-
-          if (refreshBtn) {
-            refreshBtn.disabled = true;
-            refreshBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i><span id="refresh-text">Ładowanie...</span>';
-          }
-
-          try {
-            // Pobierz activity logs bezpośrednio z Firestore
-            const eventsRef = collection(db, 'activityLogs');
-            const q = query(eventsRef, orderBy('timestamp', 'desc'), limit(200));
-            const querySnapshot = await getDocs(q);
-
-            // Filtruj tylko zdarzenia związane z usługami (service_online, service_offline, site_online, site_offline)
-            const serviceActions = ['service_online', 'service_offline', 'site_online', 'site_offline'];
-            const eventsLog = [];
-            querySnapshot.forEach((doc) => {
-              const data = doc.data();
-              const action = data.action || data.type;
-              // Tylko zdarzenia związane z usługami
-              if (serviceActions.includes(action)) {
-              eventsLog.push({
-                id: doc.id,
-                ...data,
-                timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : (data.timestamp || new Date())
-              });
-              }
-            });
-
-            if (eventsLog.length === 0) {
-              container.innerHTML = '<div class="text-center text-zinc-400 py-4">Brak zdarzeń w logach</div>';
-              if (refreshBtn) {
-                refreshBtn.disabled = false;
-                refreshBtn.innerHTML = '<i class="fa-solid fa-sync-alt text-lg" id="refresh-events-icon"></i>';
-              }
-              return;
-            }
-
-            // Sortuj po czasie (najnowsze na górze)
-            if (Array.isArray(eventsLog)) {
-              eventsLog.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            }
-
-            const eventsHtmlPromises = eventsLog.map(async event => {
-              const eventDate = new Date(event.timestamp);
-              const formattedDate = eventDate.toLocaleString('pl-PL');
-              const eventAction = event.action || 'Aktywność';
-              const eventDetails = event.details || {};
-              const eventUser = getUserDisplayName(event);
-              // Pobierz nick użytkownika docelowego jeśli to USER_BLOCKED lub USER_UNBLOCKED
-              if ((event.action === "USER_BLOCKED" || event.action === "USER_UNBLOCKED") && (event.targetUserId || (eventDetails && eventDetails.targetUser))) {
-                const targetUserId = event.targetUserId || (eventDetails && eventDetails.targetUser);
-                if (targetUserId) {
-                  event.targetUserNickname = await getUserNicknameByIdAsync(targetUserId);
-                }
-              }
-              const activityLog = renderActivityLog ? await renderActivityLog(event) : { description: eventAction, content: '' };
-
-              return `
-              <div class="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg mb-2 animate-fade-in">
-                  <div class="flex items-center space-x-3">
-                    <span class="text-blue-400"><i class="fa-solid fa-info-circle"></i></span>
-                    <div>
-                      <div class="text-sm font-medium">${activityLog.description || eventAction}</div>
-                      <div class="text-xs text-zinc-500">${formattedDate}</div>
-                      ${activityLog.content ? `<div class="text-xs text-zinc-400 mt-1">${activityLog.content}</div>` : ''}
-                    </div>
-                  </div>
-                  <button
-                  onclick="deleteEvent('${event.id}', this)"
-                  class="text-zinc-400 hover:text-red-400 p-1 transition-colors duration-200"
-                    title="Usuń zdarzenie"
-                  id="delete-btn-${event.id}"
-                  >
-                    <i class="fa-solid fa-trash"></i>
-                  </button>
-                </div>
-              `;
-            });
-            const eventsHtml = (await Promise.all(eventsHtmlPromises)).join('');
-
-            container.innerHTML = eventsHtml;
-          showNotification("Logi zdarzeń zostały odświeżone", "success");
-
-          } catch (error) {
-            console.error('Błąd podczas ładowania logów:', error);
-            container.innerHTML = '<div class="text-center text-red-400 py-4">Błąd ładowania logów</div>';
-          showNotification("Błąd ładowania logów zdarzeń", "error");
-        } finally {
-          if (refreshBtn) {
-            refreshBtn.disabled = false;
-            refreshBtn.innerHTML = '<i class="fa-solid fa-sync-alt text-lg" id="refresh-events-icon"></i>';
-          }
-        }
-      }
 
       async function deleteEvent(eventId, buttonElement) {
         // Pokaż stan ładowania na przycisku
@@ -9025,11 +9027,11 @@
             eventElement.style.transform = 'translateX(-20px)';
             setTimeout(() => {
             // Odśwież tabelę
-            loadEventsLog();
+            loadDashboardActivityLogs();
             }, 300);
           } else {
             // Jeśli nie ma elementu, odśwież od razu
-            loadEventsLog();
+            loadDashboardActivityLogs();
           }
 
           showNotification("Zdarzenie zostało usunięte", "success");
@@ -9091,7 +9093,7 @@
         });
 
           renderSitesStatus();
-          loadEventsLog();
+          loadDashboardActivityLogs();
           lastStatusCheck = new Date();
         const lastStatusCheckEl = document.getElementById("last-status-check");
         if (lastStatusCheckEl) lastStatusCheckEl.textContent = lastStatusCheck.toLocaleString("pl-PL");
@@ -9866,7 +9868,7 @@
           }
 
           // Odśwież tabelę
-          loadEventsLog();
+          loadDashboardActivityLogs();
         }
 
         window.checkSitesStatus = checkSitesStatus;
@@ -9900,7 +9902,7 @@
                 container.innerHTML = '<div class="text-center text-orange-400 py-4"><i class="fa-solid fa-exclamation-triangle mr-2"></i>API serwera niedostępne - sprawdź konfigurację</div>';
               }
             } else {
-              loadEventsLog();
+              loadDashboardActivityLogs();
             }
           }, 100);
         }
