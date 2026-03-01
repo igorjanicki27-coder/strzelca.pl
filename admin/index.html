@@ -7874,12 +7874,15 @@
 
       // Usuwanie konwersacji "Pomoc STRZELCA.PL" (kolekcja messages) przez API z potwierdzeniem
       window.deleteSupportConversation = async (userId, label = '') => {
-        // Walidacja: nie można usunąć konwersacji z "admin"
-        if (!userId || userId === 'admin' || userId === 'anonymous') {
+        // Walidacja: nie można usunąć konwersacji z "anonymous", ale można usunąć wiadomości systemowe od "admin"
+        if (!userId || userId === 'anonymous') {
           console.error('deleteSupportConversation: Invalid userId:', userId);
           showNotification('Nie można usunąć tej konwersacji', 'error');
           return;
         }
+        
+        // Dla wiadomości od administratora (systemowych), użyj specjalnej logiki
+        const isAdminMessage = userId === 'admin' || label === 'Administrator';
 
         const name = (label || userId || '').toString().trim();
         const ok = confirm(
@@ -7902,7 +7905,14 @@
           const headers = { 'X-Admin-Panel': 'true' };
           if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
-          const url = `/api/messages?senderId=${encodeURIComponent(userId)}&recipientId=admin`;
+          // Dla wiadomości od administratora, usuń wszystkie wiadomości gdzie senderId=admin i recipientId=admin
+          let url;
+          if (isAdminMessage) {
+            url = `/api/messages?senderId=admin&recipientId=admin`;
+          } else {
+            url = `/api/messages?senderId=${encodeURIComponent(userId)}&recipientId=admin`;
+          }
+          
           const res = await fetch(url, {
             method: 'DELETE',
             headers,
@@ -8819,10 +8829,15 @@
       }
 
         async function logSystemEvent(eventType, site, service, details, severity = 'info') {
+          // Zawsze zapisuj site i service w details jako obiekt
+          const detailsObj = typeof details === 'string' 
+            ? { message: details, site, service, severity }
+            : { ...details, site, service, severity };
+          
           const eventData = {
             userId: 'system',
             action: eventType,
-            details: typeof details === 'string' ? details : { ...details, site, service, severity },
+            details: detailsObj,
             timestamp: new Date(),
             adminId: currentUser ? currentUser.uid : null,
             userAgent: navigator.userAgent,
@@ -8977,11 +8992,17 @@
 
               // Loguj tylko zmiany stanu: offline -> online
               if (previousStatus && !previousStatus.online && currentStatus.online) {
-                logSystemEvent('site_online', site, null, 'Strona wróciła do działania', 'success');
+                logSystemEvent('site_online', site, null, {
+                  message: 'Strona wróciła do działania',
+                  responseTime: apiResult.responseTime || 0
+                }, 'success');
               }
               // Loguj tylko zmiany stanu: online -> offline (nie przy pierwszym sprawdzeniu)
               if (previousStatus && previousStatus.online && !currentStatus.online) {
-                logSystemEvent('site_offline', site, null, `Strona stała się niedostępna: ${apiResult.error || 'Unknown error'}`, 'error');
+                logSystemEvent('site_offline', site, null, {
+                  message: 'Strona stała się niedostępna',
+                  error: apiResult.error || 'Nieznany błąd'
+                }, 'error');
               }
             } else {
               // Jeśli nie znaleziono w wynikach API, ustaw jako offline
@@ -8994,7 +9015,10 @@
 
               // Loguj tylko zmiany stanu: online -> offline
               if (previousStatus && previousStatus.online) {
-                logSystemEvent('site_offline', site, null, 'Service not found in API response', 'error');
+                logSystemEvent('site_offline', site, null, {
+                  message: 'Strona nie została znaleziona w odpowiedzi API',
+                  error: 'Service not found in API response'
+                }, 'error');
               }
             }
           });
@@ -9019,7 +9043,10 @@
 
             // Loguj tylko zmiany stanu: online -> offline
             if (previousStatus && previousStatus.online) {
-              logSystemEvent('site_offline', site, null, `Błąd sprawdzania statusu: ${error.message}`, 'error');
+              logSystemEvent('site_offline', site, null, {
+                message: 'Błąd podczas sprawdzania statusu strony',
+                error: error.message || 'Nieznany błąd'
+              }, 'error');
             }
           });
 
@@ -9612,7 +9639,10 @@
 
               // Twórz zdarzenie tylko jeśli status się zmienił (z offline na online)
               if (previousServicesStatus.firestore === false) {
-                logSystemEvent('service_online', null, 'Baza danych', 'Baza danych Firestore przywrócona', 'success');
+                logSystemEvent('service_online', null, 'Baza danych', {
+                  message: 'Baza danych Firestore została przywrócona',
+                  service: 'Baza danych'
+                }, 'success');
               }
 
               // Zaktualizuj poprzedni status
@@ -9627,7 +9657,11 @@
 
               // Twórz zdarzenie tylko jeśli status się zmienił (z online na offline)
               if (previousServicesStatus.firestore === true) {
-                logSystemEvent('service_offline', null, 'Baza danych', 'Baza danych Firestore niedostępna: ' + error.message, 'error');
+                logSystemEvent('service_offline', null, 'Baza danych', {
+                  message: 'Baza danych Firestore przestała działać',
+                  error: error.message || 'Nieznany błąd',
+                  service: 'Baza danych'
+                }, 'error');
               }
 
               // Zaktualizuj poprzedni status
@@ -9648,7 +9682,10 @@
 
                 // Twórz zdarzenie tylko jeśli status się zmienił (z offline na online)
                 if (previousServicesStatus.auth === false) {
-                  logSystemEvent('service_online', null, 'Logowanie', 'System logowania przywrócony', 'success');
+                  logSystemEvent('service_online', null, 'Logowanie', {
+                    message: 'System logowania został przywrócony',
+                    service: 'Logowanie'
+                  }, 'success');
                 }
 
                 // Zaktualizuj poprzedni status
@@ -9663,7 +9700,11 @@
 
                   // Twórz zdarzenie tylko jeśli status się zmienił (z online na offline)
                   if (previousServicesStatus.auth === true) {
-                    logSystemEvent('service_offline', null, 'Logowanie', 'Brak zalogowanych użytkowników w systemie', 'warning');
+                    logSystemEvent('service_offline', null, 'Logowanie', {
+                      message: 'System logowania przestał działać',
+                      error: 'Brak zalogowanych użytkowników w systemie',
+                      service: 'Logowanie'
+                    }, 'warning');
                   }
 
                   // Zaktualizuj poprzedni status
@@ -9680,7 +9721,11 @@
 
               // Twórz zdarzenie tylko jeśli status się zmienił (z online na offline)
               if (previousServicesStatus.auth === true) {
-                logSystemEvent('service_offline', null, 'Logowanie', 'Błąd systemu logowania: ' + error.message, 'error');
+                logSystemEvent('service_offline', null, 'Logowanie', {
+                  message: 'System logowania przestał działać',
+                  error: error.message || 'Nieznany błąd',
+                  service: 'Logowanie'
+                }, 'error');
               }
 
               // Zaktualizuj poprzedni status
@@ -9704,7 +9749,10 @@
 
                 // Twórz zdarzenie tylko jeśli status się zmienił (z offline na online)
                 if (previousServicesStatus.domain === false) {
-                  logSystemEvent('service_online', null, 'Domena', 'Domena główna przywrócona', 'success');
+                  logSystemEvent('service_online', null, 'Domena', {
+                    message: 'Domena główna została przywrócona',
+                    service: 'Domena'
+                  }, 'success');
                 }
 
                 // Zaktualizuj poprzedni status
@@ -9718,7 +9766,11 @@
 
                 // Twórz zdarzenie tylko jeśli status się zmienił (z online na offline)
                 if (previousServicesStatus.domain === true) {
-                  logSystemEvent('service_offline', null, 'Domena', 'Domena główna niedostępna (HTTP ' + response.status + ')', 'error');
+                  logSystemEvent('service_offline', null, 'Domena', {
+                    message: 'Domena główna przestała działać',
+                    error: `HTTP ${response.status}`,
+                    service: 'Domena'
+                  }, 'error');
                 }
 
                 // Zaktualizuj poprzedni status
@@ -9735,7 +9787,11 @@
 
               // Twórz zdarzenie tylko jeśli status się zmienił (z online na offline)
               if (previousServicesStatus.domain === true) {
-                logSystemEvent('service_offline', null, 'Domena', 'Błąd dostępu do domeny głównej: ' + error.message, 'error');
+                logSystemEvent('service_offline', null, 'Domena', {
+                  message: 'Domena główna przestała działać',
+                  error: error.message || 'Nieznany błąd',
+                  service: 'Domena'
+                }, 'error');
               }
 
               // Zaktualizuj poprzedni status
@@ -10166,32 +10222,49 @@
             details = `Nowe konto zostało utworzone dla: ${content}`;
             break;
           case "service_online":
-            const serviceName = typeof eventDetails === 'object' ? (eventDetails.service || 'Nieznana') : 'Nieznana';
-            const serviceDetails = typeof eventDetails === 'string' ? eventDetails : (eventDetails.details || `Usługa ${serviceName} została przywrócona`);
-            description = `Usługa "${serviceName}" została włączona`;
-            content = serviceDetails;
-            details = serviceDetails;
+            const serviceName = eventDetails?.service || 'Nieznana usługa';
+            const serviceMessage = eventDetails?.message || eventDetails?.details || 'Usługa została przywrócona';
+            const serviceSeverity = eventDetails?.severity || 'success';
+            description = `✅ Usługa "${serviceName}" została przywrócona`;
+            content = serviceMessage;
+            details = `Usługa "${serviceName}" wróciła do działania. ${serviceMessage}`;
             break;
           case "service_offline":
-            const serviceNameOff = typeof eventDetails === 'object' ? (eventDetails.service || 'Nieznana') : 'Nieznana';
-            const serviceDetailsOff = typeof eventDetails === 'string' ? eventDetails : (eventDetails.details || `Usługa ${serviceNameOff} stała się niedostępna`);
-            description = `Usługa "${serviceNameOff}" została wyłączona`;
-            content = serviceDetailsOff;
-            details = serviceDetailsOff;
+            const serviceNameOff = eventDetails?.service || 'Nieznana usługa';
+            const serviceMessageOff = eventDetails?.message || eventDetails?.details || 'Usługa stała się niedostępna';
+            const serviceError = eventDetails?.error || '';
+            description = `❌ Usługa "${serviceNameOff}" przestała działać`;
+            content = serviceMessageOff + (serviceError ? ` (${serviceError})` : '');
+            details = `Usługa "${serviceNameOff}" przestała działać. ${serviceMessageOff}${serviceError ? ` Błąd: ${serviceError}` : ''}`;
             break;
           case "site_online":
-            const siteName = typeof eventDetails === 'object' ? (eventDetails.site || 'Nieznana') : 'Nieznana';
-            const siteDetails = typeof eventDetails === 'string' ? eventDetails : (eventDetails.details || `Strona ${siteName} wróciła do działania`);
-            description = `Strona "${siteName}" wróciła do działania`;
-            content = siteDetails;
-            details = siteDetails;
+            const siteName = eventDetails?.site || 'Nieznana strona';
+            const siteMessage = eventDetails?.message || eventDetails?.details || 'Strona wróciła do działania';
+            description = `✅ Strona "${siteName}" została przywrócona`;
+            content = siteMessage;
+            details = `Strona "${siteName}" wróciła do działania. ${siteMessage}`;
             break;
           case "site_offline":
-            const siteNameOff = typeof eventDetails === 'object' ? (eventDetails.site || 'Nieznana') : 'Nieznana';
-            const siteDetailsOff = typeof eventDetails === 'string' ? eventDetails : (eventDetails.details || `Strona ${siteNameOff} stała się niedostępna`);
-            description = `Strona "${siteNameOff}" stała się niedostępna`;
-            content = siteDetailsOff;
-            details = siteDetailsOff;
+            const siteNameOff = eventDetails?.site || 'Nieznana strona';
+            const siteMessageOff = eventDetails?.message || eventDetails?.details || 'Strona stała się niedostępna';
+            const siteError = eventDetails?.error || '';
+            // Wyczyść błędy JavaScript, aby były czytelne
+            let cleanError = siteError;
+            if (cleanError && typeof cleanError === 'string') {
+              // Usuń nieczytelne błędy JavaScript
+              if (cleanError.includes("Can't find variable") || cleanError.includes("ReferenceError")) {
+                cleanError = "Błąd połączenia z serwerem";
+              } else if (cleanError.includes("timeout") || cleanError.includes("Timeout")) {
+                cleanError = "Przekroczono czas oczekiwania na odpowiedź";
+              } else if (cleanError.includes("network") || cleanError.includes("Network")) {
+                cleanError = "Błąd sieci";
+              } else if (cleanError.includes("CORS")) {
+                cleanError = "Błąd CORS - brak dostępu";
+              }
+            }
+            description = `❌ Strona "${siteNameOff}" przestała działać`;
+            content = siteMessageOff + (cleanError ? ` (${cleanError})` : '');
+            details = `Strona "${siteNameOff}" przestała działać. ${siteMessageOff}${cleanError ? ` Przyczyna: ${cleanError}` : ''}`;
             break;
           case "ORDER-PLACED":
             // Wyciągnij nazwę produktu z details
@@ -12421,7 +12494,9 @@
           const displaySubtext = conversation.senderName ? conversation.senderEmail : '';
 
           // Jeśli userId jest null, nie pokazuj przycisków przypinania/usuwania
+          // Wyjątek: pozwól na usuwanie wiadomości od "Administrator" (może być wiadomość systemowa/testowa)
           const canPinOrDelete = conversation.senderId && conversation.senderId !== 'admin' && conversation.senderId !== 'anonymous';
+          const canDeleteAdminMessage = conversation.senderName === 'Administrator' || (conversation.senderId === 'admin' && conversation.senderName);
 
           return `
             <div class="message-item bg-zinc-800/50 rounded-lg p-4 mb-4 hover:bg-zinc-800/70 transition-all duration-200 border ${hasUnread ? 'border-coyote/60' : 'border-zinc-700'} ${isPinned ? 'ring-2 ring-coyote/50' : ''} cursor-pointer"
@@ -12455,7 +12530,9 @@
                           data-user-id="${conversation.senderId}">
                     <i class="fa-solid fa-thumbtack"></i>
                   </button>
-                  <button onclick="event.stopPropagation(); deleteSupportConversation('${conversation.senderId}', '${displayName.replace(/'/g, "\\'")}')" 
+                  ` : ''}
+                  ${(canPinOrDelete || canDeleteAdminMessage) ? `
+                  <button onclick="event.stopPropagation(); deleteSupportConversation('${conversation.senderId || 'admin'}', '${displayName.replace(/'/g, "\\'")}')" 
                           class="px-2 py-1 rounded text-xs font-medium transition-colors bg-red-900/30 text-red-300 hover:bg-red-900/50 border border-red-500/30"
                           title="Usuń konwersację">
                     <i class="fa-solid fa-trash"></i>
@@ -12476,7 +12553,7 @@
                         class="px-3 py-1 rounded text-xs font-medium transition-colors ${hasUnread ? 'bg-coyote text-black hover:bg-coyote/80' : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'}"
                         title="${hasUnread ? 'Oznacz jako przeczytane' : 'Oznacz jako nieprzeczytane'}">
                   <i class="fa-solid ${hasUnread ? 'fa-envelope-open' : 'fa-envelope'} mr-1"></i>
-                  ${hasUnread ? 'Przeczytane' : 'Nieprzeczytane'}
+                  ${hasUnread ? 'Oznacz jako przeczytane' : 'Oznacz jako nieprzeczytane'}
                 </button>
               </div>
             </div>
@@ -14862,21 +14939,21 @@
         </div>
 
         <!-- Pole odpowiedzi -->
-        <div class="flex gap-2 mt-4">
+        <div class="flex flex-col gap-2 mt-4">
           <textarea
             id="chat-reply-input"
             placeholder="Napisz odpowiedź..."
             class="flex-1 min-h-[80px] max-h-[160px]"
             rows="4"
           ></textarea>
-          <div class="flex flex-col gap-2">
-            <button onclick="sendChatReply()" class="btn-admin px-4 py-2">
+          <div class="flex gap-2">
+            <button onclick="sendChatReply()" class="btn-admin px-4 py-2 flex-1">
               <i class="fa-solid fa-paper-plane mr-2"></i>
-              Wyślij
+              WYŚLIJ
             </button>
-            <button onclick="openQuickRepliesMenu()" class="btn-admin px-4 py-2 text-sm">
+            <button onclick="openQuickRepliesMenu()" class="btn-admin px-4 py-2 flex-1">
               <i class="fa-solid fa-bolt mr-2"></i>
-              Szablony
+              SZABLONY
             </button>
           </div>
         </div>
