@@ -1684,9 +1684,15 @@
 
           <!-- Zamówienia -->
           <div id="tab-orders" class="tab-content">
-            <h1 class="text-3xl font-bold coyote-text mb-8">
-              Zarządzanie Zamówieniami
-            </h1>
+            <div class="flex justify-between items-center mb-8">
+              <h1 class="text-3xl font-bold coyote-text">
+                Zarządzanie Zamówieniami
+              </h1>
+              <button onclick="showAddOrderModal()" class="btn-admin text-sm px-4 py-2">
+                <i class="fa-solid fa-plus mr-2"></i>
+                Dodaj zamówienie
+              </button>
+            </div>
 
             <!-- Statystyki -->
             <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
@@ -1717,37 +1723,31 @@
             </div>
 
             <div class="admin-card mb-8">
-              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+              <div class="flex flex-wrap gap-3 mb-6">
                 <!-- Filtry (responsywne - zawijają się na małych ekranach) -->
-                <div class="flex flex-wrap gap-3 flex-1">
-                  <button onclick="filterOrders('all')" class="order-filter-btn active" data-filter="all">
-                    <i class="fa-solid fa-list mr-2"></i>
-                    Wszystkie
-                  </button>
-                  <button onclick="filterOrders('zlozone')" class="order-filter-btn" data-filter="zlozone">
-                    <i class="fa-solid fa-clock mr-2"></i>
-                    Złożone
-                  </button>
-                  <button onclick="filterOrders('realizacja')" class="order-filter-btn" data-filter="realizacja">
-                    <i class="fa-solid fa-cog mr-2"></i>
-                    W realizacji
-                  </button>
-                  <button onclick="filterOrders('wyslane')" class="order-filter-btn" data-filter="wyslane">
-                    <i class="fa-solid fa-truck mr-2"></i>
-                    Wysłane
-                  </button>
-                  <button onclick="filterOrders('zakonczone')" class="order-filter-btn" data-filter="zakonczone">
-                    <i class="fa-solid fa-check-circle mr-2"></i>
-                    Zakończone
-                  </button>
-                  <button onclick="filterOrders('anulowane')" class="order-filter-btn" data-filter="anulowane">
-                    <i class="fa-solid fa-times-circle mr-2"></i>
-                    Anulowane
-                  </button>
-                </div>
-                <button onclick="showAddOrderModal()" class="btn-admin text-sm px-4 py-2 flex-shrink-0">
-                  <i class="fa-solid fa-plus mr-2"></i>
-                  Dodaj zamówienie
+                <button onclick="filterOrders('all')" class="order-filter-btn active" data-filter="all">
+                  <i class="fa-solid fa-list mr-2"></i>
+                  Wszystkie
+                </button>
+                <button onclick="filterOrders('zlozone')" class="order-filter-btn" data-filter="zlozone">
+                  <i class="fa-solid fa-clock mr-2"></i>
+                  Złożone
+                </button>
+                <button onclick="filterOrders('realizacja')" class="order-filter-btn" data-filter="realizacja">
+                  <i class="fa-solid fa-cog mr-2"></i>
+                  W realizacji
+                </button>
+                <button onclick="filterOrders('wyslane')" class="order-filter-btn" data-filter="wyslane">
+                  <i class="fa-solid fa-truck mr-2"></i>
+                  Wysłane
+                </button>
+                <button onclick="filterOrders('zakonczone')" class="order-filter-btn" data-filter="zakonczone">
+                  <i class="fa-solid fa-check-circle mr-2"></i>
+                  Zakończone
+                </button>
+                <button onclick="filterOrders('anulowane')" class="order-filter-btn" data-filter="anulowane">
+                  <i class="fa-solid fa-times-circle mr-2"></i>
+                  Anulowane
                 </button>
               </div>
 
@@ -4885,11 +4885,26 @@
                 });
                 if (response.ok) {
                   const data = await response.json();
-                  emailVerified = data.emailVerified === true;
+                  // Sprawdź czy odpowiedź zawiera poprawną wartość
+                  if (data.success === true && data.emailVerified === true) {
+                    emailVerified = true;
+                  } else if (data.emailVerified === true) {
+                    // Fallback dla starszych wersji API
+                    emailVerified = true;
+                  }
+                } else {
+                  console.warn(`API zwróciło błąd dla użytkownika ${user.id}: ${response.status}`);
                 }
               } catch (error) {
                 console.warn(`Nie udało się sprawdzić weryfikacji emaila dla użytkownika ${user.id}:`, error);
               }
+              
+              // Fallback: jeśli status konta to "active", zakładamy że email jest zweryfikowany
+              // (ponieważ w szczegółach użytkownika status "active" oznacza zweryfikowany email)
+              if (!emailVerified && user.status === "active") {
+                emailVerified = true;
+              }
+              
               return { ...user, emailVerified };
             })
           );
@@ -12544,20 +12559,13 @@
             conversationKeysCount: Object.keys(conversations).length
           });
           
-          // Dla każdego dokumentu konwersacji, znajdź pasującą konwersację w obiekcie conversations
+          // Zbierz wszystkie dokumenty dla każdej konwersacji, aby wybrać najlepszy
+          const conversationDocs = new Map();
+          
           conversationsSnapshot.forEach((doc) => {
             const convData = doc.data();
             const docId = doc.id;
             const isPinned = convData.isPinned === true;
-            
-            console.log('displayMessages: Processing conversation doc', {
-              docId,
-              isPinned,
-              participantA: convData.participantA,
-              participantB: convData.participantB,
-              userId: convData.userId,
-              hasDirectMatch: !!conversations[docId]
-            });
             
             // Pobierz uczestników z dokumentu
             let docParticipants = [];
@@ -12574,60 +12582,52 @@
               }
             }
             
-            console.log('displayMessages: Extracted participants', {
-              docId,
-              docParticipants,
-              conversationKeyFromParticipants: docParticipants.join('_')
-            });
-            
-            // Znajdź pasującą konwersację w obiekcie conversations
-            // Najpierw sprawdź bezpośrednie dopasowanie przez docId
-            if (conversations[docId]) {
-              conversations[docId].isPinned = isPinned;
-              console.log('displayMessages: ✅ Direct match by docId', { docId, isPinned });
-            } else if (docParticipants.length === 2) {
-              // Sprawdź wszystkie klucze konwersacji i dopasuj na podstawie uczestników
-              let matched = false;
-              for (const key in conversations) {
-                const keyParts = key.split('_');
-                if (keyParts.length === 2) {
-                  const sortedKeyParts = keyParts.filter(id => id).sort();
-                  const sortedDocParticipants = [...docParticipants].sort();
-                  
-                  console.log('displayMessages: Comparing', {
-                    key,
-                    sortedKeyParts,
-                    sortedDocParticipants,
-                    match: sortedKeyParts.length === 2 && sortedDocParticipants.length === 2 &&
-                           sortedKeyParts[0] === sortedDocParticipants[0] &&
-                           sortedKeyParts[1] === sortedDocParticipants[1]
-                  });
-                  
-                  // Porównaj posortowanych uczestników
-                  if (sortedKeyParts.length === 2 && sortedDocParticipants.length === 2 &&
-                      sortedKeyParts[0] === sortedDocParticipants[0] &&
-                      sortedKeyParts[1] === sortedDocParticipants[1]) {
-                    conversations[key].isPinned = isPinned;
-                    matched = true;
-                    console.log('displayMessages: ✅ Matched by participants', { key, docId, isPinned });
-                    break;
-                  }
-                }
+            if (docParticipants.length === 2) {
+              const conversationKey = docParticipants.join('_');
+              
+              // Priorytet: dokumenty z pełnym conversationId (zawierają "_") mają wyższy priorytet
+              // niż stare dokumenty (tylko userId)
+              const isFullFormat = docId.includes('_') && docId === conversationKey;
+              const isOldFormat = !docId.includes('_') && convData.userId;
+              
+              if (!conversationDocs.has(conversationKey)) {
+                conversationDocs.set(conversationKey, []);
               }
-              if (!matched) {
-                console.warn('displayMessages: ⚠️ No match found for conversation', {
-                  docId,
-                  docParticipants,
-                  availableKeys: Object.keys(conversations)
-                });
-              }
-            } else {
-              console.warn('displayMessages: ⚠️ Could not extract participants', {
+              
+              conversationDocs.get(conversationKey).push({
                 docId,
-                convData,
-                docParticipants
+                isPinned,
+                isFullFormat,
+                isOldFormat,
+                convData
               });
             }
+          });
+          
+          // Dla każdej konwersacji, wybierz najlepszy dokument (priorytet: pełny format z isPinned: true)
+          conversationDocs.forEach((docs, conversationKey) => {
+            if (!conversations[conversationKey]) return;
+            
+            // Sortuj dokumenty: najpierw pełny format, potem isPinned: true
+            docs.sort((a, b) => {
+              if (a.isFullFormat && !b.isFullFormat) return -1;
+              if (!a.isFullFormat && b.isFullFormat) return 1;
+              if (a.isPinned && !b.isPinned) return -1;
+              if (!a.isPinned && b.isPinned) return 1;
+              return 0;
+            });
+            
+            // Wybierz najlepszy dokument (pierwszy po sortowaniu)
+            const bestDoc = docs[0];
+            conversations[conversationKey].isPinned = bestDoc.isPinned;
+            
+            console.log('displayMessages: ✅ Set pin status', {
+              conversationKey,
+              isPinned: bestDoc.isPinned,
+              docId: bestDoc.docId,
+              isFullFormat: bestDoc.isFullFormat,
+              totalDocs: docs.length
+            });
           });
           
           // Sprawdź finalny stan przypięcia
@@ -12664,13 +12664,16 @@
 
         // Konwertuj na tablicę i posortuj
         const conversationsArray = filteredConversations.sort((a, b) => {
-          // Najpierw przypięte
+          // 1. Najpierw przypięte (wszystkie przypięte razem)
           if (a.isPinned && !b.isPinned) return -1;
           if (!a.isPinned && b.isPinned) return 1;
-          // Potem nieprzeczytane
+          
+          // 2. W obrębie przypiętych/nieprzypiętych: najpierw nieprzeczytane, potem przeczytane
           if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
           if (a.unreadCount === 0 && b.unreadCount > 0) return 1;
-          // Na końcu po dacie ostatniej wiadomości
+          
+          // 3. W każdej grupie (przypięte/nieprzypięte, przeczytane/nieprzeczytane): 
+          //    sortuj po czasie ostatniej wiadomości (od najnowszych)
           return b.lastMessage.timestamp - a.lastMessage.timestamp;
         });
 
