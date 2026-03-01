@@ -7905,10 +7905,10 @@
           const headers = { 'X-Admin-Panel': 'true' };
           if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
-          // Dla wiadomości od administratora, usuń wszystkie wiadomości gdzie senderId=admin i recipientId=admin
+          // Dla wiadomości od administratora, użyj specjalnego endpointu, który usuwa wszystkie wiadomości od "Administrator"
           let url;
           if (isAdminMessage) {
-            url = `/api/messages?senderId=admin&recipientId=admin`;
+            url = `/api/messages/delete-admin-messages`;
           } else {
             url = `/api/messages?senderId=${encodeURIComponent(userId)}&recipientId=admin`;
           }
@@ -12259,7 +12259,8 @@
             messages = messages.filter(msg => {
               const content = (msg.content || '').toLowerCase();
               const senderName = (msg.senderName || '').toLowerCase();
-              return content.includes(searchTerm) || senderName.includes(searchTerm);
+              const senderEmail = (msg.senderEmail || '').toLowerCase();
+              return content.includes(searchTerm) || senderName.includes(searchTerm) || senderEmail.includes(searchTerm);
             });
             console.log('Messages after search filter:', messages.length);
           }
@@ -12626,6 +12627,23 @@
         
         // Uruchom auto-odświeżanie konwersacji
         startConversationAutoRefresh();
+        
+        // Dodaj obsługę klawisza Enter w polu tekstowym
+        const chatInput = document.getElementById('chat-reply-input');
+        if (chatInput) {
+          // Usuń poprzedni listener, jeśli istnieje
+          const newChatInput = chatInput.cloneNode(true);
+          chatInput.parentNode.replaceChild(newChatInput, chatInput);
+          
+          newChatInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              if (window.sendChatReply) {
+                window.sendChatReply();
+              }
+            }
+          });
+        }
       };
       
       // Funkcja przełączania statusu przeczytana/nieprzeczytana konwersacji
@@ -14947,13 +14965,13 @@
             rows="4"
           ></textarea>
           <div class="flex gap-2">
-            <button onclick="sendChatReply()" class="btn-admin px-4 py-2 flex-1">
-              <i class="fa-solid fa-paper-plane mr-2"></i>
-              WYŚLIJ
-            </button>
             <button onclick="openQuickRepliesMenu()" class="btn-admin px-4 py-2 flex-1">
               <i class="fa-solid fa-bolt mr-2"></i>
               SZABLONY
+            </button>
+            <button onclick="sendChatReply()" class="btn-admin px-4 py-2 flex-1">
+              <i class="fa-solid fa-paper-plane mr-2"></i>
+              WYŚLIJ
             </button>
           </div>
         </div>

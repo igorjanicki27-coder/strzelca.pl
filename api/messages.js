@@ -177,6 +177,13 @@ module.exports = async (req, res) => {
         default:
           res.status(405).json({ success: false, error: 'Method not allowed' });
       }
+    } else if (segs.length === 1 && segs[0] === 'delete-admin-messages') {
+      // /api/messages/delete-admin-messages - usuwa wszystkie wiadomości od "Administrator"
+      if (req.method === 'DELETE') {
+        await handleDeleteAdminMessages(req, res, db, { requesterUid, requesterIsAdmin });
+      } else {
+        res.status(405).json({ success: false, error: 'Method not allowed' });
+      }
     } else if (segs.length === 1 && segs[0] === 'thread') {
       // /api/messages/thread?peerId=...&limit=...
       if (req.method === 'GET') {
@@ -933,7 +940,8 @@ async function handleDeleteMessages(req, res, db, { query, requesterUid, request
     const senderId = query.senderId;
     const recipientId = query.recipientId || 'admin';
 
-    if (!senderId) {
+    // Dla wiadomości od administratora (systemowych), senderId może być 'admin'
+    if (!senderId && recipientId !== 'admin') {
       return res.status(400).json({ success: false, error: 'Missing required field: senderId' });
     }
 
@@ -949,38 +957,88 @@ async function handleDeleteMessages(req, res, db, { query, requesterUid, request
     // Znajdź wszystkie wiadomości w obie strony
     let deletedCount = 0;
     
-    // Wiadomości od użytkownika do admina
-    const messagesQuery1 = dbInstance.collection('messages')
-      .where('senderId', '==', senderId)
-      .where('recipientId', '==', recipientId);
-    
-    const snapshot1 = await messagesQuery1.get();
-    
-    if (!snapshot1.empty) {
-      const batch1 = dbInstance.batch();
-      snapshot1.docs.forEach(doc => {
-        batch1.delete(doc.ref);
-      });
-      await batch1.commit();
-      deletedCount += snapshot1.size;
-      console.log('handleDeleteMessages: Deleted', snapshot1.size, 'messages (user -> admin)');
-    }
-    
-    // Wiadomości od admina do użytkownika
-    const messagesQuery2 = dbInstance.collection('messages')
-      .where('senderId', '==', recipientId)
-      .where('recipientId', '==', senderId);
-    
-    const snapshot2 = await messagesQuery2.get();
-    
-    if (!snapshot2.empty) {
-      const batch2 = dbInstance.batch();
-      snapshot2.docs.forEach(doc => {
-        batch2.delete(doc.ref);
-      });
-      await batch2.commit();
-      deletedCount += snapshot2.size;
-      console.log('handleDeleteMessages: Deleted', snapshot2.size, 'messages (admin -> user)');
+    // Specjalny przypadek: wiadomości od administratora do administratora (systemowe)
+    if (senderId === 'admin' && recipientId === 'admin') {
+      const adminMessagesQuery = dbInstance.collection('messages')
+        .where('senderId', '==', 'admin')
+        .where('recipientId', '==', 'admin');
+      
+      const adminSnapshot = await adminMessagesQuery.get();
+      
+      if (!adminSnapshot.empty) {
+        // Firestore batch limit to 500, więc musimy przetwarzać w partiach
+        const batchSize = 500;
+        const docs = adminSnapshot.docs;
+        
+        for (let i = 0; i < docs.length; i += batchSize) {
+          const batch = dbInstance.batch();
+          const batchDocs = docs.slice(i, i + batchSize);
+          
+          batchDocs.forEach(doc => {
+            batch.delete(doc.ref);
+          });
+          
+          await batch.commit();
+          deletedCount += batchDocs.length;
+        }
+        
+        console.log('handleDeleteMessages: Deleted', deletedCount, 'admin system messages');
+      }
+    } else {
+      // Standardowe usuwanie: wiadomości między użytkownikiem a adminem
+      // Wiadomości od użytkownika do admina
+      const messagesQuery1 = dbInstance.collection('messages')
+        .where('senderId', '==', senderId)
+        .where('recipientId', '==', recipientId);
+      
+      const snapshot1 = await messagesQuery1.get();
+      
+      if (!snapshot1.empty) {
+        // Firestore batch limit to 500, więc musimy przetwarzać w partiach
+        const batchSize = 500;
+        const docs = snapshot1.docs;
+        
+        for (let i = 0; i < docs.length; i += batchSize) {
+          const batch = dbInstance.batch();
+          const batchDocs = docs.slice(i, i + batchSize);
+          
+          batchDocs.forEach(doc => {
+            batch.delete(doc.ref);
+          });
+          
+          await batch.commit();
+          deletedCount += batchDocs.length;
+        }
+        
+        console.log('handleDeleteMessages: Deleted', snapshot1.size, 'messages (user -> admin)');
+      }
+      
+      // Wiadomości od admina do użytkownika
+      const messagesQuery2 = dbInstance.collection('messages')
+        .where('senderId', '==', recipientId)
+        .where('recipientId', '==', senderId);
+      
+      const snapshot2 = await messagesQuery2.get();
+      
+      if (!snapshot2.empty) {
+        // Firestore batch limit to 500, więc musimy przetwarzać w partiach
+        const batchSize = 500;
+        const docs = snapshot2.docs;
+        
+        for (let i = 0; i < docs.length; i += batchSize) {
+          const batch = dbInstance.batch();
+          const batchDocs = docs.slice(i, i + batchSize);
+          
+          batchDocs.forEach(doc => {
+            batch.delete(doc.ref);
+          });
+          
+          await batch.commit();
+          deletedCount += batchDocs.length;
+        }
+        
+        console.log('handleDeleteMessages: Deleted', snapshot2.size, 'messages (admin -> user)');
+      }
     }
     
     console.log('handleDeleteMessages: Total deleted:', deletedCount);
@@ -995,6 +1053,93 @@ async function handleDeleteMessages(req, res, db, { query, requesterUid, request
     res.status(500).json({
       success: false,
       error: 'Internal server error'
+    });
+  }
+}
+
+// DELETE /api/messages/delete-admin-messages - usuwa wszystkie wiadomości od "Administrator" (na twardo)
+async function handleDeleteAdminMessages(req, res, db, { requesterUid, requesterIsAdmin }) {
+  try {
+    // Tylko admin może usuwać wiadomości
+    if (!requesterIsAdmin) {
+      return res.status(403).json({ success: false, error: 'Forbidden - admin only' });
+    }
+
+    console.log('handleDeleteAdminMessages: Deleting all messages from Administrator');
+
+    const dbInstance = await db.initializeFirebase();
+    let deletedCount = 0;
+    
+    // Znajdź wszystkie wiadomości gdzie senderName === 'Administrator' lub senderId === 'admin'
+    // Używamy wielu zapytań, ponieważ Firestore nie obsługuje OR w jednym zapytaniu
+    
+    // 1. Wiadomości gdzie senderName === 'Administrator'
+    const adminNameQuery = dbInstance.collection('messages')
+      .where('senderName', '==', 'Administrator');
+    
+    const adminNameSnapshot = await adminNameQuery.get();
+    
+    if (!adminNameSnapshot.empty) {
+      const batchSize = 500;
+      const docs = adminNameSnapshot.docs;
+      
+      for (let i = 0; i < docs.length; i += batchSize) {
+        const batch = dbInstance.batch();
+        const batchDocs = docs.slice(i, i + batchSize);
+        
+        batchDocs.forEach(doc => {
+          batch.delete(doc.ref);
+        });
+        
+        await batch.commit();
+        deletedCount += batchDocs.length;
+      }
+      
+      console.log('handleDeleteAdminMessages: Deleted', adminNameSnapshot.size, 'messages with senderName=Administrator');
+    }
+    
+    // 2. Wiadomości gdzie senderId === 'admin' i recipientId === 'admin' (systemowe)
+    const adminSystemQuery = dbInstance.collection('messages')
+      .where('senderId', '==', 'admin')
+      .where('recipientId', '==', 'admin');
+    
+    const adminSystemSnapshot = await adminSystemQuery.get();
+    
+    if (!adminSystemSnapshot.empty) {
+      const batchSize = 500;
+      const docs = adminSystemSnapshot.docs;
+      
+      // Sprawdź, czy nie zostały już usunięte w poprzednim kroku
+      const existingIds = new Set(adminNameSnapshot.docs.map(d => d.id));
+      const newDocs = docs.filter(d => !existingIds.has(d.id));
+      
+      for (let i = 0; i < newDocs.length; i += batchSize) {
+        const batch = dbInstance.batch();
+        const batchDocs = newDocs.slice(i, i + batchSize);
+        
+        batchDocs.forEach(doc => {
+          batch.delete(doc.ref);
+        });
+        
+        await batch.commit();
+        deletedCount += batchDocs.length;
+      }
+      
+      console.log('handleDeleteAdminMessages: Deleted', newDocs.length, 'additional admin system messages');
+    }
+    
+    console.log('handleDeleteAdminMessages: Total deleted:', deletedCount);
+    
+    res.json({
+      success: true,
+      deletedCount: deletedCount,
+      message: `Usunięto ${deletedCount} wiadomości od Administrator`
+    });
+  } catch (error) {
+    console.error('Error deleting admin messages:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error: ' + (error.message || 'Unknown error')
     });
   }
 }
