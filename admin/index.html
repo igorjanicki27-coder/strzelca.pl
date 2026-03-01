@@ -4619,15 +4619,21 @@
 
 
       // Funkcja ładowania dziennika aktywności dla dashboardu (wszystkie aktywności)
-      async function loadEventsLog(reset = false) {
+      async function loadEventsLog(reset = false, silent = false) {
         const container = document.getElementById('admin-activity-log');
-        console.log('loadEventsLog (activities) called, container exists:', !!container);
+        if (!silent) {
+          console.log('loadEventsLog (activities) called, container exists:', !!container);
+        }
         if (!container) {
-          console.warn('admin-activity-log container not found, skipping activity logs loading');
+          if (!silent) {
+            console.warn('admin-activity-log container not found, skipping activity logs loading');
+          }
           return;
         }
 
-        console.log('Loading activity logs...');
+        if (!silent) {
+          console.log('Loading activity logs...');
+        }
 
         try {
           // Jeśli reset, wyczyść załadowane logi
@@ -4640,37 +4646,41 @@
           const activityLogsRef = collection(db, 'activityLogs');
           const q = query(activityLogsRef, orderBy('timestamp', 'desc'), limit(activityLogsLimit));
           
-          console.log('[Activity Logs] Próba pobrania danych z Firestore...');
+          if (!silent) {
+            console.log('[Activity Logs] Próba pobrania danych z Firestore...');
+          }
           const querySnapshot = await getDocs(q).catch((error) => {
-            console.error('[Activity Logs] Błąd podczas pobierania danych:', error);
-            console.error('[Activity Logs] Szczegóły błędu:', {
-              code: error.code,
-              message: error.message,
-              stack: error.stack
-            });
-            
-            // Sprawdź, czy to błąd CORS
-            if (error.message?.includes('CORS') || 
-                error.message?.includes('access control') ||
-                error.code === 'unavailable' ||
-                error.code === 'permission-denied') {
-              console.error('[Activity Logs] ⚠️ BŁĄD CORS LUB DOSTĘPU DO FIRESTORE!');
-              console.error('[Activity Logs] Sprawdź:');
-              console.error('[Activity Logs] 1. Czy domena jest dodana do Firebase Console → Authentication → Settings → Authorized domains');
-              console.error('[Activity Logs] 2. Czy API Key ma odpowiednie ograniczenia w Google Cloud Console');
-              console.error('[Activity Logs] 3. Czy Firestore Security Rules pozwalają na dostęp');
+            if (!silent) {
+              console.error('[Activity Logs] Błąd podczas pobierania danych:', error);
+              console.error('[Activity Logs] Szczegóły błędu:', {
+                code: error.code,
+                message: error.message,
+                stack: error.stack
+              });
               
-              // Wyświetl komunikat użytkownikowi
-              const container = document.getElementById('admin-activity-log');
-              if (container) {
-                container.innerHTML = `
-                  <div class="bg-red-900/20 border border-red-500 rounded-lg p-4 text-center">
-                    <h3 class="text-red-400 font-bold mb-2">⚠️ Błąd połączenia z Firestore</h3>
-                    <p class="text-zinc-300 text-sm mb-2">Nie można połączyć się z bazą danych Firestore.</p>
-                    <p class="text-zinc-400 text-xs">Sprawdź konfigurację domeny w Firebase Console.</p>
-                    <p class="text-zinc-500 text-xs mt-2">Kod błędu: ${error.code || 'unknown'}</p>
-                  </div>
-                `;
+              // Sprawdź, czy to błąd CORS
+              if (error.message?.includes('CORS') || 
+                  error.message?.includes('access control') ||
+                  error.code === 'unavailable' ||
+                  error.code === 'permission-denied') {
+                console.error('[Activity Logs] ⚠️ BŁĄD CORS LUB DOSTĘPU DO FIRESTORE!');
+                console.error('[Activity Logs] Sprawdź:');
+                console.error('[Activity Logs] 1. Czy domena jest dodana do Firebase Console → Authentication → Settings → Authorized domains');
+                console.error('[Activity Logs] 2. Czy API Key ma odpowiednie ograniczenia w Google Cloud Console');
+                console.error('[Activity Logs] 3. Czy Firestore Security Rules pozwalają na dostęp');
+                
+                // Wyświetl komunikat użytkownikowi tylko jeśli nie jest w trybie cichym
+                const container = document.getElementById('admin-activity-log');
+                if (container && !silent) {
+                  container.innerHTML = `
+                    <div class="bg-red-900/20 border border-red-500 rounded-lg p-4 text-center">
+                      <h3 class="text-red-400 font-bold mb-2">⚠️ Błąd połączenia z Firestore</h3>
+                      <p class="text-zinc-300 text-sm mb-2">Nie można połączyć się z bazą danych Firestore.</p>
+                      <p class="text-zinc-400 text-xs">Sprawdź konfigurację domeny w Firebase Console.</p>
+                      <p class="text-zinc-500 text-xs mt-2">Kod błędu: ${error.code || 'unknown'}</p>
+                    </div>
+                  `;
+                }
               }
             }
             
@@ -4686,7 +4696,9 @@
             });
           });
 
-          console.log('Loaded logs from Firestore:', logs.length);
+          if (!silent) {
+            console.log('Loaded logs from Firestore:', logs.length);
+          }
 
           // Zaktualizuj załadowane logi
           loadedActivityLogs = logs;
@@ -9868,64 +9880,141 @@
         };
         window.showEventDetails = showEventDetails;
 
-      // Integracja z activityLogs - Firestore listener
+      // Integracja z activityLogs - Firestore listener (odświeżanie w tle co 30 sekund)
       function setupActivityLogsListener() {
         if (activityLogsListener) {
           clearInterval(activityLogsListener); // Odłącz poprzedni interval
         }
 
-        // Zamiast real-time listener, użyj pollingu co 30 sekund z bezpośrednim odczytem z Firestore
+        // Odświeżanie logów w tle co 30 sekund - bez widocznych efektów dla użytkownika
         activityLogsListener = setInterval(async () => {
+          // Sprawdź czy użytkownik jest na zakładce dashboard
+          const dashboardTab = document.getElementById('tab-dashboard');
+          if (!dashboardTab || !dashboardTab.classList.contains('active')) {
+            return; // Nie odświeżaj jeśli użytkownik nie jest na dashboardzie
+          }
+
+          // Sprawdź czy kontener istnieje
+          const container = document.getElementById('admin-activity-log');
+          if (!container) {
+            return; // Kontener nie istnieje, nie odświeżaj
+          }
+
           try {
-            // Pobierz activity logs bezpośrednio z Firestore
-            const activityLogsRef = collection(db, 'activityLogs');
-            const q = query(activityLogsRef, orderBy('timestamp', 'desc'), limit(10));
-            const querySnapshot = await getDocs(q);
-
-            const logs = [];
-            querySnapshot.forEach((doc) => {
-              logs.push({
-                id: doc.id,
-                ...doc.data(),
-                timestamp: doc.data().timestamp?.toDate?.()?.toISOString() || doc.data().timestamp
-              });
-            });
-
-            eventsData = logs;
-            renderRecentEvents();
-            const lastEventsUpdateEl = document.getElementById("last-events-update");
-            if (lastEventsUpdateEl) lastEventsUpdateEl.textContent = new Date().toLocaleString("pl-PL");
+            // Wywołaj loadEventsLog w trybie cichym (bez reset, bez powiadomień)
+            await loadEventsLogSilent(false);
           } catch (error) {
-            console.error("Activity logs polling error:", error);
-            showNotification("Błąd ładowania logów aktywności.", "error");
+            // Błędy są ignorowane w trybie cichym - nie pokazuj powiadomień
+            console.debug("Silent activity logs refresh error (ignored):", error);
           }
         }, 30000); // Co 30 sekund
+      }
 
-        // Pierwsze wywołanie natychmiastowe z bezpośrednim odczytem z Firestore
-        setTimeout(async () => {
-          try {
-            // Pobierz activity logs bezpośrednio z Firestore
-            const activityLogsRef = collection(db, 'activityLogs');
-            const q = query(activityLogsRef, orderBy('timestamp', 'desc'), limit(10));
-            const querySnapshot = await getDocs(q);
+      // Funkcja do cichego odświeżania logów (bez powiadomień i animacji)
+      async function loadEventsLogSilent(reset = false) {
+        const container = document.getElementById('admin-activity-log');
+        if (!container) {
+          return;
+        }
 
-            const logs = [];
-            querySnapshot.forEach((doc) => {
-              logs.push({
-                id: doc.id,
-                ...doc.data(),
-                timestamp: doc.data().timestamp?.toDate?.()?.toISOString() || doc.data().timestamp
-              });
-            });
-
-            eventsData = logs;
-            renderRecentEvents();
-            const lastEventsUpdateEl = document.getElementById("last-events-update");
-            if (lastEventsUpdateEl) lastEventsUpdateEl.textContent = new Date().toLocaleString("pl-PL");
-          } catch (error) {
-            console.error("Initial activity logs load error:", error);
+        try {
+          // Jeśli reset, wyczyść załadowane logi
+          if (reset) {
+            loadedActivityLogs = [];
+            activityLogsLimit = 20;
           }
-        }, 1000);
+
+          // Pobierz activity logs bezpośrednio z Firestore
+          const activityLogsRef = collection(db, 'activityLogs');
+          const q = query(activityLogsRef, orderBy('timestamp', 'desc'), limit(activityLogsLimit));
+          
+          const querySnapshot = await getDocs(q);
+
+          const logs = [];
+          querySnapshot.forEach((doc) => {
+            logs.push({
+              id: doc.id,
+              ...doc.data(),
+              timestamp: doc.data().timestamp?.toDate?.()?.toISOString() || doc.data().timestamp
+            });
+          });
+
+          // Zaktualizuj załadowane logi
+          loadedActivityLogs = logs;
+
+          if (logs.length === 0 && reset) {
+            container.innerHTML = `
+              <div class="text-center text-zinc-500 py-8">
+                <i class="fa-solid fa-list text-2xl mb-4 text-zinc-600"></i>
+                <h4 class="text-lg font-semibold mb-2">Brak aktywności</h4>
+                <p class="text-sm">Dziennik aktywności jest pusty</p>
+              </div>
+            `;
+            return;
+          }
+
+          // Pobierz nazwy użytkowników asynchronicznie dla wszystkich logów
+          const logsWithNames = await Promise.all(
+            logs.map(async (log) => {
+              const timestamp = log.timestamp ? new Date(log.timestamp.toDate ? log.timestamp.toDate() : log.timestamp) : new Date();
+              const timeAgo = getTimeAgo ? getTimeAgo(timestamp) : timestamp.toLocaleString("pl-PL");
+              
+              // Użyj asynchronicznej wersji do pobrania nazwy użytkownika
+              const userDisplayName = await getUserDisplayNameAsync(log);
+              
+              // Utwórz kopię logu z nazwą użytkownika dla renderActivityLog
+              const logWithName = { ...log, userDisplayName };
+              // Pobierz nick użytkownika docelowego jeśli to USER_BLOCKED lub USER_UNBLOCKED
+              if ((log.action === "USER_BLOCKED" || log.action === "USER_UNBLOCKED") && (log.targetUserId || (log.details && log.details.targetUser))) {
+                const targetUserId = log.targetUserId || (log.details && log.details.targetUser);
+                if (targetUserId) {
+                  logWithName.targetUserNickname = await getUserNicknameByIdAsync(targetUserId);
+                }
+              }
+              const activityLog = renderActivityLog ? await renderActivityLog(logWithName) : { description: log.action || 'Aktywność', content: log.details || '' };
+
+              return {
+                html: `
+                <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="showEventDetails ? showEventDetails('${log.id}') : null">
+                  <div class="flex justify-between items-start mb-2">
+                      <div class="font-semibold text-white">${activityLog.description}</div>
+                    <div class="text-xs text-zinc-500">${timeAgo}</div>
+                  </div>
+                    ${activityLog.content ? `<div class="text-xs text-zinc-400 mt-1">${activityLog.content}</div>` : ''}
+                </div>
+                `,
+                timestamp
+              };
+            })
+          );
+          
+          // Sortuj po czasie (najnowsze na górze)
+          logsWithNames.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          
+          const logsHtml = logsWithNames.map(log => log.html).join("");
+
+          // Sprawdź czy są więcej logów do załadowania
+          const hasMore = logs.length >= activityLogsLimit;
+          const loadMoreButton = hasMore ? `
+            <div class="text-center mt-6">
+              <button onclick="loadMoreActivityLogs()" class="bg-coyote hover:bg-opacity-80 text-black px-6 py-3 rounded-lg font-semibold transition">
+                <i class="fa-solid fa-arrow-down mr-2"></i>
+                Załaduj więcej (${activityLogsLimit} zobaczono)
+              </button>
+            </div>
+          ` : logs.length > 0 ? `
+            <div class="text-center mt-6 text-zinc-500 text-sm">
+              <i class="fa-solid fa-check-circle mr-2"></i>
+              Wyświetlono wszystkie logi (${logs.length})
+            </div>
+          ` : '';
+
+          // Zaktualizuj zawartość bez animacji i powiadomień
+          container.innerHTML = logsHtml + loadMoreButton;
+        } catch (error) {
+          // W trybie cichym nie pokazuj błędów użytkownikowi
+          console.debug("Silent loadEventsLog error (ignored):", error);
+        }
       }
 
       function setupPendingTasksListener() {
@@ -12420,25 +12509,48 @@
           const conversationsRef = collection(db, 'conversations');
           const conversationsSnapshot = await getDocs(conversationsRef);
           
+          // Dla każdego dokumentu konwersacji, znajdź pasującą konwersację w obiekcie conversations
           conversationsSnapshot.forEach((doc) => {
             const convData = doc.data();
-            // Sprawdź różne formaty conversationId
-            let participants = [];
+            const docId = doc.id;
+            const isPinned = convData.isPinned === true;
+            
+            // Pobierz uczestników z dokumentu
+            let docParticipants = [];
             if (convData.participantA && convData.participantB) {
-              participants = [convData.participantA, convData.participantB].filter(id => id).sort();
+              docParticipants = [convData.participantA, convData.participantB].filter(id => id).sort();
             } else if (convData.userId) {
               // Stary format - userId jako klucz
-              participants = [convData.userId, 'admin'].filter(id => id).sort();
+              docParticipants = [convData.userId, 'admin'].filter(id => id).sort();
+            } else {
+              // Spróbuj wyciągnąć z docId (format: "participant1_participant2")
+              const parts = docId.split('_');
+              if (parts.length === 2) {
+                docParticipants = parts.filter(id => id).sort();
+              }
             }
-            const conversationKey = participants.join('_');
             
-            // Sprawdź również czy conversationId w dokumencie pasuje do conversationKey
-            const docId = doc.id;
-            if (docId === conversationKey && conversations[conversationKey]) {
-              conversations[conversationKey].isPinned = convData.isPinned === true;
-            } else if (conversations[conversationKey]) {
-              // Fallback - sprawdź czy docId pasuje do któregoś conversationKey
-              conversations[conversationKey].isPinned = convData.isPinned === true;
+            // Znajdź pasującą konwersację w obiekcie conversations
+            // Najpierw sprawdź bezpośrednie dopasowanie przez docId
+            if (conversations[docId]) {
+              conversations[docId].isPinned = isPinned;
+            } else if (docParticipants.length === 2) {
+              // Sprawdź wszystkie klucze konwersacji i dopasuj na podstawie uczestników
+              for (const key in conversations) {
+                const keyParts = key.split('_');
+                if (keyParts.length === 2) {
+                  const sortedKeyParts = keyParts.filter(id => id).sort();
+                  const sortedDocParticipants = [...docParticipants].sort();
+                  
+                  // Porównaj posortowanych uczestników
+                  if (sortedKeyParts.length === 2 && sortedDocParticipants.length === 2 &&
+                      sortedKeyParts[0] === sortedDocParticipants[0] &&
+                      sortedKeyParts[1] === sortedDocParticipants[1]) {
+                    conversations[key].isPinned = isPinned;
+                    break;
+                  }
+                }
+              }
             }
           });
         } catch (error) {
