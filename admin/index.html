@@ -12453,9 +12453,10 @@
           return;
         }
 
-        // Pobierz nazwy użytkowników z kolekcji userProfiles dla wszystkich unikalnych senderId
+        // Pobierz nazwy i avatary użytkowników z kolekcji userProfiles dla wszystkich unikalnych senderId
         const uniqueSenderIds = [...new Set(messages.map(msg => msg.senderId).filter(id => id && id !== 'admin'))];
         const userNamesMap = {};
+        const userAvatarsMap = {};
         
         if (uniqueSenderIds.length > 0) {
           try {
@@ -12466,14 +12467,16 @@
                   const userData = userDoc.data();
                   // Priorytet: displayName (nick), potem email
                   userNamesMap[userId] = userData.displayName || userData.email || null;
+                  // Pobierz avatar (może być w różnych polach)
+                  userAvatarsMap[userId] = userData.avatar || userData.avatarUrl || null;
                 }
               } catch (e) {
-                console.warn(`Could not fetch user name for ${userId}:`, e);
+                console.warn(`Could not fetch user data for ${userId}:`, e);
               }
             });
             await Promise.all(userPromises);
           } catch (error) {
-            console.error('Error fetching user names:', error);
+            console.error('Error fetching user data:', error);
           }
         }
 
@@ -12532,6 +12535,7 @@
               senderName: senderName,
               senderEmail: msg.senderEmail || '',
             senderId: userId, // Użyj userId (nie admin, nie anonymous) dla spójności z pinConversation
+              senderAvatar: userAvatarsMap[userId] || null, // Avatar użytkownika
               lastMessage: msg,
               messages: [],
               unreadCount: 0,
@@ -12700,62 +12704,89 @@
           const canDeleteAdminMessage = conversation.senderName === 'Administrator' || (conversation.senderId === 'admin' && conversation.senderName);
 
           return `
-            <div class="message-item bg-zinc-800/50 rounded-lg p-4 mb-4 hover:bg-zinc-800/70 transition-all duration-200 border ${hasUnread ? 'border-coyote/60' : 'border-zinc-700'} ${isPinned ? 'ring-2 ring-coyote/50' : ''} cursor-pointer"
+            <div class="message-item bg-zinc-800/60 rounded-xl p-5 mb-3 hover:bg-zinc-800/80 transition-all duration-200 border ${hasUnread ? 'border-coyote/40 shadow-lg shadow-coyote/10' : 'border-zinc-700/50'} ${isPinned ? 'ring-2 ring-coyote/30 bg-zinc-800/70' : ''} cursor-pointer group"
                  data-user-id="${conversation.senderId}"
                  data-user-name="${conversation.senderName}"
                  data-user-email="${conversation.senderEmail}"
                  data-is-pinned="${isPinned}"
                  onclick="openMessageChat('${conversation.senderId}', '${conversation.senderName || ''}', '${conversation.senderEmail || ''}')">
-              <div class="flex items-start justify-between mb-3">
-                <div class="flex items-center space-x-3 flex-1">
-                  <div class="w-10 h-10 bg-coyote rounded-full flex items-center justify-center relative">
-                    <i class="fa-solid fa-user text-black text-sm"></i>
-                    ${isPinned ? '<i class="fa-solid fa-thumbtack text-coyote text-xs absolute -top-1 -right-1"></i>' : ''}
+              <div class="flex items-start gap-4">
+                <!-- Avatar -->
+                <div class="flex-shrink-0">
+                  <div class="w-12 h-12 bg-gradient-to-br from-coyote to-coyote/70 rounded-full flex items-center justify-center relative overflow-hidden ring-2 ${hasUnread ? 'ring-coyote/50' : 'ring-zinc-700/50'}">
+                    ${conversation.senderAvatar ? 
+                      `<img src="${conversation.senderAvatar}" alt="${displayName}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                       <div class="w-full h-full bg-gradient-to-br from-coyote to-coyote/70 rounded-full items-center justify-center hidden">
+                         <i class="fa-solid fa-user text-black text-sm"></i>
+                       </div>` :
+                      `<i class="fa-solid fa-user text-black text-sm"></i>`
+                    }
+                    ${isPinned ? '<div class="absolute -top-1 -right-1 w-4 h-4 bg-coyote rounded-full flex items-center justify-center"><i class="fa-solid fa-thumbtack text-black text-[8px]"></i></div>' : ''}
+                    ${hasUnread ? '<div class="absolute -bottom-1 -right-1 w-4 h-4 bg-coyote rounded-full border-2 border-zinc-800"></div>' : ''}
                   </div>
-                  <div class="flex items-center space-x-2">
-                    <div>
-                      <h4 class="font-semibold text-white flex items-center gap-2">
-                        ${isPinned ? '<i class="fa-solid fa-thumbtack text-coyote text-xs"></i>' : ''}
-                        ${displayName}
-                      </h4>
-                      ${displaySubtext ? `<p class="text-sm text-zinc-400">${displaySubtext}</p>` : ''}
+                </div>
+
+                <!-- Content -->
+                <div class="flex-1 min-w-0">
+                  <!-- Header -->
+                  <div class="flex items-start justify-between mb-2">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2 mb-1">
+                        <h4 class="font-semibold text-white text-base truncate">
+                          ${displayName}
+                        </h4>
+                        ${isPinned ? '<i class="fa-solid fa-thumbtack text-coyote text-xs flex-shrink-0"></i>' : ''}
+                        ${hasUnread ? '<span class="inline-flex items-center justify-center w-2 h-2 bg-coyote rounded-full flex-shrink-0"></span>' : ''}
+                      </div>
+                      ${displaySubtext ? `<p class="text-xs text-zinc-400 truncate">${displaySubtext}</p>` : ''}
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0 ml-3">
+                      <span class="text-xs text-zinc-500 whitespace-nowrap">${date}</span>
+                      ${canPinOrDelete ? `
+                      <button onclick="event.stopPropagation(); toggleConversationPin('${conversation.senderId}', ${isPinned})" 
+                              class="w-8 h-8 flex items-center justify-center rounded-lg text-xs transition-all ${isPinned ? 'bg-coyote text-black hover:bg-coyote/80' : 'bg-zinc-700/50 text-zinc-400 hover:bg-zinc-700 hover:text-white'}"
+                              title="${isPinned ? 'Odepnij konwersację' : 'Przypnij konwersację'}"
+                              data-user-id="${conversation.senderId}">
+                        <i class="fa-solid fa-thumbtack text-xs"></i>
+                      </button>
+                      ` : ''}
+                      ${(canPinOrDelete || canDeleteAdminMessage) ? `
+                      <button onclick="event.stopPropagation(); deleteSupportConversation('${conversation.senderId || 'admin'}', '${displayName.replace(/'/g, "\\'")}')" 
+                              class="w-8 h-8 flex items-center justify-center rounded-lg text-xs transition-all bg-red-900/20 text-red-400 hover:bg-red-900/40 hover:text-red-300"
+                              title="Usuń konwersację">
+                        <i class="fa-solid fa-trash text-xs"></i>
+                      </button>
+                      ` : ''}
                     </div>
                   </div>
-                </div>
-                <div class="text-right flex-shrink-0 ml-4 flex items-start gap-2">
-                  <div class="text-xs text-zinc-500 mb-2">${date}</div>
-                  ${canPinOrDelete ? `
-                  <button onclick="event.stopPropagation(); toggleConversationPin('${conversation.senderId}', ${isPinned})" 
-                          class="px-2 py-1 rounded text-xs font-medium transition-colors ${isPinned ? 'bg-coyote text-black hover:bg-coyote/80' : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'}"
-                          title="${isPinned ? 'Odepnij konwersację' : 'Przypnij konwersację'}"
-                          data-user-id="${conversation.senderId}">
-                    <i class="fa-solid fa-thumbtack"></i>
-                  </button>
-                  ` : ''}
-                  ${(canPinOrDelete || canDeleteAdminMessage) ? `
-                  <button onclick="event.stopPropagation(); deleteSupportConversation('${conversation.senderId || 'admin'}', '${displayName.replace(/'/g, "\\'")}')" 
-                          class="px-2 py-1 rounded text-xs font-medium transition-colors bg-red-900/30 text-red-300 hover:bg-red-900/50 border border-red-500/30"
-                          title="Usuń konwersację">
-                    <i class="fa-solid fa-trash"></i>
-                  </button>
-                  ` : ''}
-                </div>
-              </div>
 
-              <div class="mb-3">
-                <p class="text-zinc-300 text-sm leading-relaxed">
-                  ${lastMsg.content.length > 150 ? lastMsg.content.substring(0, 150) + '...' : lastMsg.content}
-                </p>
-              </div>
+                  <!-- Message Preview -->
+                  <div class="mb-3">
+                    <p class="text-zinc-300 text-sm leading-relaxed line-clamp-2">
+                      ${lastMsg.content.length > 120 ? lastMsg.content.substring(0, 120) + '...' : lastMsg.content}
+                    </p>
+                  </div>
 
-              <div class="flex items-center justify-between text-xs text-zinc-500">
-                <span>${conversation.totalMessages} wiadomości${hasUnread ? ` • <span class="text-coyote font-semibold">${conversation.unreadCount} nieprzeczytanych</span>` : ''}</span>
-                <button onclick="event.stopPropagation(); toggleConversationReadStatus('${conversation.senderId}', ${hasUnread})" 
-                        class="px-3 py-1 rounded text-xs font-medium transition-colors ${hasUnread ? 'bg-coyote text-black hover:bg-coyote/80' : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'}"
-                        title="${hasUnread ? 'Oznacz jako przeczytane' : 'Oznacz jako nieprzeczytane'}">
-                  <i class="fa-solid ${hasUnread ? 'fa-envelope-open' : 'fa-envelope'} mr-1"></i>
-                  ${hasUnread ? 'Oznacz jako przeczytane' : 'Oznacz jako nieprzeczytane'}
-                </button>
+                  <!-- Footer -->
+                  <div class="flex items-center justify-between pt-2 border-t border-zinc-700/50">
+                    <div class="flex items-center gap-3 text-xs text-zinc-400">
+                      <span class="flex items-center gap-1">
+                        <i class="fa-solid fa-comments text-zinc-500"></i>
+                        <span>${conversation.totalMessages} ${conversation.totalMessages === 1 ? 'wiadomość' : 'wiadomości'}</span>
+                      </span>
+                      ${hasUnread ? `<span class="flex items-center gap-1 text-coyote font-medium">
+                        <i class="fa-solid fa-circle text-[6px]"></i>
+                        <span>${conversation.unreadCount} nieprzeczytan${conversation.unreadCount === 1 ? 'a' : 'ych'}</span>
+                      </span>` : ''}
+                    </div>
+                    <button onclick="event.stopPropagation(); toggleConversationReadStatus('${conversation.senderId}', ${hasUnread})" 
+                            class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hasUnread ? 'bg-coyote text-black hover:bg-coyote/80 shadow-md shadow-coyote/20' : 'bg-zinc-700/50 text-zinc-400 hover:bg-zinc-700 hover:text-white'}"
+                            title="${hasUnread ? 'Oznacz jako przeczytane' : 'Oznacz jako nieprzeczytane'}">
+                      <i class="fa-solid ${hasUnread ? 'fa-envelope-open' : 'fa-envelope'} mr-1.5"></i>
+                      ${hasUnread ? 'Oznacz jako przeczytane' : 'Oznacz jako nieprzeczytane'}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           `;
