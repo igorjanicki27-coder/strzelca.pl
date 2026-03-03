@@ -448,8 +448,10 @@ class FirestoreDatabaseManager {
     try {
       const db = await this.initializeFirebase();
 
-      // Pobierz wszystkie wiadomości
-      const snapshot = await db.collection('messages').get();
+      // Pobierz tylko wiadomości skierowane do administratora (jak w handleGetMessages)
+      const snapshot = await db.collection('messages')
+        .where('recipientId', '==', 'admin')
+        .get();
       const messages = snapshot.docs.map(doc => doc.data());
 
       const stats = {

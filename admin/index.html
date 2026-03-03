@@ -14377,6 +14377,17 @@
             </div>
 
             <form id="order-form" onsubmit="saveOrder(event)">
+              <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Status</label>
+                <select id="order-status" class="w-full">
+                  <option value="zlozone">Złożone</option>
+                  <option value="realizacja">W realizacji</option>
+                  <option value="wyslane">Wysłane</option>
+                  <option value="zakonczone">Zakończone</option>
+                  <option value="anulowane">Anulowane</option>
+                </select>
+              </div>
+
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
                   <label class="block text-sm font-medium mb-2">Użytkownik (ID)</label>
@@ -14442,17 +14453,6 @@
               </div>
 
               <div class="mb-6">
-                <label class="block text-sm font-medium mb-2">Status</label>
-                <select id="order-status" class="w-full">
-                  <option value="zlozone">Złożone</option>
-                  <option value="realizacja">W realizacji</option>
-                  <option value="wyslane">Wysłane</option>
-                  <option value="zakonczone">Zakończone</option>
-                  <option value="anulowane">Anulowane</option>
-                </select>
-              </div>
-
-              <div class="mb-6">
                 <label class="block text-sm font-medium mb-2">Faktura (PDF)</label>
                 <input type="file" id="order-invoice" accept=".pdf" class="w-full">
                 <p class="text-xs text-zinc-400 mt-1">Wymagane dla statusu "Zakończone"</p>
@@ -14493,6 +14493,8 @@
         }
 
         modal.classList.remove('hidden');
+        // Zablokuj scrollowanie tła
+        document.body.style.overflow = 'hidden';
       }
 
       // Obliczanie sumy zamówienia
@@ -14513,6 +14515,8 @@
         if (modal) {
           modal.classList.add('hidden');
         }
+        // Odblokuj scrollowanie tła
+        document.body.style.overflow = '';
         currentEditingOrder = null;
       };
 
@@ -14546,7 +14550,7 @@
           const existingInvoice = currentEditingOrder?.invoiceFile;
 
           if (status === 'zakonczone' && !invoiceFile && !existingInvoice) {
-            showNotification('Faktura jest wymagana dla statusu "Zakończone"', 'error');
+            alert('Faktura jest wymagana dla statusu "Zakończone".\n\nProszę dodać fakturę przed zmianą statusu.');
             return;
           }
 
@@ -15291,20 +15295,18 @@
 
         <!-- Pole odpowiedzi -->
         <div class="flex flex-col gap-2 mt-4">
-          <textarea
-            id="chat-reply-input"
-            placeholder="Napisz odpowiedź..."
-            class="flex-1 min-h-[80px] max-h-[160px]"
-            rows="4"
-          ></textarea>
-          <div class="flex gap-2">
-            <button onclick="openQuickRepliesMenu()" class="btn-admin px-4 py-2 flex-1">
-              <i class="fa-solid fa-bolt mr-2"></i>
-              SZABLONY
-            </button>
-            <button onclick="sendChatReply()" class="btn-admin px-4 py-2 flex-1">
-              <i class="fa-solid fa-paper-plane mr-2"></i>
-              WYŚLIJ
+          <div class="relative">
+            <textarea
+              id="chat-reply-input"
+              placeholder="Napisz odpowiedź..."
+              class="flex-1 min-h-[80px] max-h-[160px] pr-12"
+              rows="4"
+            ></textarea>
+            <button 
+              onclick="sendChatReply()" 
+              class="absolute right-2 bottom-2 w-8 h-8 flex items-center justify-center bg-coyote hover:bg-coyote/80 text-black rounded-lg transition-all shadow-md hover:shadow-lg"
+              title="Wyślij wiadomość">
+              <i class="fa-solid fa-paper-plane text-sm"></i>
             </button>
           </div>
         </div>
