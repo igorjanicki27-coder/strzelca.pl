@@ -1004,60 +1004,60 @@
                   <h3 class="text-lg font-semibold text-white mb-4 text-center">
                     Zamówienia
                   </h3>
-                  <div class="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3 flex-1 items-center">
-                    <div class="text-center">
+                  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4 flex-1 items-center justify-items-center">
+                    <div class="text-center w-full">
                       <div
-                        class="text-lg md:text-xl font-bold text-yellow-400 mb-1"
+                        class="text-xl md:text-2xl font-bold text-yellow-400 mb-1"
                         id="orders-zlozone"
                       >
                         0
                       </div>
-                      <div class="text-xs text-zinc-400">Złożone</div>
+                      <div class="text-xs text-zinc-400 whitespace-nowrap">Złożone</div>
                     </div>
-                    <div class="text-center">
+                    <div class="text-center w-full">
                       <div
-                        class="text-lg md:text-xl font-bold text-orange-400 mb-1"
+                        class="text-xl md:text-2xl font-bold text-orange-400 mb-1"
                         id="orders-realizacja"
                       >
                         0
                       </div>
-                      <div class="text-xs text-zinc-400">W realizacji</div>
+                      <div class="text-xs text-zinc-400 whitespace-nowrap">W realizacji</div>
                     </div>
-                    <div class="text-center">
+                    <div class="text-center w-full">
                       <div
-                        class="text-lg md:text-xl font-bold text-blue-400 mb-1"
+                        class="text-xl md:text-2xl font-bold text-blue-400 mb-1"
                         id="orders-wyslane"
                       >
                         0
                       </div>
-                      <div class="text-xs text-zinc-400">Wysłane</div>
+                      <div class="text-xs text-zinc-400 whitespace-nowrap">Wysłane</div>
                     </div>
-                    <div class="text-center">
+                    <div class="text-center w-full">
                       <div
-                        class="text-lg md:text-xl font-bold text-green-400 mb-1"
+                        class="text-xl md:text-2xl font-bold text-green-400 mb-1"
                         id="orders-zakonczone"
                       >
                         0
                       </div>
-                      <div class="text-xs text-zinc-400">Zakończone</div>
+                      <div class="text-xs text-zinc-400 whitespace-nowrap">Zakończone</div>
                     </div>
-                    <div class="text-center">
+                    <div class="text-center w-full">
                       <div
-                        class="text-lg md:text-xl font-bold text-red-400 mb-1"
+                        class="text-xl md:text-2xl font-bold text-red-400 mb-1"
                         id="orders-anulowane"
                       >
                         0
                       </div>
-                      <div class="text-xs text-zinc-400">Anulowane</div>
+                      <div class="text-xs text-zinc-400 whitespace-nowrap">Anulowane</div>
                     </div>
-                    <div class="text-center">
+                    <div class="text-center w-full">
                       <div
-                        class="text-lg md:text-xl font-bold text-coyote mb-1"
+                        class="text-xl md:text-2xl font-bold text-white mb-1"
                         id="orders-total"
                       >
                         0
                       </div>
-                      <div class="text-xs text-zinc-400">Razem</div>
+                      <div class="text-xs text-zinc-400 whitespace-nowrap">Razem</div>
                     </div>
                   </div>
               </div>
@@ -9162,14 +9162,15 @@
             const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Jeśli niedziela, to 6 dni wstecz
             const weekStart = new Date(today.getTime() - daysFromMonday * 24 * 60 * 60 * 1000);
             
-            // Oblicz początek bieżącego miesiąca kalendarzowego (1.X)
-            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-            // Oblicz koniec bieżącego miesiąca kalendarzowego (ostatni dzień miesiąca)
+            // Oblicz początek bieżącego miesiąca kalendarzowego (1.X) w lokalnej strefie czasowej
+            // Ustawiamy na początek dnia lokalnie, co automatycznie konwertuje się do odpowiedniego UTC
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+            // Oblicz koniec bieżącego miesiąca kalendarzowego (ostatni dzień miesiąca) w lokalnej strefie czasowej
             const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
             
-            // Oblicz początek bieżącego roku kalendarzowego (1 stycznia)
-            const yearStart = new Date(now.getFullYear(), 0, 1);
-            // Oblicz koniec bieżącego roku kalendarzowego (31 grudnia)
+            // Oblicz początek bieżącego roku kalendarzowego (1 stycznia) w lokalnej strefie czasowej
+            const yearStart = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+            // Oblicz koniec bieżącego roku kalendarzowego (31 grudnia) w lokalnej strefie czasowej
             const yearEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
             
             // Konwertuj daty na Firestore Timestamp dla zapytań
@@ -9383,11 +9384,15 @@
             }
 
             // Wizyty w tym miesiącu - unikalni użytkownicy aktywni w bieżącym miesiącu kalendarzowym (od 1.X do ostatniego dnia miesiąca)
+            // Używamy pól year i month zamiast timestamp, aby uniknąć problemów ze strefami czasowymi
             try {
+              const currentYear = now.getFullYear();
+              const currentMonth = now.getMonth() + 1; // 1-12
+              
               const monthVisitsQuery = query(
                 collection(db, "visits"),
-                where("timestamp", ">=", monthStartTimestamp),
-                where("timestamp", "<=", monthEndTimestamp)
+                where("year", "==", currentYear),
+                where("month", "==", currentMonth)
               );
               const monthVisitsSnapshot = await getDocs(monthVisitsQuery);
               
@@ -9404,6 +9409,7 @@
               });
               
               const monthVisitsCount = uniqueVisitors.size;
+              console.log(`Odwiedziny w miesiącu (${currentMonth}/${currentYear}): ${monthVisitsCount}`);
 
               const monthVisitsEl = document.getElementById("visits-month");
               if (monthVisitsEl) monthVisitsEl.textContent = monthVisitsCount;
@@ -9414,11 +9420,13 @@
             }
 
             // Wizyty w tym roku - unikalni użytkownicy aktywni w bieżącym roku kalendarzowym (od 1 stycznia do 31 grudnia)
+            // Używamy pola year zamiast timestamp, aby uniknąć problemów ze strefami czasowymi
             try {
+              const currentYear = now.getFullYear();
+              
               const yearVisitsQuery = query(
                 collection(db, "visits"),
-                where("timestamp", ">=", yearStartTimestamp),
-                where("timestamp", "<=", yearEndTimestamp)
+                where("year", "==", currentYear)
               );
               const yearVisitsSnapshot = await getDocs(yearVisitsQuery);
               
@@ -9435,6 +9443,7 @@
               });
               
               const yearVisitsCount = uniqueVisitors.size;
+              console.log(`Odwiedziny w roku (${currentYear}): ${yearVisitsCount}`);
 
               const yearVisitsEl = document.getElementById("visits-year");
               if (yearVisitsEl) yearVisitsEl.textContent = yearVisitsCount;
