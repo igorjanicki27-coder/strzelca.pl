@@ -959,7 +959,63 @@
               </div>
                 </div>
 
-                <!-- Prawa góra: Wiadomości -->
+                <!-- Prawa góra: Odwiedziny -->
+              <div class="bg-zinc-800/50 rounded-lg p-4 md:p-6 flex flex-col h-full">
+                <h3 class="text-lg font-semibold text-white mb-4 text-center">
+                  Odwiedziny
+                </h3>
+                <div
+                  class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 md:gap-3 flex-1 items-center"
+                >
+              <div class="text-center">
+                <div
+                  class="text-xl md:text-2xl font-bold text-blue-400 mb-1"
+                      id="visits-today"
+                >
+                  0
+                </div>
+                    <div class="text-xs text-zinc-400">Dziś</div>
+              </div>
+              <div class="text-center">
+                <div
+                  class="text-xl md:text-2xl font-bold text-blue-400 mb-1"
+                      id="visits-week"
+                >
+                  0
+                </div>
+                    <div class="text-xs text-zinc-400">Tydzień</div>
+              </div>
+              <div class="text-center">
+                <div
+                  class="text-xl md:text-2xl font-bold text-blue-400 mb-1"
+                      id="visits-month"
+                >
+                  0
+                </div>
+                    <div class="text-xs text-zinc-400">Miesiąc</div>
+              </div>
+                  <div class="text-center">
+                    <div
+                      class="text-xl md:text-2xl font-bold text-blue-400 mb-1"
+                      id="visits-year"
+                    >
+                      0
+                    </div>
+                    <div class="text-xs text-zinc-400">Rok</div>
+                  </div>
+                  <div class="text-center">
+                    <div
+                      class="text-xl md:text-2xl font-bold text-blue-400 mb-1"
+                      id="visits-total"
+                    >
+                      0
+                    </div>
+                    <div class="text-xs text-zinc-400">Ogółem</div>
+                  </div>
+            </div>
+          </div>
+
+                <!-- Lewa dół: Wiadomości -->
                 <div
                   class="bg-zinc-800/50 rounded-lg p-4 md:p-6 flex flex-col h-full"
                 >
@@ -997,7 +1053,7 @@
                   </div>
               </div>
 
-                <!-- Lewa dół: Zamówienia -->
+              <!-- Prawa dół: Zamówienia -->
                 <div
                   class="bg-zinc-800/50 rounded-lg p-4 md:p-6 flex flex-col h-full"
                 >
@@ -1061,62 +1117,6 @@
                     </div>
                   </div>
               </div>
-
-              <!-- Prawa dół: Odwiedziny -->
-              <div class="bg-zinc-800/50 rounded-lg p-4 md:p-6 flex flex-col h-full">
-                <h3 class="text-lg font-semibold text-white mb-4 text-center">
-                  Odwiedziny
-                </h3>
-                <div
-                  class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 md:gap-3 flex-1 items-center"
-                >
-              <div class="text-center">
-                <div
-                  class="text-xl md:text-2xl font-bold text-blue-400 mb-1"
-                      id="visits-today"
-                >
-                  0
-                </div>
-                    <div class="text-xs text-zinc-400">Dziś</div>
-              </div>
-              <div class="text-center">
-                <div
-                  class="text-xl md:text-2xl font-bold text-blue-400 mb-1"
-                      id="visits-week"
-                >
-                  0
-                </div>
-                    <div class="text-xs text-zinc-400">Tydzień</div>
-              </div>
-              <div class="text-center">
-                <div
-                  class="text-xl md:text-2xl font-bold text-blue-400 mb-1"
-                      id="visits-month"
-                >
-                  0
-                </div>
-                    <div class="text-xs text-zinc-400">Miesiąc</div>
-              </div>
-                  <div class="text-center">
-                    <div
-                      class="text-xl md:text-2xl font-bold text-blue-400 mb-1"
-                      id="visits-year"
-                    >
-                      0
-                    </div>
-                    <div class="text-xs text-zinc-400">Rok</div>
-                  </div>
-                  <div class="text-center">
-                    <div
-                      class="text-xl md:text-2xl font-bold text-blue-400 mb-1"
-                      id="visits-total"
-                    >
-                      0
-                    </div>
-                    <div class="text-xs text-zinc-400">Ogółem</div>
-                  </div>
-            </div>
-          </div>
             </div>
 
             <!-- Dziennik Aktywności -->
@@ -12164,8 +12164,9 @@
       let currentFilters = { search: '', status: 'all' };
 
       // Funkcja ładowania statusu wiadomości
-      async function loadMessagesStatus() {
+      window.loadMessagesStatus = async function loadMessagesStatus() {
         try {
+          console.log('loadMessagesStatus: Function called');
           // Pobierz statystyki z API
           let authToken = null;
           try {
@@ -12183,6 +12184,7 @@
             headers['Authorization'] = `Bearer ${authToken}`;
           }
           
+          console.log('loadMessagesStatus: Fetching stats from /api/messages/stats');
           const response = await fetch('/api/messages/stats', {
             method: 'GET',
             headers,
@@ -12195,6 +12197,7 @@
           }
           
           const apiData = await response.json();
+          console.log('loadMessagesStatus: API response:', apiData);
           
           if (!apiData.success) {
             throw new Error(apiData.error || 'Failed to load message stats');
@@ -12208,6 +12211,8 @@
             completed: 0
           };
 
+          console.log('loadMessagesStatus: Stats received:', stats);
+
           // Logika dźwięku powiadomienia dla nowych wiadomości
           const newUnreadCount = stats.unread || 0;
           if (lastUnreadCount !== null && newUnreadCount > lastUnreadCount) {
@@ -12217,12 +12222,12 @@
           lastUnreadCount = newUnreadCount;
 
           updateMessagesStatusDisplay(stats);
+          console.log('loadMessagesStatus: Status display updated');
         } catch (error) {
           console.error('Error loading messages status:', error);
-          // W przypadku błędu, spróbuj użyć danych z załadowanych wiadomości
-          // (jeśli są dostępne)
+          throw error; // Rzuć błąd, aby fallback mógł go obsłużyć
         }
-      }
+      };
 
       // Funkcja aktualizacji wyświetlania statusu
       async function updateMessagesStatusDisplay(stats) {
@@ -12474,9 +12479,10 @@
           await displayMessages(messages, isAutoRefresh);
           
           // Zaktualizuj liczniki wiadomości (użyj API dla dokładnych statystyk wszystkich wiadomości)
-          if (window.loadMessagesStatus) {
+          try {
             await loadMessagesStatus();
-          } else {
+          } catch (statusError) {
+            console.warn('Failed to load message status, using fallback:', statusError);
             // Fallback: oblicz statystyki na podstawie załadowanych wiadomości
             const totalMessages = messages.length;
             const unreadMessages = messages.filter(msg => !msg.isRead).length;
@@ -12496,6 +12502,17 @@
             const messagesTotalEl = document.getElementById('messages-total');
             if (messagesTotalEl) {
               messagesTotalEl.textContent = totalMessages;
+            }
+            
+            // Zaktualizuj też liczniki w nagłówku zakładki wiadomości
+            const unreadCountEl = document.getElementById('unread-count');
+            if (unreadCountEl) {
+              unreadCountEl.textContent = unreadMessages;
+            }
+            
+            const totalCountEl = document.getElementById('total-count');
+            if (totalCountEl) {
+              totalCountEl.textContent = totalMessages;
             }
             
             console.log('Updated message counts (fallback):', {
@@ -14377,15 +14394,22 @@
             </div>
 
             <form id="order-form" onsubmit="saveOrder(event)">
-              <div class="mb-6">
-                <label class="block text-sm font-medium mb-2">Status</label>
-                <select id="order-status" class="w-full">
-                  <option value="zlozone">Złożone</option>
-                  <option value="realizacja">W realizacji</option>
-                  <option value="wyslane">Wysłane</option>
-                  <option value="zakonczone">Zakończone</option>
-                  <option value="anulowane">Anulowane</option>
-                </select>
+              <div class="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label class="block text-sm font-medium mb-2">Status</label>
+                  <select id="order-status" class="w-full">
+                    <option value="zlozone">Złożone</option>
+                    <option value="realizacja">W realizacji</option>
+                    <option value="wyslane">Wysłane</option>
+                    <option value="zakonczone">Zakończone</option>
+                    <option value="anulowane">Anulowane</option>
+                  </select>
+                </div>
+                <div class="flex items-end">
+                  <button type="button" onclick="showCustomerDataModal()" class="btn-admin w-full py-2">
+                    <i class="fa-solid fa-user mr-2"></i> Dane zamawiającego
+                  </button>
+                </div>
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -14518,6 +14542,230 @@
         // Odblokuj scrollowanie tła
         document.body.style.overflow = '';
         currentEditingOrder = null;
+      };
+
+      // Zmienne do przechowywania oryginalnych danych przed edycją
+      let originalCustomerData = null;
+      let customerDataEditMode = false;
+
+      // Modal z danymi zamawiającego
+      window.showCustomerDataModal = async function() {
+        const userId = document.getElementById('order-userId')?.value;
+        const email = document.getElementById('order-email')?.value;
+        
+        if (!userId && !email) {
+          alert('Najpierw wybierz użytkownika lub wprowadź email.');
+          return;
+        }
+
+        // Sprawdź czy modal już istnieje
+        let modal = document.getElementById('customer-data-modal');
+        if (!modal) {
+          modal = document.createElement('div');
+          modal.id = 'customer-data-modal';
+          modal.className = 'fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl';
+          modal.onclick = function(e) {
+            if (e.target.id === 'customer-data-modal') closeCustomerDataModal();
+          };
+          document.body.appendChild(modal);
+        }
+
+        // Pobierz dane - najpierw z zamówienia, potem z profilu użytkownika
+        let customerData = {
+          phone: document.getElementById('order-phone')?.value || '',
+          parcelLocker: document.getElementById('order-parcelLocker')?.value || '',
+          address: {
+            street: document.getElementById('order-address-street')?.value || '',
+            buildingNumber: document.getElementById('order-address-building')?.value || '',
+            postalCode: document.getElementById('order-address-postal')?.value || '',
+            city: document.getElementById('order-address-city')?.value || ''
+          }
+        };
+
+        // Jeśli nie ma danych w formularzu, pobierz z profilu użytkownika
+        if (userId && (!customerData.phone && !customerData.parcelLocker && !customerData.address.street)) {
+          try {
+            const userDoc = await getDoc(doc(db, 'userProfiles', userId));
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              customerData = {
+                phone: userData.phone ? atob(userData.phone) : '',
+                parcelLocker: userData.parcelLocker ? atob(userData.parcelLocker) : '',
+                address: {
+                  street: userData.address?.street ? atob(userData.address.street) : '',
+                  buildingNumber: userData.address?.buildingNumber ? atob(userData.address.buildingNumber) : '',
+                  postalCode: userData.address?.postalCode ? atob(userData.address.postalCode) : '',
+                  city: userData.address?.city ? atob(userData.address.city) : ''
+                }
+              };
+            }
+          } catch (error) {
+            console.error('Error loading user profile:', error);
+            showNotification('Błąd podczas ładowania danych użytkownika', 'error');
+          }
+        }
+
+        // Zapisz oryginalne dane
+        originalCustomerData = JSON.parse(JSON.stringify(customerData));
+        customerDataEditMode = false;
+
+        // Wyświetl modal
+        modal.innerHTML = `
+          <div class="admin-card max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-6">
+              <h2 class="text-2xl font-bold coyote-text">Dane zamawiającego</h2>
+              <button onclick="closeCustomerDataModal()" class="text-zinc-400 hover:text-white">
+                <i class="fa-solid fa-times text-xl"></i>
+              </button>
+            </div>
+
+            <div id="customer-data-content">
+              <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Telefon</label>
+                <input type="text" id="customer-phone" class="w-full" value="${customerData.phone}" readonly>
+              </div>
+
+              <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Paczkomat</label>
+                <input type="text" id="customer-parcelLocker" class="w-full" value="${customerData.parcelLocker}" readonly>
+              </div>
+
+              <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Adres</label>
+                <div class="grid grid-cols-2 gap-4">
+                  <input type="text" id="customer-address-street" class="w-full" value="${customerData.address.street}" placeholder="Ulica" readonly>
+                  <input type="text" id="customer-address-building" class="w-full" value="${customerData.address.buildingNumber}" placeholder="Nr budynku" readonly>
+                  <input type="text" id="customer-address-postal" class="w-full" value="${customerData.address.postalCode}" placeholder="Kod pocztowy" readonly>
+                  <input type="text" id="customer-address-city" class="w-full" value="${customerData.address.city}" placeholder="Miasto" readonly>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-end gap-4 mt-6" id="customer-data-buttons">
+              <button type="button" onclick="closeCustomerDataModal()" class="btn-secondary px-6 py-2">
+                Anuluj
+              </button>
+              <button type="button" onclick="editCustomerData()" class="btn-admin px-6 py-2" id="edit-customer-btn">
+                <i class="fa-solid fa-edit mr-2"></i> Edytuj
+              </button>
+            </div>
+          </div>
+        `;
+
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+      };
+
+      // Edycja danych zamawiającego
+      window.editCustomerData = function() {
+        customerDataEditMode = true;
+        
+        // Odblokuj pola
+        document.getElementById('customer-phone').removeAttribute('readonly');
+        document.getElementById('customer-parcelLocker').removeAttribute('readonly');
+        document.getElementById('customer-address-street').removeAttribute('readonly');
+        document.getElementById('customer-address-building').removeAttribute('readonly');
+        document.getElementById('customer-address-postal').removeAttribute('readonly');
+        document.getElementById('customer-address-city').removeAttribute('readonly');
+
+        // Zmień przyciski
+        const buttonsContainer = document.getElementById('customer-data-buttons');
+        buttonsContainer.innerHTML = `
+          <button type="button" onclick="cancelCustomerDataEdit()" class="btn-secondary px-6 py-2">
+            Anuluj
+          </button>
+          <button type="button" onclick="saveCustomerData()" class="btn-admin px-6 py-2">
+            <i class="fa-solid fa-save mr-2"></i> Zapisz
+          </button>
+        `;
+      };
+
+      // Anulowanie edycji danych zamawiającego
+      window.cancelCustomerDataEdit = function() {
+        if (!originalCustomerData) {
+          closeCustomerDataModal();
+          return;
+        }
+
+        // Przywróć oryginalne dane
+        document.getElementById('customer-phone').value = originalCustomerData.phone;
+        document.getElementById('customer-parcelLocker').value = originalCustomerData.parcelLocker;
+        document.getElementById('customer-address-street').value = originalCustomerData.address.street;
+        document.getElementById('customer-address-building').value = originalCustomerData.address.buildingNumber;
+        document.getElementById('customer-address-postal').value = originalCustomerData.address.postalCode;
+        document.getElementById('customer-address-city').value = originalCustomerData.address.city;
+
+        // Zamknij modal (zgodnie z wymaganiem: "wychodzi z okna dialogowego")
+        closeCustomerDataModal();
+      };
+
+      // Zapisanie danych zamawiającego (tylko do zamówienia)
+      window.saveCustomerData = function() {
+        // Pobierz wartości z modala
+        const phone = document.getElementById('customer-phone').value;
+        const parcelLocker = document.getElementById('customer-parcelLocker').value;
+        const address = {
+          street: document.getElementById('customer-address-street').value,
+          buildingNumber: document.getElementById('customer-address-building').value,
+          postalCode: document.getElementById('customer-address-postal').value,
+          city: document.getElementById('customer-address-city').value
+        };
+
+        // Zaktualizuj pola w głównym formularzu zamówienia
+        const phoneInput = document.getElementById('order-phone');
+        const parcelLockerInput = document.getElementById('order-parcelLocker');
+        const addressStreetInput = document.getElementById('order-address-street');
+        const addressBuildingInput = document.getElementById('order-address-building');
+        const addressPostalInput = document.getElementById('order-address-postal');
+        const addressCityInput = document.getElementById('order-address-city');
+
+        if (phoneInput) phoneInput.value = phone;
+        if (parcelLockerInput) parcelLockerInput.value = parcelLocker;
+        if (addressStreetInput) addressStreetInput.value = address.street;
+        if (addressBuildingInput) addressBuildingInput.value = address.buildingNumber;
+        if (addressPostalInput) addressPostalInput.value = address.postalCode;
+        if (addressCityInput) addressCityInput.value = address.city;
+
+        // Zaktualizuj oryginalne dane
+        originalCustomerData = {
+          phone,
+          parcelLocker,
+          address
+        };
+
+        // Zablokuj pola w modalu
+        document.getElementById('customer-phone').setAttribute('readonly', 'readonly');
+        document.getElementById('customer-parcelLocker').setAttribute('readonly', 'readonly');
+        document.getElementById('customer-address-street').setAttribute('readonly', 'readonly');
+        document.getElementById('customer-address-building').setAttribute('readonly', 'readonly');
+        document.getElementById('customer-address-postal').setAttribute('readonly', 'readonly');
+        document.getElementById('customer-address-city').setAttribute('readonly', 'readonly');
+
+        customerDataEditMode = false;
+
+        // Przywróć przyciski
+        const buttonsContainer = document.getElementById('customer-data-buttons');
+        buttonsContainer.innerHTML = `
+          <button type="button" onclick="closeCustomerDataModal()" class="btn-secondary px-6 py-2">
+            Anuluj
+          </button>
+          <button type="button" onclick="editCustomerData()" class="btn-admin px-6 py-2">
+            <i class="fa-solid fa-edit mr-2"></i> Edytuj
+          </button>
+        `;
+
+        showNotification('Dane zamawiającego zostały zapisane', 'success');
+      };
+
+      // Zamykanie modala danych zamawiającego
+      window.closeCustomerDataModal = function() {
+        const modal = document.getElementById('customer-data-modal');
+        if (modal) {
+          modal.classList.add('hidden');
+        }
+        document.body.style.overflow = '';
+        originalCustomerData = null;
+        customerDataEditMode = false;
       };
 
       // Zapisywanie zamówienia
