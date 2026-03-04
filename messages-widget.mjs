@@ -187,6 +187,13 @@ function makeStyles() {
       min-width: 0;
     }
     .hdrTitleText { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hdrTitleText.clickable {
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+    .hdrTitleText.clickable:hover {
+      color: rgba(193,154,107,0.9);
+    }
     .dot { width: 10px; height: 10px; border-radius: 999px; background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.12); }
     .hdrBtns { display: flex; gap: 10px; align-items: center; }
     .ghost {
@@ -323,6 +330,7 @@ function makeStyles() {
       flex-shrink: 0;
       min-height: 64px;
       box-sizing: border-box;
+      position: relative;
     }
     textarea {
       flex: 1 1 auto;
@@ -333,23 +341,48 @@ function makeStyles() {
       border: 1px solid rgba(255,255,255,0.14);
       background: rgba(0,0,0,0.55);
       color: #fff;
-      padding: 10px 12px;
+      padding: 10px 50px 10px 12px;
       outline: none;
       font: inherit;
       font-size: 13px;
     }
     textarea:focus { border-color: rgba(193,154,107,0.7); }
     .send {
-      flex: 0 0 auto;
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      width: 40px;
+      height: 40px;
       border-radius: 12px;
-      border: 1px solid rgba(193,154,107,0.35);
-      background: rgba(193,154,107,0.92);
-      color: #111;
+      border: none;
+      background: rgba(193,154,107,0.95);
+      color: #fff;
       font-weight: 900;
       cursor: pointer;
-      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      transition: all 0.2s ease;
     }
-    .send:disabled { opacity: 0.45; cursor: not-allowed; }
+    .send:hover {
+      background: rgba(193,154,107,1);
+      transform: scale(1.05);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+    }
+    .send:active {
+      transform: scale(0.95);
+    }
+    .send:disabled { 
+      opacity: 0.45; 
+      cursor: not-allowed;
+      transform: none;
+    }
+    .send svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
     .empty { color: rgba(229,229,229,0.70); font-size: 13px; padding: 18px; }
     @media (max-width: 900px) { 
       .grid { grid-template-columns: 260px 1fr; }
@@ -834,13 +867,6 @@ async function main() {
 
   const hdrBtns = document.createElement("div");
   hdrBtns.className = "hdrBtns";
-  const profileBtn = document.createElement("a");
-  profileBtn.className = "ghost";
-  profileBtn.textContent = "Profil";
-  profileBtn.href = PROFILE_URL;
-  profileBtn.target = "_blank";
-  profileBtn.rel = "noopener noreferrer";
-
   const closeBtn = document.createElement("button");
   closeBtn.className = "ghost";
   closeBtn.type = "button";
@@ -848,7 +874,6 @@ async function main() {
   closeBtn.setAttribute("aria-label", "Zamknij");
   closeBtn.style.fontSize = "18px";
   closeBtn.style.lineHeight = "1";
-  hdrBtns.appendChild(profileBtn);
   hdrBtns.appendChild(closeBtn);
 
   hdr.appendChild(hdrTitle);
@@ -898,7 +923,8 @@ async function main() {
   const sendBtn = document.createElement("button");
   sendBtn.className = "send";
   sendBtn.type = "button";
-  sendBtn.textContent = "Wyślij";
+  sendBtn.title = "Wyślij wiadomość";
+  sendBtn.innerHTML = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>`;
   composer.appendChild(ta);
   composer.appendChild(sendBtn);
 
@@ -1475,14 +1501,29 @@ async function main() {
     state.selectedPeerId = peerId;
     setStoredSelectedPeerId(peerId);
     titleText.textContent = labelName || "Wiadomości";
-    renderList();
-    msgs.innerHTML = `<div class="empty">Ładowanie…</div>`;
-
+    
+    // Usuń poprzedni event listener jeśli istnieje
+    titleText.onclick = null;
+    
     // Support chat (API /api/messages) — wspólna skrzynka administracji
     if (peerId === SUPPORT_PEER_ID) {
+      titleText.classList.remove("clickable");
+      renderList();
+      msgs.innerHTML = `<div class="empty">Ładowanie…</div>`;
       subscribeSupportThread();
       return;
     }
+
+    // Dla normalnych użytkowników: dodaj klikalność i link do profilu
+    titleText.classList.add("clickable");
+    titleText.onclick = (e) => {
+      e.preventDefault();
+      const profileUrl = `https://konto.strzelca.pl/profil.html?uid=${peerId}`;
+      window.open(profileUrl, "_blank", "noopener,noreferrer");
+    };
+    
+    renderList();
+    msgs.innerHTML = `<div class="empty">Ładowanie…</div>`;
 
     // DM (Firestore privateMessages)
     ensureConversation(peerId).catch(() => {}).finally(() => subscribeThread(peerId));
