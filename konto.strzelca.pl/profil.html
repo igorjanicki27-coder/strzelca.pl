@@ -614,30 +614,28 @@
         </div>
       </div>
 
-      <!-- Sekcja statystyk -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+
+      <!-- Sekcja Moje zamówienia (tylko dla własnego profilu) -->
+      <div id="orders-section" class="mt-8" style="display: none">
         <div
-          class="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800 text-center"
+          class="bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800 shadow-2xl"
         >
-          <div class="text-3xl font-bold coyote-text mb-2">0</div>
-          <div class="text-sm text-zinc-400 uppercase tracking-widest">
-            Ulubionych
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold coyote-text">Moje zamówienia</h2>
+            <button
+              onclick="loadMyOrders()"
+              class="bg-zinc-700 text-white px-4 py-2 rounded-lg hover:bg-zinc-600 transition"
+            >
+              <i class="fa-solid fa-sync-alt mr-2"></i>
+              Odśwież
+            </button>
           </div>
-        </div>
-        <div
-          class="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800 text-center"
-        >
-          <div id="orders-count" class="text-3xl font-bold coyote-text mb-2">0</div>
-          <div class="text-sm text-zinc-400 uppercase tracking-widest">
-            Zamówienia
-          </div>
-        </div>
-        <div
-          class="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800 text-center"
-        >
-          <div class="text-3xl font-bold coyote-text mb-2">0</div>
-          <div class="text-sm text-zinc-400 uppercase tracking-widest">
-            Wystawionych ofert
+
+          <div id="orders-list" class="space-y-4">
+            <div class="text-center text-zinc-500 py-8">
+              <i class="fa-solid fa-spinner fa-spin text-2xl mb-4"></i>
+              <p>Ładowanie zamówień...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -678,31 +676,6 @@
           <!-- Lista opinii -->
           <div id="reviews-list" class="space-y-4">
             <!-- Opinie będą ładowane dynamicznie -->
-          </div>
-        </div>
-      </div>
-
-      <!-- Sekcja Moje zamówienia (tylko dla własnego profilu) -->
-      <div id="orders-section" class="mt-8" style="display: none">
-        <div
-          class="bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800 shadow-2xl"
-        >
-          <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold coyote-text">Moje zamówienia</h2>
-            <button
-              onclick="loadMyOrders()"
-              class="bg-zinc-700 text-white px-4 py-2 rounded-lg hover:bg-zinc-600 transition"
-            >
-              <i class="fa-solid fa-sync-alt mr-2"></i>
-              Odśwież
-            </button>
-          </div>
-
-          <div id="orders-list" class="space-y-4">
-            <div class="text-center text-zinc-500 py-8">
-              <i class="fa-solid fa-spinner fa-spin text-2xl mb-4"></i>
-              <p>Ładowanie zamówień...</p>
-            </div>
           </div>
         </div>
       </div>
@@ -1944,11 +1917,6 @@
 
                 // Załaduj opinie oglądanego użytkownika
                 loadUserReviews(uid);
-
-                // Załaduj liczbę zamówień
-                if (isViewingOwnProfile) {
-                  loadOrdersCount(uid);
-                }
               } else {
                 alert(
                   "Nie znaleziono danych profilu. Skontaktuj się z administratorem.",
@@ -2727,72 +2695,6 @@
           // ===== KONIEC FUNKCJI OPINII =====
 
           // ===== FUNKCJE ZAMÓWIEŃ =====
-          // Funkcja do zliczania zamówień użytkownika
-          async function loadOrdersCount(uid) {
-            try {
-              if (!uid || !currentUser) {
-                const ordersCountEl = document.getElementById("orders-count");
-                if (ordersCountEl) ordersCountEl.textContent = "0";
-                return;
-              }
-
-              // Pobierz token autoryzacyjny
-              let authToken = null;
-              try {
-                if (currentUser) {
-                  authToken = await currentUser.getIdToken();
-                }
-              } catch (tokenError) {
-                console.error("Failed to get Firebase Auth token:", tokenError);
-                const ordersCountEl = document.getElementById("orders-count");
-                if (ordersCountEl) ordersCountEl.textContent = "0";
-                return;
-              }
-
-              const headers = {
-                "Content-Type": "application/json",
-              };
-              if (authToken) {
-                headers["Authorization"] = `Bearer ${authToken}`;
-              }
-
-              // Zawsze używaj pełnego URL dla subdomen (Vercel nie routuje /api/* z subdomen)
-              const isMain =
-                (window.location?.hostname || "") === "strzelca.pl";
-              const apiUrl = isMain
-                ? "/api/orders"
-                : "https://strzelca.pl/api/orders";
-
-              const response = await fetch(apiUrl, {
-                method: "GET",
-                headers,
-                credentials: apiUrl.startsWith("http")
-                  ? "include"
-                  : "same-origin",
-              });
-
-              if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-              }
-
-              const data = await response.json();
-              if (!data.success) {
-                throw new Error(data.error || "Failed to load orders");
-              }
-
-              const orders = data.data || [];
-              const ordersCount = orders.length;
-
-              const ordersCountEl = document.getElementById("orders-count");
-              if (ordersCountEl) {
-                ordersCountEl.textContent = ordersCount.toString();
-              }
-            } catch (error) {
-              console.error("Error loading orders count:", error);
-              const ordersCountEl = document.getElementById("orders-count");
-              if (ordersCountEl) ordersCountEl.textContent = "0";
-            }
-          }
 
           window.loadMyOrders = async function () {
             try {

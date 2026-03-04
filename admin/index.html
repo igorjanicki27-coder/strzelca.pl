@@ -1517,7 +1517,7 @@
               Zarządzanie Newsletter'em
             </h1>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 xl:gap-8">
+            <div class="flex flex-col gap-6 xl:gap-8">
               <!-- Edytor newsletter'a -->
               <div class="admin-card">
                 <h3 class="text-xl font-bold mb-6">Edytor Newsletter'a</h3>
@@ -14436,26 +14436,13 @@
                 <textarea id="order-notes" class="w-full" rows="3" placeholder="Dodatkowe uwagi..."></textarea>
               </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <label class="block text-sm font-medium mb-2">Paczkomat</label>
-                  <input type="text" id="order-parcelLocker" class="w-full" placeholder="Kod paczkomatu">
-                </div>
-                <div>
-                  <label class="block text-sm font-medium mb-2">Telefon</label>
-                  <input type="text" id="order-phone" class="w-full" placeholder="Nr telefonu">
-                </div>
-              </div>
-
-              <div class="mb-6">
-                <label class="block text-sm font-medium mb-2">Adres</label>
-                <div class="grid grid-cols-2 gap-4">
-                  <input type="text" id="order-address-street" class="w-full" placeholder="Ulica">
-                  <input type="text" id="order-address-building" class="w-full" placeholder="Nr budynku">
-                  <input type="text" id="order-address-postal" class="w-full" placeholder="Kod pocztowy">
-                  <input type="text" id="order-address-city" class="w-full" placeholder="Miasto">
-                </div>
-              </div>
+              <!-- Ukryte pola dla danych zamawiającego (używane przez funkcję saveOrder) -->
+              <input type="hidden" id="order-parcelLocker">
+              <input type="hidden" id="order-phone">
+              <input type="hidden" id="order-address-street">
+              <input type="hidden" id="order-address-building">
+              <input type="hidden" id="order-address-postal">
+              <input type="hidden" id="order-address-city">
 
               <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div>
@@ -14611,7 +14598,7 @@
 
         // Wyświetl modal
         modal.innerHTML = `
-          <div class="admin-card max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+          <div class="admin-card max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
             <div class="flex justify-between items-center mb-6">
               <h2 class="text-2xl font-bold coyote-text">Dane zamawiającego</h2>
               <button onclick="closeCustomerDataModal()" class="text-zinc-400 hover:text-white">
@@ -14619,15 +14606,16 @@
               </button>
             </div>
 
-            <div id="customer-data-content">
-              <div class="mb-6">
-                <label class="block text-sm font-medium mb-2">Telefon</label>
-                <input type="text" id="customer-phone" class="w-full" value="${customerData.phone}" readonly>
-              </div>
-
-              <div class="mb-6">
-                <label class="block text-sm font-medium mb-2">Paczkomat</label>
-                <input type="text" id="customer-parcelLocker" class="w-full" value="${customerData.parcelLocker}" readonly>
+            <div id="customer-data-content" class="overflow-y-auto flex-1 scrollbar-hide">
+              <div class="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label class="block text-sm font-medium mb-2">Telefon</label>
+                  <input type="text" id="customer-phone" class="w-full" value="${customerData.phone}" readonly>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-2">Paczkomat</label>
+                  <input type="text" id="customer-parcelLocker" class="w-full" value="${customerData.parcelLocker}" readonly>
+                </div>
               </div>
 
               <div class="mb-6">
@@ -15552,7 +15540,7 @@
             ></textarea>
             <button 
               onclick="sendChatReply()" 
-              class="absolute right-2 bottom-2 w-8 h-8 flex items-center justify-center bg-coyote hover:bg-coyote/80 text-black rounded-lg transition-all shadow-md hover:shadow-lg"
+              class="absolute right-2 bottom-2 w-8 h-8 flex items-center justify-center bg-coyote hover:bg-coyote/80 text-coyote rounded-lg transition-all shadow-md hover:shadow-lg"
               title="Wyślij wiadomość">
               <i class="fa-solid fa-paper-plane text-sm"></i>
             </button>
