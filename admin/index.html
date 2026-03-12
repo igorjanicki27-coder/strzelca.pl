@@ -23,6 +23,9 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
+    <!-- Quill.js Rich Text Editor -->
+    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.7/quill.js"></script>
     <!-- Wspólne poprawki responsywności -->
     <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-02-06-1" />
     <style>
@@ -484,6 +487,70 @@
       }
       .toolbar button:active {
         transform: translateY(0);
+      }
+
+      /* Quill Editor Styles - Dark Theme */
+      #product-description-editor .ql-container {
+        background: #161616;
+        border: 1px solid #222;
+        border-radius: 0 0 8px 8px;
+        color: white;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      
+      #product-description-editor .ql-editor {
+        min-height: 300px;
+        color: white;
+      }
+      
+      #product-description-editor .ql-editor.ql-blank::before {
+        color: #666;
+        font-style: normal;
+      }
+      
+      #product-description-editor .ql-toolbar {
+        background: #111;
+        border: 1px solid #222;
+        border-radius: 8px 8px 0 0;
+        padding: 10px;
+      }
+      
+      #product-description-editor .ql-toolbar .ql-stroke {
+        stroke: white;
+      }
+      
+      #product-description-editor .ql-toolbar .ql-fill {
+        fill: white;
+      }
+      
+      #product-description-editor .ql-toolbar button:hover,
+      #product-description-editor .ql-toolbar button.ql-active {
+        background: var(--coyote);
+      }
+      
+      #product-description-editor .ql-toolbar button:hover .ql-stroke,
+      #product-description-editor .ql-toolbar button.ql-active .ql-stroke {
+        stroke: black;
+      }
+      
+      #product-description-editor .ql-toolbar button:hover .ql-fill,
+      #product-description-editor .ql-toolbar button.ql-active .ql-fill {
+        fill: black;
+      }
+      
+      #product-description-editor .ql-toolbar .ql-picker-label {
+        color: white;
+      }
+      
+      #product-description-editor .ql-toolbar .ql-picker-options {
+        background: #222;
+        border: 1px solid #333;
+        color: white;
+      }
+      
+      #product-description-editor .ql-toolbar .ql-picker-item:hover {
+        background: var(--coyote);
+        color: black;
       }
 
       .status-active {
@@ -1291,30 +1358,10 @@
                   </p>
                 </div>
 
-                <div class="toolbar">
-                  <button type="button" onclick="formatText('bold')">
-                    <i class="fa-solid fa-bold"></i>
-                  </button>
-                  <button
-                    type="button"
-                    onclick="formatText('insertUnorderedList')"
-                  >
-                    <i class="fa-solid fa-list-ul"></i>
-                  </button>
-                  <button type="button" onclick="formatText('justifyCenter')">
-                    <i class="fa-solid fa-align-center"></i>
-                  </button>
-                  <button type="button" onclick="insertImage()">
-                    <i class="fa-solid fa-image"></i>
-                  </button>
-                </div>
-
-                <div
-                  id="product-description"
-                  class="editor-content"
-                  contenteditable="true"
-                  placeholder="Opis produktu..."
-                ></div>
+                <label class="block text-sm font-medium mb-2 text-zinc-300">
+                  Opis produktu
+                </label>
+                <div id="product-description-editor" style="min-height: 300px;"></div>
 
                   <div class="flex space-x-4">
                     <button type="submit" class="btn-admin flex-1">
@@ -3837,6 +3884,15 @@
           if (typeof loadEmailTemplates === 'function') {
             loadEmailTemplates();
           }
+        }
+
+        if (tabName === "products") {
+          // Inicjalizuj Quill dla produktów
+          setTimeout(() => {
+            if (!productQuill) {
+              initProductQuill();
+            }
+          }, 100);
         }
 
         // Specjalna obsługa dashboard - załaduj dziennik aktywności z opóźnieniem
@@ -7206,17 +7262,35 @@
           '<div class="text-center text-zinc-500 py-4">Brak produktów</div>';
       }
 
-      // Funkcje formatowania tekstu w edytorze
-      window.formatText = (command) => {
-        document.execCommand(command, false, null);
-      };
-
-      window.insertImage = () => {
-        const url = prompt("Wprowadź URL obrazka:");
-        if (url) {
-          document.execCommand("insertImage", false, url);
+      // Inicjalizacja Quill Editor dla produktów
+      let productQuill = null;
+      
+      function initProductQuill() {
+        const editorElement = document.getElementById('product-description-editor');
+        if (!editorElement) return;
+        
+        // Jeśli edytor już istnieje, nie tworz nowego
+        if (productQuill) {
+          return;
         }
-      };
+        
+        productQuill = new Quill('#product-description-editor', {
+          theme: 'snow',
+          modules: {
+            toolbar: [
+              [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+              ['bold', 'italic', 'underline', 'strike'],
+              [{ 'color': [] }, { 'background': [] }],
+              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+              [{ 'align': [] }],
+              ['link', 'image', 'video'],
+              ['blockquote', 'code-block'],
+              ['clean']
+            ]
+          },
+          placeholder: 'Opis produktu...'
+        });
+      }
 
       // Zarządzanie zdjęciami produktu
       let productImages = [];
@@ -10670,8 +10744,19 @@
         document.getElementById("product-id").value = product.id;
         document.getElementById("product-title").value = product.title || "";
         document.getElementById("product-price").value = product.price || "";
-        document.getElementById("product-description").innerHTML =
-          product.description || "";
+        
+        // Użyj Quill do ustawienia treści
+        if (productQuill) {
+          productQuill.root.innerHTML = product.description || "";
+        } else {
+          // Jeśli Quill nie jest jeszcze zainicjalizowany, zainicjalizuj go
+          initProductQuill();
+          setTimeout(() => {
+            if (productQuill) {
+              productQuill.root.innerHTML = product.description || "";
+            }
+          }, 100);
+        }
 
         // Załaduj zdjęcia produktu
         if (product.images && Array.isArray(product.images) && product.images.length > 0) {
@@ -10739,9 +10824,9 @@
           const productId = document.getElementById("product-id").value;
           const title = document.getElementById("product-title").value.trim();
           const price = document.getElementById("product-price").value.trim();
-          const description = document.getElementById(
-            "product-description",
-          ).innerHTML;
+          
+          // Pobierz treść z Quill
+          const description = productQuill ? productQuill.root.innerHTML : "";
 
           if (!title || !price) {
             showNotification("Wypełnij wszystkie wymagane pola.", "error");
@@ -10787,7 +10872,9 @@
 
             // Wyczyść formularz
             document.getElementById("product-form").reset();
-            document.getElementById("product-description").innerHTML = "";
+            if (productQuill) {
+              productQuill.root.innerHTML = "";
+            }
             document.getElementById("product-id").value = "";
             productImages = [];
             renderProductImages();
@@ -10801,7 +10888,9 @@
 
       window.clearProductForm = () => {
         document.getElementById("product-form").reset();
-        document.getElementById("product-description").innerHTML = "";
+        if (productQuill) {
+          productQuill.root.innerHTML = "";
+        }
         document.getElementById("product-id").value = "";
         productImages = [];
         renderProductImages();
