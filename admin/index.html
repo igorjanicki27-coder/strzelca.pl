@@ -1983,30 +1983,30 @@
                     <h4 class="text-lg font-semibold mb-2 text-zinc-300">Szczegóły widoczne (dla wszystkich)</h4>
                     <p class="text-sm text-zinc-400 mb-4">Te informacje będą widoczne dla wszystkich użytkowników na stronie szkoleń.</p>
                     
-                    <div class="toolbar">
+                  <div class="toolbar">
                       <button type="button" onclick="formatText('bold', 'training-description')">
-                        <i class="fa-solid fa-bold"></i>
-                      </button>
-                      <button
-                        type="button"
+                      <i class="fa-solid fa-bold"></i>
+                    </button>
+                    <button
+                      type="button"
                         onclick="formatText('insertUnorderedList', 'training-description')"
-                      >
-                        <i class="fa-solid fa-list-ul"></i>
-                      </button>
+                    >
+                      <i class="fa-solid fa-list-ul"></i>
+                    </button>
                       <button type="button" onclick="formatText('justifyCenter', 'training-description')">
-                        <i class="fa-solid fa-align-center"></i>
-                      </button>
+                      <i class="fa-solid fa-align-center"></i>
+                    </button>
                       <button type="button" onclick="insertImage('training-description')">
-                        <i class="fa-solid fa-image"></i>
-                      </button>
-                    </div>
+                      <i class="fa-solid fa-image"></i>
+                    </button>
+                  </div>
 
-                    <div
-                      id="training-description"
-                      class="editor-content"
-                      contenteditable="true"
+                  <div
+                    id="training-description"
+                    class="editor-content"
+                    contenteditable="true"
                       placeholder="Opis szkolenia widoczny dla wszystkich..."
-                    ></div>
+                  ></div>
                   </div>
 
                   <div class="border-t border-zinc-700 pt-4">
@@ -2054,6 +2054,27 @@
                     </button>
                   </div>
                 </form>
+
+                <!-- Zarządzanie lekcjami -->
+                <div id="training-lessons-section" class="mt-8 pt-8 border-t border-zinc-700 hidden">
+                  <h4 class="text-lg font-bold mb-4">Zarządzanie lekcjami</h4>
+                  <div class="space-y-4">
+                    <button
+                      type="button"
+                      onclick="openLessonForm()"
+                      class="btn-admin w-full"
+                    >
+                      <i class="fa-solid fa-plus mr-2"></i>
+                      Dodaj lekcję
+                    </button>
+                    <div>
+                      <label class="block text-sm font-medium mb-2">Lekcje kursu</label>
+                      <div id="lessons-list" class="space-y-2 max-h-[400px] overflow-y-auto">
+                        <div class="text-sm text-zinc-500 text-center py-4">Brak lekcji</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 <!-- Zarządzanie dostępem użytkowników -->
                 <div id="training-access-section" class="mt-8 pt-8 border-t border-zinc-700 hidden">
@@ -11231,17 +11252,222 @@
           document.getElementById("training-content").innerHTML = training.content || "";
         }
 
-        // Pokaż sekcję zarządzania dostępem
+        // Pokaż sekcję zarządzania lekcjami i dostępem
+        document.getElementById("training-lessons-section").classList.remove("hidden");
         document.getElementById("training-access-section").classList.remove("hidden");
         
-        // Załaduj listę użytkowników z dostępem
+        // Załaduj listę lekcji i użytkowników z dostępem
+        await loadLessons();
         await loadTrainingAccessList(trainingId);
 
         // Scroll do formularza
         document
           .querySelector("#tab-szkolenia")
           .scrollIntoView({ behavior: "smooth" });
+        
+        // Załaduj lekcje dla tego kursu
+        await loadLessons();
       };
+
+      // ============================================
+      // ZARZĄDZANIE LEKCJAMI
+      // ============================================
+      let lessonsList = [];
+      let currentEditingLessonId = null;
+
+      async function loadLessons() {
+        if (!currentTrainingId) return;
+        
+        try {
+          const lessonsRef = collection(db, "courseLessons");
+          const lessonsQuery = query(
+            lessonsRef,
+            where("trainingId", "==", currentTrainingId),
+            orderBy("order", "asc")
+          );
+          const snapshot = await getDocs(lessonsQuery);
+          
+          lessonsList = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+
+          renderLessonsList();
+        } catch (error) {
+          console.error("Error loading lessons:", error);
+          showNotification("Błąd ładowania lekcji.", "error");
+        }
+      }
+
+      function renderLessonsList() {
+        const container = document.getElementById("lessons-list");
+        if (!container) return;
+
+        if (lessonsList.length === 0) {
+          container.innerHTML = '<div class="text-sm text-zinc-500 text-center py-4">Brak lekcji</div>';
+          return;
+        }
+
+        container.innerHTML = lessonsList.map((lesson, index) => `
+          <div class="flex items-center justify-between p-3 bg-zinc-800 rounded-lg border border-zinc-700">
+            <div class="flex-1">
+              <div class="font-semibold text-white">${lesson.title || "Bez tytułu"}</div>
+              ${lesson.description ? `<div class="text-sm text-zinc-400 mt-1">${lesson.description}</div>` : ''}
+              <div class="flex items-center gap-4 text-xs text-zinc-500 mt-1">
+                ${lesson.duration ? `<span><i class="fa-solid fa-clock mr-1"></i>${lesson.duration} min</span>` : ''}
+                ${lesson.videoUrl ? '<span><i class="fa-solid fa-video mr-1"></i>Wideo</span>' : ''}
+                <span>Pozycja: ${index + 1}</span>
+              </div>
+            </div>
+            <div class="flex space-x-2">
+              <button onclick="editLesson('${lesson.id}')" class="text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400 rounded text-xs">Edytuj</button>
+              <button onclick="moveLessonUp('${lesson.id}')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 border border-zinc-400 rounded text-xs" ${index === 0 ? 'disabled' : ''}>↑</button>
+              <button onclick="moveLessonDown('${lesson.id}')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 border border-zinc-400 rounded text-xs" ${index === lessonsList.length - 1 ? 'disabled' : ''}>↓</button>
+              <button onclick="deleteLesson('${lesson.id}')" class="text-red-400 hover:text-red-300 px-2 py-1 border border-red-400 rounded text-xs">Usuń</button>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      window.openLessonForm = (lessonId = null) => {
+        currentEditingLessonId = lessonId;
+        const modal = document.getElementById("lesson-form-modal");
+        const title = document.getElementById("lesson-form-title");
+        const form = document.getElementById("lesson-form");
+        
+        if (lessonId) {
+          title.textContent = "Edytuj lekcję";
+          const lesson = lessonsList.find(l => l.id === lessonId);
+          if (lesson) {
+            document.getElementById("lesson-id").value = lesson.id;
+            document.getElementById("lesson-title").value = lesson.title || "";
+            document.getElementById("lesson-description").value = lesson.description || "";
+            document.getElementById("lesson-duration").value = lesson.duration || "";
+            document.getElementById("lesson-video-url").value = lesson.videoUrl || "";
+            document.getElementById("lesson-content").innerHTML = lesson.content || "";
+          }
+        } else {
+          title.textContent = "Dodaj lekcję";
+          form.reset();
+          document.getElementById("lesson-id").value = "";
+          document.getElementById("lesson-content").innerHTML = "";
+        }
+        
+        document.getElementById("lesson-training-id").value = currentTrainingId;
+        modal.classList.remove("hidden");
+      };
+
+      window.closeLessonForm = () => {
+        const modal = document.getElementById("lesson-form-modal");
+        modal.classList.add("hidden");
+        currentEditingLessonId = null;
+        document.getElementById("lesson-form").reset();
+        document.getElementById("lesson-content").innerHTML = "";
+      };
+
+      window.editLesson = (lessonId) => {
+        openLessonForm(lessonId);
+      };
+
+      window.deleteLesson = async (lessonId) => {
+        if (!confirm("Czy na pewno chcesz usunąć tę lekcję?")) return;
+        
+        try {
+          await deleteDoc(doc(db, "courseLessons", lessonId));
+          showNotification("Lekcja została usunięta.", "success");
+          await loadLessons();
+        } catch (error) {
+          console.error("Error deleting lesson:", error);
+          showNotification("Błąd usuwania lekcji.", "error");
+        }
+      };
+
+      window.moveLessonUp = async (lessonId) => {
+        const index = lessonsList.findIndex(l => l.id === lessonId);
+        if (index <= 0) return;
+        
+        try {
+          const currentLesson = lessonsList[index];
+          const previousLesson = lessonsList[index - 1];
+          
+          const currentOrder = currentLesson.order;
+          const previousOrder = previousLesson.order;
+          
+          await updateDoc(doc(db, "courseLessons", currentLesson.id), { order: previousOrder });
+          await updateDoc(doc(db, "courseLessons", previousLesson.id), { order: currentOrder });
+          
+          await loadLessons();
+        } catch (error) {
+          console.error("Error moving lesson up:", error);
+          showNotification("Błąd zmiany pozycji lekcji.", "error");
+        }
+      };
+
+      window.moveLessonDown = async (lessonId) => {
+        const index = lessonsList.findIndex(l => l.id === lessonId);
+        if (index >= lessonsList.length - 1) return;
+        
+        try {
+          const currentLesson = lessonsList[index];
+          const nextLesson = lessonsList[index + 1];
+          
+          const currentOrder = currentLesson.order;
+          const nextOrder = nextLesson.order;
+          
+          await updateDoc(doc(db, "courseLessons", currentLesson.id), { order: nextOrder });
+          await updateDoc(doc(db, "courseLessons", nextLesson.id), { order: currentOrder });
+          
+          await loadLessons();
+        } catch (error) {
+          console.error("Error moving lesson down:", error);
+          showNotification("Błąd zmiany pozycji lekcji.", "error");
+        }
+      };
+
+      // Obsługa formularza lekcji
+      document.getElementById("lesson-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        const lessonId = document.getElementById("lesson-id").value;
+        const trainingId = document.getElementById("lesson-training-id").value;
+        const title = document.getElementById("lesson-title").value.trim();
+        const description = document.getElementById("lesson-description").value.trim();
+        const duration = parseInt(document.getElementById("lesson-duration").value) || null;
+        const videoUrl = document.getElementById("lesson-video-url").value.trim();
+        const content = document.getElementById("lesson-content").innerHTML;
+
+        if (!title || !trainingId) {
+          showNotification("Wypełnij wszystkie wymagane pola.", "error");
+          return;
+        }
+
+        try {
+          const lessonData = {
+            trainingId,
+            title,
+            description: description || "",
+            content: content || "",
+            videoUrl: videoUrl || null,
+            duration: duration || null,
+            order: lessonId ? lessonsList.find(l => l.id === lessonId)?.order || lessonsList.length : lessonsList.length,
+            updatedAt: serverTimestamp()
+          };
+
+          if (lessonId) {
+            await updateDoc(doc(db, "courseLessons", lessonId), lessonData);
+            showNotification("Lekcja została zaktualizowana.", "success");
+          } else {
+            await addDoc(collection(db, "courseLessons"), lessonData);
+            showNotification("Lekcja została dodana.", "success");
+          }
+
+          closeLessonForm();
+          await loadLessons();
+        } catch (error) {
+          console.error("Error saving lesson:", error);
+          showNotification("Błąd zapisywania lekcji.", "error");
+        }
+      });
 
       window.deleteTraining = async (trainingId) => {
         if (!confirm("Czy na pewno chcesz usunąć to szkolenie?")) return;
@@ -11375,9 +11601,11 @@
           document.getElementById("training-content").innerHTML = "";
         }
         document.getElementById("training-id").value = "";
+        document.getElementById("training-lessons-section").classList.add("hidden");
         document.getElementById("training-access-section").classList.add("hidden");
         clearTrainingImage();
         currentTrainingId = null;
+        lessonsList = [];
       };
 
       window.refreshTrainings = async () => {
@@ -15982,6 +16210,100 @@
         <div id="quick-replies-list" class="space-y-2">
           <!-- Lista będzie ładowana dynamicznie -->
         </div>
+      </div>
+    </div>
+
+    <!-- Modal formularza lekcji -->
+    <div id="lesson-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onclick="if(event.target.id === 'lesson-form-modal') closeLessonForm()">
+      <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold coyote-text" id="lesson-form-title">Dodaj lekcję</h2>
+          <button onclick="closeLessonForm()" class="text-zinc-400 hover:text-white">
+            <i class="fa-solid fa-times text-xl"></i>
+          </button>
+        </div>
+        
+        <form id="lesson-form" class="flex-1 overflow-y-auto space-y-4 pr-2">
+          <input type="hidden" id="lesson-id" />
+          <input type="hidden" id="lesson-training-id" />
+          
+          <div>
+            <label class="block text-sm font-medium mb-2">Tytuł lekcji *</label>
+            <input
+              type="text"
+              id="lesson-title"
+              placeholder="Nazwa lekcji"
+              required
+              class="w-full"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-2">Opis (krótki)</label>
+            <input
+              type="text"
+              id="lesson-description"
+              placeholder="Krótki opis lekcji"
+              class="w-full"
+            />
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">Czas trwania (minuty)</label>
+              <input
+                type="number"
+                id="lesson-duration"
+                placeholder="np. 15"
+                min="0"
+                class="w-full"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">URL wideo (opcjonalne)</label>
+              <input
+                type="url"
+                id="lesson-video-url"
+                placeholder="https://youtube.com/embed/..."
+                class="w-full"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-2">Treść lekcji</label>
+            <div class="toolbar mb-3">
+              <button type="button" onclick="formatText('bold', 'lesson-content')">
+                <i class="fa-solid fa-bold"></i>
+              </button>
+              <button type="button" onclick="formatText('insertUnorderedList', 'lesson-content')">
+                <i class="fa-solid fa-list-ul"></i>
+              </button>
+              <button type="button" onclick="formatText('justifyCenter', 'lesson-content')">
+                <i class="fa-solid fa-align-center"></i>
+              </button>
+              <button type="button" onclick="insertImage('lesson-content')">
+                <i class="fa-solid fa-image"></i>
+              </button>
+            </div>
+            <div
+              id="lesson-content"
+              class="editor-content min-h-[300px]"
+              contenteditable="true"
+              placeholder="Treść lekcji..."
+            ></div>
+          </div>
+
+          <div class="flex gap-4 pt-4 border-t border-zinc-700">
+            <button type="submit" class="btn-admin flex-1">
+              <i class="fa-solid fa-save mr-2"></i>
+              Zapisz lekcję
+            </button>
+            <button type="button" onclick="closeLessonForm()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
+              Anuluj
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 
