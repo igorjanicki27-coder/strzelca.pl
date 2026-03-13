@@ -3143,12 +3143,6 @@
         serverTimestamp,
         Timestamp,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-      import {
-        getStorage,
-        ref,
-        uploadBytes,
-        getDownloadURL
-      } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
       import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-02-06-3";
 
       
@@ -3196,7 +3190,7 @@
       
       // OPTYMALIZACJA: Użyj wspólnego modułu inicjalizacji
       let firebaseConfig;
-      let auth, db, storage;
+      let auth, db;
       
       // Obsługa błędów CORS z Firestore (często są to fałszywe alarmy)
       // Te błędy nie wpływają na działanie aplikacji, ale spamują konsolę
@@ -3264,28 +3258,9 @@
         auth = initResult.auth;
         db = initResult.db;
         
-        // Inicjalizuj Storage używając tego samego app instance
-        try {
-          const { getApps } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
-          const apps = getApps();
-          if (apps.length > 0) {
-            // Użyj tego samego app instance co Auth i Firestore
-            storage = getStorage(apps[0]);
-            console.log("[Firebase] Storage zainicjalizowany z app:", apps[0].name);
-          } else {
-            console.warn("[Firebase] Brak zainicjalizowanych app, używam domyślnego Storage");
-            storage = getStorage();
-          }
-        } catch (error) {
-          console.error("[Firebase] Błąd inicjalizacji Storage:", error);
-          console.error("[Firebase] Szczegóły błędu:", error.message, error.stack);
-          storage = null;
-        }
-        
         console.log("[Firebase] Firebase zainicjalizowany pomyślnie");
         console.log("[Firebase] Firestore database:", db);
         console.log("[Firebase] Auth:", auth);
-        console.log("[Firebase] Storage:", storage);
         console.log("[Firebase] Current user:", auth.currentUser?.uid || "brak");
         
         // Sprawdź, czy Firestore działa - test połączenia
@@ -7324,8 +7299,8 @@
       // Zarządzanie zdjęciami produktu
       let productImages = [];
 
-      // Funkcja kompresji obrazów przed uploadem (zwraca Blob)
-      async function compressProductImageToBlob(file, maxWidth = 1920, quality = 0.85) {
+      // Funkcja kompresji obrazów do base64 (dla Firestore)
+      async function compressProductImageToBase64(file, maxWidth = 1200, quality = 0.75) {
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.readAsDataURL(file);
@@ -7337,7 +7312,7 @@
               let width = img.width;
               let height = img.height;
               
-              // Zmniejsz rozmiar jeśli jest za duży
+              // Zmniejsz rozmiar jeśli jest za duży (mniejszy limit dla base64)
               if (width > maxWidth) {
                 height *= maxWidth / width;
                 width = maxWidth;
@@ -7348,14 +7323,24 @@
               const ctx = canvas.getContext('2d');
               ctx.drawImage(img, 0, 0, width, height);
               
-              // Konwertuj do blob
-              canvas.toBlob((blob) => {
-                if (blob) {
-                  resolve(blob);
-                } else {
-                  reject(new Error('Nie udało się skompresować obrazu'));
+              // Konwertuj do base64 (mniejsza jakość dla mniejszego rozmiaru)
+              const base64 = canvas.toDataURL('image/jpeg', quality);
+              
+              // Sprawdź rozmiar (Firestore limit to ~1MB na pole, ale base64 jest większy o ~33%)
+              const base64Size = (base64.length * 3) / 4;
+              if (base64Size > 800000) { // ~800KB limit dla bezpieczeństwa
+                console.warn('[Upload] Obraz jest za duży po kompresji:', base64Size, 'bytes');
+                // Spróbuj z mniejszą jakością
+                const smallerBase64 = canvas.toDataURL('image/jpeg', quality * 0.7);
+                const smallerSize = (smallerBase64.length * 3) / 4;
+                if (smallerSize > 800000) {
+                  reject(new Error('Obraz jest za duży nawet po kompresji. Wybierz mniejsze zdjęcie (max ~2MB przed kompresją).'));
+                  return;
                 }
-              }, 'image/jpeg', quality);
+                resolve(smallerBase64);
+              } else {
+                resolve(base64);
+              }
             };
             img.onerror = reject;
           };
@@ -7363,56 +7348,20 @@
         });
       }
 
-      // Funkcja uploadu zdjęcia do Firebase Storage
-      async function uploadProductImage(file) {
-        if (!storage) {
-          throw new Error('Storage nie jest zainicjalizowany. Upewnij się, że Firebase Storage jest włączony w Firebase Console.');
-        }
-
+      // Funkcja przetwarzania zdjęcia do base64 (zamiast Storage)
+      async function processProductImage(file) {
         try {
-          // Kompresuj obraz przed uploadem
-          const compressedBlob = await compressProductImageToBlob(file);
+          console.log('[Upload] Przetwarzanie pliku:', file.name, 'rozmiar:', file.size, 'bytes');
           
-          // Generuj unikalną nazwę pliku
-          const timestamp = Date.now();
-          const randomId = Math.random().toString(36).substring(2, 15);
-          const fileExtension = file.name.split('.').pop() || 'jpg';
-          const fileName = `products/${timestamp}_${randomId}.${fileExtension}`;
+          // Kompresuj obraz do base64
+          const base64 = await compressProductImageToBase64(file);
           
-          console.log('[Upload] Próba uploadu pliku:', fileName, 'rozmiar:', compressedBlob.size, 'bytes');
+          const base64Size = (base64.length * 3) / 4;
+          console.log('[Upload] Obraz skompresowany do base64, rozmiar:', Math.round(base64Size / 1024), 'KB');
           
-          // Upload do Storage
-          const storageRef = ref(storage, fileName);
-          console.log('[Upload] Storage ref utworzony:', storageRef.fullPath);
-          
-          await uploadBytes(storageRef, compressedBlob);
-          console.log('[Upload] Plik przesłany pomyślnie');
-          
-          // Pobierz URL do pobrania
-          const downloadURL = await getDownloadURL(storageRef);
-          console.log('[Upload] URL pobrany:', downloadURL);
-          
-          return downloadURL;
+          return base64;
         } catch (error) {
-          console.error('[Upload] Błąd podczas uploadu zdjęcia:', error);
-          console.error('[Upload] Kod błędu:', error.code);
-          console.error('[Upload] Wiadomość:', error.message);
-          console.error('[Upload] Stack:', error.stack);
-          
-          // Sprawdź czy to błąd związany z Storage
-          if (error.code === 'storage/unknown' || 
-              error.message?.includes('404') || 
-              error.message?.includes('Preflight') ||
-              error.message?.includes('CORS')) {
-            const errorMsg = 'Firebase Storage nie jest włączony lub bucket nie istnieje.\n\n' +
-              'Aby naprawić:\n' +
-              '1. Otwórz Firebase Console → Build → Storage\n' +
-              '2. Kliknij "Get started" jeśli Storage nie jest włączony\n' +
-              '3. Wybierz region (np. europe-west)\n' +
-              '4. Opublikuj reguły Storage z pliku storage.rules';
-            throw new Error(errorMsg);
-          }
-          
+          console.error('[Upload] Błąd podczas przetwarzania zdjęcia:', error);
           throw error;
         }
       }
@@ -7427,26 +7376,26 @@
         
         // Pokaż stan ładowania
         const loadingHtml = container.innerHTML;
-        container.innerHTML = '<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin text-coyote text-xl mb-2"></i><p class="text-sm text-zinc-400">Przesyłanie zdjęć...</p></div>';
+        container.innerHTML = '<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin text-coyote text-xl mb-2"></i><p class="text-sm text-zinc-400">Przetwarzanie zdjęć...</p></div>';
 
         try {
-          // Upload wszystkich wybranych plików
-          const uploadPromises = Array.from(files).map(file => uploadProductImage(file));
-          const urls = await Promise.all(uploadPromises);
+          // Przetwórz wszystkie wybrane pliki do base64
+          const processPromises = Array.from(files).map(file => processProductImage(file));
+          const base64Images = await Promise.all(processPromises);
 
-          // Dodaj zdjęcia do listy
-          urls.forEach(url => {
+          // Dodaj zdjęcia do listy (base64 data URL może być używany bezpośrednio jako src)
+          base64Images.forEach(base64 => {
             productImages.push({
-              url: url,
+              url: base64,
               order: productImages.length
             });
           });
 
           renderProductImages();
-          showNotification(`Dodano ${urls.length} zdjęć.`, 'success');
+          showNotification(`Dodano ${base64Images.length} zdjęć.`, 'success');
         } catch (error) {
-          console.error('Błąd podczas przesyłania zdjęć:', error);
-          showNotification('Błąd podczas przesyłania zdjęć. Sprawdź konsolę.', 'error');
+          console.error('Błąd podczas przetwarzania zdjęć:', error);
+          showNotification(error.message || 'Błąd podczas przetwarzania zdjęć. Sprawdź konsolę.', 'error');
           container.innerHTML = loadingHtml;
         } finally {
           // Wyczyść input, żeby można było wybrać te same pliki ponownie
