@@ -202,6 +202,28 @@
         100% { left: 100%; }
       }
 
+      @keyframes slideInRight {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      @keyframes slideOutRight {
+        from {
+          transform: translateX(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+      }
+
       @keyframes fadeIn {
         0% { opacity: 0; transform: translateY(10px); }
         100% { opacity: 1; transform: translateY(0); }
@@ -3849,8 +3871,73 @@
         }, 5000);
       }
 
+      // System powiadomień
       function showNotification(message, type = "success") {
-        // Prosta implementacja powiadomień - można rozszerzyć
+        // Usuń istniejące powiadomienia
+        const existingNotifications = document.querySelectorAll('.notification-toast');
+        existingNotifications.forEach(n => n.remove());
+
+        // Utwórz element powiadomienia
+        const notification = document.createElement('div');
+        notification.className = `notification-toast notification-${type}`;
+        
+        // Ikony dla różnych typów
+        const icons = {
+          success: 'fa-check-circle',
+          error: 'fa-exclamation-circle',
+          warning: 'fa-exclamation-triangle',
+          info: 'fa-info-circle'
+        };
+        
+        // Kolory dla różnych typów
+        const colors = {
+          success: 'bg-green-600',
+          error: 'bg-red-600',
+          warning: 'bg-yellow-600',
+          info: 'bg-blue-600'
+        };
+
+        notification.innerHTML = `
+          <div class="flex items-center gap-3">
+            <i class="fa-solid ${icons[type] || icons.success} text-xl"></i>
+            <span class="flex-1">${message}</span>
+            <button onclick="this.closest('.notification-toast').remove()" class="text-white hover:text-zinc-200 transition">
+              <i class="fa-solid fa-times"></i>
+            </button>
+          </div>
+        `;
+
+        // Dodaj style inline dla animacji
+        notification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: ${type === 'success' ? '#16a34a' : type === 'error' ? '#dc2626' : type === 'warning' ? '#ca8a04' : '#2563eb'};
+          color: white;
+          padding: 16px 20px;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+          z-index: 10000;
+          min-width: 300px;
+          max-width: 500px;
+          animation: slideInRight 0.3s ease-out;
+          font-size: 14px;
+        `;
+
+        // Dodaj do body
+        document.body.appendChild(notification);
+
+        // Automatyczne usunięcie po 5 sekundach
+        setTimeout(() => {
+          notification.style.animation = 'slideOutRight 0.3s ease-in';
+          setTimeout(() => {
+            if (notification.parentNode) {
+              notification.remove();
+            }
+          }, 300);
+        }, 5000);
+
+        // Log do konsoli (dla debugowania)
         console.log(`${type}: ${message}`);
       }
 
@@ -7414,7 +7501,7 @@
           });
 
           renderProductImages();
-          showNotification(`Dodano ${base64Images.length} zdjęć.`, 'success');
+          showNotification(`Zdjęcia zostały wgrane poprawnie (${base64Images.length} ${base64Images.length === 1 ? 'zdjęcie' : 'zdjęć'}).`, 'success');
         } catch (error) {
           console.error('Błąd podczas przetwarzania zdjęć:', error);
           showNotification(error.message || 'Błąd podczas przetwarzania zdjęć. Sprawdź konsolę.', 'error');
@@ -10975,11 +11062,11 @@
             if (productId) {
               // Aktualizacja istniejącego produktu
               await updateDoc(doc(db, "products", productId), productData);
-              showNotification("Produkt został zaktualizowany.");
+              showNotification("Produkt został zapisany poprawnie.", 'success');
             } else {
               // Dodanie nowego produktu
               await addDoc(collection(db, "products"), productData);
-              showNotification("Produkt został dodany.");
+              showNotification("Produkt został zapisany poprawnie.", 'success');
               // Zaloguj utworzenie produktu
               if (currentUser) {
                 await logActivity(currentUser.uid, "PRODUCT_CREATED", {
@@ -11222,7 +11309,7 @@
             </div>
           `;
 
-          showNotification('Zdjęcie zostało przetworzone.', 'success');
+          showNotification('Zdjęcie zostało wgrane poprawnie.', 'success');
         } catch (error) {
           console.error('Błąd podczas przetwarzania zdjęcia:', error);
           showNotification(error.message || 'Błąd podczas przetwarzania zdjęcia. Sprawdź konsolę.', 'error');
@@ -11848,12 +11935,12 @@
             if (trainingId) {
               // Aktualizacja istniejącego szkolenia
               await updateDoc(doc(db, "trainings", trainingId), trainingData);
-              showNotification("Szkolenie zostało zaktualizowane.");
+              showNotification("Szkolenie zostało zapisane poprawnie.", 'success');
             } else {
               // Dodanie nowego szkolenia
               const newTrainingRef = await addDoc(collection(db, "trainings"), trainingData);
               currentTrainingId = newTrainingRef.id;
-              showNotification("Szkolenie zostało dodane.");
+              showNotification("Szkolenie zostało zapisane poprawnie.", 'success');
               // Pokaż sekcję zarządzania dostępem
               document.getElementById("training-access-section").classList.remove("hidden");
             }

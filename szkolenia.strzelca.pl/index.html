@@ -591,14 +591,34 @@ const firebaseConfig = {
                     .classList.remove("hidden");
             };
 
+            // Flaga zapobiegająca wielokrotnemu wywołaniu fetchAll()
+            let trainingsLoaded = false;
+
             // Jeden listener dla zmian stanu autoryzacji - aktualizuje UI i odświeża listę szkoleń
             onAuthStateChanged(auth, (user) => {
                 currentUser = user;
                 updateUserInterface(user);
-                fetchAll();
+                if (!trainingsLoaded) {
+                    trainingsLoaded = true;
+                    fetchAll();
+                }
             });
 
-            fetchAll();
+            // Poczekaj na gotowość auth - jeśli onAuthStateChanged nie wywołał się jeszcze, załaduj szkolenia
+            try {
+                await auth.authStateReady();
+                // Jeśli onAuthStateChanged jeszcze się nie wywołał (nie powinno się zdarzyć, ale na wszelki wypadek)
+                if (!trainingsLoaded) {
+                    trainingsLoaded = true;
+                    fetchAll();
+                }
+            } catch (error) {
+                // W przypadku błędu, załaduj szkolenia dla niezalogowanych
+                if (!trainingsLoaded) {
+                    trainingsLoaded = true;
+                    fetchAll();
+                }
+            }
         </script>
     <script
       type="module"
