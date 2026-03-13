@@ -498,9 +498,69 @@ const firebaseConfig = {
             }
 
             // Funkcja do obsługi zapytania o ofertę
-            window.handleOfferInquiry = (trainingName) => {
-                const offerUrl = `https://kontakt.strzelca.pl?topic=Pytanie o szkolenie&product=${encodeURIComponent(trainingName)}`;
-                window.location.href = offerUrl;
+            window.handleOfferInquiry = async (trainingName) => {
+                const user = auth.currentUser;
+                
+                if (user) {
+                    // Użytkownik zalogowany - otwórz czat z administracją
+                    try {
+                        // Ustaw localStorage aby widget wybrał konwersację z adminem
+                        localStorage.setItem("__strzelca_messages_widget_selected", JSON.stringify({ peerId: "admin" }));
+                        localStorage.setItem("__strzelca_messages_widget_open", "true");
+                        
+                        // Poczekaj na załadowanie widgetu (maksymalnie 2 sekundy)
+                        let attempts = 0;
+                        const maxAttempts = 20;
+                        const checkWidget = () => {
+                            const widgetHost = document.getElementById("strzelca-messages-widget");
+                            if (widgetHost && widgetHost.shadowRoot) {
+                                const btn = widgetHost.shadowRoot.querySelector("button.btn");
+                                if (btn) {
+                                    btn.click();
+                                    
+                                    // Poczekaj chwilę i wypełnij textarea z informacją o szkoleniu
+                                    setTimeout(() => {
+                                        const textarea = widgetHost.shadowRoot.querySelector("textarea");
+                                        if (textarea) {
+                                            textarea.value = `Zapytanie o ofertę szkolenia: ${trainingName}`;
+                                            textarea.dispatchEvent(new Event("input", { bubbles: true }));
+                                            textarea.focus();
+                                        }
+                                    }, 500);
+                                    return true;
+                                }
+                            }
+                            return false;
+                        };
+                        
+                        // Sprawdź od razu
+                        if (checkWidget()) {
+                            return;
+                        }
+                        
+                        // Jeśli widget nie jest jeszcze załadowany, poczekaj
+                        const interval = setInterval(() => {
+                            attempts++;
+                            if (checkWidget() || attempts >= maxAttempts) {
+                                clearInterval(interval);
+                                if (attempts >= maxAttempts) {
+                                    // Fallback: jeśli widget się nie załadował, otwórz formularz kontaktowy
+                                    const offerUrl = `https://kontakt.strzelca.pl?topic=Pytanie o szkolenie&product=${encodeURIComponent(trainingName)}`;
+                                    window.location.href = offerUrl;
+                                }
+                            }
+                        }, 100);
+                    } catch (error) {
+                        console.error("Error opening chat:", error);
+                        // Fallback: otwórz formularz kontaktowy
+                        const offerUrl = `https://kontakt.strzelca.pl?topic=Pytanie o szkolenie&product=${encodeURIComponent(trainingName)}`;
+                        window.location.href = offerUrl;
+                    }
+                } else {
+                    // Użytkownik niezalogowany - przekieruj do formularza kontaktowego
+                    const offerUrl = `https://kontakt.strzelca.pl?topic=Pytanie o szkolenie&product=${encodeURIComponent(trainingName)}`;
+                    window.location.href = offerUrl;
+                }
             };
 
             const fetchAll = async () => {
@@ -530,25 +590,30 @@ const firebaseConfig = {
 
                 snap.forEach((d) => {
                     const t = d.data();
-                    // Szkolenie jest dostępne jeśli:
-                    // 1. available === true (dla wszystkich) LUB
-                    // 2. użytkownik ma dostęp w trainingAccess
+                    // Sprawdź czy użytkownik ma dostęp do kursu
                     const isAvailableForAll = t.available === true;
                     const hasUserAccess = user && userAccessList.includes(d.id);
-                    const isAvailable = isAvailableForAll || hasUserAccess;
+                    const hasAccess = isAvailableForAll || hasUserAccess;
 
-                    // Pokaż tylko dostępne szkolenia
-                    if (!isAvailable) return;
+                    // Przygotuj przycisk w zależności od dostępu
+                    let buttonHtml = '';
+                    if (hasAccess) {
+                        // Użytkownik ma dostęp - przycisk "Rozpocznij kurs"
+                        buttonHtml = `<button onclick="event.stopPropagation(); window.location.href='https://szkolenia.strzelca.pl/kurs.html?id=${d.id}'" aria-label="Rozpocznij kurs ${t.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Rozpocznij kurs</button>`;
+                    } else {
+                        // Użytkownik nie ma dostępu - przycisk "Zapytaj o ofertę"
+                        buttonHtml = `<button onclick="event.stopPropagation(); window.handleOfferInquiry('${t.title}')" aria-label="Zapytaj o ofertę szkolenia ${t.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Zapytaj o ofertę</button>`;
+                    }
 
+                    // Pokaż wszystkie szkolenia (nie tylko dostępne)
                     grid.innerHTML += `
-                <article class="card-dark flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50" role="article">
+                <article onclick="window.showTrainingDetails('${d.id}')" class="card-dark flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50 cursor-pointer" role="article">
                     <div class="h-48 md:h-64 training-img-container"><img src="${t.img}" alt="${t.title}" loading="lazy"></div>
                     <div class="p-4 md:p-8 flex flex-col flex-grow text-center">
                         <h3 class="text-lg md:text-xl font-bold uppercase mb-2 font-[Orbitron] text-white tracking-tight">${t.title}</h3>
                         <p class="coyote-text font-black text-xl md:text-2xl mb-6 md:mb-8" aria-label="Cena: ${t.price} złotych">${t.price} PLN</p>
                         <div class="mt-auto flex flex-col gap-2 md:gap-3">
-                            <button onclick="window.showTrainingDetails('${d.id}')" aria-label="Zobacz szczegóły szkolenia ${t.title}" class="w-full py-2 md:py-3 border border-zinc-800 text-[9px] md:text-[10px] uppercase font-bold hover:bg-zinc-800 transition rounded tracking-widest text-zinc-400">Szczegóły</button>
-                            <button onclick="window.handleOfferInquiry('${t.title}')" aria-label="Zapytaj o ofertę szkolenia ${t.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Zapytaj o ofertę</button>
+                            ${buttonHtml}
                         </div>
                     </div>
                 </article>`;
@@ -574,17 +639,28 @@ const firebaseConfig = {
                     hasAccess = !accessSnap.empty;
                 }
 
+                // Przygotuj przycisk w zależności od dostępu
+                let buttonHtml = '';
+                if (hasAccess) {
+                    buttonHtml = `<button onclick="window.location.href='https://szkolenia.strzelca.pl/kurs.html?id=${id}'" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition flex items-center justify-center gap-2">
+                        <i class="fas fa-play"></i>
+                        Rozpocznij kurs
+                    </button>`;
+                } else {
+                    buttonHtml = `<button onclick="window.handleOfferInquiry('${t.title}')" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition flex items-center justify-center gap-2">
+                        <i class="fas fa-envelope"></i>
+                        Zapytaj o ofertę
+                    </button>`;
+                }
+
                 document.getElementById("details-content").innerHTML = `
                 <h2 class="text-2xl font-black uppercase mb-4 font-[Orbitron] text-white">${t.title}</h2>
                 <div class="text-zinc-400 text-sm mb-8 custom-render details-scroll-area leading-relaxed">
-                    ${t.desc}
+                    ${t.desc || ''}
                 </div>
                 <div class="flex justify-between items-center border-t border-zinc-800 pt-6">
                     <p class="text-3xl font-black coyote-text">${t.price} PLN</p>
-                    <button onclick="window.handleOfferInquiry('${t.title}')" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition flex items-center justify-center gap-2">
-                        <i class="fas fa-envelope"></i>
-                        Zapytaj o ofertę
-                    </button>
+                    ${buttonHtml}
                 </div>`;
                 document
                     .getElementById("details-modal")

@@ -1979,30 +1979,65 @@
                     </label>
                   </div>
 
-                  <div class="toolbar">
-                    <button type="button" onclick="formatText('bold')">
-                      <i class="fa-solid fa-bold"></i>
-                    </button>
-                    <button
-                      type="button"
-                      onclick="formatText('insertUnorderedList')"
-                    >
-                      <i class="fa-solid fa-list-ul"></i>
-                    </button>
-                    <button type="button" onclick="formatText('justifyCenter')">
-                      <i class="fa-solid fa-align-center"></i>
-                    </button>
-                    <button type="button" onclick="insertImage()">
-                      <i class="fa-solid fa-image"></i>
-                    </button>
+                  <div class="border-b border-zinc-700 pb-4 mb-4">
+                    <h4 class="text-lg font-semibold mb-2 text-zinc-300">Szczegóły widoczne (dla wszystkich)</h4>
+                    <p class="text-sm text-zinc-400 mb-4">Te informacje będą widoczne dla wszystkich użytkowników na stronie szkoleń.</p>
+                    
+                    <div class="toolbar">
+                      <button type="button" onclick="formatText('bold', 'training-description')">
+                        <i class="fa-solid fa-bold"></i>
+                      </button>
+                      <button
+                        type="button"
+                        onclick="formatText('insertUnorderedList', 'training-description')"
+                      >
+                        <i class="fa-solid fa-list-ul"></i>
+                      </button>
+                      <button type="button" onclick="formatText('justifyCenter', 'training-description')">
+                        <i class="fa-solid fa-align-center"></i>
+                      </button>
+                      <button type="button" onclick="insertImage('training-description')">
+                        <i class="fa-solid fa-image"></i>
+                      </button>
+                    </div>
+
+                    <div
+                      id="training-description"
+                      class="editor-content"
+                      contenteditable="true"
+                      placeholder="Opis szkolenia widoczny dla wszystkich..."
+                    ></div>
                   </div>
 
-                  <div
-                    id="training-description"
-                    class="editor-content"
-                    contenteditable="true"
-                    placeholder="Opis szkolenia..."
-                  ></div>
+                  <div class="border-t border-zinc-700 pt-4">
+                    <h4 class="text-lg font-semibold mb-2 text-coyote">Treść właściwa kursu (tylko dla uprawnionych)</h4>
+                    <p class="text-sm text-zinc-400 mb-4">Ta treść będzie dostępna tylko dla użytkowników z dostępem do kursu.</p>
+                    
+                    <div class="toolbar">
+                      <button type="button" onclick="formatText('bold', 'training-content')">
+                        <i class="fa-solid fa-bold"></i>
+                      </button>
+                      <button
+                        type="button"
+                        onclick="formatText('insertUnorderedList', 'training-content')"
+                      >
+                        <i class="fa-solid fa-list-ul"></i>
+                      </button>
+                      <button type="button" onclick="formatText('justifyCenter', 'training-content')">
+                        <i class="fa-solid fa-align-center"></i>
+                      </button>
+                      <button type="button" onclick="insertImage('training-content')">
+                        <i class="fa-solid fa-image"></i>
+                      </button>
+                    </div>
+
+                    <div
+                      id="training-content"
+                      class="editor-content"
+                      contenteditable="true"
+                      placeholder="Treść właściwa kursu dostępna tylko dla uprawnionych..."
+                    ></div>
+                  </div>
 
                   <div class="flex space-x-4">
                     <button type="submit" class="btn-admin flex-1">
@@ -11192,6 +11227,9 @@
         
         document.getElementById("training-available-all").checked = training.available === true;
         document.getElementById("training-description").innerHTML = training.desc || "";
+        if (document.getElementById("training-content")) {
+          document.getElementById("training-content").innerHTML = training.content || "";
+        }
 
         // Pokaż sekcję zarządzania dostępem
         document.getElementById("training-access-section").classList.remove("hidden");
@@ -11333,6 +11371,9 @@
       window.clearTrainingForm = () => {
         document.getElementById("training-form").reset();
         document.getElementById("training-description").innerHTML = "";
+        if (document.getElementById("training-content")) {
+          document.getElementById("training-content").innerHTML = "";
+        }
         document.getElementById("training-id").value = "";
         document.getElementById("training-access-section").classList.add("hidden");
         clearTrainingImage();
@@ -11914,6 +11955,7 @@
           // Użyj base64 jeśli został wybrany nowy plik, w przeciwnym razie użyj istniejącego
           const img = trainingImageBase64 || document.getElementById("training-img").value.trim();
           const desc = document.getElementById("training-description").innerHTML;
+          const content = document.getElementById("training-content") ? document.getElementById("training-content").innerHTML : "";
           const available = document.getElementById("training-available-all").checked;
 
           if (!title || !price || !img) {
@@ -11927,6 +11969,7 @@
               price,
               img,
               desc,
+              content: content || "",
               available: available ? true : false,
               date: Date.now(),
               order: trainingId ? trainingsList.find(t => t.id === trainingId)?.order || trainingsList.length : trainingsList.length,
@@ -15999,6 +16042,51 @@
         <p class="loading-text">Odświeżanie dashboardu...</p>
       </div>
     </div>
+    <!-- Funkcje formatowania tekstu dla edytorów szkoleń -->
+    <script>
+      // Funkcja formatowania tekstu z obsługą różnych edytorów
+      window.formatText = function(command, elementId) {
+        const editor = elementId ? document.getElementById(elementId) : document.activeElement;
+        if (!editor || !editor.contentEditable || editor.contentEditable !== 'true') {
+          // Fallback dla innych edytorów (np. newsletter)
+          const newsletterEditor = document.getElementById('newsletter-editor');
+          if (newsletterEditor) {
+            newsletterEditor.focus();
+            document.execCommand(command, false, null);
+          }
+          return;
+        }
+        editor.focus();
+        document.execCommand(command, false, null);
+      };
+
+      // Funkcja wstawiania obrazu z obsługą różnych edytorów
+      window.insertImage = function(elementId) {
+        const editor = elementId ? document.getElementById(elementId) : document.activeElement;
+        const targetEditor = (editor && editor.contentEditable && editor.contentEditable === 'true') 
+          ? editor 
+          : document.getElementById('newsletter-editor');
+        
+        if (!targetEditor) return;
+        
+        const url = prompt('Wprowadź URL obrazu:');
+        if (url) {
+          targetEditor.focus();
+          const img = document.createElement('img');
+          img.src = url;
+          img.style.maxWidth = '100%';
+          img.style.height = 'auto';
+          const selection = window.getSelection();
+          if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            range.deleteContents();
+            range.insertNode(img);
+          } else {
+            targetEditor.appendChild(img);
+          }
+        }
+      };
+    </script>
     <script
       type="module"
       src="https://strzelca.pl/auth-widget.mjs?v=2026-02-06-1"
