@@ -3263,7 +3263,24 @@
         
         auth = initResult.auth;
         db = initResult.db;
-        storage = getStorage();
+        
+        // Inicjalizuj Storage używając tego samego app instance
+        try {
+          const { getApps } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
+          const apps = getApps();
+          if (apps.length > 0) {
+            // Użyj tego samego app instance co Auth i Firestore
+            storage = getStorage(apps[0]);
+            console.log("[Firebase] Storage zainicjalizowany z app:", apps[0].name);
+          } else {
+            console.warn("[Firebase] Brak zainicjalizowanych app, używam domyślnego Storage");
+            storage = getStorage();
+          }
+        } catch (error) {
+          console.error("[Firebase] Błąd inicjalizacji Storage:", error);
+          console.error("[Firebase] Szczegóły błędu:", error.message, error.stack);
+          storage = null;
+        }
         
         console.log("[Firebase] Firebase zainicjalizowany pomyślnie");
         console.log("[Firebase] Firestore database:", db);
@@ -7349,7 +7366,7 @@
       // Funkcja uploadu zdjęcia do Firebase Storage
       async function uploadProductImage(file) {
         if (!storage) {
-          throw new Error('Storage nie jest zainicjalizowany');
+          throw new Error('Storage nie jest zainicjalizowany. Upewnij się, że Firebase Storage jest włączony w Firebase Console.');
         }
 
         try {
@@ -7362,16 +7379,40 @@
           const fileExtension = file.name.split('.').pop() || 'jpg';
           const fileName = `products/${timestamp}_${randomId}.${fileExtension}`;
           
+          console.log('[Upload] Próba uploadu pliku:', fileName, 'rozmiar:', compressedBlob.size, 'bytes');
+          
           // Upload do Storage
           const storageRef = ref(storage, fileName);
+          console.log('[Upload] Storage ref utworzony:', storageRef.fullPath);
+          
           await uploadBytes(storageRef, compressedBlob);
+          console.log('[Upload] Plik przesłany pomyślnie');
           
           // Pobierz URL do pobrania
           const downloadURL = await getDownloadURL(storageRef);
+          console.log('[Upload] URL pobrany:', downloadURL);
           
           return downloadURL;
         } catch (error) {
-          console.error('Błąd podczas uploadu zdjęcia:', error);
+          console.error('[Upload] Błąd podczas uploadu zdjęcia:', error);
+          console.error('[Upload] Kod błędu:', error.code);
+          console.error('[Upload] Wiadomość:', error.message);
+          console.error('[Upload] Stack:', error.stack);
+          
+          // Sprawdź czy to błąd związany z Storage
+          if (error.code === 'storage/unknown' || 
+              error.message?.includes('404') || 
+              error.message?.includes('Preflight') ||
+              error.message?.includes('CORS')) {
+            const errorMsg = 'Firebase Storage nie jest włączony lub bucket nie istnieje.\n\n' +
+              'Aby naprawić:\n' +
+              '1. Otwórz Firebase Console → Build → Storage\n' +
+              '2. Kliknij "Get started" jeśli Storage nie jest włączony\n' +
+              '3. Wybierz region (np. europe-west)\n' +
+              '4. Opublikuj reguły Storage z pliku storage.rules';
+            throw new Error(errorMsg);
+          }
+          
           throw error;
         }
       }
