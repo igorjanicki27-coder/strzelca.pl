@@ -7192,7 +7192,7 @@
                         <div class="text-sm text-zinc-400">${product.price} zł</div>
                     </div>
                     <div class="flex space-x-2">
-                        <button onclick="editProduct('${product.id}')" class="text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400 rounded text-xs">Edytuj</button>
+                        <button onclick="openProductForm('${product.id}')" class="text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400 rounded text-xs">Edytuj</button>
                         <button onclick="moveProductUp('${product.id}')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 border border-zinc-400 rounded text-xs" ${index === 0 ? 'disabled' : ''} title="Przenieś wyżej">↑</button>
                         <button onclick="moveProductDown('${product.id}')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 border border-zinc-400 rounded text-xs" ${index === productsList.length - 1 ? 'disabled' : ''} title="Przenieś niżej">↓</button>
                         <button onclick="deleteProduct('${product.id}')" class="text-red-400 hover:text-red-300 px-2 py-1 border border-red-400 rounded text-xs">Usuń</button>
@@ -11039,7 +11039,7 @@
                         </div>
                     </div>
                     <div class="flex space-x-2">
-                        <button onclick="editTraining('${training.id}')" class="text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400 rounded text-xs">Edytuj</button>
+                        <button onclick="openTrainingForm('${training.id}')" class="text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400 rounded text-xs">Edytuj</button>
                         <button onclick="moveTrainingUp('${training.id}')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 border border-zinc-400 rounded text-xs" ${index === 0 ? 'disabled' : ''} title="Przenieś wyżej">↑</button>
                         <button onclick="moveTrainingDown('${training.id}')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 border border-zinc-400 rounded text-xs" ${index === trainingsList.length - 1 ? 'disabled' : ''} title="Przenieś niżej">↓</button>
                         <button onclick="deleteTraining('${training.id}')" class="text-red-400 hover:text-red-300 px-2 py-1 border border-red-400 rounded text-xs">Usuń</button>
@@ -11054,19 +11054,21 @@
           '<div class="text-center text-zinc-500 py-4">Brak szkoleń</div>';
       }
 
-      window.openTrainingForm = (trainingId = null) => {
+      window.openTrainingForm = async (trainingId = null) => {
         const modal = document.getElementById("training-form-modal");
         const title = document.getElementById("training-form-title");
         
+        // Najpierw otwórz modal
+        modal.classList.remove("hidden");
+        
         if (trainingId) {
           title.textContent = "Edytuj szkolenie";
-          editTraining(trainingId);
+          // Wywołaj editTraining po otwarciu modala
+          await editTraining(trainingId);
         } else {
           title.textContent = "Dodaj szkolenie";
           clearTrainingForm();
         }
-        
-        modal.classList.remove("hidden");
       };
 
       window.closeTrainingForm = () => {
@@ -11102,12 +11104,14 @@
         }
         
         document.getElementById("training-available-all").checked = training.available === true;
+        document.getElementById("training-hidden").checked = training.hidden === true;
         document.getElementById("training-description").innerHTML = training.desc || "";
         if (document.getElementById("training-content")) {
           document.getElementById("training-content").innerHTML = training.content || "";
         }
 
-        // Pokaż sekcję zarządzania lekcjami i dostępem w modalu
+        // Pokaż sekcję treści właściwej, lekcji i dostępem w modalu (tylko przy edycji)
+        document.getElementById("training-content-section-modal").classList.remove("hidden");
         document.getElementById("training-lessons-section-modal").classList.remove("hidden");
         document.getElementById("training-access-section-modal").classList.remove("hidden");
         
@@ -11117,13 +11121,6 @@
 
         // Zaktualizuj listę lekcji w modalu
         renderLessonsListModal();
-        
-        // Zaktualizuj listę użytkowników w modalu
-        const accessListModal = document.getElementById("training-access-list-modal");
-        const accessListMain = document.getElementById("training-access-list");
-        if (accessListModal && accessListMain) {
-          accessListModal.innerHTML = accessListMain.innerHTML;
-        }
       };
 
       // ============================================
@@ -11133,7 +11130,12 @@
       let currentEditingLessonId = null;
 
       async function loadLessons() {
-        if (!currentTrainingId) return;
+        if (!currentTrainingId) {
+          lessonsList = [];
+          renderLessonsList();
+          renderLessonsListModal();
+          return;
+        }
         
         try {
           const lessonsRef = collection(db, "courseLessons");
@@ -11154,7 +11156,13 @@
           renderLessonsListModal();
         } catch (error) {
           console.error("Error loading lessons:", error);
-          showNotification("Błąd ładowania lekcji.", "error");
+          // Nie pokazuj błędu jeśli szkolenie nie istnieje jeszcze (nowe szkolenie) lub brak uprawnień
+          if (error.code !== 'permission-denied') {
+            showNotification("Błąd ładowania lekcji.", "error");
+          }
+          lessonsList = [];
+          renderLessonsList();
+          renderLessonsListModal();
         }
       }
 
@@ -11463,11 +11471,28 @@
           document.getElementById("training-content").innerHTML = "";
         }
         document.getElementById("training-id").value = "";
+        document.getElementById("training-available-all").checked = false;
+        document.getElementById("training-hidden").checked = false;
+        document.getElementById("training-content-section-modal").classList.add("hidden");
         document.getElementById("training-lessons-section-modal").classList.add("hidden");
         document.getElementById("training-access-section-modal").classList.add("hidden");
         clearTrainingImage();
         currentTrainingId = null;
         lessonsList = [];
+      };
+
+      window.updateTrainingVisibility = () => {
+        const availableAll = document.getElementById("training-available-all");
+        const hidden = document.getElementById("training-hidden");
+        
+        // Jeśli zaznaczono "ukryj", odznacz "dostępne dla wszystkich"
+        if (hidden.checked) {
+          availableAll.checked = false;
+        }
+        // Jeśli zaznaczono "dostępne dla wszystkich", odznacz "ukryj"
+        if (availableAll.checked) {
+          hidden.checked = false;
+        }
       };
 
       function renderLessonsListModal() {
@@ -12002,7 +12027,7 @@
       };
 
       async function loadTrainingAccessList(trainingId) {
-        const accessList = document.getElementById("training-access-list");
+        const accessList = document.getElementById("training-access-list-modal");
         if (!accessList || !trainingId) return;
 
         try {
@@ -12077,6 +12102,7 @@
           const desc = document.getElementById("training-description").innerHTML;
           const content = document.getElementById("training-content") ? document.getElementById("training-content").innerHTML : "";
           const available = document.getElementById("training-available-all").checked;
+          const hidden = document.getElementById("training-hidden").checked;
 
           if (!title || !price || !img) {
             showNotification("Wypełnij wszystkie wymagane pola (w tym zdjęcie).", "error");
@@ -12091,6 +12117,7 @@
               desc,
               content: content || "",
               available: available ? true : false,
+              hidden: hidden ? true : false,
               date: Date.now(),
               order: trainingId ? trainingsList.find(t => t.id === trainingId)?.order || trainingsList.length : trainingsList.length,
             };
@@ -12104,8 +12131,11 @@
               const newTrainingRef = await addDoc(collection(db, "trainings"), trainingData);
               currentTrainingId = newTrainingRef.id;
               showNotification("Szkolenie zostało zapisane poprawnie.", 'success');
-              // Pokaż sekcję zarządzania dostępem
-              document.getElementById("training-access-section").classList.remove("hidden");
+              // Pokaż sekcję treści właściwej i zarządzania dostępem w modalu
+              document.getElementById("training-content-section-modal").classList.remove("hidden");
+              document.getElementById("training-access-section-modal").classList.remove("hidden");
+              // Załaduj listę użytkowników z dostępem (pusta na początku)
+              await loadTrainingAccessList(currentTrainingId);
             }
 
             // Wyczyść formularz tylko jeśli nie edytujemy
@@ -16249,15 +16279,31 @@
             <input type="hidden" id="training-img" />
           </div>
 
-          <div class="flex items-center gap-4">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                id="training-available-all"
-                class="w-4 h-4"
-              />
-              <span class="text-sm">Dostępne dla wszystkich</span>
-            </label>
+          <div class="border-t border-zinc-700 pt-4">
+            <h4 class="text-lg font-semibold mb-4">Dostępność</h4>
+            <div class="space-y-3">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="training-available-all"
+                  class="w-4 h-4"
+                  onchange="updateTrainingVisibility()"
+                />
+                <span class="text-sm">Dostępne dla wszystkich</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="training-hidden"
+                  class="w-4 h-4"
+                  onchange="updateTrainingVisibility()"
+                />
+                <span class="text-sm text-red-400">Ukryj (niewidoczne dla wszystkich)</span>
+              </label>
+            </div>
+            <p class="text-xs text-zinc-500 mt-2">
+              Jeśli żadna opcja nie jest zaznaczona, kurs jest widoczny tylko dla użytkowników z dostępem.
+            </p>
           </div>
 
           <div class="border-b border-zinc-700 pb-4 mb-4">
