@@ -1892,7 +1892,7 @@
 
             <!-- Przycisk dodaj szkolenie -->
             <div class="flex justify-end">
-              <button onclick="openTrainingForm()" class="btn-admin">
+              <button onclick="openTrainingPublicForm()" class="btn-admin">
                 <i class="fa-solid fa-plus mr-2"></i>
                 Dodaj szkolenie
               </button>
@@ -11039,7 +11039,8 @@
                         </div>
                     </div>
                     <div class="flex space-x-2">
-                        <button onclick="openTrainingForm('${training.id}')" class="text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400 rounded text-xs">Edytuj</button>
+                        <button onclick="openTrainingPublicForm('${training.id}')" class="text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400 rounded text-xs">Edytuj</button>
+                        <button onclick="openTrainingContentForm('${training.id}')" class="text-green-400 hover:text-green-300 px-2 py-1 border border-green-400 rounded text-xs">Treść</button>
                         <button onclick="moveTrainingUp('${training.id}')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 border border-zinc-400 rounded text-xs" ${index === 0 ? 'disabled' : ''} title="Przenieś wyżej">↑</button>
                         <button onclick="moveTrainingDown('${training.id}')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 border border-zinc-400 rounded text-xs" ${index === trainingsList.length - 1 ? 'disabled' : ''} title="Przenieś niżej">↓</button>
                         <button onclick="deleteTraining('${training.id}')" class="text-red-400 hover:text-red-300 px-2 py-1 border border-red-400 rounded text-xs">Usuń</button>
@@ -11054,48 +11055,49 @@
           '<div class="text-center text-zinc-500 py-4">Brak szkoleń</div>';
       }
 
-      window.openTrainingForm = async (trainingId = null) => {
-        const modal = document.getElementById("training-form-modal");
-        const title = document.getElementById("training-form-title");
+      // ============================================
+      // MODAL PUBLICZNYCH INFORMACJI SZKOLENIA
+      // ============================================
+      let trainingPublicImageBase64 = null;
+
+      window.openTrainingPublicForm = async (trainingId = null) => {
+        const modal = document.getElementById("training-public-form-modal");
+        const title = document.getElementById("training-public-form-title");
         
-        // Najpierw otwórz modal
         modal.classList.remove("hidden");
         
         if (trainingId) {
           title.textContent = "Edytuj szkolenie";
-          // Wywołaj editTraining po otwarciu modala
-          await editTraining(trainingId);
+          await editTrainingPublic(trainingId);
         } else {
           title.textContent = "Dodaj szkolenie";
-          clearTrainingForm();
+          clearTrainingPublicForm();
         }
       };
 
-      window.closeTrainingForm = () => {
-        const modal = document.getElementById("training-form-modal");
+      window.closeTrainingPublicForm = () => {
+        const modal = document.getElementById("training-public-form-modal");
         modal.classList.add("hidden");
-        clearTrainingForm();
+        clearTrainingPublicForm();
       };
 
-      window.editTraining = async (trainingId) => {
+      window.editTrainingPublic = async (trainingId) => {
         const training = trainingsList.find((t) => t.id === trainingId);
         if (!training) return;
 
         currentTrainingId = trainingId;
-        document.getElementById("training-id").value = training.id;
-        document.getElementById("training-title").value = training.title || "";
-        document.getElementById("training-price").value = training.price || "";
+        document.getElementById("training-public-id").value = training.id;
+        document.getElementById("training-public-title").value = training.title || "";
+        document.getElementById("training-public-price").value = training.price || "";
         
-        // Załaduj zdjęcie (może być base64 lub URL)
         const trainingImg = training.img || "";
-        trainingImageBase64 = trainingImg;
-        document.getElementById("training-img").value = trainingImg;
+        trainingPublicImageBase64 = trainingImg;
+        document.getElementById("training-public-img").value = trainingImg;
         
-        // Pokaż podgląd jeśli jest zdjęcie
-        const previewContainer = document.getElementById('training-image-preview');
+        const previewContainer = document.getElementById('training-public-image-preview');
         if (trainingImg) {
           previewContainer.classList.remove('hidden');
-          const previewImg = document.getElementById('training-image-preview-img');
+          const previewImg = document.getElementById('training-public-image-preview-img');
           if (previewImg) {
             previewImg.src = trainingImg;
           }
@@ -11103,24 +11105,113 @@
           previewContainer.classList.add('hidden');
         }
         
-        document.getElementById("training-available-all").checked = training.available === true;
-        document.getElementById("training-hidden").checked = training.hidden === true;
-        document.getElementById("training-description").innerHTML = training.desc || "";
-        if (document.getElementById("training-content")) {
-          document.getElementById("training-content").innerHTML = training.content || "";
-        }
+        document.getElementById("training-public-available-all").checked = training.available === true;
+        document.getElementById("training-public-hidden").checked = training.hidden === true;
+        document.getElementById("training-public-description").innerHTML = training.desc || "";
 
-        // Pokaż sekcję treści właściwej, lekcji i dostępem w modalu (tylko przy edycji)
-        document.getElementById("training-content-section-modal").classList.remove("hidden");
-        document.getElementById("training-lessons-section-modal").classList.remove("hidden");
-        document.getElementById("training-access-section-modal").classList.remove("hidden");
-        
-        // Załaduj listę lekcji i użytkowników z dostępem
-        await loadLessons();
         await loadTrainingAccessList(trainingId);
+      };
 
-        // Zaktualizuj listę lekcji w modalu
-        renderLessonsListModal();
+      window.clearTrainingPublicForm = () => {
+        document.getElementById("training-public-form").reset();
+        document.getElementById("training-public-description").innerHTML = "";
+        document.getElementById("training-public-id").value = "";
+        document.getElementById("training-public-available-all").checked = false;
+        document.getElementById("training-public-hidden").checked = false;
+        clearTrainingPublicImage();
+        currentTrainingId = null;
+      };
+
+      window.updateTrainingPublicVisibility = () => {
+        const availableAll = document.getElementById("training-public-available-all");
+        const hidden = document.getElementById("training-public-hidden");
+        
+        if (hidden.checked) {
+          availableAll.checked = false;
+        }
+        if (availableAll.checked) {
+          hidden.checked = false;
+        }
+      };
+
+      window.handleTrainingPublicImageUpload = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        try {
+          const compressed = await compressImage(file);
+          trainingPublicImageBase64 = compressed;
+          document.getElementById("training-public-img").value = compressed;
+          
+          const previewContainer = document.getElementById('training-public-image-preview');
+          const previewImg = document.getElementById('training-public-image-preview-img');
+          if (previewContainer && previewImg) {
+            previewImg.src = compressed;
+            previewContainer.classList.remove('hidden');
+          }
+        } catch (error) {
+          console.error("Error compressing image:", error);
+          showNotification("Błąd przetwarzania zdjęcia.", "error");
+        }
+      };
+
+      window.clearTrainingPublicImage = () => {
+        trainingPublicImageBase64 = null;
+        document.getElementById("training-public-img").value = "";
+        document.getElementById("training-public-image-input").value = "";
+        const previewContainer = document.getElementById('training-public-image-preview');
+        if (previewContainer) {
+          previewContainer.classList.add('hidden');
+        }
+      };
+
+      // ============================================
+      // MODAL TREŚCI WŁAŚCIWEJ SZKOLENIA
+      // ============================================
+
+      window.openTrainingContentForm = async (trainingId) => {
+        if (!trainingId) {
+          showNotification("Najpierw utwórz szkolenie w sekcji 'Edytuj'.", "error");
+          return;
+        }
+        
+        const modal = document.getElementById("training-content-form-modal");
+        const title = document.getElementById("training-content-form-title");
+        
+        modal.classList.remove("hidden");
+        currentTrainingId = trainingId;
+        
+        const training = trainingsList.find((t) => t.id === trainingId);
+        if (training) {
+          title.textContent = `Treść właściwa: ${training.title}`;
+          await editTrainingContent(trainingId);
+        } else {
+          title.textContent = "Treść właściwa kursu";
+          clearTrainingContentForm();
+        }
+      };
+
+      window.closeTrainingContentForm = () => {
+        const modal = document.getElementById("training-content-form-modal");
+        modal.classList.add("hidden");
+        clearTrainingContentForm();
+      };
+
+      window.editTrainingContent = async (trainingId) => {
+        const training = trainingsList.find((t) => t.id === trainingId);
+        if (!training) return;
+
+        document.getElementById("training-content-id").value = training.id;
+        document.getElementById("training-content-editor").innerHTML = training.content || "";
+        
+        await loadLessons();
+        renderLessonsListContentModal();
+      };
+
+      window.clearTrainingContentForm = () => {
+        document.getElementById("training-content-form").reset();
+        document.getElementById("training-content-editor").innerHTML = "";
+        document.getElementById("training-content-id").value = "";
       };
 
       // ============================================
@@ -11154,6 +11245,7 @@
           renderLessonsList();
           // Zaktualizuj również listę w modalu jeśli jest otwarty
           renderLessonsListModal();
+          renderLessonsListContentModal();
         } catch (error) {
           console.error("Error loading lessons:", error);
           // Nie pokazuj błędu jeśli szkolenie nie istnieje jeszcze (nowe szkolenie) lub brak uprawnień
@@ -11497,6 +11589,36 @@
 
       function renderLessonsListModal() {
         const container = document.getElementById("lessons-list-modal");
+        if (!container) return;
+        
+        if (lessonsList.length === 0) {
+          container.innerHTML = '<div class="text-sm text-zinc-500 text-center py-4">Brak lekcji</div>';
+          return;
+        }
+
+        container.innerHTML = lessonsList.map((lesson, index) => `
+          <div class="flex items-center justify-between p-3 bg-zinc-800 rounded-lg border border-zinc-700">
+            <div class="flex-1">
+              <div class="font-semibold text-white">${lesson.title || "Bez tytułu"}</div>
+              ${lesson.description ? `<div class="text-sm text-zinc-400 mt-1">${lesson.description}</div>` : ''}
+              <div class="flex items-center gap-4 text-xs text-zinc-500 mt-1">
+                ${lesson.duration ? `<span><i class="fa-solid fa-clock mr-1"></i>${lesson.duration} min</span>` : ''}
+                ${lesson.videoUrl ? '<span><i class="fa-solid fa-video mr-1"></i>Wideo</span>' : ''}
+                <span>Pozycja: ${index + 1}</span>
+              </div>
+            </div>
+            <div class="flex space-x-2">
+              <button onclick="editLesson('${lesson.id}')" class="text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400 rounded text-xs">Edytuj</button>
+              <button onclick="moveLessonUp('${lesson.id}')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 border border-zinc-400 rounded text-xs" ${index === 0 ? 'disabled' : ''}>↑</button>
+              <button onclick="moveLessonDown('${lesson.id}')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 border border-zinc-400 rounded text-xs" ${index === lessonsList.length - 1 ? 'disabled' : ''}>↓</button>
+              <button onclick="deleteLesson('${lesson.id}')" class="text-red-400 hover:text-red-300 px-2 py-1 border border-red-400 rounded text-xs">Usuń</button>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      function renderLessonsListContentModal() {
+        const container = document.getElementById("lessons-list-content-modal");
         if (!container) return;
         
         if (lessonsList.length === 0) {
@@ -12027,7 +12149,7 @@
       };
 
       async function loadTrainingAccessList(trainingId) {
-        const accessList = document.getElementById("training-access-list-modal");
+        const accessList = document.getElementById("training-public-access-list");
         if (!accessList || !trainingId) return;
 
         try {
@@ -12088,21 +12210,19 @@
         }
       };
 
-      // Obsługa formularza szkolenia
+      // Obsługa formularza publicznych informacji szkolenia
       document
-        .getElementById("training-form")
+        .getElementById("training-public-form")
         .addEventListener("submit", async (e) => {
           e.preventDefault();
 
-          const trainingId = document.getElementById("training-id").value;
-          const title = document.getElementById("training-title").value.trim();
-          const price = document.getElementById("training-price").value.trim();
-          // Użyj base64 jeśli został wybrany nowy plik, w przeciwnym razie użyj istniejącego
-          const img = trainingImageBase64 || document.getElementById("training-img").value.trim();
-          const desc = document.getElementById("training-description").innerHTML;
-          const content = document.getElementById("training-content") ? document.getElementById("training-content").innerHTML : "";
-          const available = document.getElementById("training-available-all").checked;
-          const hidden = document.getElementById("training-hidden").checked;
+          const trainingId = document.getElementById("training-public-id").value;
+          const title = document.getElementById("training-public-title").value.trim();
+          const price = document.getElementById("training-public-price").value.trim();
+          const img = trainingPublicImageBase64 || document.getElementById("training-public-img").value.trim();
+          const desc = document.getElementById("training-public-description").innerHTML;
+          const available = document.getElementById("training-public-available-all").checked;
+          const hidden = document.getElementById("training-public-hidden").checked;
 
           if (!title || !price || !img) {
             showNotification("Wypełnij wszystkie wymagane pola (w tym zdjęcie).", "error");
@@ -12115,7 +12235,6 @@
               price,
               img,
               desc,
-              content: content || "",
               available: available ? true : false,
               hidden: hidden ? true : false,
               date: Date.now(),
@@ -12123,35 +12242,55 @@
             };
 
             if (trainingId) {
-              // Aktualizacja istniejącego szkolenia
+              // Aktualizacja istniejącego szkolenia - zachowaj content jeśli istnieje
+              const existingTraining = trainingsList.find(t => t.id === trainingId);
+              if (existingTraining && existingTraining.content) {
+                trainingData.content = existingTraining.content;
+              }
               await updateDoc(doc(db, "trainings", trainingId), trainingData);
               showNotification("Szkolenie zostało zapisane poprawnie.", 'success');
+              await editTrainingPublic(trainingId);
             } else {
               // Dodanie nowego szkolenia
+              trainingData.content = "";
               const newTrainingRef = await addDoc(collection(db, "trainings"), trainingData);
               currentTrainingId = newTrainingRef.id;
               showNotification("Szkolenie zostało zapisane poprawnie.", 'success');
-              // Pokaż sekcję treści właściwej i zarządzania dostępem w modalu
-              document.getElementById("training-content-section-modal").classList.remove("hidden");
-              document.getElementById("training-access-section-modal").classList.remove("hidden");
-              // Załaduj listę użytkowników z dostępem (pusta na początku)
               await loadTrainingAccessList(currentTrainingId);
-            }
-
-            // Wyczyść formularz tylko jeśli nie edytujemy
-            if (!trainingId) {
-              clearTrainingForm();
-              closeTrainingForm();
-            } else {
-              document.getElementById("training-id").value = trainingId;
-              // Odśwież dane w modalu
-              await editTraining(trainingId);
+              clearTrainingPublicForm();
+              closeTrainingPublicForm();
             }
 
             loadTrainings();
           } catch (error) {
             console.error("Error saving training:", error);
             showNotification("Błąd zapisywania szkolenia.", "error");
+          }
+        });
+
+      // Obsługa formularza treści właściwej szkolenia
+      document
+        .getElementById("training-content-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const trainingId = document.getElementById("training-content-id").value;
+          const content = document.getElementById("training-content-editor").innerHTML;
+
+          if (!trainingId) {
+            showNotification("Błąd: brak ID szkolenia.", "error");
+            return;
+          }
+
+          try {
+            await updateDoc(doc(db, "trainings", trainingId), {
+              content: content || ""
+            });
+            showNotification("Treść kursu została zapisana poprawnie.", 'success');
+            await editTrainingContent(trainingId);
+          } catch (error) {
+            console.error("Error saving training content:", error);
+            showNotification("Błąd zapisywania treści kursu.", "error");
           }
         });
 
@@ -16215,24 +16354,24 @@
       </div>
     </div>
 
-    <!-- Modal formularza szkolenia -->
-    <div id="training-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onclick="if(event.target.id === 'training-form-modal') closeTrainingForm()">
+    <!-- Modal formularza publicznych informacji szkolenia -->
+    <div id="training-public-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onclick="if(event.target.id === 'training-public-form-modal') closeTrainingPublicForm()">
       <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-6">
-          <h2 class="text-2xl font-bold coyote-text" id="training-form-title">Dodaj szkolenie</h2>
-          <button onclick="closeTrainingForm()" class="text-zinc-400 hover:text-white">
+          <h2 class="text-2xl font-bold coyote-text" id="training-public-form-title">Dodaj szkolenie</h2>
+          <button onclick="closeTrainingPublicForm()" class="text-zinc-400 hover:text-white">
             <i class="fa-solid fa-times text-xl"></i>
           </button>
         </div>
         
-        <form id="training-form" class="flex-1 overflow-y-auto space-y-4 pr-2">
-          <input type="hidden" id="training-id" />
+        <form id="training-public-form" class="flex-1 overflow-y-auto space-y-4 pr-2">
+          <input type="hidden" id="training-public-id" />
           
           <div>
             <label class="block text-sm font-medium mb-2">Nazwa szkolenia *</label>
             <input
               type="text"
-              id="training-title"
+              id="training-public-title"
               placeholder="Nazwa szkolenia"
               required
               class="w-full"
@@ -16243,7 +16382,7 @@
             <label class="block text-sm font-medium mb-2">Cena *</label>
             <input
               type="text"
-              id="training-price"
+              id="training-public-price"
               placeholder="Cena (np. 299.99)"
               required
               class="w-full"
@@ -16255,20 +16394,20 @@
             <label class="w-full py-2 border border-zinc-600 rounded text-sm hover:bg-zinc-800 transition cursor-pointer flex items-center justify-center">
               <input
                 type="file"
-                id="training-image-input"
+                id="training-public-image-input"
                 accept="image/*"
                 class="hidden"
-                onchange="handleTrainingImageUpload(event)"
+                onchange="handleTrainingPublicImageUpload(event)"
               />
               <i class="fa-solid fa-upload mr-2"></i>
               Wybierz zdjęcie
             </label>
-            <div id="training-image-preview" class="mt-3 hidden">
+            <div id="training-public-image-preview" class="mt-3 hidden">
               <div class="relative inline-block">
-                <img id="training-image-preview-img" src="" alt="Podgląd zdjęcia" class="max-w-full max-h-48 rounded-lg border border-zinc-700">
+                <img id="training-public-image-preview-img" src="" alt="Podgląd zdjęcia" class="max-w-full max-h-48 rounded-lg border border-zinc-700">
                 <button
                   type="button"
-                  onclick="clearTrainingImage()"
+                  onclick="clearTrainingPublicImage()"
                   class="absolute top-2 right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-700 transition"
                   title="Usuń zdjęcie"
                 >
@@ -16276,7 +16415,7 @@
                 </button>
               </div>
             </div>
-            <input type="hidden" id="training-img" />
+            <input type="hidden" id="training-public-img" />
           </div>
 
           <div class="border-t border-zinc-700 pt-4">
@@ -16285,18 +16424,18 @@
               <label class="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  id="training-available-all"
+                  id="training-public-available-all"
                   class="w-4 h-4"
-                  onchange="updateTrainingVisibility()"
+                  onchange="updateTrainingPublicVisibility()"
                 />
                 <span class="text-sm">Dostępne dla wszystkich</span>
               </label>
               <label class="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  id="training-hidden"
+                  id="training-public-hidden"
                   class="w-4 h-4"
-                  onchange="updateTrainingVisibility()"
+                  onchange="updateTrainingPublicVisibility()"
                 />
                 <span class="text-sm text-red-400">Ukryj (niewidoczne dla wszystkich)</span>
               </label>
@@ -16306,83 +16445,35 @@
             </p>
           </div>
 
-          <div class="border-b border-zinc-700 pb-4 mb-4">
+          <div class="border-t border-zinc-700 pt-4">
             <h4 class="text-lg font-semibold mb-2 text-zinc-300">Szczegóły widoczne (dla wszystkich)</h4>
             <p class="text-sm text-zinc-400 mb-4">Te informacje będą widoczne dla wszystkich użytkowników na stronie szkoleń.</p>
             
             <div class="toolbar mb-3">
-              <button type="button" onclick="formatText('bold', 'training-description')">
+              <button type="button" onclick="formatText('bold', 'training-public-description')">
                 <i class="fa-solid fa-bold"></i>
               </button>
-              <button type="button" onclick="formatText('insertUnorderedList', 'training-description')">
+              <button type="button" onclick="formatText('insertUnorderedList', 'training-public-description')">
                 <i class="fa-solid fa-list-ul"></i>
               </button>
-              <button type="button" onclick="formatText('justifyCenter', 'training-description')">
+              <button type="button" onclick="formatText('justifyCenter', 'training-public-description')">
                 <i class="fa-solid fa-align-center"></i>
               </button>
-              <button type="button" onclick="insertImage('training-description')">
+              <button type="button" onclick="insertImage('training-public-description')">
                 <i class="fa-solid fa-image"></i>
               </button>
             </div>
 
             <div
-              id="training-description"
+              id="training-public-description"
               class="editor-content min-h-[200px]"
               contenteditable="true"
               placeholder="Opis szkolenia widoczny dla wszystkich..."
             ></div>
           </div>
 
-          <div class="border-t border-zinc-700 pt-4">
-            <h4 class="text-lg font-semibold mb-2 text-coyote">Treść właściwa kursu (tylko dla uprawnionych)</h4>
-            <p class="text-sm text-zinc-400 mb-4">Ta treść będzie dostępna tylko dla użytkowników z dostępem do kursu.</p>
-            
-            <div class="toolbar mb-3">
-              <button type="button" onclick="formatText('bold', 'training-content')">
-                <i class="fa-solid fa-bold"></i>
-              </button>
-              <button type="button" onclick="formatText('insertUnorderedList', 'training-content')">
-                <i class="fa-solid fa-list-ul"></i>
-              </button>
-              <button type="button" onclick="formatText('justifyCenter', 'training-content')">
-                <i class="fa-solid fa-align-center"></i>
-              </button>
-              <button type="button" onclick="insertImage('training-content')">
-                <i class="fa-solid fa-image"></i>
-              </button>
-            </div>
-
-            <div
-              id="training-content"
-              class="editor-content min-h-[200px]"
-              contenteditable="true"
-              placeholder="Treść właściwa kursu dostępna tylko dla uprawnionych..."
-            ></div>
-          </div>
-
-          <!-- Zarządzanie lekcjami (tylko przy edycji) -->
-          <div id="training-lessons-section-modal" class="border-t border-zinc-700 pt-4 mt-4 hidden">
-            <h4 class="text-lg font-bold mb-4">Zarządzanie lekcjami</h4>
-            <div class="space-y-4">
-              <button
-                type="button"
-                onclick="openLessonForm()"
-                class="btn-admin w-full"
-              >
-                <i class="fa-solid fa-plus mr-2"></i>
-                Dodaj lekcję
-              </button>
-              <div>
-                <label class="block text-sm font-medium mb-2">Lekcje kursu</label>
-                <div id="lessons-list-modal" class="space-y-2 max-h-[300px] overflow-y-auto">
-                  <div class="text-sm text-zinc-500 text-center py-4">Brak lekcji</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Zarządzanie dostępem (tylko przy edycji) -->
-          <div id="training-access-section-modal" class="border-t border-zinc-700 pt-4 mt-4 hidden">
+          <!-- Zarządzanie dostępem -->
+          <div class="border-t border-zinc-700 pt-4 mt-4">
             <h4 class="text-lg font-bold mb-4">Zarządzanie dostępem</h4>
             <div class="space-y-4">
               <button
@@ -16395,7 +16486,7 @@
               </button>
               <div>
                 <label class="block text-sm font-medium mb-2">Użytkownicy z dostępem</label>
-                <div id="training-access-list-modal" class="space-y-2">
+                <div id="training-public-access-list" class="space-y-2">
                   <!-- Lista użytkowników z dostępem -->
                 </div>
               </div>
@@ -16407,7 +16498,87 @@
               <i class="fa-solid fa-save mr-2"></i>
               Zapisz szkolenie
             </button>
-            <button type="button" onclick="closeTrainingForm()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
+            <button type="button" onclick="closeTrainingPublicForm()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
+              Anuluj
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal formularza treści właściwej szkolenia -->
+    <div id="training-content-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onclick="if(event.target.id === 'training-content-form-modal') closeTrainingContentForm()">
+      <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold coyote-text" id="training-content-form-title">Treść właściwa kursu</h2>
+          <button onclick="closeTrainingContentForm()" class="text-zinc-400 hover:text-white">
+            <i class="fa-solid fa-times text-xl"></i>
+          </button>
+        </div>
+        
+        <form id="training-content-form" class="flex-1 overflow-y-auto space-y-4 pr-2">
+          <input type="hidden" id="training-content-id" />
+          
+          <div class="border-t border-zinc-700 pt-4">
+            <h4 class="text-lg font-semibold mb-2 text-coyote">Treść właściwa kursu (tylko dla uprawnionych)</h4>
+            <p class="text-sm text-zinc-400 mb-4">Ta treść będzie dostępna tylko dla użytkowników z dostępem do kursu.</p>
+            
+            <div class="toolbar mb-3">
+              <button type="button" onclick="formatText('bold', 'training-content-editor')">
+                <i class="fa-solid fa-bold"></i>
+              </button>
+              <button type="button" onclick="formatText('insertUnorderedList', 'training-content-editor')">
+                <i class="fa-solid fa-list-ul"></i>
+              </button>
+              <button type="button" onclick="formatText('justifyCenter', 'training-content-editor')">
+                <i class="fa-solid fa-align-center"></i>
+              </button>
+              <button type="button" onclick="insertImage('training-content-editor')">
+                <i class="fa-solid fa-image"></i>
+              </button>
+            </div>
+
+            <div
+              id="training-content-editor"
+              class="editor-content min-h-[200px]"
+              contenteditable="true"
+              placeholder="Treść właściwa kursu dostępna tylko dla uprawnionych..."
+            ></div>
+          </div>
+
+          <!-- Zarządzanie lekcjami -->
+          <div class="border-t border-zinc-700 pt-4 mt-4">
+            <h4 class="text-lg font-bold mb-4">Zarządzanie lekcjami</h4>
+            <div class="space-y-4">
+              <button
+                type="button"
+                onclick="openLessonForm()"
+                class="btn-admin w-full"
+              >
+                <i class="fa-solid fa-plus mr-2"></i>
+                Dodaj lekcję
+              </button>
+              <div>
+                <label class="block text-sm font-medium mb-2">Lekcje kursu</label>
+                <div id="lessons-list-content-modal" class="space-y-2 max-h-[300px] overflow-y-auto">
+                  <div class="text-sm text-zinc-500 text-center py-4">Brak lekcji</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Postęp kursu (do implementacji) -->
+          <div class="border-t border-zinc-700 pt-4 mt-4">
+            <h4 class="text-lg font-bold mb-4">Postęp kursu</h4>
+            <p class="text-sm text-zinc-400">Funkcjonalność do implementacji...</p>
+          </div>
+
+          <div class="flex gap-4 pt-4 border-t border-zinc-700">
+            <button type="submit" class="btn-admin flex-1">
+              <i class="fa-solid fa-save mr-2"></i>
+              Zapisz treść kursu
+            </button>
+            <button type="button" onclick="closeTrainingContentForm()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
               Anuluj
             </button>
           </div>
