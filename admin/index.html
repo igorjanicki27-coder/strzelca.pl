@@ -1917,12 +1917,34 @@
                     placeholder="Cena (np. 299.99)"
                     required
                   />
-                  <input
-                    type="text"
-                    id="training-img"
-                    placeholder="URL zdjęcia"
-                    required
-                  />
+                  <label class="block text-sm font-medium mb-2 text-zinc-300">
+                    Zdjęcie szkolenia
+                  </label>
+                  <label class="w-full py-2 border border-zinc-600 rounded text-sm hover:bg-zinc-800 transition cursor-pointer flex items-center justify-center">
+                    <input
+                      type="file"
+                      id="training-image-input"
+                      accept="image/*"
+                      class="hidden"
+                      onchange="handleTrainingImageUpload(event)"
+                    />
+                    <i class="fa-solid fa-upload mr-2"></i>
+                    Wybierz zdjęcie
+                  </label>
+                  <div id="training-image-preview" class="mt-3 hidden">
+                    <div class="relative inline-block">
+                      <img id="training-image-preview-img" src="" alt="Podgląd zdjęcia" class="max-w-full max-h-48 rounded-lg border border-zinc-700">
+                      <button
+                        type="button"
+                        onclick="clearTrainingImage()"
+                        class="absolute top-2 right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-700 transition"
+                        title="Usuń zdjęcie"
+                      >
+                        <i class="fa-solid fa-times text-xs"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <input type="hidden" id="training-img" />
                   
                   <div class="flex items-center gap-4">
                     <label class="flex items-center gap-2 cursor-pointer">
@@ -11053,7 +11075,34 @@
         document.getElementById("training-id").value = training.id;
         document.getElementById("training-title").value = training.title || "";
         document.getElementById("training-price").value = training.price || "";
-        document.getElementById("training-img").value = training.img || "";
+        
+        // Załaduj zdjęcie (może być base64 lub URL)
+        const trainingImg = training.img || "";
+        trainingImageBase64 = trainingImg;
+        document.getElementById("training-img").value = trainingImg;
+        
+        // Pokaż podgląd jeśli jest zdjęcie
+        const previewContainer = document.getElementById('training-image-preview');
+        const previewImg = document.getElementById('training-image-preview-img');
+        if (trainingImg) {
+          previewContainer.classList.remove('hidden');
+          previewContainer.innerHTML = `
+            <div class="relative inline-block">
+              <img id="training-image-preview-img" src="${trainingImg}" alt="Podgląd zdjęcia" class="max-w-full max-h-48 rounded-lg border border-zinc-700">
+              <button
+                type="button"
+                onclick="clearTrainingImage()"
+                class="absolute top-2 right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-700 transition"
+                title="Usuń zdjęcie"
+              >
+                <i class="fa-solid fa-times text-xs"></i>
+              </button>
+            </div>
+          `;
+        } else {
+          previewContainer.classList.add('hidden');
+        }
+        
         document.getElementById("training-available-all").checked = training.available === true;
         document.getElementById("training-description").innerHTML = training.desc || "";
 
@@ -11137,11 +11186,69 @@
         currentTrainingId = null;
       };
 
+      // Zmienna do przechowywania base64 zdjęcia szkolenia
+      let trainingImageBase64 = null;
+
+      // Obsługa wyboru zdjęcia szkolenia
+      window.handleTrainingImageUpload = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const input = event.target;
+        const previewContainer = document.getElementById('training-image-preview');
+        const hiddenInput = document.getElementById('training-img');
+
+        try {
+          // Pokaż stan ładowania
+          previewContainer.classList.remove('hidden');
+          previewContainer.innerHTML = '<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin text-coyote text-xl mb-2"></i><p class="text-sm text-zinc-400">Przetwarzanie zdjęcia...</p></div>';
+
+          // Przetwórz zdjęcie do base64 (używamy tej samej funkcji co dla produktów)
+          trainingImageBase64 = await processProductImage(file);
+
+          // Pokaż podgląd
+          hiddenInput.value = trainingImageBase64;
+          previewContainer.innerHTML = `
+            <div class="relative inline-block">
+              <img id="training-image-preview-img" src="${trainingImageBase64}" alt="Podgląd zdjęcia" class="max-w-full max-h-48 rounded-lg border border-zinc-700">
+              <button
+                type="button"
+                onclick="clearTrainingImage()"
+                class="absolute top-2 right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-700 transition"
+                title="Usuń zdjęcie"
+              >
+                <i class="fa-solid fa-times text-xs"></i>
+              </button>
+            </div>
+          `;
+
+          showNotification('Zdjęcie zostało przetworzone.', 'success');
+        } catch (error) {
+          console.error('Błąd podczas przetwarzania zdjęcia:', error);
+          showNotification(error.message || 'Błąd podczas przetwarzania zdjęcia. Sprawdź konsolę.', 'error');
+          previewContainer.classList.add('hidden');
+          trainingImageBase64 = null;
+          hiddenInput.value = '';
+        } finally {
+          // Wyczyść input, żeby można było wybrać ten sam plik ponownie
+          input.value = '';
+        }
+      };
+
+      // Funkcja czyszczenia zdjęcia szkolenia
+      window.clearTrainingImage = () => {
+        trainingImageBase64 = null;
+        document.getElementById('training-img').value = '';
+        document.getElementById('training-image-preview').classList.add('hidden');
+        document.getElementById('training-image-input').value = '';
+      };
+
       window.clearTrainingForm = () => {
         document.getElementById("training-form").reset();
         document.getElementById("training-description").innerHTML = "";
         document.getElementById("training-id").value = "";
         document.getElementById("training-access-section").classList.add("hidden");
+        clearTrainingImage();
         currentTrainingId = null;
       };
 
@@ -11717,12 +11824,13 @@
           const trainingId = document.getElementById("training-id").value;
           const title = document.getElementById("training-title").value.trim();
           const price = document.getElementById("training-price").value.trim();
-          const img = document.getElementById("training-img").value.trim();
+          // Użyj base64 jeśli został wybrany nowy plik, w przeciwnym razie użyj istniejącego
+          const img = trainingImageBase64 || document.getElementById("training-img").value.trim();
           const desc = document.getElementById("training-description").innerHTML;
           const available = document.getElementById("training-available-all").checked;
 
           if (!title || !price || !img) {
-            showNotification("Wypełnij wszystkie wymagane pola.", "error");
+            showNotification("Wypełnij wszystkie wymagane pola (w tym zdjęcie).", "error");
             return;
           }
 
