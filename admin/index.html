@@ -12251,31 +12251,7 @@
           }
         });
 
-      // Obsługa formularza treści właściwej szkolenia
-      document
-        .getElementById("training-content-form")
-        .addEventListener("submit", async (e) => {
-          e.preventDefault();
-
-          const trainingId = document.getElementById("training-content-id").value;
-          const content = document.getElementById("training-content-editor").innerHTML;
-
-          if (!trainingId) {
-            showNotification("Błąd: brak ID szkolenia.", "error");
-            return;
-          }
-
-          try {
-            await updateDoc(doc(db, "trainings", trainingId), {
-              content: content || ""
-            });
-            showNotification("Treść kursu została zapisana poprawnie.", 'success');
-            await editTrainingContent(trainingId);
-          } catch (error) {
-            console.error("Error saving training content:", error);
-            showNotification("Błąd zapisywania treści kursu.", "error");
-          }
-        });
+      // Formularz treści właściwej został usunięty - treść jest zapisywana w lekcjach
 
       // Obsługa formularza edycji użytkownika
       document
@@ -14522,15 +14498,13 @@
       // Zmienna do śledzenia czy użytkownik pisze
       let isUserTyping = false;
       let typingTimeout = null;
-      let messagesAutoRefresh = null; // Deklaracja zmiennej dla auto-odświeżania wiadomości
-
       // Funkcja automatycznego odświeżania wiadomości
       function startMessagesAutoRefresh() {
-        if (messagesAutoRefresh) {
-          clearInterval(messagesAutoRefresh);
+        if (window.messagesAutoRefresh) {
+          clearInterval(window.messagesAutoRefresh);
         }
 
-        messagesAutoRefresh = setInterval(() => {
+        window.messagesAutoRefresh = setInterval(() => {
           if (currentTab === 'messages' && !isUserTyping) {
             // Sprawdź czy użytkownik wyszukuje
             const searchInput = document.getElementById('messages-search');
@@ -14562,17 +14536,17 @@
       
       // Funkcja zatrzymania auto-odświeżania wiadomości
       function stopMessagesAutoRefresh() {
-        if (messagesAutoRefresh) {
-          clearInterval(messagesAutoRefresh);
-          messagesAutoRefresh = null;
+        if (window.messagesAutoRefresh) {
+          clearInterval(window.messagesAutoRefresh);
+          window.messagesAutoRefresh = null;
         }
       }
 
       // Funkcja zatrzymania auto-odświeżania
       function stopAutoRefresh() {
-        if (messagesAutoRefresh) {
-          clearInterval(messagesAutoRefresh);
-          messagesAutoRefresh = null;
+        if (window.messagesAutoRefresh) {
+          clearInterval(window.messagesAutoRefresh);
+          window.messagesAutoRefresh = null;
         }
       }
 
