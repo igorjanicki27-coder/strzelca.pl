@@ -169,11 +169,12 @@
         </footer>
 
         <script type="module">
-            import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+            import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
             import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
             import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
             import {
                 initializeFirestore,
+                getFirestore,
                 collection,
                 getDocs,
                 doc,
@@ -216,11 +217,22 @@
                 appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
             };
 
-            const app = initializeApp(firebaseConfig);
-            const db = initializeFirestore(app, {
-                experimentalAutoDetectLongPolling: true,
-                useFetchStreams: true,
-            });
+            // Sprawdź czy aplikacja Firebase już istnieje (np. z auth-widget.mjs lub messages-widget.mjs)
+            const existingApps = getApps();
+            const app = existingApps.length > 0 ? existingApps[0] : initializeApp(firebaseConfig);
+            
+            // Inicjalizuj Firestore - jeśli już istnieje, użyj getFirestore
+            let db;
+            try {
+                db = initializeFirestore(app, {
+                    experimentalAutoDetectLongPolling: true,
+                    useFetchStreams: true,
+                });
+            } catch {
+                // Firestore już zainicjalizowany, użyj istniejącej instancji
+                db = getFirestore(app);
+            }
+            
             const auth = getAuth(app);
             await setPersistence(auth, browserLocalPersistence);
 
