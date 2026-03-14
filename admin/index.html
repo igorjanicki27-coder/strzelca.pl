@@ -11384,12 +11384,22 @@
         e.preventDefault();
         
         const lessonId = document.getElementById("lesson-id").value;
-        const trainingId = document.getElementById("lesson-training-id").value;
+        const trainingId = document.getElementById("lesson-training-id").value || currentTrainingId;
         const title = document.getElementById("lesson-title").value.trim();
         const content = document.getElementById("lesson-content").innerHTML;
 
-        if (!title || !trainingId) {
-          showNotification("Wypełnij wszystkie wymagane pola.", "error");
+        if (!title) {
+          showNotification("Wypełnij tytuł lekcji.", "error");
+          return;
+        }
+        
+        if (!trainingId) {
+          showNotification("Błąd: brak ID szkolenia. Otwórz najpierw formularz treści kursu.", "error");
+          return;
+        }
+
+        if (!currentUser) {
+          showNotification("Błąd: brak zalogowanego użytkownika.", "error");
           return;
         }
 
@@ -11412,10 +11422,22 @@
 
           closeLessonForm();
           await loadLessons();
-          renderLessonsListModal();
+          renderLessonsListContentModal();
         } catch (error) {
           console.error("Error saving lesson:", error);
-          showNotification("Błąd zapisywania lekcji.", "error");
+          console.error("Error details:", {
+            code: error.code,
+            message: error.message,
+            trainingId: trainingId,
+            lessonId: lessonId,
+            currentUser: currentUser?.uid
+          });
+          
+          if (error.code === 'permission-denied') {
+            showNotification("Błąd uprawnień: Sprawdź reguły bezpieczeństwa Firestore dla kolekcji 'courseLessons'.", "error");
+          } else {
+            showNotification("Błąd zapisywania lekcji: " + (error.message || "Nieznany błąd"), "error");
+          }
         }
       });
 
@@ -16513,61 +16535,63 @@
           </button>
         </div>
         
-        <form id="lesson-form" class="flex-1 overflow-y-auto space-y-4 pr-2 flex flex-col">
+        <form id="lesson-form" class="flex-1 flex flex-col min-h-0">
           <input type="hidden" id="lesson-id" />
           <input type="hidden" id="lesson-training-id" />
           
-          <div>
-            <label class="block text-sm font-medium mb-2">Tytuł lekcji *</label>
-            <input
-              type="text"
-              id="lesson-title"
-              placeholder="Nazwa lekcji"
-              required
-              class="w-full"
-            />
-          </div>
-
-          <div class="flex-1 flex flex-col min-h-0">
-            <label class="block text-sm font-medium mb-2">Treść lekcji</label>
-            <div class="toolbar mb-3 flex-shrink-0">
-              <button type="button" onclick="formatText('bold', 'lesson-content')">
-                <i class="fa-solid fa-bold"></i>
-              </button>
-              <button type="button" onclick="formatText('italic', 'lesson-content')">
-                <i class="fa-solid fa-italic"></i>
-              </button>
-              <button type="button" onclick="formatText('underline', 'lesson-content')">
-                <i class="fa-solid fa-underline"></i>
-              </button>
-              <button type="button" onclick="formatText('insertUnorderedList', 'lesson-content')">
-                <i class="fa-solid fa-list-ul"></i>
-              </button>
-              <button type="button" onclick="formatText('insertOrderedList', 'lesson-content')">
-                <i class="fa-solid fa-list-ol"></i>
-              </button>
-              <button type="button" onclick="formatText('justifyLeft', 'lesson-content')">
-                <i class="fa-solid fa-align-left"></i>
-              </button>
-              <button type="button" onclick="formatText('justifyCenter', 'lesson-content')">
-                <i class="fa-solid fa-align-center"></i>
-              </button>
-              <button type="button" onclick="formatText('justifyRight', 'lesson-content')">
-                <i class="fa-solid fa-align-right"></i>
-              </button>
-              <button type="button" onclick="insertImage('lesson-content')">
-                <i class="fa-solid fa-image"></i>
-              </button>
+          <div class="flex-1 overflow-y-auto space-y-4 pr-2">
+            <div>
+              <label class="block text-sm font-medium mb-2">Tytuł lekcji *</label>
+              <input
+                type="text"
+                id="lesson-title"
+                placeholder="Nazwa lekcji"
+                required
+                class="w-full"
+              />
             </div>
-            <div
-              id="lesson-content"
-              class="editor-content flex-1 min-h-[400px]"
-              contenteditable="true"
-              placeholder="Treść lekcji..."
-            ></div>
+
+            <div class="flex flex-col min-h-[400px]">
+              <label class="block text-sm font-medium mb-2">Treść lekcji</label>
+              <div class="toolbar mb-3 flex-shrink-0">
+                <button type="button" onclick="formatText('bold', 'lesson-content')">
+                  <i class="fa-solid fa-bold"></i>
+                </button>
+                <button type="button" onclick="formatText('italic', 'lesson-content')">
+                  <i class="fa-solid fa-italic"></i>
+                </button>
+                <button type="button" onclick="formatText('underline', 'lesson-content')">
+                  <i class="fa-solid fa-underline"></i>
+                </button>
+                <button type="button" onclick="formatText('insertUnorderedList', 'lesson-content')">
+                  <i class="fa-solid fa-list-ul"></i>
+                </button>
+                <button type="button" onclick="formatText('insertOrderedList', 'lesson-content')">
+                  <i class="fa-solid fa-list-ol"></i>
+                </button>
+                <button type="button" onclick="formatText('justifyLeft', 'lesson-content')">
+                  <i class="fa-solid fa-align-left"></i>
+                </button>
+                <button type="button" onclick="formatText('justifyCenter', 'lesson-content')">
+                  <i class="fa-solid fa-align-center"></i>
+                </button>
+                <button type="button" onclick="formatText('justifyRight', 'lesson-content')">
+                  <i class="fa-solid fa-align-right"></i>
+                </button>
+                <button type="button" onclick="insertImage('lesson-content')">
+                  <i class="fa-solid fa-image"></i>
+                </button>
+              </div>
+              <div
+                id="lesson-content"
+                class="editor-content flex-1 min-h-[400px]"
+                contenteditable="true"
+                placeholder="Treść lekcji..."
+              ></div>
+            </div>
           </div>
 
-          <div class="flex gap-4 pt-4 border-t border-zinc-700">
+          <div class="flex gap-4 pt-4 border-t border-zinc-700 flex-shrink-0">
             <button type="submit" class="btn-admin flex-1">
               <i class="fa-solid fa-save mr-2"></i>
               Zapisz lekcję
