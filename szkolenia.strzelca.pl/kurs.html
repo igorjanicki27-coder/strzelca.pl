@@ -234,7 +234,10 @@
             let currentTrainingId = null;
             let lessons = [];
             let completedLessons = new Set();
+            let openedLessons = new Set(); // Lekcje które zostały otwarte (50% progresu)
+            let finishedLessons = new Set(); // Lekcje które zostały zakończone (100% progresu)
             let currentLessonIndex = 0;
+            let trainingTitle = "";
 
             // Funkcje UI
             window.toggleUserMenu = () => {
@@ -335,7 +338,8 @@
                     }
 
                     // Załaduj kurs
-                    document.getElementById("course-title").textContent = training.title || "Kurs";
+                    trainingTitle = training.title || "Kurs";
+                    document.getElementById("course-title").textContent = trainingTitle;
                     await loadLessons();
                     await loadProgress();
                 } catch (error) {
@@ -381,20 +385,21 @@
                 }
 
                 sidebar.innerHTML = lessons.map((lesson, index) => {
-                    const isCompleted = completedLessons.has(lesson.id);
+                    const isFinished = finishedLessons.has(lesson.id);
+                    const isOpened = openedLessons.has(lesson.id) || isFinished;
                     const isActive = index === currentLessonIndex;
+                    const isCertificate = lesson.id === 'certificate';
                     
                     return `
-                        <div class="flex items-center gap-2 p-2 rounded-lg cursor-pointer transition ${isActive ? 'bg-coyote/20 border border-coyote' : 'hover:bg-zinc-800'} ${isCompleted ? 'opacity-75' : ''}" 
-                             onclick="loadLesson(${index})">
-                            <div class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs ${isCompleted ? 'bg-green-500 text-white' : isActive ? 'bg-coyote text-black' : 'bg-zinc-700 text-zinc-400'}">
-                                ${isCompleted ? '<i class="fa-solid fa-check"></i>' : index + 1}
+                        <div class="flex items-center gap-2 p-2 rounded-lg cursor-pointer transition ${isActive ? 'bg-coyote/20 border border-coyote' : 'hover:bg-zinc-800'} ${isFinished ? 'opacity-75' : ''}" 
+                             onclick="${isCertificate ? 'downloadCertificate()' : `loadLesson(${index})`}">
+                            <div class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs ${isFinished ? 'bg-green-500 text-white' : isOpened ? 'bg-yellow-500 text-white' : isActive ? 'bg-coyote text-black' : 'bg-zinc-700 text-zinc-400'}">
+                                ${isFinished ? '<i class="fa-solid fa-check"></i>' : isOpened ? '<i class="fa-solid fa-circle-half-stroke"></i>' : isCertificate ? '<i class="fa-solid fa-certificate"></i>' : index + 1}
                             </div>
                             <div class="flex-1 min-w-0">
                                 <div class="text-sm font-medium truncate ${isActive ? 'text-coyote' : 'text-white'}">${lesson.title || "Bez tytułu"}</div>
-                                ${lesson.duration ? `<div class="text-xs text-zinc-500">${lesson.duration} min</div>` : ''}
                             </div>
-                            ${lesson.videoUrl ? '<i class="fa-solid fa-video text-coyote text-xs flex-shrink-0"></i>' : ''}
+                            ${isCertificate ? '<i class="fa-solid fa-download text-coyote text-xs flex-shrink-0"></i>' : ''}
                         </div>
                     `;
                 }).join("");
@@ -406,39 +411,43 @@
                 currentLessonIndex = index;
                 const lesson = lessons[index];
                 
-                // Oznacz lekcję jako ukończoną
-                if (currentUser && !completedLessons.has(lesson.id)) {
-                    await markLessonCompleted(lesson.id);
+                // Jeśli to certyfikat, pokaż go
+                if (lesson.id === 'certificate') {
+                    await showCertificate();
+                    return;
+                }
+                
+                // Oznacz lekcję jako otwartą (50% progresu)
+                if (currentUser && !openedLessons.has(lesson.id)) {
+                    await markLessonOpened(lesson.id);
                 }
 
                 // Renderuj treść lekcji
                 const contentArea = document.getElementById("lesson-content-area");
                 if (!contentArea) return;
 
-                let videoHtml = '';
-                if (lesson.videoUrl) {
-                    videoHtml = `
-                        <div class="video-container">
-                            <iframe 
-                                src="${lesson.videoUrl}" 
-                                frameborder="0" 
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                allowfullscreen
-                            ></iframe>
-                        </div>
-                    `;
-                }
+                const isFinished = finishedLessons.has(lesson.id);
+                const isLastLesson = index === lessons.length - 1;
+                const allLessonsFinished = lessons.filter(l => l.id !== 'certificate').every(l => finishedLessons.has(l.id));
 
                 contentArea.innerHTML = `
                     <div class="mb-6">
                         <h2 class="text-2xl md:text-3xl font-bold mb-2">${lesson.title || "Bez tytułu"}</h2>
-                        ${lesson.description ? `<p class="text-zinc-400">${lesson.description}</p>` : ''}
                     </div>
-                    ${videoHtml}
                     <div class="lesson-content custom-render">
                         ${lesson.content || '<p class="text-zinc-500">Brak treści.</p>'}
                     </div>
-                    <div class="flex justify-between items-center mt-8 pt-6 border-t border-zinc-800">
+                    ${!isFinished ? `
+                        <div class="mt-8 pt-6 border-t border-zinc-800">
+                            <button 
+                                onclick="finishLesson('${lesson.id}', ${index})" 
+                                class="w-full px-6 py-3 bg-coyote text-black rounded-lg font-bold hover:bg-opacity-90 transition text-lg"
+                            >
+                                <i class="fa-solid fa-check-circle mr-2"></i>Zakończ lekcję
+                            </button>
+                        </div>
+                    ` : ''}
+                    <div class="flex justify-between items-center mt-4">
                         <button 
                             onclick="loadLesson(${index - 1})" 
                             class="px-4 py-2 border border-zinc-700 rounded-lg hover:bg-zinc-800 transition ${index === 0 ? 'opacity-50 cursor-not-allowed' : ''}"
@@ -446,45 +455,251 @@
                         >
                             <i class="fa-solid fa-arrow-left mr-2"></i>Poprzednia
                         </button>
-                        <button 
-                            onclick="loadLesson(${index + 1})" 
-                            class="px-4 py-2 bg-coyote text-black rounded-lg font-bold hover:bg-opacity-90 transition ${index === lessons.length - 1 ? 'opacity-50 cursor-not-allowed' : ''}"
-                            ${index === lessons.length - 1 ? 'disabled' : ''}
-                        >
-                            Następna<i class="fa-solid fa-arrow-right ml-2"></i>
-                        </button>
+                        ${!isLastLesson ? `
+                            <button 
+                                onclick="loadLesson(${index + 1})" 
+                                class="px-4 py-2 bg-coyote text-black rounded-lg font-bold hover:bg-opacity-90 transition"
+                            >
+                                Następna<i class="fa-solid fa-arrow-right ml-2"></i>
+                            </button>
+                        ` : ''}
                     </div>
                 `;
 
                 renderLessonsSidebar();
                 await updateProgress();
+                
+                // Jeśli wszystkie lekcje są zakończone, pokaż certyfikat
+                if (allLessonsFinished && !lessons.find(l => l.id === 'certificate')) {
+                    await addCertificateLesson();
+                }
             };
-
-            async function markLessonCompleted(lessonId) {
+            
+            async function showCertificate() {
+                const contentArea = document.getElementById("lesson-content-area");
+                if (!contentArea || !currentUser) return;
+                
+                // Pobierz dane użytkownika
+                const profileDoc = await getDoc(doc(db, "userProfiles", currentUser.uid));
+                const profile = profileDoc.exists() ? profileDoc.data() : {};
+                const userName = profile.displayName || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || currentUser.email.split('@')[0];
+                
+                contentArea.innerHTML = `
+                    <div class="text-center py-12">
+                        <div class="mb-8">
+                            <i class="fa-solid fa-certificate text-6xl text-coyote mb-4"></i>
+                            <h2 class="text-3xl md:text-4xl font-bold mb-4">Certyfikat ukończenia</h2>
+                            <p class="text-xl text-zinc-400 mb-8">Gratulacje! Ukończyłeś kurs</p>
+                        </div>
+                        <button 
+                            onclick="downloadCertificate()" 
+                            class="px-8 py-4 bg-coyote text-black rounded-lg font-bold hover:bg-opacity-90 transition text-lg"
+                        >
+                            <i class="fa-solid fa-download mr-2"></i>Pobierz certyfikat
+                        </button>
+                    </div>
+                `;
+            }
+            
+            window.downloadCertificate = async () => {
                 if (!currentUser) return;
+                
+                try {
+                    // Pobierz dane użytkownika
+                    const profileDoc = await getDoc(doc(db, "userProfiles", currentUser.uid));
+                    const profile = profileDoc.exists() ? profileDoc.data() : {};
+                    const userName = profile.displayName || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || currentUser.email.split('@')[0];
+                    
+                    // Generuj certyfikat
+                    await generateCertificate(userName);
+                } catch (error) {
+                    console.error("Error downloading certificate:", error);
+                    alert("Błąd podczas generowania certyfikatu.");
+                }
+            };
+            
+            async function generateCertificate(userName) {
+                // Utwórz canvas dla certyfikatu
+                const canvas = document.createElement('canvas');
+                canvas.width = 1200;
+                canvas.height = 800;
+                const ctx = canvas.getContext('2d');
+                
+                // Tło - gradient ciemny z akcentem coyote
+                const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                gradient.addColorStop(0, '#0a0a0a');
+                gradient.addColorStop(0.5, '#1a1a1a');
+                gradient.addColorStop(1, '#0a0a0a');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Ramka w kolorze coyote
+                ctx.strokeStyle = '#c19a6b';
+                ctx.lineWidth = 8;
+                ctx.strokeRect(40, 40, canvas.width - 80, canvas.height - 80);
+                
+                // Wewnętrzna ramka
+                ctx.strokeStyle = '#c19a6b';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(80, 80, canvas.width - 160, canvas.height - 160);
+                
+                // Logo/tytuł STRZELCA.PL na górze
+                ctx.fillStyle = '#c19a6b';
+                ctx.font = 'bold 32px Orbitron, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('STRZELCA.PL', canvas.width / 2, 150);
+                
+                // Linia dekoracyjna
+                ctx.strokeStyle = '#c19a6b';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(canvas.width / 2 - 150, 180);
+                ctx.lineTo(canvas.width / 2 + 150, 180);
+                ctx.stroke();
+                
+                // Tekst "CERTIFIKAT"
+                ctx.fillStyle = '#c19a6b';
+                ctx.font = 'bold 48px Orbitron, sans-serif';
+                ctx.fillText('CERTIFIKAT', canvas.width / 2, 250);
+                
+                // Tekst "Niniejszym potwierdzamy, że"
+                ctx.fillStyle = '#e5e5e5';
+                ctx.font = '24px Inter, sans-serif';
+                ctx.fillText('Niniejszym potwierdzamy, że', canvas.width / 2, 320);
+                
+                // Imię i nazwisko użytkownika
+                ctx.fillStyle = '#c19a6b';
+                ctx.font = 'bold 36px Inter, sans-serif';
+                ctx.fillText(userName, canvas.width / 2, 380);
+                
+                // Tekst "ukończył(a) kurs"
+                ctx.fillStyle = '#e5e5e5';
+                ctx.font = '24px Inter, sans-serif';
+                ctx.fillText('ukończył(a) kurs', canvas.width / 2, 430);
+                
+                // Nazwa kursu
+                ctx.fillStyle = '#c19a6b';
+                ctx.font = 'bold 32px Inter, sans-serif';
+                ctx.fillText(trainingTitle, canvas.width / 2, 490);
+                
+                // Data
+                const date = new Date();
+                const dateStr = date.toLocaleDateString('pl-PL', { year: 'numeric', month: 'long', day: 'numeric' });
+                ctx.fillStyle = '#999';
+                ctx.font = '20px Inter, sans-serif';
+                ctx.fillText(dateStr, canvas.width / 2, 580);
+                
+                // Podpis STRZELCA.PL na dole
+                ctx.strokeStyle = '#c19a6b';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(canvas.width / 2 - 200, 680);
+                ctx.lineTo(canvas.width / 2 + 200, 680);
+                ctx.stroke();
+                
+                ctx.fillStyle = '#c19a6b';
+                ctx.font = 'bold 24px Orbitron, sans-serif';
+                ctx.fillText('STRZELCA.PL', canvas.width / 2, 720);
+                
+                // Konwertuj canvas do obrazu i pobierz
+                canvas.toBlob((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `Certyfikat_${trainingTitle.replace(/[^a-z0-9]/gi, '_')}_${userName.replace(/[^a-z0-9]/gi, '_')}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 'image/png');
+            }
+            
+            window.finishLesson = async (lessonId, index) => {
+                if (!currentUser) return;
+                
+                if (!finishedLessons.has(lessonId)) {
+                    await markLessonFinished(lessonId);
+                    finishedLessons.add(lessonId);
+                    await updateProgress();
+                    
+                    // Sprawdź czy wszystkie lekcje są zakończone (bez certyfikatu)
+                    const regularLessons = lessons.filter(l => l.id !== 'certificate');
+                    const allFinished = regularLessons.every(l => finishedLessons.has(l.id));
+                    
+                    if (allFinished && !lessons.find(l => l.id === 'certificate')) {
+                        await addCertificateLesson();
+                    }
+                    
+                    renderLessonsSidebar();
+                    
+                    // Przeładuj aktualną lekcję aby pokazać zaktualizowany stan
+                    await loadLesson(index);
+                }
+            };
+            
+            async function addCertificateLesson() {
+                lessons.push({
+                    id: 'certificate',
+                    title: 'Certyfikat',
+                    content: '',
+                    order: lessons.length
+                });
+                renderLessonsSidebar();
+            }
+
+            async function markLessonOpened(lessonId) {
+                if (!currentUser || lessonId === 'certificate') return;
                 
                 try {
                     const progressRef = doc(db, "courseProgress", `${currentUser.uid}_${currentTrainingId}`);
                     const progressSnap = await getDoc(progressRef);
                     
-                    let completed = [];
+                    let opened = [];
                     if (progressSnap.exists()) {
-                        completed = progressSnap.data().completedLessons || [];
+                        opened = progressSnap.data().openedLessons || [];
                     }
                     
-                    if (!completed.includes(lessonId)) {
-                        completed.push(lessonId);
+                    if (!opened.includes(lessonId)) {
+                        opened.push(lessonId);
                         await setDoc(progressRef, {
                             userId: currentUser.uid,
                             trainingId: currentTrainingId,
-                            completedLessons: completed,
+                            openedLessons: opened,
                             lastUpdated: serverTimestamp()
                         }, { merge: true });
                         
-                        completedLessons.add(lessonId);
+                        openedLessons.add(lessonId);
                     }
                 } catch (error) {
-                    console.error("Error marking lesson completed:", error);
+                    console.error("Error marking lesson opened:", error);
+                }
+            }
+            
+            async function markLessonFinished(lessonId) {
+                if (!currentUser || lessonId === 'certificate') return;
+                
+                try {
+                    const progressRef = doc(db, "courseProgress", `${currentUser.uid}_${currentTrainingId}`);
+                    const progressSnap = await getDoc(progressRef);
+                    
+                    let finished = [];
+                    if (progressSnap.exists()) {
+                        finished = progressSnap.data().finishedLessons || [];
+                    }
+                    
+                    if (!finished.includes(lessonId)) {
+                        finished.push(lessonId);
+                        await setDoc(progressRef, {
+                            userId: currentUser.uid,
+                            trainingId: currentTrainingId,
+                            finishedLessons: finished,
+                            lastUpdated: serverTimestamp()
+                        }, { merge: true });
+                        
+                        finishedLessons.add(lessonId);
+                    }
+                } catch (error) {
+                    console.error("Error marking lesson finished:", error);
                 }
             }
 
@@ -497,7 +712,13 @@
                     
                     if (progressSnap.exists()) {
                         const progress = progressSnap.data();
-                        completedLessons = new Set(progress.completedLessons || []);
+                        openedLessons = new Set(progress.openedLessons || []);
+                        finishedLessons = new Set(progress.finishedLessons || []);
+                        // Dla kompatybilności wstecznej
+                        if (progress.completedLessons) {
+                            completedLessons = new Set(progress.completedLessons || []);
+                            finishedLessons = completedLessons;
+                        }
                     }
                     
                     await updateProgress();
@@ -507,17 +728,28 @@
             }
 
             async function updateProgress() {
-                if (lessons.length === 0) return;
+                const regularLessons = lessons.filter(l => l.id !== 'certificate');
+                if (regularLessons.length === 0) return;
                 
-                const completed = Array.from(completedLessons).length;
-                const total = lessons.length;
-                const percentage = Math.round((completed / total) * 100);
+                // Każda lekcja daje równy procent (100% / liczba lekcji)
+                const progressPerLesson = 100 / regularLessons.length;
+                let totalProgress = 0;
+                
+                regularLessons.forEach(lesson => {
+                    if (finishedLessons.has(lesson.id)) {
+                        totalProgress += progressPerLesson; // 100% za zakończoną lekcję
+                    } else if (openedLessons.has(lesson.id)) {
+                        totalProgress += progressPerLesson * 0.5; // 50% za otwartą lekcję
+                    }
+                });
+                
+                const percentage = Math.round(totalProgress);
                 
                 const progressText = document.getElementById("course-progress-text");
                 const progressFill = document.getElementById("course-progress-fill");
                 
                 if (progressText) {
-                    progressText.textContent = `${percentage}% ukończone (${completed}/${total})`;
+                    progressText.textContent = `${percentage}% ukończone`;
                 }
                 if (progressFill) {
                     progressFill.style.width = `${percentage}%`;

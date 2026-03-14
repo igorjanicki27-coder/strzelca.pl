@@ -11202,15 +11202,12 @@
         if (!training) return;
 
         document.getElementById("training-content-id").value = training.id;
-        document.getElementById("training-content-editor").innerHTML = training.content || "";
         
         await loadLessons();
         renderLessonsListContentModal();
       };
 
       window.clearTrainingContentForm = () => {
-        document.getElementById("training-content-form").reset();
-        document.getElementById("training-content-editor").innerHTML = "";
         document.getElementById("training-content-id").value = "";
       };
 
@@ -11300,15 +11297,12 @@
           if (lesson) {
             document.getElementById("lesson-id").value = lesson.id;
             document.getElementById("lesson-title").value = lesson.title || "";
-            document.getElementById("lesson-description").value = lesson.description || "";
-            document.getElementById("lesson-duration").value = lesson.duration || "";
-            document.getElementById("lesson-video-url").value = lesson.videoUrl || "";
             document.getElementById("lesson-content").innerHTML = lesson.content || "";
           }
         } else {
           title.textContent = "Dodaj lekcję";
-          form.reset();
           document.getElementById("lesson-id").value = "";
+          document.getElementById("lesson-title").value = "";
           document.getElementById("lesson-content").innerHTML = "";
         }
         
@@ -11392,9 +11386,6 @@
         const lessonId = document.getElementById("lesson-id").value;
         const trainingId = document.getElementById("lesson-training-id").value;
         const title = document.getElementById("lesson-title").value.trim();
-        const description = document.getElementById("lesson-description").value.trim();
-        const duration = parseInt(document.getElementById("lesson-duration").value) || null;
-        const videoUrl = document.getElementById("lesson-video-url").value.trim();
         const content = document.getElementById("lesson-content").innerHTML;
 
         if (!title || !trainingId) {
@@ -11406,10 +11397,7 @@
           const lessonData = {
             trainingId,
             title,
-            description: description || "",
             content: content || "",
-            videoUrl: videoUrl || null,
-            duration: duration || null,
             order: lessonId ? lessonsList.find(l => l.id === lessonId)?.order || lessonsList.length : lessonsList.length,
             updatedAt: serverTimestamp()
           };
@@ -11627,17 +11615,12 @@
         }
 
         container.innerHTML = lessonsList.map((lesson, index) => `
-          <div class="flex items-center justify-between p-3 bg-zinc-800 rounded-lg border border-zinc-700">
+          <div class="flex items-center justify-between p-3 bg-zinc-800 rounded-lg border border-zinc-700 cursor-pointer hover:bg-zinc-750 transition" onclick="editLesson('${lesson.id}')">
             <div class="flex-1">
               <div class="font-semibold text-white">${lesson.title || "Bez tytułu"}</div>
-              ${lesson.description ? `<div class="text-sm text-zinc-400 mt-1">${lesson.description}</div>` : ''}
-              <div class="flex items-center gap-4 text-xs text-zinc-500 mt-1">
-                ${lesson.duration ? `<span><i class="fa-solid fa-clock mr-1"></i>${lesson.duration} min</span>` : ''}
-                ${lesson.videoUrl ? '<span><i class="fa-solid fa-video mr-1"></i>Wideo</span>' : ''}
-                <span>Pozycja: ${index + 1}</span>
-              </div>
+              <div class="text-xs text-zinc-500 mt-1">Pozycja: ${index + 1}</div>
             </div>
-            <div class="flex space-x-2">
+            <div class="flex space-x-2" onclick="event.stopPropagation()">
               <button onclick="editLesson('${lesson.id}')" class="text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400 rounded text-xs">Edytuj</button>
               <button onclick="moveLessonUp('${lesson.id}')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 border border-zinc-400 rounded text-xs" ${index === 0 ? 'disabled' : ''}>↑</button>
               <button onclick="moveLessonDown('${lesson.id}')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 border border-zinc-400 rounded text-xs" ${index === lessonsList.length - 1 ? 'disabled' : ''}>↓</button>
@@ -16419,33 +16402,6 @@
           </div>
 
           <div class="border-t border-zinc-700 pt-4">
-            <h4 class="text-lg font-semibold mb-4">Dostępność</h4>
-            <div class="space-y-3">
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  id="training-public-available-all"
-                  class="w-4 h-4"
-                  onchange="updateTrainingPublicVisibility()"
-                />
-                <span class="text-sm">Dostępne dla wszystkich</span>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  id="training-public-hidden"
-                  class="w-4 h-4"
-                  onchange="updateTrainingPublicVisibility()"
-                />
-                <span class="text-sm text-red-400">Ukryj (niewidoczne dla wszystkich)</span>
-              </label>
-            </div>
-            <p class="text-xs text-zinc-500 mt-2">
-              Jeśli żadna opcja nie jest zaznaczona, kurs jest widoczny tylko dla użytkowników z dostępem.
-            </p>
-          </div>
-
-          <div class="border-t border-zinc-700 pt-4">
             <h4 class="text-lg font-semibold mb-2 text-zinc-300">Szczegóły widoczne (dla wszystkich)</h4>
             <p class="text-sm text-zinc-400 mb-4">Te informacje będą widoczne dla wszystkich użytkowników na stronie szkoleń.</p>
             
@@ -16474,7 +16430,32 @@
 
           <!-- Zarządzanie dostępem -->
           <div class="border-t border-zinc-700 pt-4 mt-4">
-            <h4 class="text-lg font-bold mb-4">Zarządzanie dostępem</h4>
+            <h4 class="text-lg font-semibold mb-4">Dostępność</h4>
+            <div class="space-y-3">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="training-public-available-all"
+                  class="w-4 h-4"
+                  onchange="updateTrainingPublicVisibility()"
+                />
+                <span class="text-sm">Dostępne dla wszystkich</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="training-public-hidden"
+                  class="w-4 h-4"
+                  onchange="updateTrainingPublicVisibility()"
+                />
+                <span class="text-sm text-red-400">Ukryj (niewidoczne dla wszystkich)</span>
+              </label>
+            </div>
+            <p class="text-xs text-zinc-500 mt-2">
+              Jeśli żadna opcja nie jest zaznaczona, kurs jest widoczny tylko dla użytkowników z dostępem.
+            </p>
+            
+            <h4 class="text-lg font-bold mb-4 mt-6">Zarządzanie dostępem</h4>
             <div class="space-y-4">
               <button
                 type="button"
@@ -16516,40 +16497,12 @@
           </button>
         </div>
         
-        <form id="training-content-form" class="flex-1 overflow-y-auto space-y-4 pr-2">
+        <div class="flex-1 overflow-y-auto space-y-4 pr-2">
           <input type="hidden" id="training-content-id" />
           
-          <div class="border-t border-zinc-700 pt-4">
-            <h4 class="text-lg font-semibold mb-2 text-coyote">Treść właściwa kursu (tylko dla uprawnionych)</h4>
-            <p class="text-sm text-zinc-400 mb-4">Ta treść będzie dostępna tylko dla użytkowników z dostępem do kursu.</p>
-            
-            <div class="toolbar mb-3">
-              <button type="button" onclick="formatText('bold', 'training-content-editor')">
-                <i class="fa-solid fa-bold"></i>
-              </button>
-              <button type="button" onclick="formatText('insertUnorderedList', 'training-content-editor')">
-                <i class="fa-solid fa-list-ul"></i>
-              </button>
-              <button type="button" onclick="formatText('justifyCenter', 'training-content-editor')">
-                <i class="fa-solid fa-align-center"></i>
-              </button>
-              <button type="button" onclick="insertImage('training-content-editor')">
-                <i class="fa-solid fa-image"></i>
-              </button>
-            </div>
-
-            <div
-              id="training-content-editor"
-              class="editor-content min-h-[200px]"
-              contenteditable="true"
-              placeholder="Treść właściwa kursu dostępna tylko dla uprawnionych..."
-            ></div>
-          </div>
-
           <!-- Zarządzanie lekcjami -->
-          <div class="border-t border-zinc-700 pt-4 mt-4">
-            <h4 class="text-lg font-bold mb-4">Zarządzanie lekcjami</h4>
-            <div class="space-y-4">
+          <div>
+            <div class="mb-4">
               <button
                 type="button"
                 onclick="openLessonForm()"
@@ -16558,31 +16511,21 @@
                 <i class="fa-solid fa-plus mr-2"></i>
                 Dodaj lekcję
               </button>
-              <div>
-                <label class="block text-sm font-medium mb-2">Lekcje kursu</label>
-                <div id="lessons-list-content-modal" class="space-y-2 max-h-[300px] overflow-y-auto">
-                  <div class="text-sm text-zinc-500 text-center py-4">Brak lekcji</div>
-                </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">Lekcje kursu</label>
+              <div id="lessons-list-content-modal" class="space-y-2 max-h-[500px] overflow-y-auto">
+                <div class="text-sm text-zinc-500 text-center py-4">Brak lekcji</div>
               </div>
             </div>
           </div>
 
-          <!-- Postęp kursu (do implementacji) -->
-          <div class="border-t border-zinc-700 pt-4 mt-4">
-            <h4 class="text-lg font-bold mb-4">Postęp kursu</h4>
-            <p class="text-sm text-zinc-400">Funkcjonalność do implementacji...</p>
-          </div>
-
           <div class="flex gap-4 pt-4 border-t border-zinc-700">
-            <button type="submit" class="btn-admin flex-1">
-              <i class="fa-solid fa-save mr-2"></i>
-              Zapisz treść kursu
-            </button>
             <button type="button" onclick="closeTrainingContentForm()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
-              Anuluj
+              Zamknij
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
 
@@ -16596,7 +16539,7 @@
           </button>
         </div>
         
-        <form id="lesson-form" class="flex-1 overflow-y-auto space-y-4 pr-2">
+        <form id="lesson-form" class="flex-1 overflow-y-auto space-y-4 pr-2 flex flex-col">
           <input type="hidden" id="lesson-id" />
           <input type="hidden" id="lesson-training-id" />
           
@@ -16611,49 +16554,32 @@
             />
           </div>
 
-          <div>
-            <label class="block text-sm font-medium mb-2">Opis (krótki)</label>
-            <input
-              type="text"
-              id="lesson-description"
-              placeholder="Krótki opis lekcji"
-              class="w-full"
-            />
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium mb-2">Czas trwania (minuty)</label>
-              <input
-                type="number"
-                id="lesson-duration"
-                placeholder="np. 15"
-                min="0"
-                class="w-full"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-2">URL wideo (opcjonalne)</label>
-              <input
-                type="url"
-                id="lesson-video-url"
-                placeholder="https://youtube.com/embed/..."
-                class="w-full"
-              />
-            </div>
-          </div>
-
-          <div>
+          <div class="flex-1 flex flex-col min-h-0">
             <label class="block text-sm font-medium mb-2">Treść lekcji</label>
-            <div class="toolbar mb-3">
+            <div class="toolbar mb-3 flex-shrink-0">
               <button type="button" onclick="formatText('bold', 'lesson-content')">
                 <i class="fa-solid fa-bold"></i>
+              </button>
+              <button type="button" onclick="formatText('italic', 'lesson-content')">
+                <i class="fa-solid fa-italic"></i>
+              </button>
+              <button type="button" onclick="formatText('underline', 'lesson-content')">
+                <i class="fa-solid fa-underline"></i>
               </button>
               <button type="button" onclick="formatText('insertUnorderedList', 'lesson-content')">
                 <i class="fa-solid fa-list-ul"></i>
               </button>
+              <button type="button" onclick="formatText('insertOrderedList', 'lesson-content')">
+                <i class="fa-solid fa-list-ol"></i>
+              </button>
+              <button type="button" onclick="formatText('justifyLeft', 'lesson-content')">
+                <i class="fa-solid fa-align-left"></i>
+              </button>
               <button type="button" onclick="formatText('justifyCenter', 'lesson-content')">
                 <i class="fa-solid fa-align-center"></i>
+              </button>
+              <button type="button" onclick="formatText('justifyRight', 'lesson-content')">
+                <i class="fa-solid fa-align-right"></i>
               </button>
               <button type="button" onclick="insertImage('lesson-content')">
                 <i class="fa-solid fa-image"></i>
@@ -16661,7 +16587,7 @@
             </div>
             <div
               id="lesson-content"
-              class="editor-content min-h-[300px]"
+              class="editor-content flex-1 min-h-[400px]"
               contenteditable="true"
               placeholder="Treść lekcji..."
             ></div>
