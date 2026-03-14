@@ -19,8 +19,10 @@
             }
             body {
                 font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-                background-color: #0a0a0a;
+                background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+                background-attachment: fixed;
                 color: #e5e5e5;
+                min-height: 100vh;
             }
             .coyote-text {
                 color: var(--coyote);
@@ -71,6 +73,7 @@
             }
             .lesson-content a:hover {
                 opacity: 0.8;
+                text-shadow: 0 0 8px rgba(193, 154, 107, 0.5);
             }
             .lesson-content blockquote {
                 border-left: 4px solid var(--coyote);
@@ -78,20 +81,35 @@
                 margin: 1.5rem 0;
                 color: #d4d4d4;
                 font-style: italic;
+                background: rgba(193, 154, 107, 0.05);
+                padding: 1rem 1.5rem;
+                border-radius: 8px;
             }
             .lesson-content code {
-                background: #1a1a1a;
+                background: rgba(26, 26, 26, 0.8);
                 padding: 0.2rem 0.4rem;
                 border-radius: 4px;
                 font-family: 'Courier New', monospace;
                 font-size: 0.9em;
+                border: 1px solid rgba(193, 154, 107, 0.2);
             }
             .lesson-content pre {
-                background: #1a1a1a;
+                background: rgba(26, 26, 26, 0.8);
                 padding: 1rem;
                 border-radius: 8px;
                 overflow-x: auto;
                 margin: 1.5rem 0;
+                border: 1px solid rgba(193, 154, 107, 0.2);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            }
+            .prose {
+                max-width: none;
+            }
+            .prose-invert {
+                color: #e5e5e5;
+            }
+            .shadow-coyote\/50 {
+                box-shadow: 0 10px 40px rgba(193, 154, 107, 0.5);
             }
             .video-container {
                 position: relative;
@@ -109,23 +127,49 @@
                 height: 100%;
             }
             .progress-bar {
-                height: 8px;
+                height: 10px;
                 background: #1a1a1a;
-                border-radius: 4px;
+                border-radius: 5px;
                 overflow: hidden;
-                box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+                box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 20px rgba(193, 154, 107, 0.1);
+                border: 1px solid rgba(193, 154, 107, 0.1);
             }
             .progress-fill {
                 height: 100%;
-                background: linear-gradient(90deg, var(--coyote), #b18a5f, var(--coyote));
+                background: linear-gradient(90deg, var(--coyote), #d4a574, #b18a5f, var(--coyote));
                 background-size: 200% 100%;
-                animation: shimmer 2s infinite;
-                transition: width 0.5s ease;
-                box-shadow: 0 0 10px rgba(193, 154, 107, 0.5);
+                animation: shimmer 3s infinite;
+                transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 0 15px rgba(193, 154, 107, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                position: relative;
+            }
+            .progress-fill::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+                border-radius: 5px;
             }
             @keyframes shimmer {
                 0% { background-position: 200% 0; }
                 100% { background-position: -200% 0; }
+            }
+            .custom-scrollbar::-webkit-scrollbar {
+                width: 6px;
+            }
+            .custom-scrollbar::-webkit-scrollbar-track {
+                background: rgba(0, 0, 0, 0.2);
+                border-radius: 10px;
+            }
+            .custom-scrollbar::-webkit-scrollbar-thumb {
+                background: linear-gradient(180deg, var(--coyote), #b18a5f);
+                border-radius: 10px;
+            }
+            .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                background: linear-gradient(180deg, #d4a574, var(--coyote));
             }
         </style>
     </head>
@@ -135,7 +179,7 @@
             <div class="relative">
                 <button
                     id="user-avatar-button"
-                    class="w-12 h-12 rounded-full bg-coyote flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-80 transition shadow-lg overflow-hidden"
+                    class="w-12 h-12 rounded-full bg-gradient-to-br from-coyote to-[#b18a5f] flex items-center justify-center text-white font-bold cursor-pointer hover:from-[#b18a5f] hover:to-coyote transition-all shadow-xl hover:shadow-2xl hover:scale-110 transform duration-200 overflow-hidden ring-2 ring-coyote/30"
                     onclick="toggleUserMenu()"
                 >
                     <div id="user-avatar" class="w-full h-full flex items-center justify-center">
@@ -145,14 +189,14 @@
                 
                 <div
                     id="user-menu"
-                    class="absolute top-14 right-0 bg-zinc-900/95 backdrop-blur-md border border-zinc-700 rounded-2xl p-4 shadow-2xl min-w-[200px] hidden"
+                    class="absolute top-14 right-0 bg-gradient-to-br from-zinc-900/98 via-zinc-900/95 to-zinc-900/98 backdrop-blur-md border border-zinc-700/50 rounded-2xl p-4 shadow-2xl min-w-[200px] hidden"
                 >
                     <div class="space-y-2">
-                        <div id="user-display-name" class="text-white font-semibold text-sm mb-3 pb-3 border-b border-zinc-700"></div>
-                        <a href="https://konto.strzelca.pl/profil.html" class="block text-zinc-300 hover:text-coyote transition text-sm">
+                        <div id="user-display-name" class="text-white font-semibold text-sm mb-3 pb-3 border-b border-zinc-700/50"></div>
+                        <a href="https://konto.strzelca.pl/profil.html" class="block text-zinc-300 hover:text-coyote transition-all text-sm hover:pl-2 duration-200 rounded-lg p-2 hover:bg-zinc-800/50">
                             <i class="fa-solid fa-user mr-2"></i>Mój profil
                         </a>
-                        <button onclick="logout()" class="block w-full text-left text-zinc-300 hover:text-red-400 transition text-sm">
+                        <button onclick="logout()" class="block w-full text-left text-zinc-300 hover:text-red-400 transition-all text-sm rounded-lg p-2 hover:bg-zinc-800/50 hover:pl-2 duration-200">
                             <i class="fa-solid fa-sign-out-alt mr-2"></i>Wyloguj się
                         </button>
                     </div>
@@ -162,30 +206,37 @@
 
         <!-- Przycisk logowania -->
         <div id="login-button" class="fixed top-4 right-4 z-50">
-            <a href="https://konto.strzelca.pl/login.html" class="bg-coyote text-black w-10 h-10 rounded-full flex items-center justify-center hover:bg-white transition shadow-lg" title="Zaloguj się">
+            <a href="https://konto.strzelca.pl/login.html" class="bg-gradient-to-br from-coyote to-[#b18a5f] text-white w-12 h-12 rounded-full flex items-center justify-center hover:from-[#b18a5f] hover:to-coyote transition-all shadow-xl hover:shadow-2xl hover:scale-110 transform duration-200" title="Zaloguj się">
                 <i class="fa-solid fa-sign-in-alt text-lg"></i>
             </a>
         </div>
 
-        <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative">
-            <a href="index.html" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl z-[60]">
+        <nav class="h-[73px] border-b border-zinc-900/50 sticky top-0 bg-gradient-to-b from-black/98 via-black/95 to-black/98 z-50 backdrop-blur-md flex items-center relative shadow-lg">
+            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-coyote/5 to-transparent"></div>
+            <a href="index.html" class="absolute left-4 md:left-8 text-zinc-400 hover:text-coyote transition-all text-xl z-[60] hover:scale-110 transform duration-200">
                 <i class="fa-solid fa-arrow-left"></i>
             </a>
-            <div class="container mx-auto px-6 flex justify-center items-center">
-                <div class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400">
-                    SZKOLENIA.<span class="coyote-text">STRZELCA</span>.PL
+            <div class="container mx-auto px-6 flex justify-center items-center relative z-10">
+                <div class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400 hover:text-coyote transition-colors cursor-default">
+                    SZKOLENIA.<span class="coyote-text drop-shadow-[0_0_8px_rgba(193,154,107,0.5)]">STRZELCA</span>.PL
                 </div>
             </div>
         </nav>
 
         <div class="container mx-auto px-4 md:px-6 py-8 max-w-7xl">
             <!-- Nagłówek kursu -->
-            <div id="course-header" class="mb-10">
-                <h1 id="course-title" class="text-4xl md:text-5xl font-bold coyote-text mb-4 font-[Orbitron] tracking-tight">Ładowanie...</h1>
-                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-                    <span id="course-progress-text" class="text-sm font-semibold text-zinc-300 whitespace-nowrap">0% ukończone</span>
-                    <div class="progress-bar flex-1 w-full sm:w-auto min-w-[200px]">
-                        <div id="course-progress-fill" class="progress-fill" style="width: 0%"></div>
+            <div id="course-header" class="mb-10 relative">
+                <div class="absolute inset-0 bg-gradient-to-r from-coyote/10 via-transparent to-coyote/10 blur-3xl opacity-50"></div>
+                <div class="relative">
+                    <h1 id="course-title" class="text-4xl md:text-5xl lg:text-6xl font-bold coyote-text mb-6 font-[Orbitron] tracking-tight drop-shadow-lg">Ładowanie...</h1>
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-gradient-to-br from-zinc-900/90 via-zinc-900/80 to-zinc-900/90 border border-zinc-800/50 rounded-xl p-5 shadow-xl backdrop-blur-sm">
+                        <span id="course-progress-text" class="text-sm font-semibold text-zinc-300 whitespace-nowrap flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-coyote"></i>
+                            <span>0% ukończone</span>
+                        </span>
+                        <div class="progress-bar flex-1 w-full sm:w-auto min-w-[200px]">
+                            <div id="course-progress-fill" class="progress-fill" style="width: 0%"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -193,9 +244,12 @@
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
                 <!-- Sidebar z lekcjami -->
                 <aside class="lg:col-span-1">
-                    <div class="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 sticky top-24 shadow-xl">
-                        <h2 class="text-xl font-bold mb-5 coyote-text font-[Orbitron]">Lekcje</h2>
-                        <div id="lessons-sidebar" class="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
+                    <div class="bg-gradient-to-br from-zinc-900/90 via-zinc-900/80 to-zinc-900/90 border border-zinc-800/50 rounded-2xl p-5 sticky top-24 shadow-2xl backdrop-blur-sm">
+                        <h2 class="text-xl font-bold mb-5 coyote-text font-[Orbitron] flex items-center gap-2">
+                            <i class="fa-solid fa-list text-coyote"></i>
+                            <span>Lekcje</span>
+                        </h2>
+                        <div id="lessons-sidebar" class="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar">
                             <div class="text-center text-zinc-500 py-8">
                                 <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
                                 <p>Ładowanie lekcji...</p>
@@ -206,7 +260,7 @@
 
                 <!-- Główna treść -->
                 <main class="lg:col-span-3">
-                    <div id="lesson-content-area" class="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 md:p-10 shadow-xl">
+                    <div id="lesson-content-area" class="bg-gradient-to-br from-zinc-900/90 via-zinc-900/80 to-zinc-900/90 border border-zinc-800/50 rounded-2xl p-6 md:p-10 shadow-2xl backdrop-blur-sm">
                         <div class="text-center text-zinc-500 py-12">
                             <i class="fa-solid fa-spinner fa-spin text-3xl mb-4"></i>
                             <p>Ładowanie lekcji...</p>
@@ -216,8 +270,19 @@
             </div>
         </div>
 
-        <footer class="text-center py-12 border-t border-zinc-900 text-zinc-700 text-[10px] uppercase font-bold tracking-[0.5em] mt-12">
-            <a href="https://strzelca.pl" class="hover:text-white transition">STRZELCA.PL</a>
+        <footer
+            class="text-center py-12 border-t border-zinc-900 text-zinc-700 text-[10px] uppercase font-bold tracking-[0.5em] mt-12"
+            role="contentinfo"
+        >
+            <a href="https://strzelca.pl" class="hover:text-white transition"
+                >STRZELCA.PL</a
+            >
+            <span class="mx-4 text-zinc-800">|</span>
+            <a
+                href="?cookies=1"
+                class="hover:text-white transition"
+                >Ustawienia cookies</a
+            >
         </footer>
 
         <script type="module">
@@ -484,6 +549,7 @@
                 // Oznacz lekcję jako otwartą (50% progresu)
                 if (currentUser && !openedLessons.has(lesson.id)) {
                     await markLessonOpened(lesson.id);
+                    await updateProgress(); // Zaktualizuj postęp po oznaczeniu jako otwarta
                 }
 
                 // Renderuj treść lekcji
@@ -495,27 +561,29 @@
                 const allLessonsFinished = lessons.filter(l => l.id !== 'certificate').every(l => finishedLessons.has(l.id));
 
                 contentArea.innerHTML = `
-                    <div class="mb-8 pb-6 border-b border-zinc-800">
-                        <h2 class="text-3xl md:text-4xl font-bold mb-2 coyote-text font-[Orbitron]">${lesson.title || "Bez tytułu"}</h2>
+                    <div class="mb-8 pb-6 border-b border-zinc-800/50 relative">
+                        <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-coyote to-transparent rounded-full"></div>
+                        <h2 class="text-3xl md:text-4xl lg:text-5xl font-bold mb-2 coyote-text font-[Orbitron] drop-shadow-lg pl-4">${lesson.title || "Bez tytułu"}</h2>
                     </div>
-                    <div class="lesson-content custom-render mb-10 text-zinc-300 leading-relaxed">
+                    <div class="lesson-content custom-render mb-10 text-zinc-300 leading-relaxed prose prose-invert max-w-none">
                         ${lesson.content || '<p class="text-zinc-500">Brak treści.</p>'}
                     </div>
                     ${!isFinished && lesson.id !== 'certificate' ? `
-                        <div class="mt-12 pt-8 border-t border-zinc-800">
+                        <div class="mt-12 pt-8 border-t border-zinc-800/50 relative overflow-hidden rounded-xl">
+                            <div class="absolute inset-0 bg-gradient-to-r from-coyote/10 via-transparent to-coyote/10"></div>
                             <button 
                                 onclick="finishLesson('${lesson.id}', ${index})" 
-                                class="w-full px-8 py-4 bg-gradient-to-r from-coyote to-[#b18a5f] text-white rounded-xl font-bold hover:from-[#b18a5f] hover:to-coyote transition-all text-lg shadow-xl hover:shadow-2xl transform hover:scale-[1.02] flex items-center justify-center gap-3"
+                                class="relative w-full px-8 py-5 bg-gradient-to-r from-coyote via-[#b18a5f] to-coyote text-white rounded-xl font-bold hover:from-[#b18a5f] hover:via-coyote hover:to-[#b18a5f] transition-all text-lg shadow-2xl hover:shadow-coyote/50 transform hover:scale-[1.02] flex items-center justify-center gap-3 group"
                             >
-                                <i class="fa-solid fa-check-circle text-xl"></i>
-                                <span>Zakończ lekcję</span>
+                                <i class="fa-solid fa-check-circle text-xl group-hover:scale-110 transition-transform"></i>
+                                <span class="text-lg">Zakończ lekcję</span>
                             </button>
                         </div>
                     ` : ''}
-                    <div class="flex justify-between items-center mt-8 pt-6 border-t border-zinc-800">
+                    <div class="flex justify-between items-center mt-8 pt-6 border-t border-zinc-800/50">
                         <button 
                             onclick="loadLesson(${index - 1})" 
-                            class="px-6 py-3 border border-zinc-700 bg-zinc-900/50 text-zinc-300 rounded-lg hover:bg-zinc-800 hover:border-zinc-600 hover:text-white transition-all font-medium ${index === 0 ? 'opacity-50 cursor-not-allowed' : ''}"
+                            class="px-6 py-3 border border-zinc-700/50 bg-zinc-900/30 text-zinc-300 rounded-lg hover:bg-zinc-800/50 hover:border-zinc-600 hover:text-white transition-all font-medium backdrop-blur-sm ${index === 0 ? 'opacity-50 cursor-not-allowed' : ''}"
                             ${index === 0 ? 'disabled' : ''}
                         >
                             <i class="fa-solid fa-arrow-left mr-2"></i>Poprzednia
@@ -523,7 +591,7 @@
                         ${!isLastLesson && lesson.id !== 'certificate' ? `
                             <button 
                                 onclick="loadLesson(${index + 1})" 
-                                class="px-6 py-3 bg-coyote text-white rounded-lg font-bold hover:bg-opacity-90 hover:shadow-lg transition-all"
+                                class="px-6 py-3 bg-gradient-to-r from-coyote to-[#b18a5f] text-white rounded-lg font-bold hover:from-[#b18a5f] hover:to-coyote hover:shadow-lg transition-all shadow-md"
                             >
                                 Następna<i class="fa-solid fa-arrow-right ml-2"></i>
                             </button>
@@ -531,7 +599,7 @@
                         ${lesson.id === 'certificate' ? `
                             <button 
                                 onclick="generateCertificate()" 
-                                class="px-6 py-3 bg-gradient-to-r from-coyote to-[#b18a5f] text-white rounded-lg font-bold hover:from-[#b18a5f] hover:to-coyote transition-all shadow-lg hover:shadow-xl"
+                                class="px-6 py-3 bg-gradient-to-r from-coyote via-[#b18a5f] to-coyote text-white rounded-lg font-bold hover:from-[#b18a5f] hover:via-coyote hover:to-[#b18a5f] transition-all shadow-lg hover:shadow-xl"
                             >
                                 <i class="fa-solid fa-download mr-2"></i>Pobierz Certyfikat
                             </button>
