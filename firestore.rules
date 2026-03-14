@@ -279,6 +279,34 @@ service cloud.firestore {
       allow create, update, delete: if isAdminOrSuperAdmin();
     }
 
+    match /courseLessons/{lessonId} {
+      // Odczyt: zalogowani użytkownicy (dostęp sprawdzany w kodzie aplikacji)
+      allow read: if isAuthenticated();
+      
+      // Zapis: tylko admin
+      allow create, update, delete: if isAdminOrSuperAdmin();
+    }
+
+    match /courseProgress/{progressId} {
+      // Odczyt: tylko właściciel postępu lub admin
+      allow read: if isAuthenticated() && (
+        isAdminOrSuperAdmin() ||
+        (progressId.matches('.*_.*') && 
+         progressId.split('_')[0] == request.auth.uid)
+      );
+      
+      // Zapis: tylko właściciel postępu lub admin
+      allow create, update: if isAuthenticated() && (
+        isAdminOrSuperAdmin() ||
+        (progressId.matches('.*_.*') && 
+         progressId.split('_')[0] == request.auth.uid &&
+         request.resource.data.userId == request.auth.uid)
+      );
+      
+      // Usuwanie: tylko admin
+      allow delete: if isAdminOrSuperAdmin();
+    }
+
     // =============================================================================
     // USER REVIEWS
     // =============================================================================
