@@ -662,87 +662,100 @@
             };
             
             async function generateCertificate(userName) {
-                // Utwórz canvas dla certyfikatu
+                // Utwórz canvas dla certyfikatu - większa rozdzielczość dla lepszej jakości
                 const canvas = document.createElement('canvas');
-                canvas.width = 1200;
-                canvas.height = 800;
+                const scale = 2; // Skala dla lepszej jakości
+                canvas.width = 1400 * scale;
+                canvas.height = 1000 * scale;
                 const ctx = canvas.getContext('2d');
+                ctx.scale(scale, scale);
                 
-                // Tło - gradient ciemny z akcentem coyote
-                const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-                gradient.addColorStop(0, '#0a0a0a');
-                gradient.addColorStop(0.5, '#1a1a1a');
-                gradient.addColorStop(1, '#0a0a0a');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                // Tło - prawie czarne
+                ctx.fillStyle = '#0a0a0a';
+                ctx.fillRect(0, 0, 1400, 1000);
                 
-                // Ramka w kolorze coyote
+                // Zewnętrzna ramka - gruba, złota
                 ctx.strokeStyle = '#c19a6b';
-                ctx.lineWidth = 8;
-                ctx.strokeRect(40, 40, canvas.width - 80, canvas.height - 80);
+                ctx.lineWidth = 12;
+                ctx.strokeRect(50, 50, 1300, 900);
                 
-                // Wewnętrzna ramka
+                // Wewnętrzna ramka - cienka, złota
                 ctx.strokeStyle = '#c19a6b';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(80, 80, canvas.width - 160, canvas.height - 160);
+                ctx.lineWidth = 3;
+                ctx.strokeRect(100, 100, 1200, 800);
                 
                 // Logo/tytuł STRZELCA.PL na górze
-                ctx.fillStyle = '#c19a6b';
-                ctx.font = 'bold 32px Orbitron, sans-serif';
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 40px Orbitron, sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('STRZELCA.PL', canvas.width / 2, 150);
+                ctx.textBaseline = 'middle';
+                ctx.fillText('STRZELCA.PL', 700, 180);
                 
-                // Linia dekoracyjna
+                // Linia dekoracyjna pod logo
                 ctx.strokeStyle = '#c19a6b';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.moveTo(canvas.width / 2 - 150, 180);
-                ctx.lineTo(canvas.width / 2 + 150, 180);
+                ctx.moveTo(500, 210);
+                ctx.lineTo(900, 210);
                 ctx.stroke();
                 
-                // Tekst "CERTIFIKAT"
-                ctx.fillStyle = '#c19a6b';
-                ctx.font = 'bold 48px Orbitron, sans-serif';
-                ctx.fillText('CERTIFIKAT', canvas.width / 2, 250);
+                // Tekst "CERTIFIKAT" - większy i bardziej wyróżniony
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 72px Orbitron, sans-serif';
+                ctx.fillText('CERTIFIKAT', 700, 300);
                 
                 // Tekst "Niniejszym potwierdzamy, że"
                 ctx.fillStyle = '#e5e5e5';
-                ctx.font = '24px Inter, sans-serif';
-                ctx.fillText('Niniejszym potwierdzamy, że', canvas.width / 2, 320);
+                ctx.font = '28px Inter, sans-serif';
+                ctx.fillText('Niniejszym potwierdzamy, że', 700, 400);
                 
-                // Imię i nazwisko użytkownika
+                // Imię i nazwisko użytkownika - większe i złote
                 ctx.fillStyle = '#c19a6b';
-                ctx.font = 'bold 36px Inter, sans-serif';
-                ctx.fillText(userName, canvas.width / 2, 380);
+                ctx.font = 'bold 48px Inter, sans-serif';
+                ctx.fillText(userName, 700, 480);
                 
                 // Tekst "ukończył(a) kurs"
                 ctx.fillStyle = '#e5e5e5';
-                ctx.font = '24px Inter, sans-serif';
-                ctx.fillText('ukończył(a) kurs', canvas.width / 2, 430);
+                ctx.font = '28px Inter, sans-serif';
+                ctx.fillText('ukończył(a) kurs', 700, 550);
                 
-                // Nazwa kursu
+                // Nazwa kursu - większa i złota
                 ctx.fillStyle = '#c19a6b';
-                ctx.font = 'bold 32px Inter, sans-serif';
-                ctx.fillText(trainingTitle, canvas.width / 2, 490);
+                ctx.font = 'bold 42px Inter, sans-serif';
+                ctx.fillText(trainingTitle, 700, 620);
                 
-                // Data
+                // Data - lepsze formatowanie
                 const date = new Date();
-                const dateStr = date.toLocaleDateString('pl-PL', { year: 'numeric', month: 'long', day: 'numeric' });
-                ctx.fillStyle = '#999';
-                ctx.font = '20px Inter, sans-serif';
-                ctx.fillText(dateStr, canvas.width / 2, 580);
+                const dateStr = date.toLocaleDateString('pl-PL', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+                ctx.fillStyle = '#e5e5e5';
+                ctx.font = '24px Inter, sans-serif';
+                ctx.fillText(dateStr, 700, 720);
                 
-                // Podpis STRZELCA.PL na dole
+                // Podpis STRZELCA.PL na dole - podwójna linia
+                // Pierwsza linia (cieńsza)
                 ctx.strokeStyle = '#c19a6b';
-                ctx.lineWidth = 1;
+                ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.moveTo(canvas.width / 2 - 200, 680);
-                ctx.lineTo(canvas.width / 2 + 200, 680);
+                ctx.moveTo(450, 850);
+                ctx.lineTo(950, 850);
                 ctx.stroke();
                 
-                ctx.fillStyle = '#c19a6b';
-                ctx.font = 'bold 24px Orbitron, sans-serif';
-                ctx.fillText('STRZELCA.PL', canvas.width / 2, 720);
+                // Druga linia (grubsza)
+                ctx.strokeStyle = '#c19a6b';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(450, 860);
+                ctx.lineTo(950, 860);
+                ctx.stroke();
+                
+                // Logo STRZELCA.PL na dole
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 32px Orbitron, sans-serif';
+                ctx.fillText('STRZELCA.PL', 700, 920);
                 
                 // Konwertuj canvas do obrazu i pobierz
                 canvas.toBlob((blob) => {
