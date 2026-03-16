@@ -189,26 +189,28 @@
         </main>
 
         <!-- Event Detail Modal -->
-        <div id="event-modal" class="fixed inset-0 z-50 hidden event-detail-modal">
+        <div id="event-modal" class="fixed inset-0 z-50 hidden event-detail-modal" onclick="if(event.target === this) closeEventModal()">
             <div class="flex items-center justify-center min-h-screen p-2 md:p-4">
-                <div class="bg-zinc-900 border border-zinc-700 rounded-xl md:rounded-2xl max-w-2xl w-full max-h-[95vh] md:max-h-[90vh] overflow-y-auto">
-                    <div class="p-4 md:p-6">
+                <div class="bg-zinc-900/98 backdrop-blur-md border border-zinc-700 rounded-xl md:rounded-2xl max-w-3xl w-full max-h-[95vh] md:max-h-[90vh] overflow-y-auto shadow-2xl">
+                    <div class="p-4 md:p-6 lg:p-8">
                         <div class="flex justify-between items-start mb-4 md:mb-6">
-                            <div class="min-w-0 flex-1">
-                                <h2 id="modal-title" class="text-xl md:text-2xl font-bold coyote-text mb-2"></h2>
-                                <div id="modal-meta" class="text-sm text-zinc-400 space-y-1"></div>
+                            <div class="min-w-0 flex-1 pr-4">
+                                <h2 id="modal-title" class="text-xl md:text-2xl lg:text-3xl font-bold coyote-text mb-3 break-words"></h2>
+                                <div id="modal-meta" class="text-sm md:text-base text-zinc-400 space-y-2"></div>
                             </div>
-                            <button onclick="closeEventModal()" class="text-zinc-400 hover:text-white text-lg md:text-xl ml-3 flex-shrink-0">
+                            <button onclick="closeEventModal()" class="text-zinc-400 hover:text-white text-xl md:text-2xl ml-3 flex-shrink-0 bg-zinc-800 hover:bg-zinc-700 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition">
                                 <i class="fa-solid fa-times"></i>
                             </button>
                         </div>
 
-                        <div id="modal-content" class="text-zinc-300 mb-4 md:mb-6 text-sm md:text-base">
-                            <!-- Event content will be loaded here -->
+                        <div class="border-t border-zinc-700 pt-4 md:pt-6 mb-4 md:mb-6">
+                            <div id="modal-content" class="text-zinc-300 text-sm md:text-base leading-relaxed whitespace-pre-wrap">
+                                <!-- Event content will be loaded here -->
+                            </div>
                         </div>
 
-                        <div class="flex space-x-2 md:space-x-4">
-                            <button onclick="closeEventModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 px-3 md:px-4 py-2 rounded-lg transition text-sm md:text-base">
+                        <div class="flex space-x-2 md:space-x-4 pt-4 border-t border-zinc-700">
+                            <button onclick="closeEventModal()" class="flex-1 bg-coyote hover:bg-opacity-90 text-black px-4 md:px-6 py-2 md:py-3 rounded-lg transition font-bold text-sm md:text-base">
                                 Zamknij
                             </button>
                         </div>
@@ -231,11 +233,19 @@
 
         
       async function getFirebaseApiKey() {
-        const urls = ["/api/firebase-config"];
+        // Na subdomenach endpoint /api/* może nie być podpięty.
+        // Dlatego mamy fallback do głównej domeny.
+        const urls = [
+          "https://strzelca.pl/api/firebase-config",
+          "/api/firebase-config"
+        ];
 
         for (const url of urls) {
           try {
-            const res = await fetch(url, { cache: "no-store" });
+            const res = await fetch(url, {
+              cache: "no-store",
+              credentials: url.startsWith("http") ? "omit" : "same-origin",
+            });
             if (!res.ok) continue;
             const data = await res.json().catch(() => null);
             if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
@@ -849,30 +859,37 @@ const firebaseConfig = {
 
         // Event detail modal
         function showEventDetail(eventId) {
-            const event = currentEvents.find(e => e.id === eventId);
-            if (!event) return;
+            const event = allEvents.find(e => e.id === eventId);
+            if (!event) {
+                console.error('Event not found:', eventId);
+                return;
+            }
 
             document.getElementById('modal-title').textContent = event.title;
 
             const meta = [];
-            meta.push(`<i class="fa-solid fa-calendar mr-1"></i>${event.dateObj.toLocaleString('pl-PL', {
+            meta.push(`<div class="flex items-center"><i class="fa-solid fa-calendar mr-2 text-coyote w-5"></i><span>${event.dateObj.toLocaleString('pl-PL', {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
-            })}`);
-            meta.push(`<i class="fa-solid fa-map-marker-alt mr-1"></i>${event.location}`);
-            meta.push(`<i class="fa-solid fa-tag mr-1"></i>${getCategoryName(event.category)}`);
+            })}</span></div>`);
+            meta.push(`<div class="flex items-center"><i class="fa-solid fa-map-marker-alt mr-2 text-coyote w-5"></i><span>${event.location || 'Nie podano lokalizacji'}</span></div>`);
+            meta.push(`<div class="flex items-center"><i class="fa-solid fa-tag mr-2 text-coyote w-5"></i><span>${getCategoryName(event.category)}</span></div>`);
+            if (event.pinned) {
+                meta.push(`<div class="flex items-center"><i class="fa-solid fa-thumbtack mr-2 text-yellow-500 w-5"></i><span class="text-yellow-500 font-semibold">Przypięte wydarzenie</span></div>`);
+            }
+            if (event.status === 'completed') {
+                meta.push(`<div class="flex items-center"><i class="fa-solid fa-check-circle mr-2 text-red-400 w-5"></i><span class="text-red-400 font-semibold">Wydarzenie zakończone</span></div>`);
+            }
 
-            document.getElementById('modal-meta').innerHTML = meta.join('<br>');
+            document.getElementById('modal-meta').innerHTML = meta.join('');
 
-            document.getElementById('modal-content').innerHTML = `
-                <div class="prose prose-invert max-w-none">
-                    ${event.description.replace(/\n/g, '<br>')}
-                </div>
-            `;
+            // Formatowanie opisu z zachowaniem podziałów linii
+            const description = event.description || 'Brak opisu wydarzenia.';
+            document.getElementById('modal-content').textContent = description;
 
             document.getElementById('event-modal').classList.remove('hidden');
         }
