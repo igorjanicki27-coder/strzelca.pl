@@ -713,19 +713,29 @@ const firebaseConfig = {
         async function loadEvents() {
             try {
                 console.log('Loading events from Firestore...');
-                const q = query(collection(db, "events"), orderBy("date", "asc"));
-                const querySnapshot = await getDocs(q);
-                console.log(`Found ${querySnapshot.size} events in Firestore`);
-                
                 allEvents = [];
                 let skippedCount = 0;
+                let querySnapshot;
+
+                // Próbuj najpierw z orderBy, jeśli się nie uda - bez orderBy
+                try {
+                    const q = query(collection(db, "events"), orderBy("date", "asc"));
+                    querySnapshot = await getDocs(q);
+                    console.log(`Found ${querySnapshot.size} events in Firestore (with orderBy)`);
+                } catch (orderByError) {
+                    console.warn('orderBy failed, trying without orderBy:', orderByError);
+                    // Fallback: pobierz wszystkie wydarzenia bez orderBy
+                    querySnapshot = await getDocs(collection(db, "events"));
+                    console.log(`Found ${querySnapshot.size} events in Firestore (without orderBy)`);
+                }
 
                 querySnapshot.forEach((doc) => {
                     const event = doc.data();
                     console.log(`Event ${doc.id}:`, { 
                         title: event.title, 
                         published: event.published, 
-                        date: event.date 
+                        date: event.date,
+                        fullData: event
                     });
                     
                     // Allow events without published field or with published=true
@@ -736,7 +746,28 @@ const firebaseConfig = {
                             return;
                         }
                         
-                        const dateObj = event.date?.toDate ? event.date.toDate() : new Date(event.date);
+                        // Obsługa różnych formatów daty
+                        let dateObj;
+                        if (event.date?.toDate) {
+                            // Firestore Timestamp
+                            dateObj = event.date.toDate();
+                        } else if (event.date instanceof Date) {
+                            // JavaScript Date
+                            dateObj = event.date;
+                        } else if (typeof event.date === 'string' || typeof event.date === 'number') {
+                            // String lub timestamp
+                            dateObj = new Date(event.date);
+                        } else {
+                            console.warn(`Event ${doc.id} has invalid date format:`, event.date);
+                            return;
+                        }
+                        
+                        // Sprawdź czy data jest poprawna
+                        if (isNaN(dateObj.getTime())) {
+                            console.warn(`Event ${doc.id} has invalid date:`, event.date);
+                            return;
+                        }
+                        
                         allEvents.push({
                             id: doc.id,
                             ...event,
