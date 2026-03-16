@@ -270,7 +270,6 @@
     </style>
 </head>
 <body>
-    <div class="main-wrapper">
         <!-- Panel użytkownika -->
         <div id="user-panel" class="fixed top-4 right-4 z-50 hidden">
             <div class="relative">
@@ -317,37 +316,20 @@
             </a>
         </div>
 
-        <!-- Top nav - spójny z innymi podstronami -->
-        <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-40 backdrop-blur-md flex items-center relative" role="navigation" aria-label="Nawigacja główna">
-            <a href="https://strzelca.pl" aria-label="Powrót do centrum dowodzenia" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl z-[60]">
-                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-            </a>
-            <div class="container mx-auto px-6 flex justify-center items-center">
-                <div class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400">
-                    WYDARZENIA.<span class="coyote-text">STRZELCA</span>.PL
+    <!-- Top nav - spójny z innymi podstronami -->
+    <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative w-full" role="navigation" aria-label="Nawigacja główna">
+        <a href="https://strzelca.pl" aria-label="Powrót do centrum dowodzenia" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl z-[60]">
+            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        </a>
+        <div class="container mx-auto px-6 flex justify-center items-center w-full">
+            <div class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400">
+                WYDARZENIA.<span class="coyote-text">STRZELCA</span>.PL
                 </div>
             </div>
-        </nav>
+    </nav>
 
-        <!-- Header - tylko licznik i aktualizacja, bez dużego tytułu/opisu -->
-        <header class="container mx-auto px-6 pt-6 pb-4">
-            <div class="flex flex-wrap items-center justify-center gap-4 text-sm text-zinc-500">
-                <div class="flex items-center gap-2">
-                    <div class="w-2 h-2 bg-coyote rounded-full animate-pulse"></div>
-                    <span>Aktywne wydarzenia</span>
-                </div>
-                <span class="text-zinc-700">•</span>
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-calendar-check text-coyote"></i>
-                    <span id="events-count">0 wydarzeń</span>
-                </div>
-                <span class="text-zinc-700 hidden sm:inline">•</span>
-                <div class="flex items-center gap-2 text-xs md:text-sm">
-                    <i class="fa-solid fa-calendar-alt text-coyote"></i>
-                    <span>Aktualizacja: <span id="last-update" class="text-zinc-400 font-medium">ładowanie...</span></span>
-                </div>
-            </div>
-        </header>
+    <div class="main-wrapper">
+
 
         <!-- Filters Panel (desktop modal) -->
         <div id="desktop-filters" class="filters-modal-overlay hidden" onclick="if(event.target === this) toggleFilters()">
@@ -730,22 +712,46 @@ const firebaseConfig = {
         // Load events from Firebase
         async function loadEvents() {
             try {
+                console.log('Loading events from Firestore...');
                 const q = query(collection(db, "events"), orderBy("date", "asc"));
                 const querySnapshot = await getDocs(q);
+                console.log(`Found ${querySnapshot.size} events in Firestore`);
+                
                 allEvents = [];
+                let skippedCount = 0;
 
                 querySnapshot.forEach((doc) => {
                     const event = doc.data();
-                    if (event.published !== false) { // Allow events without published field or with published=true
+                    console.log(`Event ${doc.id}:`, { 
+                        title: event.title, 
+                        published: event.published, 
+                        date: event.date 
+                    });
+                    
+                    // Allow events without published field or with published=true
+                    if (event.published !== false) {
+                        // Sprawdź czy data istnieje
+                        if (!event.date) {
+                            console.warn(`Event ${doc.id} missing date field`);
+                            return;
+                        }
+                        
+                        const dateObj = event.date?.toDate ? event.date.toDate() : new Date(event.date);
                         allEvents.push({
                             id: doc.id,
                             ...event,
-                            dateObj: new Date(event.date),
-                            status: event.status || (new Date(event.date) >= new Date() ? 'active' : 'completed'),
-                            pinned: event.pinned || false
+                            dateObj: dateObj,
+                            status: event.status || (dateObj >= new Date() ? 'active' : 'completed'),
+                            pinned: event.pinned || false,
+                            location: event.location || ''
                         });
+                    } else {
+                        skippedCount++;
+                        console.log(`Skipping event ${doc.id} - published is false`);
                     }
                 });
+
+                console.log(`Loaded ${allEvents.length} published events, skipped ${skippedCount} unpublished events`);
 
                 // Sort events: pinned first, then active (upcoming) by date, then completed by date
                 allEvents.sort((a, b) => {
@@ -765,7 +771,27 @@ const firebaseConfig = {
                 applyFilters();
             } catch (error) {
                 console.error('Error loading events:', error);
-                document.getElementById('events-container').innerHTML = '<div class="text-center text-red-500 py-12">Błąd ładowania wydarzeń</div>';
+                console.error('Error details:', {
+                    message: error.message,
+                    code: error.code,
+                    stack: error.stack
+                });
+                
+                // Jeśli błąd związany z indeksem, pokaż bardziej pomocny komunikat
+                let errorMessage = 'Błąd ładowania wydarzeń';
+                if (error.code === 'failed-precondition') {
+                    errorMessage = 'Błąd: Brak indeksu w Firestore. Skontaktuj się z administratorem.';
+                } else if (error.message?.includes('index')) {
+                    errorMessage = 'Błąd: Wymagany indeks Firestore. Sprawdź konsolę przeglądarki.';
+                }
+                
+                document.getElementById('events-container').innerHTML = `
+                    <div class="text-center text-red-500 py-12">
+                        <i class="fa-solid fa-exclamation-triangle text-3xl mb-4"></i>
+                        <div class="text-lg font-bold mb-2">${errorMessage}</div>
+                        <div class="text-sm text-zinc-500">${error.message || 'Nieznany błąd'}</div>
+                    </div>
+                `;
             }
         }
 
