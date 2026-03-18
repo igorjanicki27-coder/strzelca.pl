@@ -1448,10 +1448,10 @@
                   <label class="block text-sm font-medium mb-2">Kategoria</label>
                   <select id="events-category-filter" class="w-full">
                     <option value="all">Wszystkie kategorie</option>
-                    <option value="training">Szkolenia</option>
-                    <option value="meeting">Spotkania</option>
-                    <option value="competition">Zawody</option>
-                    <option value="other">Inne</option>
+                    <option value="zawody">Zawody</option>
+                    <option value="szkolenie">Szkolenie</option>
+                    <option value="wystawa">Wystawa</option>
+                    <option value="inne">Inne</option>
                   </select>
                 </div>
                 <div>
@@ -8120,6 +8120,31 @@
       // Lista wydarzeń
       let eventsList = [];
 
+      function normalizeEventCategory(category) {
+        const value = String(category || "").trim().toLowerCase();
+        const map = {
+          training: "szkolenie",
+          meeting: "inne",
+          competition: "zawody",
+          other: "inne",
+          zawody: "zawody",
+          szkolenie: "szkolenie",
+          wystawa: "wystawa",
+          inne: "inne",
+        };
+        return map[value] || "inne";
+      }
+
+      function getEventCategoryLabel(category) {
+        const labels = {
+          zawody: "Zawody",
+          szkolenie: "Szkolenie",
+          wystawa: "Wystawa",
+          inne: "Inne",
+        };
+        return labels[normalizeEventCategory(category)] || "Inne";
+      }
+
       async function loadEvents() {
         const loadingEl = document.getElementById("events-loading");
         const emptyEl = document.getElementById("events-empty");
@@ -8135,6 +8160,8 @@
             id: doc.id,
             ...doc.data(),
             dateObj: doc.data().date?.toDate ? doc.data().date.toDate() : new Date(doc.data().date),
+            category: normalizeEventCategory(doc.data().category),
+            location: doc.data().location || "",
           }));
 
           renderEventsList();
@@ -8168,13 +8195,7 @@
             const eventDate = event.dateObj || new Date(event.date);
             const isPast = eventDate < new Date();
             const isPinned = event.pinned || false;
-            const category = event.category || "other";
-            const categoryLabels = {
-              training: "Szkolenia",
-              meeting: "Spotkania",
-              competition: "Zawody",
-              other: "Inne",
-            };
+            const category = normalizeEventCategory(event.category);
 
             return `
               <div class="flex justify-between items-center p-4 bg-zinc-800 rounded-lg border ${isPinned ? 'border-coyote' : 'border-zinc-700'}">
@@ -8182,7 +8203,7 @@
                   <div class="flex items-center gap-2 mb-2">
                     ${isPinned ? '<i class="fa-solid fa-thumbtack text-coyote" title="Przypięte"></i>' : ''}
                     <div class="font-semibold text-white">${event.title || "Bez tytułu"}</div>
-                    <span class="text-xs px-2 py-1 rounded bg-zinc-700 text-zinc-300">${categoryLabels[category] || category}</span>
+                    <span class="text-xs px-2 py-1 rounded bg-zinc-700 text-zinc-300">${getEventCategoryLabel(category)}</span>
                     ${isPast ? '<span class="text-xs px-2 py-1 rounded bg-red-900/30 text-red-400">Przeszłe</span>' : '<span class="text-xs px-2 py-1 rounded bg-green-900/30 text-green-400">Nadchodzące</span>'}
                   </div>
                   <div class="text-sm text-zinc-400 mb-1">
@@ -8195,6 +8216,7 @@
                       minute: "2-digit",
                     })}
                   </div>
+                  ${event.location ? `<div class="text-sm text-zinc-400 mb-1"><i class="fa-solid fa-location-dot mr-1"></i>${event.location}</div>` : ""}
                   ${event.description ? `<div class="text-sm text-zinc-500 mt-2 line-clamp-2">${event.description.substring(0, 100)}${event.description.length > 100 ? "..." : ""}</div>` : ""}
                 </div>
                 <div class="flex space-x-2 ml-4">
@@ -8238,6 +8260,7 @@
 
       function openEventModal(eventId = null) {
         const event = eventId ? eventsList.find((e) => e.id === eventId) : null;
+        const normalizedCategory = event ? normalizeEventCategory(event.category) : "inne";
 
         const modalHtml = `
           <div id="event-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onclick="if(event.target.id === 'event-form-modal') closeEventFormModal()">
@@ -8281,11 +8304,22 @@
                     id="event-category"
                     class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
                   >
-                    <option value="training" ${event && event.category === "training" ? "selected" : ""}>Szkolenia</option>
-                    <option value="meeting" ${event && event.category === "meeting" ? "selected" : ""}>Spotkania</option>
-                    <option value="competition" ${event && event.category === "competition" ? "selected" : ""}>Zawody</option>
-                    <option value="other" ${event && event.category === "other" ? "selected" : (!event ? "selected" : "")}>Inne</option>
+                    <option value="zawody" ${normalizedCategory === "zawody" ? "selected" : ""}>Zawody</option>
+                    <option value="szkolenie" ${normalizedCategory === "szkolenie" ? "selected" : ""}>Szkolenie</option>
+                    <option value="wystawa" ${normalizedCategory === "wystawa" ? "selected" : ""}>Wystawa</option>
+                    <option value="inne" ${normalizedCategory === "inne" ? "selected" : ""}>Inne</option>
                   </select>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">Lokalizacja</label>
+                  <input
+                    type="text"
+                    id="event-location"
+                    placeholder="np. Strzelnica Warszawa, ul. Przykładowa 1"
+                    value="${event ? (event.location || "") : ""}"
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                  />
                 </div>
 
                 <div>
@@ -8382,7 +8416,8 @@
         const eventId = document.getElementById("event-id").value;
         const title = document.getElementById("event-title").value.trim();
         const dateTime = document.getElementById("event-date").value;
-        const category = document.getElementById("event-category").value;
+        const category = normalizeEventCategory(document.getElementById("event-category").value);
+        const location = document.getElementById("event-location")?.value.trim() || "";
         const description = document.getElementById("event-description").value.trim();
         const pinned = document.getElementById("event-pinned").checked;
         const published = document.getElementById("event-published").checked;
@@ -8398,6 +8433,7 @@
             title,
             date: eventDate,
             category,
+            location,
             description: description || "",
             pinned,
             published,
@@ -8461,7 +8497,7 @@
 
         // Filtrowanie po kategorii
         if (categoryFilter !== "all") {
-          filtered = filtered.filter((e) => (e.category || "other") === categoryFilter);
+          filtered = filtered.filter((e) => normalizeEventCategory(e.category) === categoryFilter);
         }
 
         // Sortowanie
@@ -8493,13 +8529,7 @@
             const eventDate = event.dateObj || new Date(event.date);
             const isPast = eventDate < new Date();
             const isPinned = event.pinned || false;
-            const category = event.category || "other";
-            const categoryLabels = {
-              training: "Szkolenia",
-              meeting: "Spotkania",
-              competition: "Zawody",
-              other: "Inne",
-            };
+            const category = normalizeEventCategory(event.category);
 
             return `
               <div class="flex justify-between items-center p-4 bg-zinc-800 rounded-lg border ${isPinned ? "border-coyote" : "border-zinc-700"}">
@@ -8507,7 +8537,7 @@
                   <div class="flex items-center gap-2 mb-2">
                     ${isPinned ? '<i class="fa-solid fa-thumbtack text-coyote" title="Przypięte"></i>' : ""}
                     <div class="font-semibold text-white">${event.title || "Bez tytułu"}</div>
-                    <span class="text-xs px-2 py-1 rounded bg-zinc-700 text-zinc-300">${categoryLabels[category] || category}</span>
+                    <span class="text-xs px-2 py-1 rounded bg-zinc-700 text-zinc-300">${getEventCategoryLabel(category)}</span>
                     ${isPast ? '<span class="text-xs px-2 py-1 rounded bg-red-900/30 text-red-400">Przeszłe</span>' : '<span class="text-xs px-2 py-1 rounded bg-green-900/30 text-green-400">Nadchodzące</span>'}
                   </div>
                   <div class="text-sm text-zinc-400 mb-1">
@@ -8520,6 +8550,7 @@
                       minute: "2-digit",
                     })}
                   </div>
+                  ${event.location ? `<div class="text-sm text-zinc-400 mb-1"><i class="fa-solid fa-location-dot mr-1"></i>${event.location}</div>` : ""}
                   ${event.description ? `<div class="text-sm text-zinc-500 mt-2 line-clamp-2">${event.description.substring(0, 100)}${event.description.length > 100 ? "..." : ""}</div>` : ""}
                 </div>
                 <div class="flex space-x-2 ml-4">
@@ -16720,6 +16751,4 @@
       src="https://strzelca.pl/messages-widget.mjs?v=2026-02-05-14"
     ></script>
   </body>
-</html>
-</html>
 </html>

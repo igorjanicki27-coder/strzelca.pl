@@ -877,9 +877,10 @@ const firebaseConfig = {
             const dateFromEl = document.getElementById(`date-from-filter${suffix}`) || document.getElementById(source === 'mobile' ? 'date-from-filter' : 'date-from-filter-mobile');
             const dateToEl = document.getElementById(`date-to-filter${suffix}`) || document.getElementById(source === 'mobile' ? 'date-to-filter' : 'date-to-filter-mobile');
             const showCompletedEl = document.getElementById(`show-completed-filter${suffix}`) || document.getElementById(source === 'mobile' ? 'show-completed-filter' : 'show-completed-filter-mobile');
+            const rawCategory = categoryEl ? categoryEl.value : '';
 
             return {
-                category: normalizeEventCategory(categoryEl ? categoryEl.value : ''),
+                category: rawCategory ? normalizeEventCategory(rawCategory) : '',
                 dateFrom: dateFromEl ? dateFromEl.value : '',
                 dateTo: dateToEl ? dateToEl.value : '',
                 showCompleted: showCompletedEl ? !!showCompletedEl.checked : false
@@ -934,11 +935,6 @@ const firebaseConfig = {
             } catch (e) {
                 console.error('initPage/loadEvents failed:', e);
                 showFatalError(e, 'Błąd inicjalizacji');
-            }
-
-            const filtersBtn = document.getElementById('filters-toggle-btn');
-            if (filtersBtn) {
-                filtersBtn.addEventListener('click', toggleFilters);
             }
         }
 
@@ -1264,7 +1260,7 @@ const firebaseConfig = {
         // Render events list with day grouping - nowy format
         function renderEventsList() {
             const container = document.getElementById('events-container');
-                container.innerHTML = '';
+            container.innerHTML = '';
 
             if (filteredEvents.length === 0) {
                 container.innerHTML = `
@@ -1279,9 +1275,72 @@ const firebaseConfig = {
                 return;
             }
 
-            // Group events by date
+            const now = new Date();
+            const renderListItem = (event, forcePinned = false) => {
+                const isPast = isEventCompleted(event, now);
+                const isPinned = forcePinned || !!event.pinned;
+
+                const hours = String(event.dateObj.getHours()).padStart(2, '0');
+                const minutes = String(event.dateObj.getMinutes()).padStart(2, '0');
+                const formattedTime = `${hours}:${minutes}`;
+
+                const listItem = document.createElement('li');
+                listItem.className = `event-list-item ${isPinned ? 'event-pinned' : ''} cursor-pointer transition-all duration-200 hover:translate-x-1 ${isPast ? 'opacity-60' : ''}`;
+                listItem.onclick = () => showEventDetail(event.id);
+
+                const categoryBadge = `<span class="text-xs bg-zinc-800 px-2 py-0.5 rounded text-zinc-400 ml-2">${getCategoryName(event.category)}</span>`;
+                const pinnedBadge = isPinned ? '<span class="text-xs bg-yellow-600/20 text-yellow-400 px-2 py-0.5 rounded ml-2"><i class="fa-solid fa-thumbtack mr-1"></i>Przypięte</span>' : '';
+                const completedBadge = isPast ? '<span class="text-xs bg-red-900/20 text-red-400 px-2 py-0.5 rounded ml-2">Zakończone</span>' : '';
+
+                listItem.innerHTML = `
+                    <div class="flex items-start gap-3 group">
+                        <span class="text-coyote font-bold text-lg mt-0.5 group-hover:text-coyote-light transition">-</span>
+                        <div class="flex-1">
+                            <div class="flex items-center flex-wrap gap-2 mb-1">
+                                <span class="font-semibold text-white text-base md:text-lg group-hover:text-coyote transition">${event.title}</span>
+                                ${categoryBadge}
+                                ${pinnedBadge}
+                                ${completedBadge}
+                            </div>
+                            <div class="text-sm text-zinc-400 mb-1">
+                                <i class="fa-solid fa-clock text-coyote/70 mr-1"></i>
+                                <span class="font-medium">godzina: ${formattedTime}</span>
+                                ${event.location ? `<span class="ml-3"><i class="fa-solid fa-map-marker-alt text-coyote/70 mr-1"></i>${event.location}</span>` : ''}
+                            </div>
+                            ${event.description ? `<div class="text-sm text-zinc-500 mt-1 line-clamp-2">${event.description}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+
+                return listItem;
+            };
+
+            const pinnedEvents = filteredEvents
+                .filter(event => !!event.pinned)
+                .sort((a, b) => compareEvents(a, b, now));
+
+            if (pinnedEvents.length > 0) {
+                const pinnedSection = document.createElement('section');
+                pinnedSection.className = 'pinned-events-section';
+                pinnedSection.innerHTML = `
+                    <div class="text-lg md:text-xl font-bold coyote-text mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-thumbtack"></i>
+                        <span>Przypięte wydarzenia</span>
+                    </div>
+                `;
+
+                const pinnedList = document.createElement('ul');
+                pinnedList.className = 'space-y-3';
+                pinnedEvents.forEach((event) => {
+                    pinnedList.appendChild(renderListItem(event, true));
+                });
+                pinnedSection.appendChild(pinnedList);
+                container.appendChild(pinnedSection);
+            }
+
+            // Group non-pinned events by date
             const eventsByDate = {};
-            filteredEvents.forEach(event => {
+            filteredEvents.filter(event => !event.pinned).forEach(event => {
                 const dateKey = event.dateObj.toDateString();
                 if (!eventsByDate[dateKey]) {
                     eventsByDate[dateKey] = [];
@@ -1310,7 +1369,8 @@ const firebaseConfig = {
                 daySection.dataset.date = dateKey;
                 
                 const dayHeader = document.createElement('div');
-                dayHeader.className = `text-xl md:text-2xl font-bold text-white mb-4 flex items-center gap-3 ${isToday ? 'coyote-text' : ''}`;
+                dayHeader.className = `day-header text-xl md:text-2xl font-bold text-white mb-4 flex items-center gap-3 ${isToday ? 'coyote-text' : ''}`;
+                dayHeader.dataset.date = dateKey;
                 dayHeader.innerHTML = `
                     <i class="fa-solid fa-calendar-day text-coyote ${isToday ? 'animate-pulse' : ''}"></i>
                     <span>${formattedDate}</span>
@@ -1323,17 +1383,11 @@ const firebaseConfig = {
                 eventsList.className = 'space-y-3 ml-8 md:ml-12';
 
                 // Sortowanie w obrębie jednego dnia:
-                // 1) przypięte na górze
-                // 2) aktywne przed zakończonymi
-                // 3) potem wg godziny
+                // 1) aktywne przed zakończonymi
+                // 2) potem wg godziny
                 const sortedEvents = events.sort((a, b) => {
-                    const isPinnedA = !!a.pinned;
-                    const isPinnedB = !!b.pinned;
-                    if (isPinnedA && !isPinnedB) return -1;
-                    if (!isPinnedA && isPinnedB) return 1;
-
-                    const isPastA = a.status === 'completed';
-                    const isPastB = b.status === 'completed';
+                    const isPastA = isEventCompleted(a, now);
+                    const isPastB = isEventCompleted(b, now);
                     if (isPastA !== isPastB) return isPastA ? 1 : -1;
 
                     const timeA = a.dateObj.getHours() * 60 + a.dateObj.getMinutes();
@@ -1342,58 +1396,12 @@ const firebaseConfig = {
                 });
 
                 sortedEvents.forEach(event => {
-                    const isPast = event.status === 'completed';
-                    const isPinned = event.pinned;
-
-                    // Format time: "16:30"
-                    const hours = String(event.dateObj.getHours()).padStart(2, '0');
-                    const minutes = String(event.dateObj.getMinutes()).padStart(2, '0');
-                    const formattedTime = `${hours}:${minutes}`;
-
-                    const listItem = document.createElement('li');
-                    listItem.className = `event-list-item ${isPinned ? 'event-pinned' : ''} cursor-pointer transition-all duration-200 hover:translate-x-1 ${isPast ? 'opacity-60' : ''}`;
-                    listItem.onclick = () => showEventDetail(event.id);
-
-                    const categoryBadge = event.category ? `<span class="text-xs bg-zinc-800 px-2 py-0.5 rounded text-zinc-400 ml-2">${getCategoryName(event.category)}</span>` : '';
-                    const pinnedBadge = isPinned ? '<span class="text-xs bg-yellow-600/20 text-yellow-400 px-2 py-0.5 rounded ml-2"><i class="fa-solid fa-thumbtack mr-1"></i>Przypięte</span>' : '';
-                    const completedBadge = isPast ? '<span class="text-xs bg-red-900/20 text-red-400 px-2 py-0.5 rounded ml-2">Zakończone</span>' : '';
-
-                    listItem.innerHTML = `
-                        <div class="flex items-start gap-3 group">
-                            <span class="text-coyote font-bold text-lg mt-0.5 group-hover:text-coyote-light transition">-</span>
-                            <div class="flex-1">
-                                <div class="flex items-center flex-wrap gap-2 mb-1">
-                                    <span class="font-semibold text-white text-base md:text-lg group-hover:text-coyote transition">${event.title}</span>
-                                    ${categoryBadge}
-                                    ${pinnedBadge}
-                                    ${completedBadge}
-                                </div>
-                                <div class="text-sm text-zinc-400 mb-1">
-                                    <i class="fa-solid fa-clock text-coyote/70 mr-1"></i>
-                                    <span class="font-medium">godzina: ${formattedTime}</span>
-                                    ${event.location ? `<span class="ml-3"><i class="fa-solid fa-map-marker-alt text-coyote/70 mr-1"></i>${event.location}</span>` : ''}
-                                    </div>
-                                ${event.description ? `<div class="text-sm text-zinc-500 mt-1 line-clamp-2">${event.description}</div>` : ''}
-                                    </div>
-                                    </div>
-                    `;
-
-                    eventsList.appendChild(listItem);
+                    eventsList.appendChild(renderListItem(event, false));
                 });
 
                 daySection.appendChild(eventsList);
                 container.appendChild(daySection);
             });
-        }
-
-        function getCategoryName(category) {
-            const categories = {
-                'zawody': 'Zawody Strzeleckie',
-                'szkolenie': 'Szkolenie',
-                'wystawa': 'Wystawa',
-                'inne': 'Inne'
-            };
-            return categories[category] || category;
         }
 
         // Calendar functions
@@ -1535,39 +1543,7 @@ const firebaseConfig = {
                     inline: 'nearest'
                 });
             } else {
-                // If day not loaded yet, load more events until we find it
-                const targetDate = new Date(date);
-                const eventsOnDate = allEvents.filter(event =>
-                    event.dateObj.toDateString() === dateStr
-                );
-
-                if (eventsOnDate.length > 0) {
-                    // Load more events until this date is included
-                    const targetIndex = allEvents.findIndex(event =>
-                        event.dateObj.toDateString() === dateStr
-                    );
-
-                    if (targetIndex >= displayedEvents.length) {
-                        const eventsToLoad = Math.ceil((targetIndex - displayedEvents.length + eventsPerLoad) / eventsPerLoad) * eventsPerLoad;
-                        displayedEvents = allEvents.slice(0, displayedEvents.length + eventsToLoad);
-                        renderEventsList();
-                        updateLoadMoreButton();
-
-                        // Try scrolling again after a short delay
-                        setTimeout(() => {
-                            const dayHeader = document.querySelector(`.day-header[data-date="${dateStr}"]`);
-                            if (dayHeader) {
-                                dayHeader.scrollIntoView({
-                                    behavior: 'smooth',
-                                    block: 'start',
-                                    inline: 'nearest'
-                                });
-                            }
-                        }, 100);
-                    }
-                } else {
-                    showNotification(`Brak wydarzeń w dniu ${date.toLocaleDateString('pl-PL')}`);
-                }
+                showNotification(`Brak wydarzeń w dniu ${date.toLocaleDateString('pl-PL')}`);
             }
         }
 
@@ -1607,7 +1583,7 @@ const firebaseConfig = {
             if (event.pinned) {
                 meta.push(`<div class="flex items-center"><i class="fa-solid fa-thumbtack mr-2 text-yellow-500 w-5"></i><span class="text-yellow-500 font-semibold">Przypięte wydarzenie</span></div>`);
             }
-            if (event.status === 'completed') {
+            if (isEventCompleted(event)) {
                 meta.push(`<div class="flex items-center"><i class="fa-solid fa-check-circle mr-2 text-red-400 w-5"></i><span class="text-red-400 font-semibold">Wydarzenie zakończone</span></div>`);
             }
 
@@ -1643,5 +1619,4 @@ const firebaseConfig = {
       src="https://strzelca.pl/messages-widget.mjs?v=2026-02-05-14"
     ></script>
   </body>
-</html>
 </html>
