@@ -238,34 +238,127 @@
         }
         
         .event-list-item {
-            padding: 0.75rem 1rem;
-            border-left: 2px solid transparent;
-            background: rgba(0, 0, 0, 0.62);
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            transition: all 0.2s;
+            position: relative;
+            padding: 1.02rem 1.12rem;
+            background:
+                radial-gradient(180% 95% at 100% 0%, rgba(193, 154, 107, 0.11) 0%, rgba(193, 154, 107, 0.02) 45%, transparent 80%),
+                linear-gradient(138deg, rgba(10, 11, 14, 0.82) 0%, rgba(18, 20, 25, 0.68) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.11);
+            border-radius: 16px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+            overflow: hidden;
+        }
+        .event-list-item::before {
+            content: '';
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 3px;
+            background: linear-gradient(180deg, rgba(193, 154, 107, 0.22) 0%, rgba(193, 154, 107, 0.75) 52%, rgba(193, 154, 107, 0.2) 100%);
+            opacity: 0.65;
         }
         .event-list-item:hover {
-            border-left-color: var(--coyote);
-            background: rgba(0, 0, 0, 0.72);
-            border-radius: 6px;
+            transform: translateY(-2px) scale(1.003);
+            border-color: rgba(193, 154, 107, 0.5);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(193, 154, 107, 0.18);
+        }
+        .event-list-item.event-pinned {
+            background: linear-gradient(130deg, rgba(193, 154, 107, 0.2) 0%, rgba(24, 17, 8, 0.52) 25%, rgba(12, 13, 17, 0.86) 100%);
+            border-color: rgba(193, 154, 107, 0.46);
+        }
+        .event-list-item.event-pinned::before {
+            width: 4px;
+            opacity: 1;
         }
 
-        .event-list-item.event-pinned {
-            background: linear-gradient(135deg, rgba(193, 154, 107, 0.14) 0%, rgba(18, 18, 18, 0.86) 65%);
-            border-color: rgba(193, 154, 107, 0.3);
+        .event-title {
+            font-size: 1.28rem;
+            font-weight: 800;
+            line-height: 1.2;
+            letter-spacing: 0.01em;
+            color: #f6f7fb;
+        }
+
+        .event-title-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.62rem;
+            min-width: 0;
+        }
+
+        .event-bullet {
+            color: var(--coyote);
+            font-weight: 800;
+            font-size: 1.28rem;
+            line-height: 1.1;
+            margin-top: -0.04rem;
+            opacity: 0.92;
+        }
+
+        .event-calendar-row {
+            font-size: 0.77rem;
+            color: #b0b4c0;
+            margin: 0.22rem 0 0.18rem;
+            text-transform: capitalize;
+        }
+
+        .event-meta-row {
+            font-size: 0.95rem;
+            color: #c7cad4;
+            font-weight: 500;
+        }
+
+        .event-right-badges {
+            margin-top: 0.1rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-content: flex-start;
+            gap: 0.42rem;
+            max-width: 48%;
+        }
+
+        .badge-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.2rem 0.52rem;
+            border-radius: 10px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: 0.02em;
+        }
+
+        .badge-chip.category {
+            background: rgba(41, 46, 58, 0.72);
+            border: 1px solid rgba(120, 128, 152, 0.25);
+            color: #c7ccd9;
+        }
+
+        .badge-chip.completed {
+            background: rgba(130, 27, 27, 0.28);
+            border: 1px solid rgba(229, 96, 96, 0.32);
+            color: #ff9f9f;
+        }
+
+        .badge-chip.pinned {
+            background: rgba(193, 154, 107, 0.2);
+            border: 1px solid rgba(193, 154, 107, 0.46);
+            color: #f4d7ae;
         }
         
         .current-day-section {
             padding: 1rem;
-            background: rgba(193, 154, 107, 0.06);
-            border-radius: 12px;
-            border: 1px solid rgba(193, 154, 107, 0.2);
+            background: linear-gradient(130deg, rgba(193, 154, 107, 0.14) 0%, rgba(193, 154, 107, 0.05) 55%, rgba(255, 255, 255, 0.02) 100%);
+            border-radius: 16px;
+            border: 1px solid rgba(193, 154, 107, 0.26);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
         }
 
         .pinned-events-section {
-            margin-bottom: 1.35rem;
-            padding: 0;
+            margin-bottom: 1.4rem;
+            padding: 0.5rem 0;
             border: none;
             background: transparent;
             box-shadow: none;
@@ -277,38 +370,53 @@
             justify-content: space-between;
             gap: 0.75rem;
             margin-bottom: 0.75rem;
-            padding-bottom: 0.65rem;
+            padding: 0.35rem 0.65rem 0.7rem;
             border-bottom: 1px solid rgba(193, 154, 107, 0.18);
+            background: linear-gradient(90deg, rgba(193, 154, 107, 0.09) 0%, rgba(193, 154, 107, 0.02) 65%, transparent 100%);
+            border-radius: 12px 12px 0 0;
         }
 
         .filter-trigger-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 2.35rem;
-            height: 2.35rem;
-            margin-right: 0.35rem;
-            border-radius: 999px;
-            border: 1px solid rgba(193, 154, 107, 0.45);
-            background: rgba(193, 154, 107, 0.14);
-            color: #e7d3b8;
-            font-size: 0.9rem;
+            width: 2.45rem;
+            height: 2.45rem;
+            margin-right: 0.2rem;
+            border-radius: 12px;
+            border: 1px solid rgba(193, 154, 107, 0.44);
+            background: linear-gradient(150deg, rgba(193, 154, 107, 0.28) 0%, rgba(193, 154, 107, 0.08) 100%);
+            color: #f8e5c8;
+            font-size: 0.92rem;
             font-weight: 700;
-            transition: all 0.2s ease;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 6px 14px rgba(0, 0, 0, 0.25);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
         }
 
         .filter-trigger-btn:hover {
-            background: rgba(193, 154, 107, 0.24);
-            border-color: rgba(193, 154, 107, 0.75);
-            color: #f7e9d7;
+            transform: translateY(-1px);
+            border-color: rgba(193, 154, 107, 0.76);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 18px rgba(0, 0, 0, 0.3);
         }
 
         @media (max-width: 640px) {
+            .event-title {
+                font-size: 1.1rem;
+            }
+
+            .event-bullet {
+                font-size: 1.1rem;
+            }
+
+            .event-right-badges {
+                max-width: 55%;
+                gap: 0.32rem;
+            }
+
             .filter-trigger-btn {
-                width: 2.2rem;
-                height: 2.2rem;
-                font-size: 0.86rem;
-                margin-right: 0.15rem;
+                width: 2.25rem;
+                height: 2.25rem;
+                font-size: 0.84rem;
             }
         }
 
@@ -345,18 +453,7 @@
             min-height: 0;
             display: flex;
             flex-direction: column;
-            position: relative;
-        }
-        main > .max-w-4xl::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            height: 2rem;
-            pointer-events: none;
-            background: linear-gradient(to bottom, rgba(10, 10, 10, 0) 0%, rgba(10, 10, 10, 0.28) 65%, rgba(10, 10, 10, 0.55) 100%);
-            z-index: 5;
+            padding-bottom: 0.5rem;
         }
         #events-container {
             flex: 1;
@@ -364,13 +461,14 @@
             overflow-y: auto;
             overscroll-behavior: contain;
             -webkit-overflow-scrolling: touch;
-            padding: 0.25rem 0 1rem;
+            padding: 0.3rem 0 4.8rem;
+            margin-bottom: -1rem;
         }
 
         #events-container::after {
             content: '';
             display: block;
-            height: 0.25rem;
+            height: 1.5rem;
         }
 
         #events-container {
@@ -395,6 +493,13 @@
 
         #events-container::-webkit-scrollbar-thumb:hover {
             background: linear-gradient(180deg, #e0c5a3 0%, var(--coyote-light) 60%, var(--coyote) 100%);
+        }
+
+        footer {
+            position: relative;
+            z-index: 2;
+            margin-top: -1rem;
+            background: linear-gradient(180deg, rgba(10, 10, 10, 0) 0%, rgba(10, 10, 10, 0.6) 70%, rgba(10, 10, 10, 0.82) 100%);
         }
 
         /* Cookie/consent bar – tło jak reszta strony (bez czarnej belki) */
@@ -890,6 +995,15 @@ const firebaseConfig = {
             return categories[normalized] || 'Inne';
         }
 
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         function isEventCompleted(event, now = new Date()) {
             const date = event?.dateObj instanceof Date ? event.dateObj : new Date(event?.dateObj || event?.date || 0);
             return date < now;
@@ -1327,35 +1441,35 @@ const firebaseConfig = {
                 listItem.className = `event-list-item ${isPinned ? 'event-pinned' : ''} cursor-pointer transition-all duration-200 hover:translate-x-1 ${isPast ? 'opacity-60' : ''}`;
                 listItem.onclick = () => showEventDetail(event.id);
 
-                const categoryBadge = `<span class="text-xs bg-zinc-800 px-2 py-0.5 rounded text-zinc-400">${getEventCategoryName(event.category)}</span>`;
-                const pinnedBadge = isPinned ? '<span class="text-xs bg-yellow-600/20 text-yellow-400 px-2 py-0.5 rounded"><i class="fa-solid fa-thumbtack mr-1"></i>Przypięte</span>' : '';
-                const completedBadge = isPast ? '<span class="text-xs bg-red-900/20 text-red-400 px-2 py-0.5 rounded">Zakończone</span>' : '';
+                const safeTitle = escapeHtml(event.title || 'Bez tytułu');
+                const safeLocation = escapeHtml(event.location || '');
+                const categoryBadge = `<span class="badge-chip category">${escapeHtml(getEventCategoryName(event.category))}</span>`;
+                const pinnedBadge = isPinned ? '<span class="badge-chip pinned"><i class="fa-solid fa-thumbtack mr-1"></i>Przypięte</span>' : '';
+                const completedBadge = isPast ? '<span class="badge-chip completed">Zakończone</span>' : '';
 
                 listItem.innerHTML = `
-                    <div class="flex items-start gap-3 group">
-                        <span class="text-coyote font-bold text-lg mt-0.5 group-hover:text-coyote-light transition">-</span>
-                        <div class="flex-1">
-                            <div class="flex items-start justify-between gap-3 mb-1">
-                                <div class="min-w-0">
-                                    <span class="font-semibold text-white text-base md:text-lg group-hover:text-coyote transition">${event.title}</span>
-                                </div>
-                                <div class="shrink-0 mt-0.5 flex flex-wrap justify-end gap-2">
-                                    ${categoryBadge}
-                                    ${completedBadge}
-                                    ${isPinned ? pinnedBadge : ''}
-                                </div>
+                    <div class="flex items-start justify-between gap-3 group">
+                        <div class="min-w-0 flex-1">
+                            <div class="event-title-row">
+                                <span class="event-bullet">-</span>
+                                <span class="event-title group-hover:text-coyote-light transition">${safeTitle}</span>
                             </div>
                             ${isPinned ? `
-                                <div class="text-xs text-zinc-400 mb-1">
+                                <div class="event-calendar-row">
                                     <i class="fa-solid fa-calendar-day text-coyote/70 mr-1"></i>
                                     <span>${formattedDate}</span>
                                 </div>
                             ` : ''}
-                            <div class="text-sm text-zinc-400 mb-1">
+                            <div class="event-meta-row">
                                 <i class="fa-solid fa-clock text-coyote/70 mr-1"></i>
-                                <span class="font-medium">godzina: ${formattedTime}</span>
-                                ${event.location ? `<span class="ml-3"><i class="fa-solid fa-map-marker-alt text-coyote/70 mr-1"></i>${event.location}</span>` : ''}
+                                <span>godzina: ${formattedTime}</span>
+                                ${safeLocation ? `<span class="ml-3"><i class="fa-solid fa-map-marker-alt text-coyote/70 mr-1"></i>${safeLocation}</span>` : ''}
                             </div>
+                        </div>
+                        <div class="event-right-badges">
+                            ${categoryBadge}
+                            ${completedBadge}
+                            ${isPinned ? pinnedBadge : ''}
                         </div>
                     </div>
                 `;
