@@ -27,7 +27,16 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root { --coyote: #C19A6B; }
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0a0a0a; color: #e5e5e5; margin: 0; }
+        html, body { height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #0a0a0a;
+            color: #e5e5e5;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
         
         .hero-bg {
             height: 65vh;
@@ -63,6 +72,83 @@
         .details-scroll-area::-webkit-scrollbar { width: 6px; }
         .details-scroll-area::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
         .details-scroll-area::-webkit-scrollbar-thumb:hover { background: var(--coyote); }
+
+        #arsenal {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+        .shop-carousel {
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 14px;
+        }
+        .carousel-viewport {
+            overflow: hidden;
+            width: 100%;
+        }
+        #product-track {
+            display: flex;
+            gap: 20px;
+            transition: transform 0.35s ease;
+            will-change: transform;
+        }
+        .product-card {
+            flex: 0 0 calc((100% - 40px) / 3);
+            min-width: 0;
+        }
+        .carousel-arrow {
+            width: 44px;
+            height: 44px;
+            border: 1px solid #2b2b2b;
+            border-radius: 999px;
+            color: #f4f4f5;
+            background: rgba(10, 10, 10, 0.9);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        .carousel-arrow:hover:not(:disabled) {
+            background: rgba(193, 154, 107, 0.95);
+            color: #050505;
+            border-color: rgba(193, 154, 107, 0.95);
+        }
+        .carousel-arrow:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        .product-card .product-img-container {
+            height: clamp(140px, 24vh, 220px);
+        }
+
+        @media (max-width: 1024px) {
+            .product-card {
+                flex-basis: calc((100% - 20px) / 2);
+            }
+        }
+
+        @media (max-width: 700px) {
+            .shop-carousel {
+                gap: 8px;
+            }
+            #product-track {
+                gap: 12px;
+            }
+            .product-card {
+                flex-basis: 100%;
+            }
+            .carousel-arrow {
+                width: 38px;
+                height: 38px;
+            }
+        }
     </style>
     <!-- Wspólne poprawki responsywności -->
     <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-02-06-1" />
@@ -125,19 +211,18 @@
         </div>
     </nav>
 
-    <header class="hero-bg text-center px-6 uppercase font-[Orbitron] tracking-tighter">
-        <div class="space-y-1">
-            <div class="text-2xl md:text-4xl font-black text-white italic">
-                Arsenał <span class="coyote-text">STRZELCA</span>
+    <section id="arsenal" class="px-4 md:px-8 py-6 md:py-10">
+        <div class="shop-carousel">
+            <button id="carousel-prev" class="carousel-arrow" type="button" aria-label="Poprzedni produkt" onclick="window.moveProductCarousel(-1)">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <div class="carousel-viewport">
+                <div id="product-track"></div>
             </div>
-            <div class="text-xl md:text-3xl font-bold text-zinc-400 italic">
-                Zamawiaj prosto z <span class="coyote-text">PL</span>
-            </div>
+            <button id="carousel-next" class="carousel-arrow" type="button" aria-label="Następny produkt" onclick="window.moveProductCarousel(1)">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
         </div>
-    </header>
-
-    <section id="arsenal" class="py-20 container mx-auto px-6">
-        <div id="product-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10"></div>
     </section>
 
     <div id="details-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-md">
@@ -147,10 +232,9 @@
         </div>
     </div>
 
-    <footer class="text-center py-12 border-t border-zinc-900 text-zinc-700 text-[10px] uppercase font-bold tracking-[0.5em]" role="contentinfo">
-        <a href="https://strzelca.pl" class="hover:text-white transition">STRZELCA.PL</a> 
-        <span class="mx-4 text-zinc-800">|</span> 
-        <a href="?cookies=1" class="hover:text-white transition">Ustawienia cookies</a>
+    <footer class="w-full py-10 text-center text-zinc-700 text-[10px] uppercase font-bold tracking-[0.4em] bg-transparent" role="contentinfo">
+        <a href="https://strzelca.pl" class="hover:text-zinc-500 transition">STRZELCA.PL</a> |
+        <a href="?cookies=1" class="hover:text-zinc-500 transition ml-4">Ustawienia cookies</a>
     </footer>
 
     <script type="module">
@@ -631,32 +715,96 @@ const firebaseConfig = {
             }
         };
 
+        let carouselIndex = 0;
+
+        function getVisibleCardsCount() {
+            if (window.innerWidth <= 700) return 1;
+            if (window.innerWidth <= 1024) return 2;
+            return 3;
+        }
+
+        function updateProductCarousel() {
+            const track = document.getElementById('product-track');
+            const prevBtn = document.getElementById('carousel-prev');
+            const nextBtn = document.getElementById('carousel-next');
+            if (!track || !prevBtn || !nextBtn) return;
+
+            const cards = Array.from(track.querySelectorAll('.product-card'));
+            const visibleCards = getVisibleCardsCount();
+            const maxIndex = Math.max(0, cards.length - visibleCards);
+
+            if (carouselIndex > maxIndex) {
+                carouselIndex = maxIndex;
+            }
+
+            const targetCard = cards[carouselIndex];
+            const offset = targetCard ? targetCard.offsetLeft : 0;
+            track.style.transform = `translateX(-${offset}px)`;
+
+            prevBtn.disabled = carouselIndex === 0;
+            nextBtn.disabled = carouselIndex >= maxIndex;
+        }
+
+        window.moveProductCarousel = (direction) => {
+            const track = document.getElementById('product-track');
+            if (!track) return;
+
+            const cards = Array.from(track.querySelectorAll('.product-card'));
+            const visibleCards = getVisibleCardsCount();
+            const maxIndex = Math.max(0, cards.length - visibleCards);
+
+            carouselIndex = Math.max(0, Math.min(maxIndex, carouselIndex + direction));
+            window.requestAnimationFrame(updateProductCarousel);
+        };
+
+        window.addEventListener('resize', () => {
+            window.requestAnimationFrame(updateProductCarousel);
+        });
+
         const fetchAll = async () => {
             const q = query(collection(db, "products"), orderBy("order", "asc"));
             const snap = await getDocs(q);
-            const grid = document.getElementById('product-grid'); 
-            grid.innerHTML = "";
-            
+            const track = document.getElementById('product-track');
+            if (!track) return;
+
+            if (snap.empty) {
+                track.innerHTML = `
+                    <article class="card-dark product-card p-8 text-center w-full">
+                        <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs">Brak produktów wystawionych na sprzedaż</p>
+                    </article>
+                `;
+                carouselIndex = 0;
+                updateProductCarousel();
+                return;
+            }
+
+            track.innerHTML = "";
+
             snap.forEach(d => {
                 const p = d.data();
-                // Pobierz zdjęcie główne - pierwsze z tablicy images lub fallback do img
                 let mainImage = p.img || '';
                 if (p.images && Array.isArray(p.images) && p.images.length > 0) {
                     mainImage = typeof p.images[0] === 'string' ? p.images[0] : p.images[0].url;
                 }
-                grid.innerHTML += `
-                <article class="card-dark flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50" role="article">
-                    <div class="h-48 md:h-64 product-img-container"><img src="${mainImage}" alt="${p.title}" loading="lazy"></div>
-                    <div class="p-4 md:p-8 flex flex-col flex-grow text-center">
-                        <h3 class="text-lg md:text-xl font-bold uppercase mb-2 font-[Orbitron] text-white tracking-tight">${p.title}</h3>
-                        <p class="coyote-text font-black text-xl md:text-2xl mb-6 md:mb-8" aria-label="Cena: ${p.price} złotych">${p.price} PLN</p>
-                        <div class="mt-auto flex flex-col gap-2 md:gap-3">
-                            <button onclick="window.showDetails('${d.id}')" aria-label="Zobacz szczegóły produktu ${p.title}" class="w-full py-2 md:py-3 border border-zinc-800 text-[9px] md:text-[10px] uppercase font-bold hover:bg-zinc-800 transition rounded tracking-widest text-zinc-400">Szczegóły</button>
-                            <button onclick="window.handleOrder('${p.title}', ${p.price || 0})" aria-label="Zamów produkt ${p.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Zamów</button>
+
+                const encodedTitle = encodeURIComponent(p.title || '');
+                track.innerHTML += `
+                    <article class="card-dark product-card flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50" role="article">
+                        <div class="product-img-container"><img src="${mainImage}" alt="${p.title}" loading="lazy"></div>
+                        <div class="p-4 md:p-6 flex flex-col flex-grow text-center">
+                            <h3 class="text-lg md:text-xl font-bold uppercase mb-2 font-[Orbitron] text-white tracking-tight">${p.title}</h3>
+                            <p class="coyote-text font-black text-xl md:text-2xl mb-4 md:mb-5" aria-label="Cena: ${p.price} złotych">${p.price} PLN</p>
+                            <div class="mt-auto flex flex-col gap-2 md:gap-3">
+                                <button onclick="window.showDetails('${d.id}')" aria-label="Zobacz szczegóły produktu ${p.title}" class="w-full py-2 md:py-3 border border-zinc-800 text-[9px] md:text-[10px] uppercase font-bold hover:bg-zinc-800 transition rounded tracking-widest text-zinc-400">Szczegóły</button>
+                                <button onclick="window.handleOrder(decodeURIComponent('${encodedTitle}'), ${p.price || 0})" aria-label="Zamów produkt ${p.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Zamów</button>
+                            </div>
                         </div>
-                    </div>
-                </article>`;
+                    </article>
+                `;
             });
+
+            carouselIndex = 0;
+            window.requestAnimationFrame(updateProductCarousel);
         };
 
         window.showDetails = async (id) => {

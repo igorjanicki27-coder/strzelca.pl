@@ -2239,6 +2239,8 @@
                 <option value="MESSAGE_SENT">Wysłanie wiadomości</option>
                 <option value="PRODUCT_CREATED">Utworzenie produktu</option>
                 <option value="REVIEW_CREATED">Utworzenie opinii</option>
+                <option value="EVENT_CREATED">Dodanie wydarzenia</option>
+                <option value="EVENT_UPDATED">Edycja wydarzenia</option>
                 <option value="USER_BLOCKED">Zablokowanie użytkownika</option>
                 <option value="USER_UNBLOCKED">Odblokowanie użytkownika</option>
               </select>
@@ -8439,15 +8441,47 @@
             published,
             updatedAt: new Date(),
           };
+          let adminEmail = currentUser?.email || null;
+          if (!adminEmail && currentUser?.uid) {
+            try {
+              const adminDoc = await getDoc(doc(db, "userProfiles", currentUser.uid));
+              if (adminDoc.exists()) {
+                const adminData = adminDoc.data();
+                adminEmail = adminData.email || null;
+              }
+            } catch (e) {
+              console.warn("Nie udało się pobrać emaila administratora:", e);
+            }
+          }
 
           if (eventId) {
             // Aktualizacja istniejącego wydarzenia
             await updateDoc(doc(db, "events", eventId), eventData);
+            await logActivity(currentUser?.uid || "system", "EVENT_UPDATED", {
+              eventId,
+              eventTitle: title,
+              eventDate: eventDate.toISOString(),
+              category,
+              location: location || null,
+              pinned,
+              published,
+              adminEmail,
+            });
             showNotification("Wydarzenie zostało zaktualizowane.", "success");
           } else {
             // Dodanie nowego wydarzenia
             eventData.createdAt = new Date();
-            await addDoc(collection(db, "events"), eventData);
+            const newEventRef = await addDoc(collection(db, "events"), eventData);
+            await logActivity(currentUser?.uid || "system", "EVENT_CREATED", {
+              eventId: newEventRef.id,
+              eventTitle: title,
+              eventDate: eventDate.toISOString(),
+              category,
+              location: location || null,
+              pinned,
+              published,
+              adminEmail,
+            });
             showNotification("Wydarzenie zostało dodane.", "success");
           }
 
@@ -10341,6 +10375,8 @@
           "PRODUCT_VIEW": "Przeglądanie produktu",
           "PRODUCT_CREATED": "Wystawienie oferty w sklepie",
           "REVIEW_CREATED": "Wystawienie opinii",
+          "EVENT_CREATED": "Dodanie wydarzenia",
+          "EVENT_UPDATED": "Edycja wydarzenia",
           "service_online": "Usługa włączona",
           "service_offline": "Usługa wyłączona",
           "site_online": "Strona włączona",
@@ -10547,6 +10583,26 @@
             description = `${userDisplayName} wystawił ofertę w sklepie`;
             content = eventDetails.productName || "Produkt";
             details = `Użytkownik ${userDisplayName} wystawił nową ofertę: "${content}"`;
+            break;
+          case "EVENT_CREATED":
+            description = `${userDisplayName} dodał wydarzenie`;
+            content = eventDetails.eventTitle || eventDetails.title || "Wydarzenie";
+            const createdEventDateRaw = eventDetails.eventDate || eventDetails.date;
+            const createdEventDateObj = createdEventDateRaw ? new Date(createdEventDateRaw) : null;
+            const createdEventDateText = createdEventDateObj && !Number.isNaN(createdEventDateObj.getTime())
+              ? createdEventDateObj.toLocaleString("pl-PL")
+              : null;
+            details = `Administrator ${userDisplayName} dodał wydarzenie "${content}"${createdEventDateText ? ` zaplanowane na ${createdEventDateText}` : ""}${eventDetails.category ? `. Kategoria: ${eventDetails.category}` : ""}`;
+            break;
+          case "EVENT_UPDATED":
+            description = `${userDisplayName} zaktualizował wydarzenie`;
+            content = eventDetails.eventTitle || eventDetails.title || "Wydarzenie";
+            const updatedEventDateRaw = eventDetails.eventDate || eventDetails.date;
+            const updatedEventDateObj = updatedEventDateRaw ? new Date(updatedEventDateRaw) : null;
+            const updatedEventDateText = updatedEventDateObj && !Number.isNaN(updatedEventDateObj.getTime())
+              ? updatedEventDateObj.toLocaleString("pl-PL")
+              : null;
+            details = `Administrator ${userDisplayName} zaktualizował wydarzenie "${content}"${updatedEventDateText ? ` (termin: ${updatedEventDateText})` : ""}${eventDetails.category ? `. Kategoria: ${eventDetails.category}` : ""}`;
             break;
           case "REVIEW_CREATED":
             description = `${userDisplayName} wystawił opinię`;
