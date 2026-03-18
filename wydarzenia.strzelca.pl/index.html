@@ -275,13 +275,6 @@
             background: linear-gradient(135deg, rgba(193, 154, 107, 0.12) 0%, rgba(0, 0, 0, 0.45) 100%);
         }
 
-        .stats-card {
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            background: rgba(0, 0, 0, 0.22);
-            padding: 0.8rem 1rem;
-        }
-        
         /* Badge styles */
         .badge-pinned {
             background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
@@ -482,39 +475,11 @@
 
         <main class="w-full px-4 md:px-6 py-8 flex-grow">
             <div class="max-w-4xl mx-auto">
-                <!-- Events List -->
-                <div class="bg-gradient-to-br from-zinc-900/80 to-zinc-800/60 backdrop-blur-xl border border-zinc-700/50 rounded-2xl p-6 md:p-8 mb-8 shadow-xl">
-                    <div class="flex items-center justify-between mb-3 flex-wrap gap-4">
-                        <div>
-                            <h2 class="text-2xl md:text-3xl font-bold coyote-text flex items-center gap-3">
-                                <i class="fa-solid fa-calendar-check"></i>
-                                <span>Wydarzenia</span>
-                            </h2>
-                            <p class="text-zinc-400 text-sm md:text-base mt-2">Nadchodzące wydarzenia, przypięte alerty i harmonogram</p>
-                </div>
-                        <button id="filters-toggle-btn" onclick="window.toggleFilters()" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 border border-zinc-700">
-                            <i class="fa-solid fa-filter"></i>
-                            <span>Filtry</span>
-                        </button>
-                    </div>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
-                        <div class="stats-card">
-                            <div id="stats-visible-events" class="text-xl font-bold coyote-text">0</div>
-                            <div class="text-[11px] uppercase tracking-wide text-zinc-500">Widoczne</div>
-                        </div>
-                        <div class="stats-card">
-                            <div id="stats-upcoming-events" class="text-xl font-bold text-emerald-400">0</div>
-                            <div class="text-[11px] uppercase tracking-wide text-zinc-500">Nadchodzące</div>
-                        </div>
-                        <div class="stats-card">
-                            <div id="stats-pinned-events" class="text-xl font-bold text-yellow-400">0</div>
-                            <div class="text-[11px] uppercase tracking-wide text-zinc-500">Przypięte</div>
-                        </div>
-                        <div class="stats-card">
-                            <div id="last-update" class="text-xs text-zinc-300">-</div>
-                            <div class="text-[11px] uppercase tracking-wide text-zinc-500">Ostatnia aktualizacja</div>
-                        </div>
-                    </div>
+                <div class="flex items-center justify-end mb-4">
+                    <button id="filters-toggle-btn" onclick="window.toggleFilters()" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 border border-zinc-700">
+                        <i class="fa-solid fa-filter"></i>
+                        <span>Filtry</span>
+                    </button>
                 </div>
 
                 <!-- Mobile Filters -->
@@ -837,7 +802,7 @@ const firebaseConfig = {
             return map[value] || 'inne';
         }
 
-        function getCategoryName(category) {
+        function getEventCategoryName(category) {
             const normalized = normalizeEventCategory(category);
             const categories = {
                 zawody: 'Zawody Strzeleckie',
@@ -1076,15 +1041,6 @@ const firebaseConfig = {
             const now = new Date();
             const totalCount = filteredEvents.length;
             const activeCount = filteredEvents.filter(e => !isEventCompleted(e, now)).length;
-            const pinnedCount = filteredEvents.filter(e => e.pinned).length;
-
-            const statsVisibleEl = document.getElementById('stats-visible-events');
-            const statsUpcomingEl = document.getElementById('stats-upcoming-events');
-            const statsPinnedEl = document.getElementById('stats-pinned-events');
-
-            if (statsVisibleEl) statsVisibleEl.textContent = String(totalCount);
-            if (statsUpcomingEl) statsUpcomingEl.textContent = String(activeCount);
-            if (statsPinnedEl) statsPinnedEl.textContent = String(pinnedCount);
 
             const legacyEl = document.getElementById('events-count');
             if (legacyEl) {
@@ -1288,7 +1244,7 @@ const firebaseConfig = {
                 listItem.className = `event-list-item ${isPinned ? 'event-pinned' : ''} cursor-pointer transition-all duration-200 hover:translate-x-1 ${isPast ? 'opacity-60' : ''}`;
                 listItem.onclick = () => showEventDetail(event.id);
 
-                const categoryBadge = `<span class="text-xs bg-zinc-800 px-2 py-0.5 rounded text-zinc-400 ml-2">${getCategoryName(event.category)}</span>`;
+                const categoryBadge = `<span class="text-xs bg-zinc-800 px-2 py-0.5 rounded text-zinc-400 ml-2">${getEventCategoryName(event.category)}</span>`;
                 const pinnedBadge = isPinned ? '<span class="text-xs bg-yellow-600/20 text-yellow-400 px-2 py-0.5 rounded ml-2"><i class="fa-solid fa-thumbtack mr-1"></i>Przypięte</span>' : '';
                 const completedBadge = isPast ? '<span class="text-xs bg-red-900/20 text-red-400 px-2 py-0.5 rounded ml-2">Zakończone</span>' : '';
 
@@ -1579,7 +1535,7 @@ const firebaseConfig = {
                 minute: '2-digit'
             })}</span></div>`);
             meta.push(`<div class="flex items-center"><i class="fa-solid fa-map-marker-alt mr-2 text-coyote w-5"></i><span>${event.location || 'Nie podano lokalizacji'}</span></div>`);
-            meta.push(`<div class="flex items-center"><i class="fa-solid fa-tag mr-2 text-coyote w-5"></i><span>${getCategoryName(event.category)}</span></div>`);
+            meta.push(`<div class="flex items-center"><i class="fa-solid fa-tag mr-2 text-coyote w-5"></i><span>${getEventCategoryName(event.category)}</span></div>`);
             if (event.pinned) {
                 meta.push(`<div class="flex items-center"><i class="fa-solid fa-thumbtack mr-2 text-yellow-500 w-5"></i><span class="text-yellow-500 font-semibold">Przypięte wydarzenie</span></div>`);
             }
