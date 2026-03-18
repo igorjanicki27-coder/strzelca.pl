@@ -302,17 +302,6 @@
             color: #f7e9d7;
         }
 
-        #events-area {
-            position: relative;
-        }
-
-        .events-inline-filter {
-            position: absolute;
-            top: 4.35rem;
-            right: 0;
-            z-index: 25;
-        }
-
         @media (max-width: 640px) {
             .filter-trigger-btn {
                 width: 2.2rem;
@@ -354,6 +343,18 @@
             min-height: 0;
             display: flex;
             flex-direction: column;
+            position: relative;
+        }
+        main > .max-w-4xl::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 4.2rem;
+            pointer-events: none;
+            background: linear-gradient(to bottom, rgba(10, 10, 10, 0) 0%, rgba(10, 10, 10, 0.58) 70%, rgba(10, 10, 10, 0.9) 100%);
+            z-index: 5;
         }
         #events-container {
             flex: 1;
@@ -361,26 +362,13 @@
             overflow-y: auto;
             overscroll-behavior: contain;
             -webkit-overflow-scrolling: touch;
-            padding: 0.25rem 0 7rem;
+            padding: 0.3rem 0 5.5rem;
         }
 
         #events-container::after {
             content: '';
             display: block;
-            height: 1rem;
-        }
-
-        @media (max-width: 1279px) {
-            .events-inline-filter {
-                position: relative;
-                top: auto;
-                right: auto;
-                margin: 0 0 0.75rem auto;
-            }
-
-            #events-container {
-                padding-top: 0;
-            }
+            height: 2rem;
         }
 
         /* Cookie/consent bar – tło jak reszta strony (bez czarnej belki) */
@@ -584,19 +572,19 @@
                 </div>
                 </div>
 
-                <div id="events-area">
-                    <button id="filters-toggle-btn" onclick="window.toggleFilters()" class="filter-trigger-btn events-inline-filter" aria-label="Filtry" title="Filtry">
+                <div id="filters-dock" class="flex justify-end mb-3">
+                    <button id="filters-toggle-btn" onclick="window.toggleFilters()" class="filter-trigger-btn" aria-label="Filtry" title="Filtry">
                         <i class="fa-solid fa-filter"></i>
                     </button>
-                    <div id="events-container" class="space-y-8">
-                        <!-- Events will be loaded here -->
-                        <div class="text-center text-zinc-500 py-16">
-                            <div class="inline-block">
-                                <i class="fa-solid fa-spinner fa-spin text-4xl mb-4 text-coyote loading-spinner"></i>
-                            </div>
-                            <div class="text-lg font-medium mt-4">Ładowanie wydarzeń...</div>
-                            <div class="text-sm text-zinc-600 mt-2">Proszę czekać</div>
+                </div>
+                <div id="events-container" class="space-y-8">
+                    <!-- Events will be loaded here -->
+                    <div class="text-center text-zinc-500 py-16">
+                        <div class="inline-block">
+                            <i class="fa-solid fa-spinner fa-spin text-4xl mb-4 text-coyote loading-spinner"></i>
                         </div>
+                        <div class="text-lg font-medium mt-4">Ładowanie wydarzeń...</div>
+                        <div class="text-sm text-zinc-600 mt-2">Proszę czekać</div>
                     </div>
                 </div>
                 </div>
@@ -974,9 +962,6 @@ const firebaseConfig = {
             console.error('Unhandled promise rejection:', e?.reason || e);
             showFatalError(e?.reason || e, 'Błąd ładowania (Promise)');
         });
-        window.addEventListener('resize', () => {
-            requestAnimationFrame(positionInlineFilter);
-        });
 
         // Initialize (działa też, gdy DOM już załadowany)
         if (document.readyState === 'loading') {
@@ -1242,28 +1227,6 @@ const firebaseConfig = {
             }
         }
 
-        function positionInlineFilter() {
-            const filterBtn = document.getElementById('filters-toggle-btn');
-            const eventsArea = document.getElementById('events-area');
-            if (!filterBtn || !eventsArea) return;
-
-            if (window.innerWidth <= 1279) {
-                filterBtn.style.top = '';
-                return;
-            }
-
-            const firstItem = eventsArea.querySelector('.event-list-item');
-            if (!firstItem) {
-                filterBtn.style.top = '';
-                return;
-            }
-
-            const areaRect = eventsArea.getBoundingClientRect();
-            const firstRect = firstItem.getBoundingClientRect();
-            const offsetTop = Math.max(0, firstRect.top - areaRect.top);
-            filterBtn.style.top = `${offsetTop}px`;
-        }
-
         // Scroll tracking for calendar highlighting
         function setupScrollTracking() {
             const container = document.getElementById('events-container');
@@ -1316,7 +1279,6 @@ const firebaseConfig = {
                         </div>
                     </div>
                 `;
-                positionInlineFilter();
                 return;
             }
 
@@ -1339,21 +1301,23 @@ const firebaseConfig = {
                 listItem.className = `event-list-item ${isPinned ? 'event-pinned' : ''} cursor-pointer transition-all duration-200 hover:translate-x-1 ${isPast ? 'opacity-60' : ''}`;
                 listItem.onclick = () => showEventDetail(event.id);
 
-                const categoryBadge = `<span class="text-xs bg-zinc-800 px-2 py-0.5 rounded text-zinc-400 ml-2">${getEventCategoryName(event.category)}</span>`;
+                const categoryBadge = `<span class="text-xs bg-zinc-800 px-2 py-0.5 rounded text-zinc-400">${getEventCategoryName(event.category)}</span>`;
                 const pinnedBadge = isPinned ? '<span class="text-xs bg-yellow-600/20 text-yellow-400 px-2 py-0.5 rounded"><i class="fa-solid fa-thumbtack mr-1"></i>Przypięte</span>' : '';
-                const completedBadge = isPast ? '<span class="text-xs bg-red-900/20 text-red-400 px-2 py-0.5 rounded ml-2">Zakończone</span>' : '';
+                const completedBadge = isPast ? '<span class="text-xs bg-red-900/20 text-red-400 px-2 py-0.5 rounded">Zakończone</span>' : '';
 
                 listItem.innerHTML = `
                     <div class="flex items-start gap-3 group">
                         <span class="text-coyote font-bold text-lg mt-0.5 group-hover:text-coyote-light transition">-</span>
                         <div class="flex-1">
                             <div class="flex items-start justify-between gap-3 mb-1">
-                                <div class="flex items-center flex-wrap gap-2 min-w-0">
+                                <div class="min-w-0">
                                     <span class="font-semibold text-white text-base md:text-lg group-hover:text-coyote transition">${event.title}</span>
+                                </div>
+                                <div class="shrink-0 mt-0.5 flex flex-wrap justify-end gap-2">
                                     ${categoryBadge}
                                     ${completedBadge}
+                                    ${isPinned ? pinnedBadge : ''}
                                 </div>
-                                ${isPinned ? `<div class="shrink-0 mt-0.5">${pinnedBadge}</div>` : ''}
                             </div>
                             ${isPinned ? `
                                 <div class="text-xs text-zinc-400 mb-1">
@@ -1377,6 +1341,15 @@ const firebaseConfig = {
                 .filter(event => !!event.pinned)
                 .sort((a, b) => compareEvents(a, b, now));
 
+            const filterDock = document.getElementById('filters-dock');
+            const filterBtn = document.getElementById('filters-toggle-btn');
+            if (filterDock && filterBtn && !filterDock.contains(filterBtn)) {
+                filterDock.appendChild(filterBtn);
+            }
+            if (filterDock) {
+                filterDock.classList.remove('hidden');
+            }
+
             if (pinnedEvents.length > 0) {
                 const pinnedSection = document.createElement('section');
                 pinnedSection.className = 'pinned-events-section';
@@ -1386,11 +1359,17 @@ const firebaseConfig = {
                             <i class="fa-solid fa-thumbtack"></i>
                             <span>Przypięte wydarzenia</span>
                         </div>
-                        <span class="text-xs text-zinc-300 bg-zinc-800/80 border border-zinc-700 rounded-full px-2.5 py-1">
-                            ${pinnedEvents.length}
-                        </span>
+                        <div id="pinned-header-actions" class="flex items-center"></div>
                     </div>
                 `;
+
+                const pinnedHeaderActions = pinnedSection.querySelector('#pinned-header-actions');
+                if (pinnedHeaderActions && filterBtn) {
+                    pinnedHeaderActions.appendChild(filterBtn);
+                    if (filterDock) {
+                        filterDock.classList.add('hidden');
+                    }
+                }
 
                 const pinnedList = document.createElement('ul');
                 pinnedList.className = 'space-y-3';
@@ -1465,8 +1444,6 @@ const firebaseConfig = {
                 daySection.appendChild(eventsList);
                 container.appendChild(daySection);
             });
-
-            positionInlineFilter();
         }
 
         // Calendar functions
