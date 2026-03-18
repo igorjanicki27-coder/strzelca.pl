@@ -252,12 +252,8 @@
         }
 
         .event-list-item.event-pinned {
-            background: linear-gradient(
-                135deg,
-                rgba(193, 154, 107, 0.22) 0%,
-                rgba(0, 0, 0, 0.78) 60%
-            );
-            border-color: rgba(193, 154, 107, 0.38);
+            background: linear-gradient(135deg, rgba(193, 154, 107, 0.14) 0%, rgba(18, 18, 18, 0.86) 65%);
+            border-color: rgba(193, 154, 107, 0.3);
         }
         
         .current-day-section {
@@ -268,11 +264,87 @@
         }
 
         .pinned-events-section {
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
             padding: 1rem;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(10, 10, 10, 0.56);
+            box-shadow: inset 0 0 0 1px rgba(193, 154, 107, 0.14);
+        }
+
+        .pinned-events-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.65rem;
+            border-bottom: 1px solid rgba(193, 154, 107, 0.18);
+        }
+
+        .events-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.8rem;
+            margin-bottom: 1rem;
+            padding: 0.75rem 0.9rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 12px;
-            border: 1px solid rgba(193, 154, 107, 0.3);
-            background: linear-gradient(135deg, rgba(193, 154, 107, 0.12) 0%, rgba(0, 0, 0, 0.45) 100%);
+            background: rgba(18, 18, 18, 0.52);
+        }
+
+        .events-toolbar-copy {
+            min-width: 0;
+        }
+
+        .events-toolbar-copy h2 {
+            margin: 0;
+            font-size: 0.92rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            color: #e5e5e5;
+        }
+
+        .events-toolbar-copy p {
+            margin: 0.18rem 0 0;
+            font-size: 0.75rem;
+            color: #8f8f8f;
+        }
+
+        .filter-trigger-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.55rem 0.9rem;
+            border-radius: 10px;
+            border: 1px solid rgba(193, 154, 107, 0.45);
+            background: rgba(193, 154, 107, 0.14);
+            color: #e7d3b8;
+            font-size: 0.85rem;
+            font-weight: 700;
+            transition: all 0.2s ease;
+        }
+
+        .filter-trigger-btn:hover {
+            background: rgba(193, 154, 107, 0.24);
+            border-color: rgba(193, 154, 107, 0.75);
+            color: #f7e9d7;
+        }
+
+        @media (max-width: 640px) {
+            .events-toolbar {
+                padding: 0.65rem 0.75rem;
+            }
+
+            .events-toolbar-copy h2 {
+                font-size: 0.85rem;
+            }
+
+            .filter-trigger-btn {
+                padding: 0.48rem 0.72rem;
+                font-size: 0.8rem;
+            }
         }
 
         /* Badge styles */
@@ -475,8 +547,12 @@
 
         <main class="w-full px-4 md:px-6 py-8 flex-grow">
             <div class="max-w-4xl mx-auto">
-                <div class="flex items-center justify-end mb-4">
-                    <button id="filters-toggle-btn" onclick="window.toggleFilters()" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 border border-zinc-700">
+                <div class="events-toolbar">
+                    <div class="events-toolbar-copy">
+                        <h2>Kalendarz wydarzeń</h2>
+                        <p>Najbliższe terminy i przypięte informacje</p>
+                    </div>
+                    <button id="filters-toggle-btn" onclick="window.toggleFilters()" class="filter-trigger-btn">
                         <i class="fa-solid fa-filter"></i>
                         <span>Filtry</span>
                     </button>
@@ -1279,9 +1355,14 @@ const firebaseConfig = {
                 const pinnedSection = document.createElement('section');
                 pinnedSection.className = 'pinned-events-section';
                 pinnedSection.innerHTML = `
-                    <div class="text-lg md:text-xl font-bold coyote-text mb-3 flex items-center gap-2">
-                        <i class="fa-solid fa-thumbtack"></i>
-                        <span>Przypięte wydarzenia</span>
+                    <div class="pinned-events-title">
+                        <div class="text-base md:text-lg font-bold coyote-text flex items-center gap-2">
+                            <i class="fa-solid fa-thumbtack"></i>
+                            <span>Przypięte wydarzenia</span>
+                        </div>
+                        <span class="text-xs text-zinc-300 bg-zinc-800/80 border border-zinc-700 rounded-full px-2.5 py-1">
+                            ${pinnedEvents.length}
+                        </span>
                     </div>
                 `;
 
