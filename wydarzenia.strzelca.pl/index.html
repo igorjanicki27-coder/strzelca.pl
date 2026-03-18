@@ -266,6 +266,21 @@
             border-radius: 12px;
             border: 1px solid rgba(193, 154, 107, 0.2);
         }
+
+        .pinned-events-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid rgba(193, 154, 107, 0.3);
+            background: linear-gradient(135deg, rgba(193, 154, 107, 0.12) 0%, rgba(0, 0, 0, 0.45) 100%);
+        }
+
+        .stats-card {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.22);
+            padding: 0.8rem 1rem;
+        }
         
         /* Badge styles */
         .badge-pinned {
@@ -475,12 +490,30 @@
                                 <i class="fa-solid fa-calendar-check"></i>
                                 <span>Wydarzenia</span>
                             </h2>
-                            <p class="text-zinc-400 text-sm md:text-base mt-2">Lista wszystkich wydarzeń strzeleckich</p>
+                            <p class="text-zinc-400 text-sm md:text-base mt-2">Nadchodzące wydarzenia, przypięte alerty i harmonogram</p>
                 </div>
                         <button id="filters-toggle-btn" onclick="window.toggleFilters()" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 border border-zinc-700">
                             <i class="fa-solid fa-filter"></i>
                             <span>Filtry</span>
                         </button>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
+                        <div class="stats-card">
+                            <div id="stats-visible-events" class="text-xl font-bold coyote-text">0</div>
+                            <div class="text-[11px] uppercase tracking-wide text-zinc-500">Widoczne</div>
+                        </div>
+                        <div class="stats-card">
+                            <div id="stats-upcoming-events" class="text-xl font-bold text-emerald-400">0</div>
+                            <div class="text-[11px] uppercase tracking-wide text-zinc-500">Nadchodzące</div>
+                        </div>
+                        <div class="stats-card">
+                            <div id="stats-pinned-events" class="text-xl font-bold text-yellow-400">0</div>
+                            <div class="text-[11px] uppercase tracking-wide text-zinc-500">Przypięte</div>
+                        </div>
+                        <div class="stats-card">
+                            <div id="last-update" class="text-xs text-zinc-300">-</div>
+                            <div class="text-[11px] uppercase tracking-wide text-zinc-500">Ostatnia aktualizacja</div>
+                        </div>
                     </div>
                 </div>
 
@@ -789,6 +822,97 @@ const firebaseConfig = {
             showCompleted: false
         };
 
+        function normalizeEventCategory(category) {
+            const value = String(category || '').trim().toLowerCase();
+            const map = {
+                training: 'szkolenie',
+                meeting: 'inne',
+                competition: 'zawody',
+                other: 'inne',
+                zawody: 'zawody',
+                szkolenie: 'szkolenie',
+                wystawa: 'wystawa',
+                inne: 'inne'
+            };
+            return map[value] || 'inne';
+        }
+
+        function getCategoryName(category) {
+            const normalized = normalizeEventCategory(category);
+            const categories = {
+                zawody: 'Zawody Strzeleckie',
+                szkolenie: 'Szkolenie',
+                wystawa: 'Wystawa',
+                inne: 'Inne'
+            };
+            return categories[normalized] || 'Inne';
+        }
+
+        function isEventCompleted(event, now = new Date()) {
+            const date = event?.dateObj instanceof Date ? event.dateObj : new Date(event?.dateObj || event?.date || 0);
+            return date < now;
+        }
+
+        function resolveFilterSource(sourceHint = 'auto') {
+            if (sourceHint === 'mobile' || sourceHint === 'desktop') {
+                return sourceHint;
+            }
+
+            const activeId = document.activeElement?.id || '';
+            if (activeId.endsWith('-mobile')) {
+                return 'mobile';
+            }
+            if (activeId === 'category-filter' || activeId === 'date-from-filter' || activeId === 'date-to-filter' || activeId === 'show-completed-filter') {
+                return 'desktop';
+            }
+
+            return window.innerWidth < 1280 ? 'mobile' : 'desktop';
+        }
+
+        function getFilterValues(sourceHint = 'auto') {
+            const source = resolveFilterSource(sourceHint);
+            const suffix = source === 'mobile' ? '-mobile' : '';
+
+            const categoryEl = document.getElementById(`category-filter${suffix}`) || document.getElementById(source === 'mobile' ? 'category-filter' : 'category-filter-mobile');
+            const dateFromEl = document.getElementById(`date-from-filter${suffix}`) || document.getElementById(source === 'mobile' ? 'date-from-filter' : 'date-from-filter-mobile');
+            const dateToEl = document.getElementById(`date-to-filter${suffix}`) || document.getElementById(source === 'mobile' ? 'date-to-filter' : 'date-to-filter-mobile');
+            const showCompletedEl = document.getElementById(`show-completed-filter${suffix}`) || document.getElementById(source === 'mobile' ? 'show-completed-filter' : 'show-completed-filter-mobile');
+
+            return {
+                category: normalizeEventCategory(categoryEl ? categoryEl.value : ''),
+                dateFrom: dateFromEl ? dateFromEl.value : '',
+                dateTo: dateToEl ? dateToEl.value : '',
+                showCompleted: showCompletedEl ? !!showCompletedEl.checked : false
+            };
+        }
+
+        function syncFilters(filters) {
+            const categoryDesktop = document.getElementById('category-filter');
+            const categoryMobile = document.getElementById('category-filter-mobile');
+            const dateFromDesktop = document.getElementById('date-from-filter');
+            const dateFromMobile = document.getElementById('date-from-filter-mobile');
+            const dateToDesktop = document.getElementById('date-to-filter');
+            const dateToMobile = document.getElementById('date-to-filter-mobile');
+            const showCompletedDesktop = document.getElementById('show-completed-filter');
+            const showCompletedMobile = document.getElementById('show-completed-filter-mobile');
+
+            if (categoryDesktop) categoryDesktop.value = filters.category || '';
+            if (categoryMobile) categoryMobile.value = filters.category || '';
+            if (dateFromDesktop) dateFromDesktop.value = filters.dateFrom || '';
+            if (dateFromMobile) dateFromMobile.value = filters.dateFrom || '';
+            if (dateToDesktop) dateToDesktop.value = filters.dateTo || '';
+            if (dateToMobile) dateToMobile.value = filters.dateTo || '';
+            if (showCompletedDesktop) showCompletedDesktop.checked = !!filters.showCompleted;
+            if (showCompletedMobile) showCompletedMobile.checked = !!filters.showCompleted;
+        }
+
+        function compareEvents(a, b, now = new Date()) {
+            const isPastA = isEventCompleted(a, now);
+            const isPastB = isEventCompleted(b, now);
+            if (isPastA !== isPastB) return isPastA ? 1 : -1;
+            return a.dateObj - b.dateObj;
+        }
+
         function showFatalError(err, label) {
             try {
                 const container = document.getElementById('events-container');
@@ -897,7 +1021,8 @@ const firebaseConfig = {
                             id: doc.id,
                             ...event,
                             dateObj: dateObj,
-                            status: event.status || (dateObj >= new Date() ? 'active' : 'completed'),
+                            status: isEventCompleted({ dateObj }) ? 'completed' : 'active',
+                            category: normalizeEventCategory(event.category),
                             pinned: event.pinned || false,
                             location: event.location || ''
                         });
@@ -909,18 +1034,11 @@ const firebaseConfig = {
 
                 console.log(`Loaded ${allEvents.length} published events, skipped ${skippedCount} unpublished events`);
 
-                // Sort events: pinned first, then active (upcoming) by date, then completed by date
+                // Sort events: pinned first, then active (upcoming), then completed
                 allEvents.sort((a, b) => {
-                    // Pinned events first
                     if (a.pinned && !b.pinned) return -1;
                     if (!a.pinned && b.pinned) return 1;
-
-                    // Then by status (active before completed)
-                    if (a.status === 'active' && b.status === 'completed') return -1;
-                    if (a.status === 'completed' && b.status === 'active') return 1;
-
-                    // Finally by date
-                    return a.dateObj - b.dateObj;
+                    return compareEvents(a, b);
                 });
 
                 updateLastUpdate();
@@ -959,80 +1077,47 @@ const firebaseConfig = {
         }
 
         function updateEventsCount() {
-            const el = document.getElementById('events-count');
-            if (el) {
-                const totalCount = filteredEvents.length;
-                const activeCount = filteredEvents.filter(e => e.status === 'active').length;
+            const now = new Date();
+            const totalCount = filteredEvents.length;
+            const activeCount = filteredEvents.filter(e => !isEventCompleted(e, now)).length;
+            const pinnedCount = filteredEvents.filter(e => e.pinned).length;
+
+            const statsVisibleEl = document.getElementById('stats-visible-events');
+            const statsUpcomingEl = document.getElementById('stats-upcoming-events');
+            const statsPinnedEl = document.getElementById('stats-pinned-events');
+
+            if (statsVisibleEl) statsVisibleEl.textContent = String(totalCount);
+            if (statsUpcomingEl) statsUpcomingEl.textContent = String(activeCount);
+            if (statsPinnedEl) statsPinnedEl.textContent = String(pinnedCount);
+
+            const legacyEl = document.getElementById('events-count');
+            if (legacyEl) {
                 if (totalCount === 0) {
-                    el.textContent = 'Brak wydarzeń';
+                    legacyEl.textContent = 'Brak wydarzeń';
                 } else if (activeCount === totalCount) {
-                    el.textContent = `${totalCount} ${totalCount === 1 ? 'wydarzenie' : totalCount < 5 ? 'wydarzenia' : 'wydarzeń'}`;
+                    legacyEl.textContent = `${totalCount} ${totalCount === 1 ? 'wydarzenie' : totalCount < 5 ? 'wydarzenia' : 'wydarzeń'}`;
                 } else {
-                    el.textContent = `${activeCount} aktywnych z ${totalCount}`;
+                    legacyEl.textContent = `${activeCount} aktywnych z ${totalCount}`;
                 }
             }
         }
 
         // Filter functions
-        function getFilterValues() {
-            const categoryEl = document.getElementById('category-filter') || document.getElementById('category-filter-mobile');
-            const dateFromEl = document.getElementById('date-from-filter') || document.getElementById('date-from-filter-mobile');
-            const dateToEl = document.getElementById('date-to-filter') || document.getElementById('date-to-filter-mobile');
-            const showCompletedEl = document.getElementById('show-completed-filter') || document.getElementById('show-completed-filter-mobile');
-            const showCompleted = showCompletedEl ? !!showCompletedEl.checked : false;
-            
-            return {
-                category: categoryEl ? categoryEl.value : '',
-                dateFrom: dateFromEl ? dateFromEl.value : '',
-                dateTo: dateToEl ? dateToEl.value : '',
-                showCompleted
-            };
-        }
-
-        function syncFilters() {
-            const filters = getFilterValues();
-            const categoryDesktop = document.getElementById('category-filter');
-            const categoryMobile = document.getElementById('category-filter-mobile');
-            const dateFromDesktop = document.getElementById('date-from-filter');
-            const dateFromMobile = document.getElementById('date-from-filter-mobile');
-            const dateToDesktop = document.getElementById('date-to-filter');
-            const dateToMobile = document.getElementById('date-to-filter-mobile');
-            const showCompletedDesktop = document.getElementById('show-completed-filter');
-            const showCompletedMobile = document.getElementById('show-completed-filter-mobile');
-
-            if (categoryDesktop && categoryMobile) {
-                categoryMobile.value = categoryDesktop.value;
-                categoryDesktop.value = categoryMobile.value;
-            }
-            if (dateFromDesktop && dateFromMobile) {
-                dateFromMobile.value = dateFromDesktop.value;
-                dateFromDesktop.value = dateFromMobile.value;
-            }
-            if (dateToDesktop && dateToMobile) {
-                dateToMobile.value = dateToDesktop.value;
-                dateToDesktop.value = dateToMobile.value;
-            }
-
-            if (showCompletedDesktop && showCompletedMobile) {
-                showCompletedMobile.checked = showCompletedDesktop.checked;
-                showCompletedDesktop.checked = showCompletedMobile.checked;
-            }
-        }
-
-        function applyFilters() {
-            syncFilters();
-            const filters = getFilterValues();
+        function applyFilters(sourceHint = 'auto') {
+            const filters = getFilterValues(sourceHint);
+            syncFilters(filters);
             activeFilters = filters;
+            const now = new Date();
 
             filteredEvents = allEvents.filter(event => {
                 // Domyślnie nie pokazujemy zakończonych.
                 // Zakończone pojawiają się dopiero po włączeniu checkboxa.
-                if (!filters.showCompleted && event.status === 'completed') {
+                if (!filters.showCompleted && isEventCompleted(event, now)) {
                     return false;
                 }
 
                 // Category filter
-                if (filters.category && event.category !== filters.category) {
+                if (filters.category && normalizeEventCategory(event.category) !== filters.category) {
                     return false;
                 }
 
@@ -1083,22 +1168,22 @@ const firebaseConfig = {
             if (showCompletedDesktopEl) showCompletedDesktopEl.checked = false;
             if (showCompletedMobileEl) showCompletedMobileEl.checked = false;
 
-            applyFilters();
+            applyFilters(resolveFilterSource());
         }
 
         function updateFiltersDisplay() {
             const displayEl = document.getElementById('filters-display');
             if (!displayEl) return;
 
-            const filters = getFilterValues();
+            const filters = activeFilters;
             const parts = [];
 
             if (filters.category) {
                 const categoryNames = {
-                    'zawody': 'Zawody Strzeleckie',
-                    'szkolenie': 'Szkolenie',
-                    'wystawa': 'Wystawa',
-                    'inne': 'Inne'
+                    zawody: 'Zawody Strzeleckie',
+                    szkolenie: 'Szkolenie',
+                    wystawa: 'Wystawa',
+                    inne: 'Inne'
                 };
                 parts.push(`Kategoria: ${categoryNames[filters.category] || filters.category}`);
             }
