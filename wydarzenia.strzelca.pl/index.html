@@ -264,12 +264,11 @@
         }
 
         .pinned-events-section {
-            margin-bottom: 1.5rem;
-            padding: 1rem;
-            border-radius: 14px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(10, 10, 10, 0.56);
-            box-shadow: inset 0 0 0 1px rgba(193, 154, 107, 0.14);
+            margin-bottom: 1.35rem;
+            padding: 0;
+            border: none;
+            background: transparent;
+            box-shadow: none;
         }
 
         .pinned-events-title {
@@ -301,6 +300,17 @@
             background: rgba(193, 154, 107, 0.24);
             border-color: rgba(193, 154, 107, 0.75);
             color: #f7e9d7;
+        }
+
+        #events-area {
+            position: relative;
+        }
+
+        .events-inline-filter {
+            position: absolute;
+            top: 4.35rem;
+            right: 0;
+            z-index: 25;
         }
 
         @media (max-width: 640px) {
@@ -351,7 +361,26 @@
             overflow-y: auto;
             overscroll-behavior: contain;
             -webkit-overflow-scrolling: touch;
-            padding: 1rem 0 2rem;
+            padding: 0.25rem 0 7rem;
+        }
+
+        #events-container::after {
+            content: '';
+            display: block;
+            height: 1rem;
+        }
+
+        @media (max-width: 1279px) {
+            .events-inline-filter {
+                position: relative;
+                top: auto;
+                right: auto;
+                margin: 0 0 0.75rem auto;
+            }
+
+            #events-container {
+                padding-top: 0;
+            }
         }
 
         /* Cookie/consent bar – tło jak reszta strony (bez czarnej belki) */
@@ -511,12 +540,6 @@
 
         <main class="w-full px-4 md:px-6 py-8 flex-grow">
             <div class="max-w-4xl mx-auto">
-                <div class="flex items-center justify-end mb-4">
-                    <button id="filters-toggle-btn" onclick="window.toggleFilters()" class="filter-trigger-btn">
-                        <i class="fa-solid fa-filter"></i>
-                    </button>
-                </div>
-
                 <!-- Mobile Filters -->
                 <div id="mobile-filters" class="xl:hidden mb-6 bg-zinc-900/80 backdrop-blur-xl border border-zinc-700/50 rounded-2xl p-5 hidden">
                     <div class="flex justify-between items-center mb-4">
@@ -561,14 +584,19 @@
                 </div>
                 </div>
 
-                <div id="events-container" class="space-y-8">
-                    <!-- Events will be loaded here -->
-                    <div class="text-center text-zinc-500 py-16">
-                        <div class="inline-block">
-                            <i class="fa-solid fa-spinner fa-spin text-4xl mb-4 text-coyote loading-spinner"></i>
+                <div id="events-area">
+                    <button id="filters-toggle-btn" onclick="window.toggleFilters()" class="filter-trigger-btn events-inline-filter" aria-label="Filtry" title="Filtry">
+                        <i class="fa-solid fa-filter"></i>
+                    </button>
+                    <div id="events-container" class="space-y-8">
+                        <!-- Events will be loaded here -->
+                        <div class="text-center text-zinc-500 py-16">
+                            <div class="inline-block">
+                                <i class="fa-solid fa-spinner fa-spin text-4xl mb-4 text-coyote loading-spinner"></i>
+                            </div>
+                            <div class="text-lg font-medium mt-4">Ładowanie wydarzeń...</div>
+                            <div class="text-sm text-zinc-600 mt-2">Proszę czekać</div>
                         </div>
-                        <div class="text-lg font-medium mt-4">Ładowanie wydarzeń...</div>
-                        <div class="text-sm text-zinc-600 mt-2">Proszę czekać</div>
                     </div>
                 </div>
                 </div>
@@ -946,6 +974,9 @@ const firebaseConfig = {
             console.error('Unhandled promise rejection:', e?.reason || e);
             showFatalError(e?.reason || e, 'Błąd ładowania (Promise)');
         });
+        window.addEventListener('resize', () => {
+            requestAnimationFrame(positionInlineFilter);
+        });
 
         // Initialize (działa też, gdy DOM już załadowany)
         if (document.readyState === 'loading') {
@@ -1211,6 +1242,28 @@ const firebaseConfig = {
             }
         }
 
+        function positionInlineFilter() {
+            const filterBtn = document.getElementById('filters-toggle-btn');
+            const eventsArea = document.getElementById('events-area');
+            if (!filterBtn || !eventsArea) return;
+
+            if (window.innerWidth <= 1279) {
+                filterBtn.style.top = '';
+                return;
+            }
+
+            const firstItem = eventsArea.querySelector('.event-list-item');
+            if (!firstItem) {
+                filterBtn.style.top = '';
+                return;
+            }
+
+            const areaRect = eventsArea.getBoundingClientRect();
+            const firstRect = firstItem.getBoundingClientRect();
+            const offsetTop = Math.max(0, firstRect.top - areaRect.top);
+            filterBtn.style.top = `${offsetTop}px`;
+        }
+
         // Scroll tracking for calendar highlighting
         function setupScrollTracking() {
             const container = document.getElementById('events-container');
@@ -1263,6 +1316,7 @@ const firebaseConfig = {
                         </div>
                     </div>
                 `;
+                positionInlineFilter();
                 return;
             }
 
@@ -1286,18 +1340,20 @@ const firebaseConfig = {
                 listItem.onclick = () => showEventDetail(event.id);
 
                 const categoryBadge = `<span class="text-xs bg-zinc-800 px-2 py-0.5 rounded text-zinc-400 ml-2">${getEventCategoryName(event.category)}</span>`;
-                const pinnedBadge = isPinned ? '<span class="text-xs bg-yellow-600/20 text-yellow-400 px-2 py-0.5 rounded ml-2"><i class="fa-solid fa-thumbtack mr-1"></i>Przypięte</span>' : '';
+                const pinnedBadge = isPinned ? '<span class="text-xs bg-yellow-600/20 text-yellow-400 px-2 py-0.5 rounded"><i class="fa-solid fa-thumbtack mr-1"></i>Przypięte</span>' : '';
                 const completedBadge = isPast ? '<span class="text-xs bg-red-900/20 text-red-400 px-2 py-0.5 rounded ml-2">Zakończone</span>' : '';
 
                 listItem.innerHTML = `
                     <div class="flex items-start gap-3 group">
                         <span class="text-coyote font-bold text-lg mt-0.5 group-hover:text-coyote-light transition">-</span>
                         <div class="flex-1">
-                            <div class="flex items-center flex-wrap gap-2 mb-1">
-                                <span class="font-semibold text-white text-base md:text-lg group-hover:text-coyote transition">${event.title}</span>
-                                ${categoryBadge}
-                                ${pinnedBadge}
-                                ${completedBadge}
+                            <div class="flex items-start justify-between gap-3 mb-1">
+                                <div class="flex items-center flex-wrap gap-2 min-w-0">
+                                    <span class="font-semibold text-white text-base md:text-lg group-hover:text-coyote transition">${event.title}</span>
+                                    ${categoryBadge}
+                                    ${completedBadge}
+                                </div>
+                                ${isPinned ? `<div class="shrink-0 mt-0.5">${pinnedBadge}</div>` : ''}
                             </div>
                             ${isPinned ? `
                                 <div class="text-xs text-zinc-400 mb-1">
@@ -1409,6 +1465,8 @@ const firebaseConfig = {
                 daySection.appendChild(eventsList);
                 container.appendChild(daySection);
             });
+
+            positionInlineFilter();
         }
 
         // Calendar functions
