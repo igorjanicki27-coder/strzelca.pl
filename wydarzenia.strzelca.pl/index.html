@@ -240,15 +240,24 @@
         .event-list-item {
             padding: 0.75rem 1rem;
             border-left: 2px solid transparent;
-            background: rgba(0, 0, 0, 0.38);
+            background: rgba(0, 0, 0, 0.62);
             border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             transition: all 0.2s;
         }
         .event-list-item:hover {
             border-left-color: var(--coyote);
-            background: rgba(193, 154, 107, 0.05);
+            background: rgba(0, 0, 0, 0.72);
             border-radius: 6px;
+        }
+
+        .event-list-item.event-pinned {
+            background: linear-gradient(
+                135deg,
+                rgba(193, 154, 107, 0.22) 0%,
+                rgba(0, 0, 0, 0.78) 60%
+            );
+            border-color: rgba(193, 154, 107, 0.38);
         }
         
         .current-day-section {
@@ -384,7 +393,7 @@
 
 
         <!-- Filters Panel (desktop modal) -->
-        <div id="desktop-filters" class="filters-modal-overlay hidden" onclick="if(event.target === this) toggleFilters()">
+        <div id="desktop-filters" class="filters-modal-overlay hidden" onclick="if(event.target === this) window.toggleFilters()">
             <div class="filters-modal p-5 md:p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg md:text-xl font-bold coyote-text flex items-center gap-2">
@@ -392,10 +401,10 @@
                         <span>Filtry</span>
                     </h3>
                     <div class="flex items-center gap-2">
-                        <button onclick="resetFilters(); event.stopPropagation();" class="text-xs text-zinc-400 hover:text-coyote transition" title="Wyczyść filtry">
+                        <button onclick="window.resetFilters(); event.stopPropagation();" class="text-xs text-zinc-400 hover:text-coyote transition" title="Wyczyść filtry">
                             <i class="fa-solid fa-rotate-left"></i>
                         </button>
-                        <button onclick="toggleFilters(); event.stopPropagation();" class="text-zinc-400 hover:text-white text-lg">
+                        <button onclick="window.toggleFilters(); event.stopPropagation();" class="text-zinc-400 hover:text-white text-lg">
                             <i class="fa-solid fa-times"></i>
                         </button>
                     </div>
@@ -406,7 +415,7 @@
                     <label class="block text-sm font-semibold text-zinc-300 mb-2">
                         <i class="fa-solid fa-tag mr-2 text-coyote"></i>Rodzaj wydarzenia
                     </label>
-                    <select id="category-filter" onchange="applyFilters()" class="w-full bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-coyote transition">
+                    <select id="category-filter" onchange="window.applyFilters()" class="w-full bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-coyote transition">
                         <option value="">Wszystkie</option>
                         <option value="zawody">Zawody Strzeleckie</option>
                         <option value="szkolenie">Szkolenie</option>
@@ -420,14 +429,27 @@
                     <label class="block text-sm font-semibold text-zinc-300 mb-2">
                         <i class="fa-solid fa-calendar-range mr-2 text-coyote"></i>Data od
                     </label>
-                    <input type="date" id="date-from-filter" onchange="applyFilters()" class="w-full bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-coyote transition">
+                    <input type="date" id="date-from-filter" onchange="window.applyFilters()" class="w-full bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-coyote transition">
                 </div>
 
                 <div class="mb-4">
                     <label class="block text-sm font-semibold text-zinc-300 mb-2">
                         <i class="fa-solid fa-calendar-range mr-2 text-coyote"></i>Data do
                     </label>
-                    <input type="date" id="date-to-filter" onchange="applyFilters()" class="w-full bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-coyote transition">
+                    <input type="date" id="date-to-filter" onchange="window.applyFilters()" class="w-full bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-coyote transition">
+                </div>
+
+                <!-- Show completed -->
+                <div class="mb-4">
+                    <label class="flex items-center gap-3 text-sm font-semibold text-zinc-300 cursor-pointer select-none">
+                        <input
+                            id="show-completed-filter"
+                            type="checkbox"
+                            class="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-coyote focus:ring-0 accent-coyote"
+                            onchange="window.applyFilters()"
+                        >
+                        <span class="text-zinc-200">Pokaż zakończone</span>
+                    </label>
                 </div>
 
                 <!-- Active Filters Info -->
@@ -455,7 +477,7 @@
                             </h2>
                             <p class="text-zinc-400 text-sm md:text-base mt-2">Lista wszystkich wydarzeń strzeleckich</p>
                 </div>
-                        <button id="filters-toggle-btn" onclick="toggleFilters()" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 border border-zinc-700">
+                        <button id="filters-toggle-btn" onclick="window.toggleFilters()" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 border border-zinc-700">
                             <i class="fa-solid fa-filter"></i>
                             <span>Filtry</span>
                         </button>
@@ -466,14 +488,14 @@
                 <div id="mobile-filters" class="xl:hidden mb-6 bg-zinc-900/80 backdrop-blur-xl border border-zinc-700/50 rounded-2xl p-5 hidden">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-bold coyote-text">Filtry</h3>
-                        <button onclick="toggleFilters()" class="text-zinc-400 hover:text-white">
+                        <button onclick="window.toggleFilters()" class="text-zinc-400 hover:text-white">
                             <i class="fa-solid fa-times"></i>
                         </button>
                     </div>
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-semibold text-zinc-300 mb-2">Rodzaj wydarzenia</label>
-                            <select id="category-filter-mobile" onchange="applyFilters()" class="w-full bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-coyote">
+                            <select id="category-filter-mobile" onchange="window.applyFilters()" class="w-full bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-coyote">
                                 <option value="">Wszystkie</option>
                                 <option value="zawody">Zawody Strzeleckie</option>
                                 <option value="szkolenie">Szkolenie</option>
@@ -483,13 +505,24 @@
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-zinc-300 mb-2">Data od</label>
-                            <input type="date" id="date-from-filter-mobile" onchange="applyFilters()" class="w-full bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-coyote">
+                            <input type="date" id="date-from-filter-mobile" onchange="window.applyFilters()" class="w-full bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-coyote">
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-zinc-300 mb-2">Data do</label>
-                            <input type="date" id="date-to-filter-mobile" onchange="applyFilters()" class="w-full bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-coyote">
+                            <input type="date" id="date-to-filter-mobile" onchange="window.applyFilters()" class="w-full bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-coyote">
                         </div>
-                        <button onclick="resetFilters()" class="w-full bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm transition">
+                        <div>
+                            <label class="flex items-center gap-3 text-sm font-semibold text-zinc-300 cursor-pointer select-none">
+                                <input
+                                    id="show-completed-filter-mobile"
+                                    type="checkbox"
+                                    class="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-coyote focus:ring-0 accent-coyote"
+                                    onchange="window.applyFilters()"
+                                >
+                                <span class="text-zinc-200">Pokaż zakończone</span>
+                            </label>
+                        </div>
+                        <button onclick="window.resetFilters()" class="w-full bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm transition">
                             Wyczyść filtry
                     </button>
                 </div>
@@ -752,7 +785,8 @@ const firebaseConfig = {
         let activeFilters = {
             category: '',
             dateFrom: '',
-            dateTo: ''
+            dateTo: '',
+            showCompleted: false
         };
 
         function showFatalError(err, label) {
@@ -944,11 +978,14 @@ const firebaseConfig = {
             const categoryEl = document.getElementById('category-filter') || document.getElementById('category-filter-mobile');
             const dateFromEl = document.getElementById('date-from-filter') || document.getElementById('date-from-filter-mobile');
             const dateToEl = document.getElementById('date-to-filter') || document.getElementById('date-to-filter-mobile');
+            const showCompletedEl = document.getElementById('show-completed-filter') || document.getElementById('show-completed-filter-mobile');
+            const showCompleted = showCompletedEl ? !!showCompletedEl.checked : false;
             
             return {
                 category: categoryEl ? categoryEl.value : '',
                 dateFrom: dateFromEl ? dateFromEl.value : '',
-                dateTo: dateToEl ? dateToEl.value : ''
+                dateTo: dateToEl ? dateToEl.value : '',
+                showCompleted
             };
         }
 
@@ -960,6 +997,8 @@ const firebaseConfig = {
             const dateFromMobile = document.getElementById('date-from-filter-mobile');
             const dateToDesktop = document.getElementById('date-to-filter');
             const dateToMobile = document.getElementById('date-to-filter-mobile');
+            const showCompletedDesktop = document.getElementById('show-completed-filter');
+            const showCompletedMobile = document.getElementById('show-completed-filter-mobile');
 
             if (categoryDesktop && categoryMobile) {
                 categoryMobile.value = categoryDesktop.value;
@@ -973,6 +1012,11 @@ const firebaseConfig = {
                 dateToMobile.value = dateToDesktop.value;
                 dateToDesktop.value = dateToMobile.value;
             }
+
+            if (showCompletedDesktop && showCompletedMobile) {
+                showCompletedMobile.checked = showCompletedDesktop.checked;
+                showCompletedDesktop.checked = showCompletedMobile.checked;
+            }
         }
 
         function applyFilters() {
@@ -981,6 +1025,12 @@ const firebaseConfig = {
             activeFilters = filters;
 
             filteredEvents = allEvents.filter(event => {
+                // Domyślnie nie pokazujemy zakończonych.
+                // Zakończone pojawiają się dopiero po włączeniu checkboxa.
+                if (!filters.showCompleted && event.status === 'completed') {
+                    return false;
+                }
+
                 // Category filter
                 if (filters.category && event.category !== filters.category) {
                     return false;
@@ -1021,6 +1071,8 @@ const firebaseConfig = {
             const dateFromMobileEl = document.getElementById('date-from-filter-mobile');
             const dateToEl = document.getElementById('date-to-filter');
             const dateToMobileEl = document.getElementById('date-to-filter-mobile');
+            const showCompletedDesktopEl = document.getElementById('show-completed-filter');
+            const showCompletedMobileEl = document.getElementById('show-completed-filter-mobile');
 
             if (categoryEl) categoryEl.value = '';
             if (categoryMobileEl) categoryMobileEl.value = '';
@@ -1028,6 +1080,8 @@ const firebaseConfig = {
             if (dateFromMobileEl) dateFromMobileEl.value = '';
             if (dateToEl) dateToEl.value = '';
             if (dateToMobileEl) dateToMobileEl.value = '';
+            if (showCompletedDesktopEl) showCompletedDesktopEl.checked = false;
+            if (showCompletedMobileEl) showCompletedMobileEl.checked = false;
 
             applyFilters();
         }
@@ -1057,6 +1111,10 @@ const firebaseConfig = {
             if (filters.dateTo) {
                 const toDate = new Date(filters.dateTo);
                 parts.push(`Do: ${toDate.toLocaleDateString('pl-PL')}`);
+            }
+
+            if (filters.showCompleted) {
+                parts.push('Pokaż zakończone');
             }
 
             if (parts.length === 0) {
@@ -1179,8 +1237,20 @@ const firebaseConfig = {
                 const eventsList = document.createElement('ul');
                 eventsList.className = 'space-y-3 ml-8 md:ml-12';
 
-                // Sort events by time
+                // Sortowanie w obrębie jednego dnia:
+                // 1) przypięte na górze
+                // 2) aktywne przed zakończonymi
+                // 3) potem wg godziny
                 const sortedEvents = events.sort((a, b) => {
+                    const isPinnedA = !!a.pinned;
+                    const isPinnedB = !!b.pinned;
+                    if (isPinnedA && !isPinnedB) return -1;
+                    if (!isPinnedA && isPinnedB) return 1;
+
+                    const isPastA = a.status === 'completed';
+                    const isPastB = b.status === 'completed';
+                    if (isPastA !== isPastB) return isPastA ? 1 : -1;
+
                     const timeA = a.dateObj.getHours() * 60 + a.dateObj.getMinutes();
                     const timeB = b.dateObj.getHours() * 60 + b.dateObj.getMinutes();
                     return timeA - timeB;
@@ -1196,7 +1266,7 @@ const firebaseConfig = {
                     const formattedTime = `${hours}:${minutes}`;
 
                     const listItem = document.createElement('li');
-                    listItem.className = `event-list-item cursor-pointer transition-all duration-200 hover:translate-x-1 ${isPast ? 'opacity-60' : ''}`;
+                    listItem.className = `event-list-item ${isPinned ? 'event-pinned' : ''} cursor-pointer transition-all duration-200 hover:translate-x-1 ${isPast ? 'opacity-60' : ''}`;
                     listItem.onclick = () => showEventDetail(event.id);
 
                     const categoryBadge = event.category ? `<span class="text-xs bg-zinc-800 px-2 py-0.5 rounded text-zinc-400 ml-2">${getCategoryName(event.category)}</span>` : '';
