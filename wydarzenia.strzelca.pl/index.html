@@ -1673,10 +1673,11 @@ const firebaseConfig = {
             }
 
             const now = new Date();
-            const pinnedEvents = filteredEvents
-                .filter(event => !!event.pinned)
-                .sort((a, b) => compareEvents(a, b, now));
-            const allSortedEvents = [...filteredEvents].sort((a, b) => compareEvents(a, b, now));
+            const allSortedEvents = [...filteredEvents].sort((a, b) => {
+                if (a.pinned && !b.pinned) return -1;
+                if (!a.pinned && b.pinned) return 1;
+                return compareEvents(a, b, now);
+            });
 
             const renderCarouselCard = (event, forcePinned = false) => {
                 const isPast = isEventCompleted(event, now);
@@ -1780,28 +1781,14 @@ const firebaseConfig = {
                 if (filterDock) filterDock.classList.add('hidden');
             };
 
-            if (pinnedEvents.length > 0) {
-                const pinnedSection = buildCarouselSection({
-                    key: 'pinned',
-                    title: 'Przypięte wydarzenia',
-                    iconClass: 'fa-solid fa-thumbtack',
-                    events: pinnedEvents,
-                    forcePinned: true
-                });
-                attachFilterToSection(pinnedSection);
-                container.appendChild(pinnedSection);
-            }
-
             const allEventsSection = buildCarouselSection({
-                key: 'all',
-                title: 'Wszystkie wydarzenia',
+                key: 'main',
+                title: 'Wydarzenia',
                 iconClass: 'fa-solid fa-calendar-week',
                 events: allSortedEvents,
                 forcePinned: false
             });
-            if (!filterAttachedToSection) {
-                attachFilterToSection(allEventsSection);
-            }
+            attachFilterToSection(allEventsSection);
             container.appendChild(allEventsSection);
 
             if (!filterAttachedToSection && filterDock && filterBtn && !filterDock.contains(filterBtn)) {

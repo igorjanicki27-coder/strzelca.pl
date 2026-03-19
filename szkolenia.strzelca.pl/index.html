@@ -634,8 +634,6 @@ const firebaseConfig = {
             };
 
             let trainingItems = [];
-            let trainingCarouselIndex = 0;
-            let trainingVisibleCards = 3;
             let trainingLoopEnabled = false;
             let trainingCarouselAnimating = false;
 
@@ -645,34 +643,15 @@ const firebaseConfig = {
                 return 3;
             }
 
-            function getCurrentTrainingLogicalIndex() {
-                if (trainingItems.length === 0) return 0;
-                if (!trainingLoopEnabled) {
-                    return Math.max(0, Math.min(trainingCarouselIndex, trainingItems.length - 1));
-                }
-                const raw = trainingCarouselIndex - trainingVisibleCards;
-                return ((raw % trainingItems.length) + trainingItems.length) % trainingItems.length;
-            }
-
-            function setTrainingCarouselPosition(animate = true) {
+            function getTrainingStepWidth() {
                 const track = document.getElementById("training-track");
-                if (!track) return;
+                if (!track) return 0;
 
                 const cards = track.querySelectorAll(".training-card");
-                const targetCard = cards[trainingCarouselIndex] || cards[0];
-                if (!targetCard) {
-                    track.style.transform = "translateX(0)";
-                    return;
+                if (cards.length >= 2) {
+                    return cards[1].offsetLeft - cards[0].offsetLeft;
                 }
-
-                track.style.transition = animate ? "transform 0.35s ease" : "none";
-                track.style.transform = `translateX(-${targetCard.offsetLeft}px)`;
-
-                if (!animate) {
-                    window.requestAnimationFrame(() => {
-                        track.style.transition = "transform 0.35s ease";
-                    });
-                }
+                return cards[0] ? cards[0].offsetWidth : 0;
             }
 
             function buildTrainingCard(item) {
@@ -704,6 +683,7 @@ const firebaseConfig = {
                 const prevBtn = document.getElementById("training-carousel-prev");
                 const nextBtn = document.getElementById("training-carousel-next");
                 if (!track || !prevBtn || !nextBtn) return;
+                trainingCarouselAnimating = false;
 
                 if (trainingItems.length === 0) {
                     track.innerHTML = `
@@ -711,78 +691,74 @@ const firebaseConfig = {
                             <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs">Brak szkoleń wystawionych do sprzedaży</p>
                         </article>
                     `;
-                    trainingCarouselIndex = 0;
                     trainingLoopEnabled = false;
                     prevBtn.disabled = true;
                     nextBtn.disabled = true;
-                    setTrainingCarouselPosition(false);
+                    track.style.transition = "none";
+                    track.style.transform = "translateX(0)";
                     return;
                 }
 
-                const logicalIndex = preservePosition ? getCurrentTrainingLogicalIndex() : 0;
-                trainingVisibleCards = getVisibleTrainingCardsCount();
-                trainingLoopEnabled = trainingItems.length > trainingVisibleCards;
-
-                let renderIndices = [];
-                if (trainingLoopEnabled) {
-                    for (let i = trainingItems.length - trainingVisibleCards; i < trainingItems.length; i += 1) {
-                        renderIndices.push(i);
-                    }
-                    for (let i = 0; i < trainingItems.length; i += 1) {
-                        renderIndices.push(i);
-                    }
-                    for (let i = 0; i < trainingVisibleCards; i += 1) {
-                        renderIndices.push(i);
-                    }
-                    trainingCarouselIndex = trainingVisibleCards + (logicalIndex % trainingItems.length);
-                } else {
-                    for (let i = 0; i < trainingItems.length; i += 1) {
-                        renderIndices.push(i);
-                    }
-                    trainingCarouselIndex = Math.min(logicalIndex, Math.max(0, trainingItems.length - 1));
+                if (!preservePosition) {
+                    track.innerHTML = trainingItems.map((item) => buildTrainingCard(item)).join("");
                 }
-
-                track.innerHTML = renderIndices.map((idx) => buildTrainingCard(trainingItems[idx])).join("");
+                const visibleCards = getVisibleTrainingCardsCount();
+                trainingLoopEnabled = trainingItems.length > visibleCards;
                 prevBtn.disabled = !trainingLoopEnabled;
                 nextBtn.disabled = !trainingLoopEnabled;
-                setTrainingCarouselPosition(false);
-            }
-
-            const trainingTrackElement = document.getElementById("training-track");
-            if (trainingTrackElement) {
-                trainingTrackElement.addEventListener("transitionend", () => {
-                    if (!trainingLoopEnabled || trainingItems.length === 0) {
-                        trainingCarouselAnimating = false;
-                        return;
-                    }
-
-                    let shouldSnap = false;
-                    if (trainingCarouselIndex >= trainingItems.length + trainingVisibleCards) {
-                        trainingCarouselIndex -= trainingItems.length;
-                        shouldSnap = true;
-                    } else if (trainingCarouselIndex < trainingVisibleCards) {
-                        trainingCarouselIndex += trainingItems.length;
-                        shouldSnap = true;
-                    }
-
-                    if (shouldSnap) {
-                        setTrainingCarouselPosition(false);
-                    }
-                    trainingCarouselAnimating = false;
+                track.style.transition = "none";
+                track.style.transform = "translateX(0)";
+                window.requestAnimationFrame(() => {
+                    track.style.transition = "transform 0.35s ease";
                 });
             }
 
             window.moveTrainingCarousel = (direction) => {
                 if (!trainingLoopEnabled || trainingCarouselAnimating) return;
-                const step = direction > 0 ? 1 : -1;
+                const track = document.getElementById("training-track");
+                if (!track) return;
+                const stepWidth = getTrainingStepWidth();
+                if (stepWidth <= 0) return;
+
                 trainingCarouselAnimating = true;
-                trainingCarouselIndex += step;
-                setTrainingCarouselPosition(true);
+
+                if (direction > 0) {
+                    track.style.transition = "transform 0.35s ease";
+                    track.style.transform = `translateX(-${stepWidth}px)`;
+
+                    const onEnd = () => {
+                        track.style.transition = "none";
+                        const firstCard = track.firstElementChild;
+                        if (firstCard) {
+                            track.appendChild(firstCard);
+                        }
+                        track.style.transform = "translateX(0)";
+                        void track.offsetHeight;
+                        track.style.transition = "transform 0.35s ease";
+                        trainingCarouselAnimating = false;
+                    };
+                    track.addEventListener("transitionend", onEnd, { once: true });
+                } else {
+                    track.style.transition = "none";
+                    const lastCard = track.lastElementChild;
+                    if (lastCard) {
+                        track.insertBefore(lastCard, track.firstElementChild);
+                    }
+                    track.style.transform = `translateX(-${stepWidth}px)`;
+                    void track.offsetHeight;
+                    track.style.transition = "transform 0.35s ease";
+                    track.style.transform = "translateX(0)";
+
+                    const onEnd = () => {
+                        trainingCarouselAnimating = false;
+                    };
+                    track.addEventListener("transitionend", onEnd, { once: true });
+                }
             };
 
             window.addEventListener("resize", () => {
                 if (trainingItems.length === 0) return;
-                renderTrainingCarousel(true);
+                renderTrainingCarousel(false);
             });
 
             const fetchAll = async () => {
