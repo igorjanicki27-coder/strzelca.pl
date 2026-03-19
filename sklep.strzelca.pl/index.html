@@ -99,7 +99,7 @@
         #product-track {
             display: flex;
             gap: 20px;
-            transition: transform 0.35s ease;
+            transition: transform 0.18s cubic-bezier(0.22, 0.61, 0.36, 1);
             will-change: transform;
         }
         .product-card {
@@ -721,6 +721,8 @@ const firebaseConfig = {
         let productItems = [];
         let productLoopEnabled = false;
         let productCarouselAnimating = false;
+        let productPendingMoves = 0;
+        const PRODUCT_CAROUSEL_DURATION_MS = 180;
 
         function getVisibleCardsCount() {
             if (window.innerWidth <= 700) return 1;
@@ -764,6 +766,7 @@ const firebaseConfig = {
             const nextBtn = document.getElementById('carousel-next');
             if (!track || !prevBtn || !nextBtn) return;
             productCarouselAnimating = false;
+            productPendingMoves = 0;
 
             if (productItems.length === 0) {
                 track.innerHTML = `
@@ -789,36 +792,78 @@ const firebaseConfig = {
             track.style.transition = 'none';
             track.style.transform = 'translateX(0)';
             window.requestAnimationFrame(() => {
-                track.style.transition = 'transform 0.35s ease';
+                track.style.transition = `transform ${PRODUCT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
             });
         }
 
+        function consumeQueuedProductMove() {
+            if (!productLoopEnabled || productPendingMoves === 0 || productCarouselAnimating) return;
+            const nextDir = productPendingMoves > 0 ? 1 : -1;
+            productPendingMoves -= nextDir;
+            window.moveProductCarousel(nextDir);
+        }
+
         window.moveProductCarousel = (direction) => {
-            if (!productLoopEnabled || productCarouselAnimating) return;
+            if (!productLoopEnabled) return;
+            const moveDir = direction > 0 ? 1 : -1;
+
+            if (productCarouselAnimating) {
+                productPendingMoves += moveDir;
+                productPendingMoves = Math.max(-8, Math.min(8, productPendingMoves));
+                return;
+            }
+
             const track = document.getElementById('product-track');
             if (!track) return;
             const stepWidth = getProductStepWidth();
             if (stepWidth <= 0) return;
 
             productCarouselAnimating = true;
+            let finished = false;
+            let fallbackTimer = null;
 
-            if (direction > 0) {
-                track.style.transition = 'transform 0.35s ease';
+            const finalizeMove = (afterFinalize) => {
+                if (finished) return;
+                finished = true;
+                if (fallbackTimer) {
+                    clearTimeout(fallbackTimer);
+                }
+                if (typeof afterFinalize === 'function') {
+                    afterFinalize();
+                }
+                productCarouselAnimating = false;
+                consumeQueuedProductMove();
+            };
+
+            if (moveDir > 0) {
+                track.style.transition = `transform ${PRODUCT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
                 track.style.transform = `translateX(-${stepWidth}px)`;
 
-                const onEnd = () => {
+                const onEnd = (event) => {
+                    if (event.propertyName && event.propertyName !== 'transform') return;
                     track.style.transition = 'none';
                     const firstCard = track.firstElementChild;
                     if (firstCard) {
                         track.appendChild(firstCard);
                     }
                     track.style.transform = 'translateX(0)';
-                    // force layout before restoring transition
                     void track.offsetHeight;
-                    track.style.transition = 'transform 0.35s ease';
-                    productCarouselAnimating = false;
+                    track.style.transition = `transform ${PRODUCT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                    finalizeMove();
                 };
                 track.addEventListener('transitionend', onEnd, { once: true });
+                fallbackTimer = setTimeout(() => {
+                    finalizeMove(() => {
+                        track.style.transition = 'none';
+                        const firstCard = track.firstElementChild;
+                        if (firstCard) {
+                            track.appendChild(firstCard);
+                        }
+                        track.style.transform = 'translateX(0)';
+                        void track.offsetHeight;
+                        track.style.transition = `transform ${PRODUCT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                    });
+                }, PRODUCT_CAROUSEL_DURATION_MS + 120);
             } else {
                 track.style.transition = 'none';
                 const lastCard = track.lastElementChild;
@@ -827,13 +872,17 @@ const firebaseConfig = {
                 }
                 track.style.transform = `translateX(-${stepWidth}px)`;
                 void track.offsetHeight;
-                track.style.transition = 'transform 0.35s ease';
+                track.style.transition = `transform ${PRODUCT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
                 track.style.transform = 'translateX(0)';
 
-                const onEnd = () => {
-                    productCarouselAnimating = false;
+                const onEnd = (event) => {
+                    if (event.propertyName && event.propertyName !== 'transform') return;
+                    finalizeMove();
                 };
                 track.addEventListener('transitionend', onEnd, { once: true });
+                fallbackTimer = setTimeout(() => {
+                    finalizeMove();
+                }, PRODUCT_CAROUSEL_DURATION_MS + 120);
             }
         };
 
@@ -843,6 +892,14 @@ const firebaseConfig = {
         });
 
         const fetchAll = async () => {
+            const track = document.getElementById('product-track');
+            if (track) {
+                track.innerHTML = `
+                    <article class="card-dark product-card p-8 text-center w-full">
+                        <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs">Ładowanie produktów...</p>
+                    </article>
+                `;
+            }
             const q = query(collection(db, "products"), orderBy("order", "asc"));
             const snap = await getDocs(q);
             productItems = [];

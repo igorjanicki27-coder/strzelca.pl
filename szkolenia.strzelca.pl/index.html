@@ -159,7 +159,7 @@
             #training-track {
                 display: flex;
                 gap: 20px;
-                transition: transform 0.35s ease;
+                transition: transform 0.18s cubic-bezier(0.22, 0.61, 0.36, 1);
                 will-change: transform;
             }
             .training-card {
@@ -636,6 +636,8 @@ const firebaseConfig = {
             let trainingItems = [];
             let trainingLoopEnabled = false;
             let trainingCarouselAnimating = false;
+            let trainingPendingMoves = 0;
+            const TRAINING_CAROUSEL_DURATION_MS = 180;
 
             function getVisibleTrainingCardsCount() {
                 if (window.innerWidth <= 700) return 1;
@@ -684,6 +686,7 @@ const firebaseConfig = {
                 const nextBtn = document.getElementById("training-carousel-next");
                 if (!track || !prevBtn || !nextBtn) return;
                 trainingCarouselAnimating = false;
+                trainingPendingMoves = 0;
 
                 if (trainingItems.length === 0) {
                     track.innerHTML = `
@@ -709,24 +712,55 @@ const firebaseConfig = {
                 track.style.transition = "none";
                 track.style.transform = "translateX(0)";
                 window.requestAnimationFrame(() => {
-                    track.style.transition = "transform 0.35s ease";
+                    track.style.transition = `transform ${TRAINING_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
                 });
             }
 
+            function consumeQueuedTrainingMove() {
+                if (!trainingLoopEnabled || trainingPendingMoves === 0 || trainingCarouselAnimating) return;
+                const nextDir = trainingPendingMoves > 0 ? 1 : -1;
+                trainingPendingMoves -= nextDir;
+                window.moveTrainingCarousel(nextDir);
+            }
+
             window.moveTrainingCarousel = (direction) => {
-                if (!trainingLoopEnabled || trainingCarouselAnimating) return;
+                if (!trainingLoopEnabled) return;
+                const moveDir = direction > 0 ? 1 : -1;
+
+                if (trainingCarouselAnimating) {
+                    trainingPendingMoves += moveDir;
+                    trainingPendingMoves = Math.max(-8, Math.min(8, trainingPendingMoves));
+                    return;
+                }
+
                 const track = document.getElementById("training-track");
                 if (!track) return;
                 const stepWidth = getTrainingStepWidth();
                 if (stepWidth <= 0) return;
 
                 trainingCarouselAnimating = true;
+                let finished = false;
+                let fallbackTimer = null;
 
-                if (direction > 0) {
-                    track.style.transition = "transform 0.35s ease";
+                const finalizeMove = (afterFinalize) => {
+                    if (finished) return;
+                    finished = true;
+                    if (fallbackTimer) {
+                        clearTimeout(fallbackTimer);
+                    }
+                    if (typeof afterFinalize === "function") {
+                        afterFinalize();
+                    }
+                    trainingCarouselAnimating = false;
+                    consumeQueuedTrainingMove();
+                };
+
+                if (moveDir > 0) {
+                    track.style.transition = `transform ${TRAINING_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
                     track.style.transform = `translateX(-${stepWidth}px)`;
 
-                    const onEnd = () => {
+                    const onEnd = (event) => {
+                        if (event.propertyName && event.propertyName !== "transform") return;
                         track.style.transition = "none";
                         const firstCard = track.firstElementChild;
                         if (firstCard) {
@@ -734,10 +768,22 @@ const firebaseConfig = {
                         }
                         track.style.transform = "translateX(0)";
                         void track.offsetHeight;
-                        track.style.transition = "transform 0.35s ease";
-                        trainingCarouselAnimating = false;
+                        track.style.transition = `transform ${TRAINING_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                        finalizeMove();
                     };
                     track.addEventListener("transitionend", onEnd, { once: true });
+                    fallbackTimer = setTimeout(() => {
+                        finalizeMove(() => {
+                            track.style.transition = "none";
+                            const firstCard = track.firstElementChild;
+                            if (firstCard) {
+                                track.appendChild(firstCard);
+                            }
+                            track.style.transform = "translateX(0)";
+                            void track.offsetHeight;
+                            track.style.transition = `transform ${TRAINING_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                        });
+                    }, TRAINING_CAROUSEL_DURATION_MS + 120);
                 } else {
                     track.style.transition = "none";
                     const lastCard = track.lastElementChild;
@@ -746,13 +792,17 @@ const firebaseConfig = {
                     }
                     track.style.transform = `translateX(-${stepWidth}px)`;
                     void track.offsetHeight;
-                    track.style.transition = "transform 0.35s ease";
+                    track.style.transition = `transform ${TRAINING_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
                     track.style.transform = "translateX(0)";
 
-                    const onEnd = () => {
-                        trainingCarouselAnimating = false;
+                    const onEnd = (event) => {
+                        if (event.propertyName && event.propertyName !== "transform") return;
+                        finalizeMove();
                     };
                     track.addEventListener("transitionend", onEnd, { once: true });
+                    fallbackTimer = setTimeout(() => {
+                        finalizeMove();
+                    }, TRAINING_CAROUSEL_DURATION_MS + 120);
                 }
             };
 
@@ -762,6 +812,14 @@ const firebaseConfig = {
             });
 
             const fetchAll = async () => {
+                const track = document.getElementById("training-track");
+                if (track) {
+                    track.innerHTML = `
+                        <article class="card-dark training-card p-8 text-center w-full">
+                            <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs">Ładowanie szkoleń...</p>
+                        </article>
+                    `;
+                }
                 const q = query(
                     collection(db, "trainings"),
                     orderBy("order", "asc"),
