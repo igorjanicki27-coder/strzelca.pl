@@ -47,18 +47,45 @@
         }
         .coyote-text { color: var(--coyote); font-family: 'Orbitron', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
         .charity-card {
-            background: rgba(20, 20, 20, 0.9);
-            border: 1px solid #333;
-            transition: 0.3s;
+            background: rgba(17, 17, 17, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            transition: 0.25s ease;
         }
         .charity-card:hover {
             border-color: var(--coyote);
             transform: translateY(-2px);
         }
-        .donation-section {
-            background: rgba(15, 15, 15, 0.95);
-            border: 2px solid var(--coyote);
+        .pinned-announcement {
+            background: rgba(17, 17, 17, 0.72);
+            border: 1px solid rgba(193, 154, 107, 0.45);
             border-radius: 20px;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            box-shadow: 0 16px 34px rgba(0, 0, 0, 0.35);
+            position: relative;
+            overflow: hidden;
+        }
+        .pinned-announcement::before {
+            content: "";
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 4px;
+            background: linear-gradient(180deg, rgba(193, 154, 107, 0.35) 0%, rgba(193, 154, 107, 0.95) 55%, rgba(193, 154, 107, 0.35) 100%);
+        }
+        .pinned-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 10px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            font-weight: 800;
+            color: #0a0a0a;
+            background: rgba(193, 154, 107, 0.95);
+            border-radius: 999px;
+            padding: 0.45rem 0.8rem;
         }
     </style>
     <!-- Wspólne poprawki responsywności -->
@@ -134,6 +161,47 @@
         </header>
 
         <main class="container mx-auto px-6 py-12 flex-grow">
+            <!-- Stały przypięty kafelek -->
+            <section class="mb-16">
+                <article class="pinned-announcement p-8 md:p-12 text-center">
+                    <div class="pinned-badge mx-auto mb-5 w-fit">
+                        <i class="fa-solid fa-thumbtack"></i>
+                        <span>Przypięte</span>
+                    </div>
+
+                    <h2 class="text-3xl md:text-4xl font-black uppercase italic font-[Orbitron] mb-8 coyote-text">
+                        <i class="fa-solid fa-heart mr-4"></i>
+                        Dobrowolne wpłaty na rzecz rozwoju firmy
+                    </h2>
+
+                    <p class="text-lg text-zinc-300 mb-8 max-w-3xl mx-auto leading-relaxed">
+                        Twoja wpłata pomoże nam rozwijać działalność, wprowadzać nowe produkty i usługi,
+                        oraz wspierać społeczność strzelecką. Każda kwota ma znaczenie i przyczynia się
+                        do budowania lepszej przyszłości dla naszego środowiska.
+                    </p>
+
+                    <div class="flex justify-center">
+                        <script async src="https://js.stripe.com/v3/buy-button.js"></script>
+                        <stripe-buy-button
+                          buy-button-id="buy_btn_1SmzvBCoixAPjvnwGm1XsRpP"
+                          publishable-key="pk_test_51SmzhGCoixAPjvnwV7RfZLsfOnNOgYabPHMhKOJL1wLRaNLJcNd3O1mHxkUZw8QTytyUEwk25aqTPNDB3aGoIOSg00a7BAlDzj"
+                        >
+                        </stripe-buy-button>
+                    </div>
+
+                    <p class="text-sm text-zinc-500 mt-6">
+                        Wszystkie wpłaty są dobrowolne i nie wiążą się z żadnymi zobowiązaniami.
+                        Za pośrednictwem bezpiecznej bramki płatniczej Stripe.
+                    </p>
+
+                    <div class="text-center mt-4">
+                        <a href="https://dokumenty.strzelca.pl#donation-clause" onclick="expandDonationClause()" class="text-xs text-zinc-400 hover:text-coyote transition underline">
+                            Klauzula Donacji
+                        </a>
+                    </div>
+                </article>
+            </section>
+
             <!-- Sekcja Akcje Charytatywne -->
             <section class="mb-20">
                 <h2 class="text-3xl md:text-4xl font-black uppercase italic font-[Orbitron] text-center mb-12 coyote-text">
@@ -149,44 +217,6 @@
                     <div class="text-4xl mb-4">🤝</div>
                     <div class="text-xl">Aktualnie nie prowadzimy aktywnych akcji charytatywnych</div>
                     <div class="text-sm mt-2">Sprawdź ponownie wkrótce</div>
-                </div>
-            </section>
-
-            <!-- Sekcja Donacji -->
-            <section class="donation-section p-12 text-center">
-                <h2 class="text-3xl md:text-4xl font-black uppercase italic font-[Orbitron] mb-8 coyote-text">
-                    <i class="fa-solid fa-heart mr-4"></i>
-                    Dobrowolne wpłaty na rzecz rozwoju firmy
-                </h2>
-
-                <p class="text-lg text-zinc-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-                    Twoja wpłata pomoże nam rozwijać działalność, wprowadzać nowe produkty i usługi,
-                    oraz wspierać społeczność strzelecką. Każda kwota ma znaczenie i przyczynia się
-                    do budowania lepszej przyszłości dla naszego środowiska.
-                </p>
-
-                <!-- Przycisk Stripe -->
-                <div class="flex justify-center">
-                    <script async
-                      src="https://js.stripe.com/v3/buy-button.js">
-                    </script>
-
-                    <stripe-buy-button
-                      buy-button-id="buy_btn_1SmzvBCoixAPjvnwGm1XsRpP"
-                      publishable-key="pk_test_51SmzhGCoixAPjvnwV7RfZLsfOnNOgYabPHMhKOJL1wLRaNLJcNd3O1mHxkUZw8QTytyUEwk25aqTPNDB3aGoIOSg00a7BAlDzj"
-                    >
-                    </stripe-buy-button>
-                </div>
-
-                <p class="text-sm text-zinc-500 mt-6">
-                    Wszystkie wpłaty są dobrowolne i nie wiążą się z żadnymi zobowiązaniami.
-                    Za pośrednictwem bezpiecznej bramki płatniczej Stripe.
-                </p>
-
-                <div class="text-center mt-4">
-                    <a href="https://dokumenty.strzelca.pl#donation-clause" onclick="expandDonationClause()" class="text-xs text-zinc-400 hover:text-coyote transition underline">
-                        Klauzula Donacji
-                    </a>
                 </div>
             </section>
         </main>
