@@ -254,8 +254,8 @@
     </div>
 
     <!-- Modal administratora -->
-    <div id="admin-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
-        <div class="max-w-5xl w-full bg-zinc-900 p-8 rounded-3xl border border-zinc-800 shadow-2xl overflow-y-auto max-h-[90vh]">
+    <div id="admin-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onclick="if(!event.target.closest('#admin-modal-panel')) window.toggleAdminModal()">
+        <div id="admin-modal-panel" class="max-w-5xl w-full bg-zinc-900 p-8 rounded-3xl border border-zinc-800 shadow-2xl overflow-y-auto max-h-[90vh]">
             <div id="login-section" class="text-center py-12 max-w-sm mx-auto">
                 <h2 class="coyote-text text-xl mb-8 uppercase italic font-[Orbitron]">Autoryzacja</h2>
                 <input type="email" id="adm-user" placeholder="Email administratora" class="mb-4 text-center">
@@ -305,11 +305,17 @@
 
         
       async function getFirebaseApiKey() {
-        const urls = ["/api/firebase-config"];
+        const urls = [
+          "https://strzelca.pl/api/firebase-config",
+          "/api/firebase-config"
+        ];
 
         for (const url of urls) {
           try {
-            const res = await fetch(url, { cache: "no-store" });
+            const res = await fetch(url, {
+              cache: "no-store",
+              credentials: url.startsWith("http") ? "omit" : "same-origin",
+            });
             if (!res.ok) continue;
             const data = await res.json().catch(() => null);
             if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {

@@ -236,8 +236,8 @@
         </div>
     </section>
 
-    <div id="details-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-md">
-        <div class="bg-zinc-900 p-4 md:p-8 rounded-2xl md:rounded-3xl max-w-2xl w-full border border-zinc-800 relative shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div id="details-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-md" onclick="if(!event.target.closest('#details-modal-panel')) document.getElementById('details-modal').classList.add('hidden')">
+        <div id="details-modal-panel" class="bg-zinc-900 p-4 md:p-8 rounded-2xl md:rounded-3xl max-w-2xl w-full border border-zinc-800 relative shadow-2xl max-h-[90vh] overflow-y-auto">
             <button onclick="document.getElementById('details-modal').classList.add('hidden')" class="absolute top-4 md:top-6 right-4 md:right-6 text-2xl md:text-3xl text-zinc-500 hover:text-white">&times;</button>
             <div id="details-content"></div>
         </div>
@@ -249,9 +249,9 @@
     </footer>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { initializeFirestore, collection, getDocs, doc, getDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { initializeFirestore, getFirestore, collection, getDocs, doc, getDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
 
         
@@ -277,20 +277,36 @@
 
         throw new Error("Nie udało się pobrać FIREBASE_WEB_API_KEY z /api/firebase-config");
       }
-const firebaseConfig = { 
-            apiKey: await getFirebaseApiKey(), 
-            authDomain: "strzelca-pl.firebaseapp.com", 
-            projectId: "strzelca-pl", 
-            storageBucket: "strzelca-pl.appspot.com", 
-            messagingSenderId: "511362047688", 
-            appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd" 
+        const baseFirebaseConfig = {
+            authDomain: "strzelca-pl.firebaseapp.com",
+            projectId: "strzelca-pl",
+            storageBucket: "strzelca-pl.appspot.com",
+            messagingSenderId: "511362047688",
+            appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd"
         };
-        
-        const app = initializeApp(firebaseConfig);
-        const db = initializeFirestore(app, {
-            experimentalAutoDetectLongPolling: true,
-            useFetchStreams: true,
-        });
+
+        let app;
+        const existingApps = getApps();
+        if (existingApps.length > 0) {
+            app = getApp();
+        } else {
+            const apiKey = await getFirebaseApiKey();
+            app = initializeApp({
+                apiKey,
+                ...baseFirebaseConfig
+            });
+        }
+
+        let db;
+        try {
+            db = initializeFirestore(app, {
+                experimentalAutoDetectLongPolling: true,
+                useFetchStreams: true,
+            });
+        } catch (_) {
+            // Firestore mogło być już zainicjalizowane przez inny moduł.
+            db = getFirestore(app);
+        }
         const auth = getAuth(app);
 
         // Obsługa błędów CORS z Firestore (często są to fałszywe alarmy)
@@ -899,6 +915,8 @@ const firebaseConfig = {
             renderProductCarousel(false);
         });
 
+        const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
         const fetchAll = async () => {
             const track = document.getElementById('product-track');
             if (track) {
@@ -908,26 +926,65 @@ const firebaseConfig = {
                     </article>
                 `;
             }
-            const q = query(collection(db, "products"), orderBy("order", "asc"));
-            const snap = await getDocs(q);
-            productItems = [];
+            const maxAttempts = 3;
 
-            snap.forEach((d) => {
-                const p = d.data();
-                let mainImage = p.img || '';
-                if (p.images && Array.isArray(p.images) && p.images.length > 0) {
-                    mainImage = typeof p.images[0] === 'string' ? p.images[0] : p.images[0].url;
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                try {
+                    let snap;
+                    try {
+                        const q = query(collection(db, "products"), orderBy("order", "asc"));
+                        snap = await getDocs(q);
+                    } catch (orderError) {
+                        console.warn("products orderBy failed, trying fallback:", orderError);
+                        snap = await getDocs(collection(db, "products"));
+                    }
+
+                    productItems = [];
+                    snap.forEach((d) => {
+                        const p = d.data();
+                        let mainImage = p.img || '';
+                        if (p.images && Array.isArray(p.images) && p.images.length > 0) {
+                            mainImage = typeof p.images[0] === 'string' ? p.images[0] : p.images[0].url;
+                        }
+
+                        productItems.push({
+                            id: d.id,
+                            title: p.title || '',
+                            price: p.price || 0,
+                            mainImage,
+                        });
+                    });
+
+                    renderProductCarousel(false);
+                    return;
+                } catch (error) {
+                    console.warn(`Load products attempt ${attempt}/${maxAttempts} failed:`, error);
+                    if (attempt < maxAttempts) {
+                        await wait(450 * attempt);
+                        continue;
+                    }
                 }
+            }
 
-                productItems.push({
-                    id: d.id,
-                    title: p.title || '',
-                    price: p.price || 0,
-                    mainImage,
-                });
-            });
+            if (track) {
+                track.innerHTML = `
+                    <article class="card-dark product-card p-8 text-center w-full">
+                        <p class="text-red-400 uppercase tracking-[0.1em] text-xs mb-3">Nie udało się załadować produktów</p>
+                        <button onclick="window.reloadProducts()" class="px-4 py-2 border border-zinc-700 rounded text-zinc-300 hover:border-[#C19A6B] hover:text-[#C19A6B] transition text-xs uppercase tracking-[0.12em]">Spróbuj ponownie</button>
+                    </article>
+                `;
+            }
+            productLoopEnabled = false;
+            productCarouselAnimating = false;
+            productPendingMoves = 0;
+            const prevBtn = document.getElementById('carousel-prev');
+            const nextBtn = document.getElementById('carousel-next');
+            if (prevBtn) prevBtn.disabled = true;
+            if (nextBtn) nextBtn.disabled = true;
+        };
 
-            renderProductCarousel(false);
+        window.reloadProducts = () => {
+            fetchAll();
         };
 
         window.showDetails = async (id) => {
