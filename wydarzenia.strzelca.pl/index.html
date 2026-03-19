@@ -376,6 +376,150 @@
             border-radius: 12px 12px 0 0;
         }
 
+        .events-carousel-section {
+            margin-bottom: 1.35rem;
+            padding: 0.9rem 0.95rem 1rem;
+            background: linear-gradient(145deg, rgba(12, 12, 14, 0.58) 0%, rgba(16, 16, 18, 0.45) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+
+        .events-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.8rem;
+            margin-bottom: 0.85rem;
+            padding: 0 0.15rem;
+        }
+
+        .events-section-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.98rem;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            font-weight: 800;
+            color: #d7b68b;
+            font-family: 'Orbitron', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        .events-section-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .events-carousel-shell {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .events-carousel-viewport {
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .events-carousel-track {
+            display: flex;
+            gap: 0.8rem;
+            transition: transform 0.33s ease;
+            will-change: transform;
+        }
+
+        .event-carousel-card {
+            flex: 0 0 calc((100% - 1.6rem) / 3);
+            min-width: 0;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+
+        .events-carousel-arrow {
+            width: 2.45rem;
+            height: 2.45rem;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 999px;
+            background: rgba(10, 10, 10, 0.9);
+            color: #eceff7;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .events-carousel-arrow:hover:not(:disabled) {
+            background: rgba(193, 154, 107, 0.95);
+            border-color: rgba(193, 154, 107, 0.95);
+            color: #090909;
+        }
+
+        .events-carousel-arrow:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .event-card-top-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 0.65rem;
+            margin-bottom: 0.45rem;
+        }
+
+        .event-date-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.42rem;
+            padding: 0.28rem 0.58rem;
+            border-radius: 10px;
+            font-size: 0.73rem;
+            color: #d9dbe3;
+            background: rgba(38, 44, 56, 0.55);
+            border: 1px solid rgba(128, 138, 164, 0.22);
+            text-transform: capitalize;
+            max-width: 100%;
+        }
+
+        .event-date-chip > span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .event-card-bottom {
+            margin-top: 0.58rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .event-location-row {
+            font-size: 0.86rem;
+            color: #aab1bf;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .events-empty-card {
+            width: 100%;
+            min-height: 130px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #9499a6;
+            font-size: 0.9rem;
+        }
+
         .filter-trigger-btn {
             display: inline-flex;
             align-items: center;
@@ -417,6 +561,36 @@
                 width: 2.25rem;
                 height: 2.25rem;
                 font-size: 0.84rem;
+            }
+        }
+
+        @media (max-width: 1150px) {
+            .event-carousel-card {
+                flex-basis: calc((100% - 0.8rem) / 2);
+            }
+        }
+
+        @media (max-width: 700px) {
+            .events-carousel-shell {
+                gap: 0.45rem;
+            }
+
+            .events-carousel-track {
+                gap: 0.6rem;
+            }
+
+            .event-carousel-card {
+                flex-basis: 100%;
+            }
+
+            .events-carousel-arrow {
+                width: 2.15rem;
+                height: 2.15rem;
+                font-size: 0.78rem;
+            }
+
+            .event-date-chip {
+                font-size: 0.7rem;
             }
         }
 
@@ -968,6 +1142,73 @@ const firebaseConfig = {
             dateTo: '',
             showCompleted: false
         };
+        const eventsCarouselState = {};
+
+        function getVisibleEventsCardsCount() {
+            if (window.innerWidth <= 700) return 1;
+            if (window.innerWidth <= 1150) return 2;
+            return 3;
+        }
+
+        function updateEventsCarousel(trackId) {
+            const track = document.getElementById(trackId);
+            if (!track) return;
+
+            const prevBtn = document.querySelector(`[data-carousel-prev="${trackId}"]`);
+            const nextBtn = document.querySelector(`[data-carousel-next="${trackId}"]`);
+            const cards = Array.from(track.querySelectorAll('.event-carousel-card'));
+            const visibleCards = getVisibleEventsCardsCount();
+            const maxIndex = Math.max(0, cards.length - visibleCards);
+
+            if (typeof eventsCarouselState[trackId] !== 'number') {
+                eventsCarouselState[trackId] = 0;
+            }
+            if (eventsCarouselState[trackId] > maxIndex) {
+                eventsCarouselState[trackId] = maxIndex;
+            }
+
+            const targetCard = cards[eventsCarouselState[trackId]];
+            const offset = targetCard ? targetCard.offsetLeft : 0;
+            track.style.transform = `translateX(-${offset}px)`;
+
+            const shouldDisableArrows = maxIndex === 0;
+            if (prevBtn) prevBtn.disabled = shouldDisableArrows;
+            if (nextBtn) nextBtn.disabled = shouldDisableArrows;
+        }
+
+        function updateAllEventsCarousels() {
+            document.querySelectorAll('.events-carousel-track').forEach((track) => {
+                if (track.id) updateEventsCarousel(track.id);
+            });
+        }
+
+        window.moveEventsCarousel = (trackId, direction) => {
+            const track = document.getElementById(trackId);
+            if (!track) return;
+
+            const cards = Array.from(track.querySelectorAll('.event-carousel-card'));
+            const visibleCards = getVisibleEventsCardsCount();
+            const maxIndex = Math.max(0, cards.length - visibleCards);
+
+            if (maxIndex <= 0) {
+                eventsCarouselState[trackId] = 0;
+                window.requestAnimationFrame(() => updateEventsCarousel(trackId));
+                return;
+            }
+
+            const currentIndex = typeof eventsCarouselState[trackId] === 'number' ? eventsCarouselState[trackId] : 0;
+            if (direction > 0) {
+                eventsCarouselState[trackId] = currentIndex >= maxIndex ? 0 : currentIndex + 1;
+            } else if (direction < 0) {
+                eventsCarouselState[trackId] = currentIndex <= 0 ? maxIndex : currentIndex - 1;
+            }
+
+            window.requestAnimationFrame(() => updateEventsCarousel(trackId));
+        };
+
+        window.addEventListener('resize', () => {
+            window.requestAnimationFrame(updateAllEventsCarousels);
+        });
 
         function normalizeEventCategory(category) {
             const value = String(category || '').trim().toLowerCase();
@@ -1404,10 +1645,19 @@ const firebaseConfig = {
             });
         }
 
-        // Render events list with day grouping - nowy format
+        // Render events list in carousel cards (wzór: sklep/szkolenia)
         function renderEventsList() {
             const container = document.getElementById('events-container');
+            const filterDock = document.getElementById('filters-dock');
+            const filterBtn = document.getElementById('filters-toggle-btn');
             container.innerHTML = '';
+
+            if (filterDock && filterBtn && !filterDock.contains(filterBtn)) {
+                filterDock.appendChild(filterBtn);
+            }
+            if (filterDock) {
+                filterDock.classList.remove('hidden');
+            }
 
             if (filteredEvents.length === 0) {
                 container.innerHTML = `
@@ -1423,167 +1673,143 @@ const firebaseConfig = {
             }
 
             const now = new Date();
-            const renderListItem = (event, forcePinned = false) => {
+            const pinnedEvents = filteredEvents
+                .filter(event => !!event.pinned)
+                .sort((a, b) => compareEvents(a, b, now));
+            const allSortedEvents = [...filteredEvents].sort((a, b) => compareEvents(a, b, now));
+
+            const renderCarouselCard = (event, forcePinned = false) => {
                 const isPast = isEventCompleted(event, now);
                 const isPinned = forcePinned || !!event.pinned;
-
-                const hours = String(event.dateObj.getHours()).padStart(2, '0');
-                const minutes = String(event.dateObj.getMinutes()).padStart(2, '0');
-                const formattedTime = `${hours}:${minutes}`;
-                const formattedDate = event.dateObj.toLocaleDateString('pl-PL', {
-                    weekday: 'long',
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                });
-
-                const listItem = document.createElement('li');
-                listItem.className = `event-list-item ${isPinned ? 'event-pinned' : ''} cursor-pointer transition-all duration-200 hover:translate-x-1 ${isPast ? 'opacity-60' : ''}`;
-                listItem.onclick = () => showEventDetail(event.id);
-
                 const safeTitle = escapeHtml(event.title || 'Bez tytułu');
                 const safeLocation = escapeHtml(event.location || '');
                 const categoryBadge = `<span class="badge-chip category">${escapeHtml(getEventCategoryName(event.category))}</span>`;
                 const pinnedBadge = isPinned ? '<span class="badge-chip pinned"><i class="fa-solid fa-thumbtack mr-1"></i>Przypięte</span>' : '';
                 const completedBadge = isPast ? '<span class="badge-chip completed">Zakończone</span>' : '';
 
-                listItem.innerHTML = `
-                    <div class="flex items-start justify-between gap-3 group">
-                        <div class="min-w-0 flex-1">
-                            <div class="event-title-row">
-                                <span class="event-bullet">-</span>
-                                <span class="event-title group-hover:text-coyote-light transition">${safeTitle}</span>
-                            </div>
-                            ${isPinned ? `
-                                <div class="event-calendar-row">
-                                    <i class="fa-solid fa-calendar-day text-coyote/70 mr-1"></i>
-                                    <span>${formattedDate}</span>
-                                </div>
-                            ` : ''}
-                            <div class="event-meta-row">
-                                <i class="fa-solid fa-clock text-coyote/70 mr-1"></i>
-                                <span>godzina: ${formattedTime}</span>
-                                ${safeLocation ? `<span class="ml-3"><i class="fa-solid fa-map-marker-alt text-coyote/70 mr-1"></i>${safeLocation}</span>` : ''}
-                            </div>
+                const weekday = event.dateObj.toLocaleDateString('pl-PL', { weekday: 'long' });
+                const day = String(event.dateObj.getDate()).padStart(2, '0');
+                const month = String(event.dateObj.getMonth() + 1).padStart(2, '0');
+                const year = event.dateObj.getFullYear();
+                const dateLabel = `${weekday.charAt(0).toUpperCase() + weekday.slice(1)}, ${day}.${month}.${year}`;
+                const hours = String(event.dateObj.getHours()).padStart(2, '0');
+                const minutes = String(event.dateObj.getMinutes()).padStart(2, '0');
+                const timeLabel = `${hours}:${minutes}`;
+
+                const card = document.createElement('article');
+                card.className = `event-list-item event-carousel-card ${isPinned ? 'event-pinned' : ''} ${isPast ? 'opacity-70' : ''}`;
+                card.onclick = () => showEventDetail(event.id);
+                card.innerHTML = `
+                    <div class="event-card-top-row">
+                        <div class="event-date-chip">
+                            <i class="fa-solid fa-calendar-day text-coyote/80"></i>
+                            <span>${escapeHtml(dateLabel)}</span>
                         </div>
                         <div class="event-right-badges">
                             ${categoryBadge}
                             ${completedBadge}
-                            ${isPinned ? pinnedBadge : ''}
+                            ${pinnedBadge}
                         </div>
                     </div>
+                    <div class="event-title">${safeTitle}</div>
+                    <div class="event-card-bottom">
+                        <div class="event-meta-row">
+                            <i class="fa-solid fa-clock text-coyote/70 mr-1"></i>
+                            <span>godzina: ${timeLabel}</span>
+                        </div>
+                        ${safeLocation ? `
+                            <div class="event-location-row">
+                                <i class="fa-solid fa-map-marker-alt text-coyote/70 mr-1"></i>
+                                <span>${safeLocation}</span>
+                            </div>
+                        ` : ''}
+                    </div>
                 `;
-
-                return listItem;
+                return card;
             };
 
-            const pinnedEvents = filteredEvents
-                .filter(event => !!event.pinned)
-                .sort((a, b) => compareEvents(a, b, now));
-
-            const filterDock = document.getElementById('filters-dock');
-            const filterBtn = document.getElementById('filters-toggle-btn');
-            if (filterDock && filterBtn && !filterDock.contains(filterBtn)) {
-                filterDock.appendChild(filterBtn);
-            }
-            if (filterDock) {
-                filterDock.classList.remove('hidden');
-            }
-
-            if (pinnedEvents.length > 0) {
-                const pinnedSection = document.createElement('section');
-                pinnedSection.className = 'pinned-events-section';
-                pinnedSection.innerHTML = `
-                    <div class="pinned-events-title">
-                        <div class="text-base md:text-lg font-bold coyote-text flex items-center gap-2">
-                            <i class="fa-solid fa-thumbtack"></i>
-                            <span>Przypięte wydarzenia</span>
+            const buildCarouselSection = ({ key, title, iconClass, events, forcePinned = false }) => {
+                const section = document.createElement('section');
+                const trackId = `events-carousel-track-${key}`;
+                section.className = 'events-carousel-section';
+                section.innerHTML = `
+                    <div class="events-section-header">
+                        <div class="events-section-title">
+                            <i class="${iconClass}"></i>
+                            <span>${title}</span>
                         </div>
-                        <div id="pinned-header-actions" class="flex items-center"></div>
+                        <div class="events-section-actions"></div>
+                    </div>
+                    <div class="events-carousel-shell">
+                        <button class="events-carousel-arrow" type="button" aria-label="Poprzednie wydarzenie" data-carousel-prev="${trackId}" onclick="window.moveEventsCarousel('${trackId}', -1)">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <div class="events-carousel-viewport">
+                            <div id="${trackId}" class="events-carousel-track"></div>
+                        </div>
+                        <button class="events-carousel-arrow" type="button" aria-label="Następne wydarzenie" data-carousel-next="${trackId}" onclick="window.moveEventsCarousel('${trackId}', 1)">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
                     </div>
                 `;
 
-                const pinnedHeaderActions = pinnedSection.querySelector('#pinned-header-actions');
-                if (pinnedHeaderActions && filterBtn) {
-                    pinnedHeaderActions.appendChild(filterBtn);
-                    if (filterDock) {
-                        filterDock.classList.add('hidden');
-                    }
+                const track = section.querySelector(`#${trackId}`);
+                if (events.length === 0) {
+                    const emptyCard = document.createElement('article');
+                    emptyCard.className = 'event-list-item event-carousel-card events-empty-card';
+                    emptyCard.innerHTML = '<span>Brak wydarzeń w tej sekcji</span>';
+                    track.appendChild(emptyCard);
+                } else {
+                    events.forEach((event) => track.appendChild(renderCarouselCard(event, forcePinned)));
                 }
 
-                const pinnedList = document.createElement('ul');
-                pinnedList.className = 'space-y-3';
-                pinnedEvents.forEach((event) => {
-                    pinnedList.appendChild(renderListItem(event, true));
+                if (typeof eventsCarouselState[trackId] !== 'number') {
+                    eventsCarouselState[trackId] = 0;
+                }
+
+                return section;
+            };
+
+            let filterAttachedToSection = false;
+            const attachFilterToSection = (sectionEl) => {
+                if (filterAttachedToSection || !sectionEl || !filterBtn) return;
+                const actions = sectionEl.querySelector('.events-section-actions');
+                if (!actions) return;
+                actions.appendChild(filterBtn);
+                filterAttachedToSection = true;
+                if (filterDock) filterDock.classList.add('hidden');
+            };
+
+            if (pinnedEvents.length > 0) {
+                const pinnedSection = buildCarouselSection({
+                    key: 'pinned',
+                    title: 'Przypięte wydarzenia',
+                    iconClass: 'fa-solid fa-thumbtack',
+                    events: pinnedEvents,
+                    forcePinned: true
                 });
-                pinnedSection.appendChild(pinnedList);
+                attachFilterToSection(pinnedSection);
                 container.appendChild(pinnedSection);
             }
 
-            // Group events by date (przypięte są widoczne także tutaj)
-            const eventsByDate = {};
-            filteredEvents.forEach(event => {
-                const dateKey = event.dateObj.toDateString();
-                if (!eventsByDate[dateKey]) {
-                    eventsByDate[dateKey] = [];
-                }
-                eventsByDate[dateKey].push(event);
+            const allEventsSection = buildCarouselSection({
+                key: 'all',
+                title: 'Wszystkie wydarzenia',
+                iconClass: 'fa-solid fa-calendar-week',
+                events: allSortedEvents,
+                forcePinned: false
             });
+            if (!filterAttachedToSection) {
+                attachFilterToSection(allEventsSection);
+            }
+            container.appendChild(allEventsSection);
 
-            // Sort dates
-            const sortedDates = Object.keys(eventsByDate).sort((a, b) => new Date(a) - new Date(b));
+            if (!filterAttachedToSection && filterDock && filterBtn && !filterDock.contains(filterBtn)) {
+                filterDock.appendChild(filterBtn);
+                filterDock.classList.remove('hidden');
+            }
 
-            sortedDates.forEach((dateKey) => {
-                const events = eventsByDate[dateKey];
-                const dateObj = new Date(dateKey);
-                const isToday = dateObj.toDateString() === new Date().toDateString();
-
-                // Format date: "Poniedziałek, 16.03.2026r."
-                const weekday = dateObj.toLocaleDateString('pl-PL', { weekday: 'long' });
-                const day = String(dateObj.getDate()).padStart(2, '0');
-                const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                const year = dateObj.getFullYear();
-                const formattedDate = `${weekday.charAt(0).toUpperCase() + weekday.slice(1)}, ${day}.${month}.${year}r.`;
-
-                // Day header - nowy format
-                const daySection = document.createElement('div');
-                daySection.className = `mb-8 ${isToday ? 'current-day-section' : ''}`;
-                daySection.dataset.date = dateKey;
-                
-                const dayHeader = document.createElement('div');
-                dayHeader.className = `day-header text-xl md:text-2xl font-bold text-white mb-4 flex items-center gap-3 ${isToday ? 'coyote-text' : ''}`;
-                dayHeader.dataset.date = dateKey;
-                dayHeader.innerHTML = `
-                    <i class="fa-solid fa-calendar-day text-coyote ${isToday ? 'animate-pulse' : ''}"></i>
-                    <span>${formattedDate}</span>
-                    ${isToday ? '<span class="text-sm bg-coyote text-black px-3 py-1 rounded-lg font-bold ml-2">DZISIAJ</span>' : ''}
-                `;
-                daySection.appendChild(dayHeader);
-
-                // Events list for this day
-                const eventsList = document.createElement('ul');
-                eventsList.className = 'space-y-3 ml-8 md:ml-12';
-
-                // Sortowanie w obrębie jednego dnia:
-                // 1) aktywne przed zakończonymi
-                // 2) potem wg godziny
-                const sortedEvents = events.sort((a, b) => {
-                    const isPastA = isEventCompleted(a, now);
-                    const isPastB = isEventCompleted(b, now);
-                    if (isPastA !== isPastB) return isPastA ? 1 : -1;
-
-                    const timeA = a.dateObj.getHours() * 60 + a.dateObj.getMinutes();
-                    const timeB = b.dateObj.getHours() * 60 + b.dateObj.getMinutes();
-                    return timeA - timeB;
-                });
-
-                sortedEvents.forEach(event => {
-                    eventsList.appendChild(renderListItem(event, false));
-                });
-
-                daySection.appendChild(eventsList);
-                container.appendChild(daySection);
-            });
+            window.requestAnimationFrame(updateAllEventsCarousels);
         }
 
         // Calendar functions

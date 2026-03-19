@@ -718,7 +718,11 @@ const firebaseConfig = {
             }
         };
 
-        let carouselIndex = 0;
+        let productItems = [];
+        let productCarouselIndex = 0;
+        let productVisibleCards = 3;
+        let productLoopEnabled = false;
+        let productCarouselAnimating = false;
 
         function getVisibleCardsCount() {
             if (window.innerWidth <= 700) return 1;
@@ -726,100 +730,162 @@ const firebaseConfig = {
             return 3;
         }
 
-        function updateProductCarousel() {
+        function getCurrentProductLogicalIndex() {
+            if (productItems.length === 0) return 0;
+            if (!productLoopEnabled) {
+                return Math.max(0, Math.min(productCarouselIndex, productItems.length - 1));
+            }
+            const raw = productCarouselIndex - productVisibleCards;
+            return ((raw % productItems.length) + productItems.length) % productItems.length;
+        }
+
+        function setProductCarouselPosition(animate = true) {
+            const track = document.getElementById('product-track');
+            if (!track) return;
+
+            const cards = track.querySelectorAll('.product-card');
+            const targetCard = cards[productCarouselIndex] || cards[0];
+            if (!targetCard) {
+                track.style.transform = 'translateX(0)';
+                return;
+            }
+
+            track.style.transition = animate ? 'transform 0.35s ease' : 'none';
+            track.style.transform = `translateX(-${targetCard.offsetLeft}px)`;
+
+            if (!animate) {
+                window.requestAnimationFrame(() => {
+                    track.style.transition = 'transform 0.35s ease';
+                });
+            }
+        }
+
+        function buildProductCard(item) {
+            const encodedTitle = encodeURIComponent(item.title || '');
+            const mainImage = item.mainImage || '';
+
+            return `
+                <article class="card-dark product-card flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50" role="article">
+                    <div class="product-img-container"><img src="${mainImage}" alt="${item.title}" loading="lazy"></div>
+                    <div class="p-4 md:p-6 flex flex-col flex-grow text-center">
+                        <h3 class="text-lg md:text-xl font-bold uppercase mb-2 font-[Orbitron] text-white tracking-tight">${item.title}</h3>
+                        <p class="coyote-text font-black text-xl md:text-2xl mb-4 md:mb-5" aria-label="Cena: ${item.price} złotych">${item.price} PLN</p>
+                        <div class="mt-auto flex flex-col gap-2 md:gap-3">
+                            <button onclick="window.showDetails('${item.id}')" aria-label="Zobacz szczegóły produktu ${item.title}" class="w-full py-2 md:py-3 border border-zinc-800 text-[9px] md:text-[10px] uppercase font-bold hover:bg-zinc-800 transition rounded tracking-widest text-zinc-400">Szczegóły</button>
+                            <button onclick="window.handleOrder(decodeURIComponent('${encodedTitle}'), ${item.price || 0})" aria-label="Zamów produkt ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Zamów</button>
+                        </div>
+                    </div>
+                </article>
+            `;
+        }
+
+        function renderProductCarousel(preservePosition = true) {
             const track = document.getElementById('product-track');
             const prevBtn = document.getElementById('carousel-prev');
             const nextBtn = document.getElementById('carousel-next');
             if (!track || !prevBtn || !nextBtn) return;
 
-            const cards = Array.from(track.querySelectorAll('.product-card'));
-            const visibleCards = getVisibleCardsCount();
-            const maxIndex = Math.max(0, cards.length - visibleCards);
-
-            if (carouselIndex > maxIndex) {
-                carouselIndex = maxIndex;
-            }
-
-            const targetCard = cards[carouselIndex];
-            const offset = targetCard ? targetCard.offsetLeft : 0;
-            track.style.transform = `translateX(-${offset}px)`;
-
-            const shouldDisableArrows = maxIndex === 0;
-            prevBtn.disabled = shouldDisableArrows;
-            nextBtn.disabled = shouldDisableArrows;
-        }
-
-        window.moveProductCarousel = (direction) => {
-            const track = document.getElementById('product-track');
-            if (!track) return;
-
-            const cards = Array.from(track.querySelectorAll('.product-card'));
-            const visibleCards = getVisibleCardsCount();
-            const maxIndex = Math.max(0, cards.length - visibleCards);
-
-            if (maxIndex === 0) {
-                carouselIndex = 0;
-                window.requestAnimationFrame(updateProductCarousel);
-                return;
-            }
-
-            if (direction > 0) {
-                carouselIndex = carouselIndex >= maxIndex ? 0 : carouselIndex + 1;
-            } else if (direction < 0) {
-                carouselIndex = carouselIndex <= 0 ? maxIndex : carouselIndex - 1;
-            }
-
-            window.requestAnimationFrame(updateProductCarousel);
-        };
-
-        window.addEventListener('resize', () => {
-            window.requestAnimationFrame(updateProductCarousel);
-        });
-
-        const fetchAll = async () => {
-            const q = query(collection(db, "products"), orderBy("order", "asc"));
-            const snap = await getDocs(q);
-            const track = document.getElementById('product-track');
-            if (!track) return;
-
-            if (snap.empty) {
+            if (productItems.length === 0) {
                 track.innerHTML = `
                     <article class="card-dark product-card p-8 text-center w-full">
                         <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs">Brak produktów wystawionych na sprzedaż</p>
                     </article>
                 `;
-                carouselIndex = 0;
-                updateProductCarousel();
+                productCarouselIndex = 0;
+                productLoopEnabled = false;
+                prevBtn.disabled = true;
+                nextBtn.disabled = true;
+                setProductCarouselPosition(false);
                 return;
             }
 
-            track.innerHTML = "";
+            const logicalIndex = preservePosition ? getCurrentProductLogicalIndex() : 0;
+            productVisibleCards = getVisibleCardsCount();
+            productLoopEnabled = productItems.length > productVisibleCards;
 
-            snap.forEach(d => {
+            let renderIndices = [];
+            if (productLoopEnabled) {
+                for (let i = productItems.length - productVisibleCards; i < productItems.length; i += 1) {
+                    renderIndices.push(i);
+                }
+                for (let i = 0; i < productItems.length; i += 1) {
+                    renderIndices.push(i);
+                }
+                for (let i = 0; i < productVisibleCards; i += 1) {
+                    renderIndices.push(i);
+                }
+                productCarouselIndex = productVisibleCards + (logicalIndex % productItems.length);
+            } else {
+                for (let i = 0; i < productItems.length; i += 1) {
+                    renderIndices.push(i);
+                }
+                productCarouselIndex = Math.min(logicalIndex, Math.max(0, productItems.length - 1));
+            }
+
+            track.innerHTML = renderIndices.map((idx) => buildProductCard(productItems[idx])).join('');
+            prevBtn.disabled = !productLoopEnabled;
+            nextBtn.disabled = !productLoopEnabled;
+            setProductCarouselPosition(false);
+        }
+
+        const productTrackElement = document.getElementById('product-track');
+        if (productTrackElement) {
+            productTrackElement.addEventListener('transitionend', () => {
+                if (!productLoopEnabled || productItems.length === 0) {
+                    productCarouselAnimating = false;
+                    return;
+                }
+
+                let shouldSnap = false;
+                if (productCarouselIndex >= productItems.length + productVisibleCards) {
+                    productCarouselIndex -= productItems.length;
+                    shouldSnap = true;
+                } else if (productCarouselIndex < productVisibleCards) {
+                    productCarouselIndex += productItems.length;
+                    shouldSnap = true;
+                }
+
+                if (shouldSnap) {
+                    setProductCarouselPosition(false);
+                }
+                productCarouselAnimating = false;
+            });
+        }
+
+        window.moveProductCarousel = (direction) => {
+            if (!productLoopEnabled || productCarouselAnimating) return;
+            const step = direction > 0 ? 1 : -1;
+            productCarouselAnimating = true;
+            productCarouselIndex += step;
+            setProductCarouselPosition(true);
+        };
+
+        window.addEventListener('resize', () => {
+            if (productItems.length === 0) return;
+            renderProductCarousel(true);
+        });
+
+        const fetchAll = async () => {
+            const q = query(collection(db, "products"), orderBy("order", "asc"));
+            const snap = await getDocs(q);
+            productItems = [];
+
+            snap.forEach((d) => {
                 const p = d.data();
                 let mainImage = p.img || '';
                 if (p.images && Array.isArray(p.images) && p.images.length > 0) {
                     mainImage = typeof p.images[0] === 'string' ? p.images[0] : p.images[0].url;
                 }
 
-                const encodedTitle = encodeURIComponent(p.title || '');
-                track.innerHTML += `
-                    <article class="card-dark product-card flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50" role="article">
-                        <div class="product-img-container"><img src="${mainImage}" alt="${p.title}" loading="lazy"></div>
-                        <div class="p-4 md:p-6 flex flex-col flex-grow text-center">
-                            <h3 class="text-lg md:text-xl font-bold uppercase mb-2 font-[Orbitron] text-white tracking-tight">${p.title}</h3>
-                            <p class="coyote-text font-black text-xl md:text-2xl mb-4 md:mb-5" aria-label="Cena: ${p.price} złotych">${p.price} PLN</p>
-                            <div class="mt-auto flex flex-col gap-2 md:gap-3">
-                                <button onclick="window.showDetails('${d.id}')" aria-label="Zobacz szczegóły produktu ${p.title}" class="w-full py-2 md:py-3 border border-zinc-800 text-[9px] md:text-[10px] uppercase font-bold hover:bg-zinc-800 transition rounded tracking-widest text-zinc-400">Szczegóły</button>
-                                <button onclick="window.handleOrder(decodeURIComponent('${encodedTitle}'), ${p.price || 0})" aria-label="Zamów produkt ${p.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Zamów</button>
-                            </div>
-                        </div>
-                    </article>
-                `;
+                productItems.push({
+                    id: d.id,
+                    title: p.title || '',
+                    price: p.price || 0,
+                    mainImage,
+                });
             });
 
-            carouselIndex = 0;
-            window.requestAnimationFrame(updateProductCarousel);
+            renderProductCarousel(false);
         };
 
         window.showDetails = async (id) => {

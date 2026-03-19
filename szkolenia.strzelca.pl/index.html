@@ -633,7 +633,11 @@ const firebaseConfig = {
                 }
             };
 
+            let trainingItems = [];
             let trainingCarouselIndex = 0;
+            let trainingVisibleCards = 3;
+            let trainingLoopEnabled = false;
+            let trainingCarouselAnimating = false;
 
             function getVisibleTrainingCardsCount() {
                 if (window.innerWidth <= 700) return 1;
@@ -641,54 +645,144 @@ const firebaseConfig = {
                 return 3;
             }
 
-            function updateTrainingCarousel() {
+            function getCurrentTrainingLogicalIndex() {
+                if (trainingItems.length === 0) return 0;
+                if (!trainingLoopEnabled) {
+                    return Math.max(0, Math.min(trainingCarouselIndex, trainingItems.length - 1));
+                }
+                const raw = trainingCarouselIndex - trainingVisibleCards;
+                return ((raw % trainingItems.length) + trainingItems.length) % trainingItems.length;
+            }
+
+            function setTrainingCarouselPosition(animate = true) {
+                const track = document.getElementById("training-track");
+                if (!track) return;
+
+                const cards = track.querySelectorAll(".training-card");
+                const targetCard = cards[trainingCarouselIndex] || cards[0];
+                if (!targetCard) {
+                    track.style.transform = "translateX(0)";
+                    return;
+                }
+
+                track.style.transition = animate ? "transform 0.35s ease" : "none";
+                track.style.transform = `translateX(-${targetCard.offsetLeft}px)`;
+
+                if (!animate) {
+                    window.requestAnimationFrame(() => {
+                        track.style.transition = "transform 0.35s ease";
+                    });
+                }
+            }
+
+            function buildTrainingCard(item) {
+                const encodedTitle = encodeURIComponent(item.title || "");
+
+                let buttonHtml = "";
+                if (item.hasAccess) {
+                    buttonHtml = `<button onclick="event.stopPropagation(); window.location.href='https://szkolenia.strzelca.pl/kurs.html?id=${item.id}'" aria-label="Rozpocznij kurs ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Rozpocznij kurs</button>`;
+                } else {
+                    buttonHtml = `<button onclick="event.stopPropagation(); window.handleOfferInquiry(decodeURIComponent('${encodedTitle}'))" aria-label="Zapytaj o ofertę szkolenia ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Zapytaj o ofertę</button>`;
+                }
+
+                return `
+                    <article onclick="window.showTrainingDetails('${item.id}')" class="card-dark training-card flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50 cursor-pointer" role="article">
+                        <div class="training-img-container"><img src="${item.img}" alt="${item.title}" loading="lazy"></div>
+                        <div class="p-4 md:p-6 flex flex-col flex-grow text-center">
+                            <h3 class="text-lg md:text-xl font-bold uppercase mb-2 font-[Orbitron] text-white tracking-tight">${item.title}</h3>
+                            <p class="coyote-text font-black text-xl md:text-2xl mb-4 md:mb-5" aria-label="Cena: ${item.price} złotych">${item.price} PLN</p>
+                            <div class="mt-auto flex flex-col gap-2 md:gap-3">
+                                ${buttonHtml}
+                            </div>
+                        </div>
+                    </article>
+                `;
+            }
+
+            function renderTrainingCarousel(preservePosition = true) {
                 const track = document.getElementById("training-track");
                 const prevBtn = document.getElementById("training-carousel-prev");
                 const nextBtn = document.getElementById("training-carousel-next");
                 if (!track || !prevBtn || !nextBtn) return;
 
-                const cards = Array.from(track.querySelectorAll(".training-card"));
-                const visibleCards = getVisibleTrainingCardsCount();
-                const maxIndex = Math.max(0, cards.length - visibleCards);
-
-                if (trainingCarouselIndex > maxIndex) {
-                    trainingCarouselIndex = maxIndex;
-                }
-
-                const targetCard = cards[trainingCarouselIndex];
-                const offset = targetCard ? targetCard.offsetLeft : 0;
-                track.style.transform = `translateX(-${offset}px)`;
-
-                const shouldDisableArrows = maxIndex === 0;
-                prevBtn.disabled = shouldDisableArrows;
-                nextBtn.disabled = shouldDisableArrows;
-            }
-
-            window.moveTrainingCarousel = (direction) => {
-                const track = document.getElementById("training-track");
-                if (!track) return;
-
-                const cards = Array.from(track.querySelectorAll(".training-card"));
-                const visibleCards = getVisibleTrainingCardsCount();
-                const maxIndex = Math.max(0, cards.length - visibleCards);
-
-                if (maxIndex === 0) {
+                if (trainingItems.length === 0) {
+                    track.innerHTML = `
+                        <article class="card-dark training-card p-8 text-center w-full">
+                            <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs">Brak szkoleń wystawionych do sprzedaży</p>
+                        </article>
+                    `;
                     trainingCarouselIndex = 0;
-                    window.requestAnimationFrame(updateTrainingCarousel);
+                    trainingLoopEnabled = false;
+                    prevBtn.disabled = true;
+                    nextBtn.disabled = true;
+                    setTrainingCarouselPosition(false);
                     return;
                 }
 
-                if (direction > 0) {
-                    trainingCarouselIndex = trainingCarouselIndex >= maxIndex ? 0 : trainingCarouselIndex + 1;
-                } else if (direction < 0) {
-                    trainingCarouselIndex = trainingCarouselIndex <= 0 ? maxIndex : trainingCarouselIndex - 1;
+                const logicalIndex = preservePosition ? getCurrentTrainingLogicalIndex() : 0;
+                trainingVisibleCards = getVisibleTrainingCardsCount();
+                trainingLoopEnabled = trainingItems.length > trainingVisibleCards;
+
+                let renderIndices = [];
+                if (trainingLoopEnabled) {
+                    for (let i = trainingItems.length - trainingVisibleCards; i < trainingItems.length; i += 1) {
+                        renderIndices.push(i);
+                    }
+                    for (let i = 0; i < trainingItems.length; i += 1) {
+                        renderIndices.push(i);
+                    }
+                    for (let i = 0; i < trainingVisibleCards; i += 1) {
+                        renderIndices.push(i);
+                    }
+                    trainingCarouselIndex = trainingVisibleCards + (logicalIndex % trainingItems.length);
+                } else {
+                    for (let i = 0; i < trainingItems.length; i += 1) {
+                        renderIndices.push(i);
+                    }
+                    trainingCarouselIndex = Math.min(logicalIndex, Math.max(0, trainingItems.length - 1));
                 }
 
-                window.requestAnimationFrame(updateTrainingCarousel);
+                track.innerHTML = renderIndices.map((idx) => buildTrainingCard(trainingItems[idx])).join("");
+                prevBtn.disabled = !trainingLoopEnabled;
+                nextBtn.disabled = !trainingLoopEnabled;
+                setTrainingCarouselPosition(false);
+            }
+
+            const trainingTrackElement = document.getElementById("training-track");
+            if (trainingTrackElement) {
+                trainingTrackElement.addEventListener("transitionend", () => {
+                    if (!trainingLoopEnabled || trainingItems.length === 0) {
+                        trainingCarouselAnimating = false;
+                        return;
+                    }
+
+                    let shouldSnap = false;
+                    if (trainingCarouselIndex >= trainingItems.length + trainingVisibleCards) {
+                        trainingCarouselIndex -= trainingItems.length;
+                        shouldSnap = true;
+                    } else if (trainingCarouselIndex < trainingVisibleCards) {
+                        trainingCarouselIndex += trainingItems.length;
+                        shouldSnap = true;
+                    }
+
+                    if (shouldSnap) {
+                        setTrainingCarouselPosition(false);
+                    }
+                    trainingCarouselAnimating = false;
+                });
+            }
+
+            window.moveTrainingCarousel = (direction) => {
+                if (!trainingLoopEnabled || trainingCarouselAnimating) return;
+                const step = direction > 0 ? 1 : -1;
+                trainingCarouselAnimating = true;
+                trainingCarouselIndex += step;
+                setTrainingCarouselPosition(true);
             };
 
             window.addEventListener("resize", () => {
-                window.requestAnimationFrame(updateTrainingCarousel);
+                if (trainingItems.length === 0) return;
+                renderTrainingCarousel(true);
             });
 
             const fetchAll = async () => {
@@ -697,20 +791,7 @@ const firebaseConfig = {
                     orderBy("order", "asc"),
                 );
                 const snap = await getDocs(q);
-                const track = document.getElementById("training-track");
-                if (!track) return;
-                track.innerHTML = "";
-
-                if (snap.empty) {
-                    track.innerHTML = `
-                        <article class="card-dark training-card p-8 text-center w-full">
-                            <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs">Brak szkoleń wystawionych do sprzedaży</p>
-                        </article>
-                    `;
-                    trainingCarouselIndex = 0;
-                    updateTrainingCarousel();
-                    return;
-                }
+                trainingItems = [];
 
                 // Sprawdź czy użytkownik jest zalogowany
                 const user = auth.currentUser;
@@ -730,39 +811,21 @@ const firebaseConfig = {
 
                 snap.forEach((d) => {
                     const t = d.data();
-                    const encodedTitle = encodeURIComponent(t.title || "");
                     // Sprawdź czy użytkownik ma dostęp do kursu
                     const isAvailableForAll = t.available === true;
                     const hasUserAccess = user && userAccessList.includes(d.id);
                     const hasAccess = isAvailableForAll || hasUserAccess;
 
-                    // Przygotuj przycisk w zależności od dostępu
-                    let buttonHtml = '';
-                    if (hasAccess) {
-                        // Użytkownik ma dostęp - przycisk "Rozpocznij kurs"
-                        buttonHtml = `<button onclick="event.stopPropagation(); window.location.href='https://szkolenia.strzelca.pl/kurs.html?id=${d.id}'" aria-label="Rozpocznij kurs ${t.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Rozpocznij kurs</button>`;
-                    } else {
-                        // Użytkownik nie ma dostępu - przycisk "Zapytaj o ofertę"
-                        buttonHtml = `<button onclick="event.stopPropagation(); window.handleOfferInquiry(decodeURIComponent('${encodedTitle}'))" aria-label="Zapytaj o ofertę szkolenia ${t.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Zapytaj o ofertę</button>`;
-                    }
-
-                    // Pokaż wszystkie szkolenia (nie tylko dostępne)
-                    track.innerHTML += `
-                        <article onclick="window.showTrainingDetails('${d.id}')" class="card-dark training-card flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50 cursor-pointer" role="article">
-                            <div class="training-img-container"><img src="${t.img}" alt="${t.title}" loading="lazy"></div>
-                            <div class="p-4 md:p-6 flex flex-col flex-grow text-center">
-                                <h3 class="text-lg md:text-xl font-bold uppercase mb-2 font-[Orbitron] text-white tracking-tight">${t.title}</h3>
-                                <p class="coyote-text font-black text-xl md:text-2xl mb-4 md:mb-5" aria-label="Cena: ${t.price} złotych">${t.price} PLN</p>
-                                <div class="mt-auto flex flex-col gap-2 md:gap-3">
-                                    ${buttonHtml}
-                                </div>
-                            </div>
-                        </article>
-                    `;
+                    trainingItems.push({
+                        id: d.id,
+                        title: t.title || "",
+                        price: t.price || 0,
+                        img: t.img || "",
+                        hasAccess,
+                    });
                 });
 
-                trainingCarouselIndex = 0;
-                window.requestAnimationFrame(updateTrainingCarousel);
+                renderTrainingCarousel(false);
             };
 
             window.showTrainingDetails = async (id) => {
