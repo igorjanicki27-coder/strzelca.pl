@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Cookies/zgody + warunkowe ładowanie analityki -->
     <script src="https://strzelca.pl/consent.js?v=2026-02-06-1"></script>
-    <meta name="description" content="Wydarzenia strzelca.pl - najbliższe zawody, turnieje i eventy strzelckie. Kalendarz wydarzeń dla strzelców.">
+    <meta name="description" content="Blog strzelca.pl - najnowsze artykuły, poradniki i recenzje ze świata strzelectwa.">
     <meta name="keywords" content="wydarzenia strzelca.pl, zawody strzeleckie, turnieje, eventy, kalendarz strzelecki">
     <meta name="author" content="Strzelca.pl">
     <meta name="robots" content="index, follow">
 
     <!-- Open Graph dla Facebook -->
-    <meta property="og:title" content="Wydarzenia STRZELCA.PL">
+    <meta property="og:title" content="Blog STRZELCA.PL">
     <meta property="og:description" content="Wydarzenia strzelca.pl - najbliższe zawody i turnieje strzeleckie. Bądź na bieżąco z kalendarzem wydarzeń.">
     <meta property="og:image" content="https://strzelca.pl/tlo:logo/logo.czarne.png">
     <meta property="og:url" content="https://wydarzenia.strzelca.pl">
@@ -21,7 +21,7 @@
     <link rel="icon" type="image/svg+xml" href="https://strzelca.pl/ikona.svg">
     <link rel="apple-touch-icon" href="https://strzelca.pl/ikona.svg">
 
-    <title>Wydarzenia STRZELCA.PL</title>
+    <title>Blog STRZELCA.PL</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -953,7 +953,7 @@
         </a>
         <div class="container mx-auto px-6 flex justify-center items-center w-full">
             <div class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400">
-                WYDARZENIA.<span class="coyote-text">STRZELCA</span>.PL
+                BLOG.<span class="coyote-text">STRZELCA</span>.PL
                 </div>
             </div>
     </nav>
@@ -1036,7 +1036,7 @@
 
         <main class="w-full px-4 md:px-8 py-6 md:py-10 flex-grow">
             <section id="arsenal">
-                <div class="events-toolbar">
+                <div class="events-toolbar" style="display: none;">
                     <button id="filters-toggle-btn" onclick="window.toggleFilters()" class="filter-trigger-btn" aria-label="Filtry" title="Filtry">
                         <i class="fa-solid fa-filter"></i>
                     </button>
@@ -1048,7 +1048,7 @@
                     <div class="carousel-viewport">
                         <div id="events-track">
                             <article class="card-dark event-carousel-card">
-                                <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs">Ładowanie wydarzeń...</p>
+                                <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs">Ładowanie wpisów...</p>
                             </article>
                         </div>
                     </div>
@@ -1458,12 +1458,7 @@ const firebaseConfig = {
 
         function getEventCategoryName(category) {
             const normalized = normalizeEventCategory(category);
-            const categories = {
-                zawody: 'Zawody Strzeleckie',
-                szkolenie: 'Szkolenie',
-                wystawa: 'Wystawa',
-                inne: 'Inne'
-            };
+            const categories = {news: 'Aktualności', tips: 'Porady', tutorials: 'Poradniki', reviews: 'Recenzje'};
             return categories[normalized] || 'Inne';
         }
 
@@ -1594,14 +1589,14 @@ const firebaseConfig = {
 
                 for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                     try {
-                        const q = query(collection(db, "events"), orderBy("date", "asc"));
+                        const q = query(collection(db, "blogPosts"), where("status", "==", "published"));
                         querySnapshot = await getDocs(q);
                         console.log(`Found ${querySnapshot.size} events in Firestore (with orderBy)`);
                         break;
                     } catch (orderByError) {
                         console.warn(`orderBy failed attempt ${attempt}:`, orderByError);
                         try {
-                            querySnapshot = await getDocs(collection(db, "events"));
+                            querySnapshot = await getDocs(collection(db, "blogPosts"));
                             console.log(`Found ${querySnapshot.size} events in Firestore (without orderBy)`);
                             break;
                         } catch (fallbackError) {
@@ -1624,59 +1619,27 @@ const firebaseConfig = {
                         fullData: event
                     });
                     
-                    // Allow events without published field or with published=true
-                    if (event.published !== false) {
-                        // Sprawdź czy data istnieje
-                        if (!event.date) {
-                            console.warn(`Event ${doc.id} missing date field`);
-                            return;
-                        }
-                        
-                        // Obsługa różnych formatów daty
-                        let dateObj;
-                        if (event.date?.toDate) {
-                            // Firestore Timestamp
-                            dateObj = event.date.toDate();
-                        } else if (event.date instanceof Date) {
-                            // JavaScript Date
-                            dateObj = event.date;
-                        } else if (typeof event.date === 'string' || typeof event.date === 'number') {
-                            // String lub timestamp
-                            dateObj = new Date(event.date);
-                        } else {
-                            console.warn(`Event ${doc.id} has invalid date format:`, event.date);
-                            return;
-                        }
-                        
-                        // Sprawdź czy data jest poprawna
-                        if (isNaN(dateObj.getTime())) {
-                            console.warn(`Event ${doc.id} has invalid date:`, event.date);
-                            return;
+                    if (event.status === 'published') {
+                        let dateObj = new Date();
+                        if (event.createdAt) {
+                            dateObj = new Date(event.createdAt);
                         }
                         
                         allEvents.push({
                             id: doc.id,
                             ...event,
                             dateObj: dateObj,
-                            status: isEventCompleted({ dateObj }) ? 'completed' : 'active',
-                            category: normalizeEventCategory(event.category),
-                            pinned: event.pinned || false,
-                            location: event.location || ''
+                            category: event.category || 'news',
+                            pinned: false
                         });
                     } else {
                         skippedCount++;
-                        console.log(`Skipping event ${doc.id} - published is false`);
                     }
                 });
 
                 console.log(`Loaded ${allEvents.length} published events, skipped ${skippedCount} unpublished events`);
 
-                // Sort events: pinned first, then active (upcoming), then completed
-                allEvents.sort((a, b) => {
-                    if (a.pinned && !b.pinned) return -1;
-                    if (!a.pinned && b.pinned) return 1;
-                    return compareEvents(a, b);
-                });
+                allEvents.sort((a, b) => b.dateObj - a.dateObj);
 
                 updateLastUpdate();
                 applyFilters();
@@ -1896,7 +1859,7 @@ const firebaseConfig = {
             if (filteredEvents.length === 0) {
                 track.innerHTML = `
                     <article class="card-dark event-carousel-card text-center">
-                        <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs">Brak wydarzeń do wyświetlenia</p>
+                        <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs">Brak wpisów do wyświetlenia</p>
                     </article>
                 `;
                 updateEventsCarouselControls();
@@ -1927,15 +1890,16 @@ const firebaseConfig = {
                 const isPinned = !!event.pinned;
 
                 return `
-                    <article class="card-dark event-carousel-card ${isPinned ? 'event-pinned' : ''} ${isPast ? 'event-completed opacity-70' : ''}" data-event-id="${encodeURIComponent(event.id)}">
-                        <p class="event-category-slot">${safeCategory}</p>
-                        <div class="event-divider"></div>
-                        <h3 class="event-title">${safeTitle}</h3>
-                        <div class="event-divider"></div>
-                        <div class="event-data-slot">
-                            <p class="event-meta-row"><i class="fa-solid fa-calendar-day text-coyote/80 mr-1"></i>${dateLabel}</p>
-                            <p class="event-meta-row"><i class="fa-solid fa-clock text-coyote/80 mr-1"></i>${timeLabel}</p>
-                            ${safeLocation ? `<p class="event-meta-row"><i class="fa-solid fa-location-dot text-coyote/80 mr-1"></i>${safeLocation}</p>` : ''}
+                    <article class="card-dark event-carousel-card" style="padding: 0; padding-bottom: 1rem;" data-event-id="${encodeURIComponent(event.id)}">
+                        ${event.imageUrl ? `<img src="${event.imageUrl}" style="width: 100%; height: 160px; object-fit: cover; border-top-left-radius: 12px; border-top-right-radius: 12px; margin-bottom: 0.5rem;" alt="Okładka wpisu">` : ''}
+                        <div style="padding: 0 1rem;">
+                            <p class="event-category-slot" style="margin-top: 0.5rem;">${safeCategory}</p>
+                            <div class="event-divider"></div>
+                            <h3 class="event-title">${safeTitle}</h3>
+                            <div class="event-divider"></div>
+                            <div class="event-data-slot" style="margin-top: 0.5rem;">
+                                <p class="event-meta-row"><i class="fa-solid fa-calendar-day text-coyote/80 mr-1"></i>${dateLabel}</p>
+                            </div>
                         </div>
                     </article>
                 `;
@@ -2122,27 +2086,21 @@ const firebaseConfig = {
 
             const meta = [];
             meta.push(`<div class="flex items-center"><i class="fa-solid fa-calendar mr-2 text-coyote w-5"></i><span>${event.dateObj.toLocaleString('pl-PL', {
-                weekday: 'long',
                 year: 'numeric',
                 month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
+                day: 'numeric'
             })}</span></div>`);
-            meta.push(`<div class="flex items-center"><i class="fa-solid fa-map-marker-alt mr-2 text-coyote w-5"></i><span>${event.location || 'Nie podano lokalizacji'}</span></div>`);
             meta.push(`<div class="flex items-center"><i class="fa-solid fa-tag mr-2 text-coyote w-5"></i><span>${getEventCategoryName(event.category)}</span></div>`);
-            if (event.pinned) {
-                meta.push(`<div class="flex items-center"><i class="fa-solid fa-thumbtack mr-2 text-yellow-500 w-5"></i><span class="text-yellow-500 font-semibold">Przypięte wydarzenie</span></div>`);
-            }
-            if (isEventCompleted(event)) {
-                meta.push(`<div class="flex items-center"><i class="fa-solid fa-check-circle mr-2 text-red-400 w-5"></i><span class="text-red-400 font-semibold">Wydarzenie zakończone</span></div>`);
-            }
 
             document.getElementById('modal-meta').innerHTML = meta.join('');
+            
+            let htmlContent = '';
+            if (event.imageUrl) {
+                htmlContent += `<img src="${event.imageUrl}" style="width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px; margin-bottom: 1.5rem;" alt="Okładka">`;
+            }
+            htmlContent += `<div>${event.content ? String(event.content).replace(/\n/g, '<br>') : 'Brak treści wpisu.'}</div>`;
 
-            // Formatowanie opisu z zachowaniem podziałów linii
-            const description = event.description || 'Brak opisu wydarzenia.';
-            document.getElementById('modal-content').textContent = description;
+            document.getElementById('modal-content').innerHTML = htmlContent;
 
             document.getElementById('event-modal').classList.remove('hidden');
         }
