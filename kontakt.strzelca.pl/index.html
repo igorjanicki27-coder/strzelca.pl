@@ -276,6 +276,21 @@
         <div class="carousel-viewport">
           <div id="contact-track">
 
+            <!-- Karta: Formularz kontaktowy -->
+            <div class="contact-card" onclick="window.openContactForm()" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.openContactForm();}" aria-label="Formularz kontaktowy">
+              <p class="contact-card-type">Wiadomość</p>
+              <div class="contact-divider"></div>
+              <div class="contact-icon" style="color: var(--coyote);">
+                <i class="fa-solid fa-paper-plane"></i>
+              </div>
+              <h3 class="contact-card-title">Formularz kontaktowy</h3>
+              <div class="contact-divider"></div>
+              <div class="contact-card-desc" id="form-card-desc">
+                <i class="fa-solid fa-lock" style="color: var(--coyote);"></i>
+                Dostępny dla niezalogowanych
+              </div>
+            </div>
+
             <!-- Karta: Email -->
             <a href="#" onclick="event.preventDefault(); copyEmail()" class="contact-card" aria-label="Skopiuj adres email">
               <p class="contact-card-type">Email</p>
@@ -320,21 +335,6 @@
                 Otwórz profil
               </div>
             </a>
-
-            <!-- Karta: Formularz kontaktowy -->
-            <div class="contact-card" onclick="window.openContactForm()" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.openContactForm();}" aria-label="Formularz kontaktowy">
-              <p class="contact-card-type">Wiadomość</p>
-              <div class="contact-divider"></div>
-              <div class="contact-icon" style="color: var(--coyote);">
-                <i class="fa-solid fa-paper-plane"></i>
-              </div>
-              <h3 class="contact-card-title">Formularz kontaktowy</h3>
-              <div class="contact-divider"></div>
-              <div class="contact-card-desc" id="form-card-desc">
-                <i class="fa-solid fa-lock" style="color: var(--coyote);"></i>
-                Dostępny dla niezalogowanych
-              </div>
-            </div>
 
           </div>
         </div>
@@ -384,6 +384,160 @@
       <a href="?cookies=1" class="hover:text-zinc-500 transition ml-4">Ustawienia cookies</a>
     </footer>
 
+    <!-- Karuzela i funkcje UI — osobny sync script, działa niezależnie od Firebase -->
+    <script>
+      window.currentUser = null;
+
+      // Karuzela
+      (function () {
+        var carouselLoopEnabled = false;
+        var carouselAnimating = false;
+        var pendingMoves = 0;
+        var DURATION_MS = 180;
+
+        function getVisibleCount() {
+          if (window.innerWidth <= 700) return 1;
+          if (window.innerWidth <= 1024) return 2;
+          return 3;
+        }
+
+        function getStepWidth() {
+          var track = document.getElementById('contact-track');
+          if (!track) return 0;
+          var cards = track.querySelectorAll('.contact-card');
+          if (cards.length >= 2) return cards[1].offsetLeft - cards[0].offsetLeft;
+          return cards[0] ? cards[0].offsetWidth : 0;
+        }
+
+        function updateCarouselControls() {
+          var track = document.getElementById('contact-track');
+          var prevBtn = document.getElementById('carousel-prev');
+          var nextBtn = document.getElementById('carousel-next');
+          if (!track || !prevBtn || !nextBtn) return;
+          var cards = track.querySelectorAll('.contact-card');
+          carouselLoopEnabled = cards.length > getVisibleCount();
+          prevBtn.disabled = !carouselLoopEnabled;
+          nextBtn.disabled = !carouselLoopEnabled;
+          if (!carouselLoopEnabled) {
+            track.style.transition = 'none';
+            track.style.transform = 'translateX(0)';
+            window.requestAnimationFrame(function () {
+              track.style.transition = 'transform ' + DURATION_MS + 'ms cubic-bezier(0.22, 0.61, 0.36, 1)';
+            });
+          }
+        }
+
+        function consumeQueued() {
+          if (!carouselLoopEnabled || pendingMoves === 0 || carouselAnimating) return;
+          var nextDir = pendingMoves > 0 ? 1 : -1;
+          pendingMoves -= nextDir;
+          window.moveCarousel(nextDir);
+        }
+
+        window.moveCarousel = function (direction) {
+          if (!carouselLoopEnabled) return;
+          var moveDir = direction > 0 ? 1 : -1;
+          if (carouselAnimating) {
+            pendingMoves += moveDir;
+            pendingMoves = Math.max(-8, Math.min(8, pendingMoves));
+            return;
+          }
+          var track = document.getElementById('contact-track');
+          if (!track) return;
+          var stepWidth = getStepWidth();
+          if (stepWidth <= 0) return;
+          carouselAnimating = true;
+          var finished = false;
+          var fallback = null;
+          function finalize(cb) {
+            if (finished) return;
+            finished = true;
+            if (fallback) clearTimeout(fallback);
+            if (typeof cb === 'function') cb();
+            carouselAnimating = false;
+            consumeQueued();
+          }
+          if (moveDir > 0) {
+            track.style.transition = 'transform ' + DURATION_MS + 'ms cubic-bezier(0.22, 0.61, 0.36, 1)';
+            track.style.transform = 'translateX(-' + stepWidth + 'px)';
+            function onEndFwd(e) {
+              if (e.propertyName && e.propertyName !== 'transform') return;
+              track.style.transition = 'none';
+              track.appendChild(track.firstElementChild);
+              track.style.transform = 'translateX(0)';
+              void track.offsetHeight;
+              track.style.transition = 'transform ' + DURATION_MS + 'ms cubic-bezier(0.22, 0.61, 0.36, 1)';
+              finalize();
+            }
+            track.addEventListener('transitionend', onEndFwd, { once: true });
+            fallback = setTimeout(function () {
+              finalize(function () {
+                track.style.transition = 'none';
+                track.appendChild(track.firstElementChild);
+                track.style.transform = 'translateX(0)';
+                void track.offsetHeight;
+                track.style.transition = 'transform ' + DURATION_MS + 'ms cubic-bezier(0.22, 0.61, 0.36, 1)';
+              });
+            }, DURATION_MS + 120);
+          } else {
+            track.style.transition = 'none';
+            track.insertBefore(track.lastElementChild, track.firstElementChild);
+            track.style.transform = 'translateX(-' + stepWidth + 'px)';
+            void track.offsetHeight;
+            track.style.transition = 'transform ' + DURATION_MS + 'ms cubic-bezier(0.22, 0.61, 0.36, 1)';
+            track.style.transform = 'translateX(0)';
+            function onEndBwd(e) {
+              if (e.propertyName && e.propertyName !== 'transform') return;
+              finalize();
+            }
+            track.addEventListener('transitionend', onEndBwd, { once: true });
+            fallback = setTimeout(function () { finalize(); }, DURATION_MS + 120);
+          }
+        };
+
+        window.addEventListener('resize', function () { window.requestAnimationFrame(updateCarouselControls); });
+        document.addEventListener('DOMContentLoaded', function () { window.requestAnimationFrame(updateCarouselControls); });
+        if (document.readyState !== 'loading') window.requestAnimationFrame(updateCarouselControls);
+      })();
+
+      // Modal i pomocnicze
+      window.toggleUserMenu = function () { document.getElementById('user-menu')?.classList.toggle('hidden'); };
+
+      window.openContactForm = function () {
+        var modal = document.getElementById('contact-form-modal');
+        if (!modal) return;
+        if (window.currentUser) {
+          window.location.href = 'https://konto.strzelca.pl/profil.html#messages';
+          return;
+        }
+        document.getElementById('contact-form')?.classList.remove('form-disabled');
+        document.getElementById('logged-user-message')?.classList.add('hidden');
+        modal.classList.remove('hidden');
+      };
+
+      window.closeContactForm = function () { document.getElementById('contact-form-modal')?.classList.add('hidden'); };
+
+      window.copyEmail = function () {
+        var email = 'kontakt@strzelca.pl';
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(email).then(function () {
+            alert('Email skopiowany: ' + email);
+            window.location.href = 'mailto:' + email;
+          }).catch(function () { window.location.href = 'mailto:' + email; });
+        } else {
+          window.location.href = 'mailto:' + email;
+        }
+      };
+
+      window.logout = function () {
+        fetch('https://strzelca.pl/api/sso-session-logout', { method: 'POST', credentials: 'include' }).catch(function () {});
+        import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js').then(function (m) {
+          var auth = m.getAuth();
+          m.signOut(auth).then(function () { document.getElementById('user-menu')?.classList.add('hidden'); });
+        }).catch(function (e) { console.error('Logout error:', e); });
+      };
+    </script>
+
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
       import { initializeFirestore, doc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -391,16 +545,21 @@
       import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
 
       async function getFirebaseApiKey() {
-        const urls = ["/api/firebase-config"];
+        const cached = localStorage.getItem("firebase_web_api_key");
+        if (cached) return cached;
+        const urls = ["https://strzelca.pl/api/firebase-config", "/api/firebase-config"];
         for (const url of urls) {
           try {
-            const res = await fetch(url, { cache: "no-store" });
+            const res = await fetch(url, { cache: "force-cache", credentials: url.startsWith("http") ? "omit" : "same-origin" });
             if (!res.ok) continue;
             const data = await res.json().catch(() => null);
-            if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) return data.apiKey;
+            if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
+              localStorage.setItem("firebase_web_api_key", data.apiKey);
+              return data.apiKey;
+            }
           } catch (_) {}
         }
-        throw new Error("Nie udało się pobrać FIREBASE_WEB_API_KEY z /api/firebase-config");
+        throw new Error("Nie udało się pobrać FIREBASE_WEB_API_KEY");
       }
 
       const firebaseConfig = {
@@ -421,8 +580,6 @@
       try { await ensureFirebaseSSO(auth); } catch (e) { console.warn("SSO ensure failed:", e?.message || e); }
 
       function getDefaultAvatar() { return '<i class="fa-solid fa-user text-white"></i>'; }
-
-      window.toggleUserMenu = () => document.getElementById("user-menu")?.classList.toggle("hidden");
 
       document.addEventListener("click", (event) => {
         const userPanel = document.getElementById("user-panel");
@@ -460,7 +617,7 @@
             } else if (userAvatar) {
               userAvatar.innerHTML = getDefaultAvatar();
             }
-          } catch (error) {
+          } catch (_) {
             if (userAvatar) userAvatar.innerHTML = getDefaultAvatar();
           }
         } else {
@@ -471,7 +628,7 @@
 
       window.logout = async () => {
         try {
-          try { await fetch("https://strzelca.pl/api/sso-session-logout", { method: "POST", credentials: "include" }); } catch (e) {}
+          try { await fetch("https://strzelca.pl/api/sso-session-logout", { method: "POST", credentials: "include" }); } catch (_) {}
           await signOut(auth);
           document.getElementById("user-menu")?.classList.add("hidden");
         } catch (error) { console.error("Logout error:", error); }
@@ -489,146 +646,10 @@
         await initVisitTracker(auth);
       } catch (error) { console.warn("Could not initialize visit tracker:", error); }
 
-      let currentUser = null;
       onAuthStateChanged(auth, (user) => {
-        currentUser = user;
+        window.currentUser = user;
         updateUserInterface(user);
       });
-
-      // Karuzela
-      let carouselLoopEnabled = false;
-      let carouselAnimating = false;
-      let pendingMoves = 0;
-      const DURATION_MS = 180;
-
-      function getVisibleCount() {
-        if (window.innerWidth <= 700) return 1;
-        if (window.innerWidth <= 1024) return 2;
-        return 3;
-      }
-
-      function getStepWidth() {
-        const track = document.getElementById('contact-track');
-        if (!track) return 0;
-        const cards = track.querySelectorAll('.contact-card');
-        if (cards.length >= 2) return cards[1].offsetLeft - cards[0].offsetLeft;
-        return cards[0] ? cards[0].offsetWidth : 0;
-      }
-
-      function updateCarouselControls() {
-        const track = document.getElementById('contact-track');
-        const prevBtn = document.getElementById('carousel-prev');
-        const nextBtn = document.getElementById('carousel-next');
-        if (!track || !prevBtn || !nextBtn) return;
-        const cards = track.querySelectorAll('.contact-card');
-        carouselLoopEnabled = cards.length > getVisibleCount();
-        prevBtn.disabled = !carouselLoopEnabled;
-        nextBtn.disabled = !carouselLoopEnabled;
-        if (!carouselLoopEnabled) {
-          track.style.transition = 'none';
-          track.style.transform = 'translateX(0)';
-          window.requestAnimationFrame(() => {
-            track.style.transition = `transform ${DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
-          });
-        }
-      }
-
-      function consumeQueued() {
-        if (!carouselLoopEnabled || pendingMoves === 0 || carouselAnimating) return;
-        const nextDir = pendingMoves > 0 ? 1 : -1;
-        pendingMoves -= nextDir;
-        window.moveCarousel(nextDir);
-      }
-
-      window.moveCarousel = (direction) => {
-        if (!carouselLoopEnabled) return;
-        const moveDir = direction > 0 ? 1 : -1;
-        if (carouselAnimating) {
-          pendingMoves += moveDir;
-          pendingMoves = Math.max(-8, Math.min(8, pendingMoves));
-          return;
-        }
-        const track = document.getElementById('contact-track');
-        if (!track) return;
-        const stepWidth = getStepWidth();
-        if (stepWidth <= 0) return;
-        carouselAnimating = true;
-        let finished = false;
-        let fallback = null;
-        const finalize = (cb) => {
-          if (finished) return;
-          finished = true;
-          if (fallback) clearTimeout(fallback);
-          if (typeof cb === 'function') cb();
-          carouselAnimating = false;
-          consumeQueued();
-        };
-        if (moveDir > 0) {
-          track.style.transition = `transform ${DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
-          track.style.transform = `translateX(-${stepWidth}px)`;
-          const onEnd = (e) => {
-            if (e.propertyName && e.propertyName !== 'transform') return;
-            track.style.transition = 'none';
-            track.appendChild(track.firstElementChild);
-            track.style.transform = 'translateX(0)';
-            void track.offsetHeight;
-            track.style.transition = `transform ${DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
-            finalize();
-          };
-          track.addEventListener('transitionend', onEnd, { once: true });
-          fallback = setTimeout(() => finalize(() => {
-            track.style.transition = 'none';
-            track.appendChild(track.firstElementChild);
-            track.style.transform = 'translateX(0)';
-            void track.offsetHeight;
-            track.style.transition = `transform ${DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
-          }), DURATION_MS + 120);
-        } else {
-          track.style.transition = 'none';
-          track.insertBefore(track.lastElementChild, track.firstElementChild);
-          track.style.transform = `translateX(-${stepWidth}px)`;
-          void track.offsetHeight;
-          track.style.transition = `transform ${DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
-          track.style.transform = 'translateX(0)';
-          const onEnd = (e) => {
-            if (e.propertyName && e.propertyName !== 'transform') return;
-            finalize();
-          };
-          track.addEventListener('transitionend', onEnd, { once: true });
-          fallback = setTimeout(() => finalize(), DURATION_MS + 120);
-        }
-      };
-
-      window.addEventListener('resize', () => window.requestAnimationFrame(updateCarouselControls));
-      window.requestAnimationFrame(updateCarouselControls);
-
-      // Otwieranie formularza
-      window.openContactForm = () => {
-        const modal = document.getElementById('contact-form-modal');
-        if (!modal) return;
-        if (currentUser) {
-          window.location.href = 'https://konto.strzelca.pl/profil.html#messages';
-          return;
-        }
-        const contactForm = document.getElementById('contact-form');
-        const loggedMsg = document.getElementById('logged-user-message');
-        if (contactForm) contactForm.classList.remove('form-disabled');
-        if (loggedMsg) loggedMsg.classList.add('hidden');
-        modal.classList.remove('hidden');
-      };
-
-      window.closeContactForm = () => document.getElementById('contact-form-modal')?.classList.add('hidden');
-
-      window.copyEmail = async () => {
-        const email = 'kontakt@strzelca.pl';
-        try {
-          await navigator.clipboard.writeText(email);
-          alert('Email skopiowany: ' + email);
-          window.location.href = `mailto:${email}`;
-        } catch {
-          window.location.href = `mailto:${email}`;
-        }
-      };
 
       function validateEmail(email) {
         if (!email || email.length > 50) return { valid: false, error: 'Email musi mieć maksymalnie 50 znaków' };
@@ -643,7 +664,7 @@
 
       document.getElementById('contact-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (currentUser) { alert('Zaloguj się i użyj systemu wiadomości.'); return; }
+        if (window.currentUser) { alert('Zaloguj się i użyj systemu wiadomości.'); return; }
 
         const email = document.getElementById('contact-email').value.trim();
         const message = document.getElementById('contact-message').value.trim();
@@ -701,7 +722,7 @@
 
           alert('Wiadomość wysłana! Otrzymasz email potwierdzający.');
           document.getElementById('contact-form').reset();
-          closeContactForm();
+          window.closeContactForm();
         } catch (err) {
           console.error('Błąd wysyłania:', err);
           alert('Wystąpił błąd. Spróbuj ponownie.');
