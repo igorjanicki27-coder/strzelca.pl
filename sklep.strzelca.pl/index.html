@@ -256,6 +256,9 @@
 
         
       async function getFirebaseApiKey() {
+        const cachedKey = localStorage.getItem("firebase_web_api_key");
+        if (cachedKey) return cachedKey;
+
         // Używamy pełnego URL, bo sklep jest na subdomenie sklep.strzelca.pl
         const urls = [
           "https://strzelca.pl/api/firebase-config",
@@ -264,10 +267,11 @@
 
         for (const url of urls) {
           try {
-            const res = await fetch(url, { cache: "no-store" });
+            const res = await fetch(url, { cache: "force-cache" });
             if (!res.ok) continue;
             const data = await res.json().catch(() => null);
             if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
+              localStorage.setItem("firebase_web_api_key", data.apiKey);
               return data.apiKey;
             }
           } catch (_) {

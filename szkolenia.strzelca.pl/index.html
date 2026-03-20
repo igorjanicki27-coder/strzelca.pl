@@ -385,6 +385,9 @@
 
             
       async function getFirebaseApiKey() {
+        const cachedKey = localStorage.getItem("firebase_web_api_key");
+        if (cachedKey) return cachedKey;
+
         const urls = [
           "https://strzelca.pl/api/firebase-config",
           "/api/firebase-config" // fallback dla lokalnego developmentu
@@ -392,10 +395,11 @@
 
         for (const url of urls) {
           try {
-            const res = await fetch(url, { cache: "no-store" });
+            const res = await fetch(url, { cache: "force-cache" });
             if (!res.ok) continue;
             const data = await res.json().catch(() => null);
             if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
+              localStorage.setItem("firebase_web_api_key", data.apiKey);
               return data.apiKey;
             }
           } catch (_) {
@@ -837,11 +841,41 @@ const firebaseConfig = {
                         </article>
                     `;
                 }
-                const q = query(
-                    collection(db, "trainings"),
-                    orderBy("order", "asc"),
-                );
-                const snap = await getDocs(q);
+                const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+                const maxAttempts = 3;
+                let snap;
+                for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                    try {
+                        const q = query(
+                            collection(db, "trainings"),
+                            orderBy("order", "asc"),
+                        );
+                        snap = await getDocs(q);
+                        break;
+                    } catch (error) {
+                        console.warn(`Load trainings attempt ${attempt}/${maxAttempts} failed:`, error);
+                        if (attempt < maxAttempts) {
+                            await wait(450 * attempt);
+                        } else {
+                            if (track) {
+                                track.innerHTML = `
+                                    <article class="card-dark training-card p-8 text-center w-full">
+                                        <p class="text-red-400 uppercase tracking-[0.1em] text-xs mb-3">Nie udało się załadować szkoleń</p>
+                                        <button onclick="fetchAll()" class="px-4 py-2 border border-zinc-700 rounded text-zinc-300 hover:border-[#C19A6B] hover:text-[#C19A6B] transition text-xs uppercase tracking-[0.12em]">Spróbuj ponownie</button>
+                                    </article>
+                                `;
+                            }
+                            trainingLoopEnabled = false;
+                            trainingCarouselAnimating = false;
+                            trainingPendingMoves = 0;
+                            const prevBtn = document.getElementById('training-carousel-prev');
+                            const nextBtn = document.getElementById('training-carousel-next');
+                            if (prevBtn) prevBtn.disabled = true;
+                            if (nextBtn) nextBtn.disabled = true;
+                            return;
+                        }
+                    }
+                }
                 trainingItems = [];
 
                 // Sprawdź czy użytkownik jest zalogowany
