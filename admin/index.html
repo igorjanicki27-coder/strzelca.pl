@@ -1920,6 +1920,63 @@
               </button>
             </div>
 
+            <!-- Formularz dodawania/edycji wpisu na blogu -->
+            <div id="blog-form-section" class="admin-card mb-8 hidden">
+              <h3 class="text-xl font-bold mb-4" id="blog-form-title">Dodaj/Edytuj Wpis</h3>
+              <form id="blog-form" class="space-y-4">
+                <input type="hidden" id="blog-id" />
+                
+                <div>
+                  <label class="block text-sm font-medium mb-2">Tytuł wpisu *</label>
+                  <input type="text" id="blog-title" placeholder="Wprowadź tytuł wpisu" class="w-full" required />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">Krótki opis (zajawka) *</label>
+                  <textarea id="blog-excerpt" placeholder="Krótki opis widoczny na liście..." class="w-full" rows="2" required></textarea>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">Treść wpisu *</label>
+                  <textarea id="blog-content" placeholder="Treść bloga..." class="w-full editor-content" rows="10" required></textarea>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">URL zdjęcia okładkowego *</label>
+                  <input type="url" id="blog-imageUrl" placeholder="https://example.com/image.jpg" class="w-full" required />
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium mb-2">Status</label>
+                    <select id="blog-status" class="w-full">
+                      <option value="draft">Szkic</option>
+                      <option value="published">Opublikowany</option>
+                      <option value="archived">Zarchiwizowany</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-2">Kategoria</label>
+                    <select id="blog-category" class="w-full">
+                      <option value="news">Aktualności</option>
+                      <option value="tips">Porady</option>
+                      <option value="tutorials">Poradniki</option>
+                      <option value="reviews">Recenzje</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="flex space-x-4 pt-4">
+                  <button type="submit" class="btn-admin">
+                    <i class="fa-solid fa-save mr-2"></i>Zapisz
+                  </button>
+                  <button type="button" onclick="cancelBlogEdit()" class="px-6 py-3 border border-zinc-600 rounded-lg hover:bg-zinc-800 transition">
+                    Anuluj
+                  </button>
+                </div>
+              </form>
+            </div>
+
             <!-- Filtry -->
             <div class="admin-card mb-8 max-w-2xl">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -11943,15 +12000,73 @@
 
       window.addNewBlogPost = () => {
         currentBlogPostId = null;
-        showNotification("Funkcja dodawania wpisu będzie dostępna wkrótce.", "info");
-        // TODO: Otwórz modal do dodawania/edycji wpisu
+        document.getElementById("blog-form-title").textContent = "Dodaj nowy wpis";
+        document.getElementById("blog-form").reset();
+        document.getElementById("blog-id").value = "";
+        
+        document.getElementById("blog-form-section").classList.remove("hidden");
+        document.getElementById("blog-form-section").scrollIntoView({ behavior: "smooth" });
       };
 
-      window.editBlogPost = (postId) => {
+      window.editBlogPost = async (postId) => {
         currentBlogPostId = postId;
-        showNotification("Funkcja edycji wpisu będzie dostępna wkrótce.", "info");
-        // TODO: Otwórz modal do edycji wpisu
+        document.getElementById("blog-form-title").textContent = "Edytuj wpis";
+        
+        const post = blogPostsList.find((p) => p.id === postId);
+        if (!post) return;
+        
+        document.getElementById("blog-id").value = post.id || "";
+        document.getElementById("blog-title").value = post.title || "";
+        document.getElementById("blog-excerpt").value = post.excerpt || "";
+        document.getElementById("blog-content").value = post.content || "";
+        document.getElementById("blog-imageUrl").value = post.imageUrl || "";
+        document.getElementById("blog-status").value = post.status || "draft";
+        document.getElementById("blog-category").value = post.category || "news";
+        
+        document.getElementById("blog-form-section").classList.remove("hidden");
+        document.getElementById("blog-form-section").scrollIntoView({ behavior: "smooth" });
       };
+
+      window.cancelBlogEdit = () => {
+        document.getElementById("blog-form-section").classList.add("hidden");
+        document.getElementById("blog-form").reset();
+        currentBlogPostId = null;
+      };
+
+      document.getElementById("blog-form")?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        const id = document.getElementById("blog-id").value;
+        const postData = {
+          title: document.getElementById("blog-title").value,
+          excerpt: document.getElementById("blog-excerpt").value,
+          content: document.getElementById("blog-content").value,
+          imageUrl: document.getElementById("blog-imageUrl").value,
+          status: document.getElementById("blog-status").value,
+          category: document.getElementById("blog-category").value,
+          updatedAt: new Date().toISOString()
+        };
+        
+        try {
+          if (id) {
+            await setDoc(doc(db, "blogPosts", id), postData, { merge: true });
+            showNotification("Wpis zaktualizowany pomyślnie", "success");
+            logActivity("BLOG_UPDATED", `Zaktualizowano wpis bloga: ${postData.title}`);
+          } else {
+            postData.createdAt = new Date().toISOString();
+            const newDocRef = doc(collection(db, "blogPosts"));
+            await setDoc(newDocRef, postData);
+            showNotification("Nowy wpis dodany pomyślnie", "success");
+            logActivity("BLOG_CREATED", `Dodano wpis na bloga: ${postData.title}`);
+          }
+          
+          window.cancelBlogEdit();
+          await loadBlogPosts();
+        } catch (error) {
+          console.error("Błąd zapisywania wpisu bloga:", error);
+          showNotification("Błąd podczas zapisywania wpisu", "error");
+        }
+      });
 
       window.deleteBlogPost = async (postId) => {
         if (!confirm("Czy na pewno chcesz usunąć ten wpis?")) {

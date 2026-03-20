@@ -5,150 +5,1125 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Cookies/zgody + warunkowe ładowanie analityki -->
     <script src="https://strzelca.pl/consent.js?v=2026-02-06-1"></script>
-    <meta name="description" content="Recenzje strzelca.pl - opinie klientów o naszych produktach i usługach. Doświadczenia użytkowników z wyposażeniem strzeleckim.">
-    <meta name="keywords" content="recenzje strzelca.pl, opinie klientów, doświadczenia użytkowników, wyposażenie strzeleckie">
+    <meta name="description" content="Wydarzenia strzelca.pl - najbliższe zawody, turnieje i eventy strzelckie. Kalendarz wydarzeń dla strzelców.">
+    <meta name="keywords" content="wydarzenia strzelca.pl, zawody strzeleckie, turnieje, eventy, kalendarz strzelecki">
     <meta name="author" content="Strzelca.pl">
     <meta name="robots" content="index, follow">
 
     <!-- Open Graph dla Facebook -->
-    <meta property="og:title" content="Recenzje STRZELCA.PL">
-    <meta property="og:description" content="Recenzje i opinie klientów o produktach strzelca.pl. Sprawdź doświadczenia innych użytkowników.">
+    <meta property="og:title" content="Wydarzenia STRZELCA.PL">
+    <meta property="og:description" content="Wydarzenia strzelca.pl - najbliższe zawody i turnieje strzeleckie. Bądź na bieżąco z kalendarzem wydarzeń.">
     <meta property="og:image" content="https://strzelca.pl/tlo:logo/logo.czarne.png">
-    <meta property="og:url" content="https://blog.strzelca.pl">
+    <meta property="og:url" content="https://wydarzenia.strzelca.pl">
     <meta property="og:type" content="website">
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="https://strzelca.pl/ikona.svg">
     <link rel="apple-touch-icon" href="https://strzelca.pl/ikona.svg">
 
-    <title>Recenzje STRZELCA.PL</title>
+    <title>Wydarzenia STRZELCA.PL</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Wspólne poprawki responsywności -->
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-02-06-1" />
     <style>
-        :root { --coyote: #C19A6B; }
-        html, body { min-height: 100%; }
-        body {
-            margin: 0;
-            color: #e5e5e5;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: #0a0a0a;
-            background-image: linear-gradient(rgba(10, 10, 10, 0.22) 0%, rgba(10, 10, 10, 0.55) 55%, rgba(10, 10, 10, 0.9) 100%), url('https://strzelca.pl/tlo.png');
+        :root { 
+            --coyote: #C19A6B; 
+            --coyote-dark: #9a7a55;
+            --coyote-light: #d4b896;
+        }
+        * { scroll-behavior: smooth; }
+        html, body {
+            height: 100%;
+        }
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+            background-color: #0a0a0a; 
+            background: linear-gradient(rgba(10,10,10,0.22) 0%, rgba(10,10,10,0.55) 55%, rgba(10,10,10,0.9) 100%), url('https://strzelca.pl/tlo.png');
             background-size: cover;
             background-position: top center;
+            color: #e5e5e5; 
+            margin: 0; 
+            overflow-x: hidden; 
+            overflow-y: hidden; 
             display: flex;
             flex-direction: column;
-            min-height: 100vh;
+            height: 100vh;
         }
-        .coyote-text {
-            color: var(--coyote);
-            font-family: 'Orbitron', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        }
-        .blog-main {
+        .main-wrapper { 
             flex: 1;
+            min-height: 0;
+            width: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
+        }
+        .coyote-text { 
+            color: var(--coyote); 
+            font-family: 'Orbitron', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+        }
+        
+        /* Event Cards - Nowoczesny design */
+        .event-card { 
+            background: rgba(17, 17, 17, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.12); 
+            border-left: 3px solid var(--coyote);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+            position: relative;
+            overflow: hidden;
+        }
+        .event-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--coyote), transparent);
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+        .event-card:hover { 
+            border-color: var(--coyote); 
+            border-left-color: var(--coyote-light);
+            transform: translateY(-4px) scale(1.01); 
+            box-shadow: 0 12px 32px rgba(193, 154, 107, 0.15), 0 0 0 1px rgba(193, 154, 107, 0.1);
+        }
+        .event-card:hover::before {
+            opacity: 1;
+        }
+        .event-card.event-past { 
+            opacity: 0.65; 
+            filter: grayscale(0.4); 
+        }
+        .event-card.event-past:hover {
+            opacity: 0.85;
+            filter: grayscale(0.2);
+        }
+        
+        /* Day Headers */
+        .day-header { 
+            background: rgba(17, 17, 17, 0.72);
+            border: 1px solid rgba(193, 154, 107, 0.25); 
+            padding: 1rem 1.5rem; 
+            margin-bottom: 1.5rem; 
+            border-radius: 12px; 
+            position: sticky; 
+            top: 20px; 
+            z-index: 30;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .day-header.current-day { 
+            background: rgba(193, 154, 107, 0.2);
+            border-color: var(--coyote); 
+            box-shadow: 0 4px 16px rgba(193, 154, 107, 0.2);
+        }
+        .day-separator { 
+            background: linear-gradient(90deg, transparent, rgba(193, 154, 107, 0.2), transparent); 
+            height: 1px; 
+            margin: 3rem 0; 
+            position: relative; 
+        }
+        .day-separator::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            background: var(--coyote);
+            border-radius: 50%;
+            box-shadow: 0 0 8px rgba(193, 154, 107, 0.5);
+        }
+        
+        /* Calendar */
+        .calendar-day { 
+            background: linear-gradient(135deg, rgba(30, 30, 30, 0.9) 0%, rgba(25, 25, 25, 0.9) 100%); 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            cursor: pointer; 
+            min-height: 40px; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center; 
+            font-size: 13px;
+            border-radius: 6px;
+            position: relative;
+        }
+        .calendar-day:hover { 
+            background: linear-gradient(135deg, rgba(40, 40, 40, 0.95) 0%, rgba(35, 35, 35, 0.95) 100%); 
+            border-color: rgba(193, 154, 107, 0.4); 
+            transform: scale(1.05);
+        }
+        .calendar-day.has-events { 
+            background: linear-gradient(135deg, rgba(25, 25, 25, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%); 
+            border-color: rgba(193, 154, 107, 0.5); 
+        }
+        .calendar-day.has-events::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            width: 4px;
+            height: 4px;
+            background: var(--coyote);
+            border-radius: 50%;
+        }
+        .calendar-day.today { 
+            border-color: var(--coyote); 
+            background: linear-gradient(135deg, rgba(193, 154, 107, 0.25) 0%, rgba(193, 154, 107, 0.15) 100%);
+            box-shadow: 0 0 12px rgba(193, 154, 107, 0.3);
+            font-weight: 700;
+        }
+        .calendar-day.selected { 
+            border-color: var(--coyote); 
+            background: linear-gradient(135deg, rgba(193, 154, 107, 0.35) 0%, rgba(193, 154, 107, 0.25) 100%);
+            box-shadow: 0 0 16px rgba(193, 154, 107, 0.4);
+        }
+        
+        /* Modal */
+        .event-detail-modal { 
+            background: rgba(0, 0, 0, 0.85); 
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        /* Filters modal */
+        .filters-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 24px;
+            z-index: 40;
+        }
+        .filters-modal {
+            width: 100%;
+            max-width: 420px;
+            max-height: 80vh;
+            background: rgba(17, 17, 17, 0.82);
+            border-radius: 18px;
+            border: 1px solid rgba(193,154,107,0.4);
+            box-shadow: 0 24px 80px rgba(0,0,0,0.8);
+            overflow-y: auto;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+        
+        /* Loading state */
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Smooth fade-in animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .event-card {
+            animation: fadeInUp 0.5s ease-out;
+        }
+        
+        .event-list-item {
+            position: relative;
+            padding: 1.02rem 1.12rem;
+            background: rgba(17, 17, 17, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+            overflow: hidden;
+        }
+        .event-list-item::before {
+            content: '';
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 3px;
+            background: linear-gradient(180deg, rgba(193, 154, 107, 0.22) 0%, rgba(193, 154, 107, 0.75) 52%, rgba(193, 154, 107, 0.2) 100%);
+            opacity: 0.65;
+        }
+        .event-list-item:hover {
+            transform: translateY(-2px) scale(1.003);
+            border-color: rgba(193, 154, 107, 0.5);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(193, 154, 107, 0.18);
+        }
+        .event-list-item.event-pinned {
+            background: rgba(31, 24, 14, 0.78);
+            border-color: rgba(193, 154, 107, 0.46);
+        }
+        .event-list-item.event-pinned::before {
+            width: 4px;
+            opacity: 1;
+        }
+
+        .event-title {
+            font-size: 1.28rem;
+            font-weight: 800;
+            line-height: 1.2;
+            letter-spacing: 0.01em;
+            color: #f6f7fb;
+        }
+
+        .event-title-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.62rem;
+            min-width: 0;
+        }
+
+        .event-bullet {
+            color: var(--coyote);
+            font-weight: 800;
+            font-size: 1.28rem;
+            line-height: 1.1;
+            margin-top: -0.04rem;
+            opacity: 0.92;
+        }
+
+        .event-calendar-row {
+            font-size: 0.77rem;
+            color: #b0b4c0;
+            margin: 0.22rem 0 0.18rem;
+            text-transform: capitalize;
+        }
+
+        .event-meta-row {
+            font-size: 0.95rem;
+            color: #c7cad4;
+            font-weight: 500;
+        }
+
+        .event-right-badges {
+            margin-top: 0.1rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-content: flex-start;
+            gap: 0.42rem;
+            max-width: 48%;
+        }
+
+        .badge-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.2rem 0.52rem;
+            border-radius: 10px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: 0.02em;
+        }
+
+        .badge-chip.category {
+            background: rgba(41, 46, 58, 0.72);
+            border: 1px solid rgba(120, 128, 152, 0.25);
+            color: #c7ccd9;
+        }
+
+        .badge-chip.completed {
+            background: rgba(130, 27, 27, 0.28);
+            border: 1px solid rgba(229, 96, 96, 0.32);
+            color: #ff9f9f;
+        }
+
+        .badge-chip.pinned {
+            background: rgba(193, 154, 107, 0.2);
+            border: 1px solid rgba(193, 154, 107, 0.46);
+            color: #f4d7ae;
+        }
+        
+        .current-day-section {
+            padding: 1rem;
+            background: linear-gradient(130deg, rgba(193, 154, 107, 0.14) 0%, rgba(193, 154, 107, 0.05) 55%, rgba(255, 255, 255, 0.02) 100%);
+            border-radius: 16px;
+            border: 1px solid rgba(193, 154, 107, 0.26);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+        }
+
+        .pinned-events-section {
+            margin-bottom: 1.4rem;
+            padding: 0.5rem 0;
+            border: none;
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .pinned-events-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            padding: 0.35rem 0.65rem 0.7rem;
+            border-bottom: 1px solid rgba(193, 154, 107, 0.18);
+            background: linear-gradient(90deg, rgba(193, 154, 107, 0.09) 0%, rgba(193, 154, 107, 0.02) 65%, transparent 100%);
+            border-radius: 12px 12px 0 0;
+        }
+
+        .events-carousel-section {
+            margin-bottom: 1.35rem;
+            padding: 0.9rem 0.95rem 1rem;
+            background: linear-gradient(145deg, rgba(12, 12, 14, 0.58) 0%, rgba(16, 16, 18, 0.45) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+
+        .events-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.8rem;
+            margin-bottom: 0.85rem;
+            padding: 0 0.15rem;
+        }
+
+        .events-section-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.98rem;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            font-weight: 800;
+            color: #d7b68b;
+            font-family: 'Orbitron', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        .events-section-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .events-carousel-shell {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .events-carousel-viewport {
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .events-carousel-track {
+            display: flex;
+            gap: 0.8rem;
+            transition: transform 0.33s ease;
+            will-change: transform;
+        }
+
+        .event-carousel-card {
+            flex: 0 0 calc((100% - 1.6rem) / 3);
+            min-width: 0;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+
+        .events-carousel-arrow {
+            width: 2.45rem;
+            height: 2.45rem;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 999px;
+            background: rgba(10, 10, 10, 0.9);
+            color: #eceff7;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .events-carousel-arrow:hover:not(:disabled) {
+            background: rgba(193, 154, 107, 0.95);
+            border-color: rgba(193, 154, 107, 0.95);
+            color: #090909;
+        }
+
+        .events-carousel-arrow:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .event-card-top-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 0.65rem;
+            margin-bottom: 0.45rem;
+        }
+
+        .event-date-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.42rem;
+            padding: 0.28rem 0.58rem;
+            border-radius: 10px;
+            font-size: 0.73rem;
+            color: #d9dbe3;
+            background: rgba(38, 44, 56, 0.55);
+            border: 1px solid rgba(128, 138, 164, 0.22);
+            text-transform: capitalize;
+            max-width: 100%;
+        }
+
+        .event-date-chip > span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .event-card-bottom {
+            margin-top: 0.58rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .event-location-row {
+            font-size: 0.86rem;
+            color: #aab1bf;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .events-empty-card {
+            width: 100%;
+            min-height: 130px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #9499a6;
+            font-size: 0.9rem;
+        }
+
+        .filter-trigger-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.45rem;
+            height: 2.45rem;
+            margin-right: 0.2rem;
+            border-radius: 12px;
+            border: 1px solid rgba(193, 154, 107, 0.44);
+            background: linear-gradient(150deg, rgba(193, 154, 107, 0.28) 0%, rgba(193, 154, 107, 0.08) 100%);
+            color: #f8e5c8;
+            font-size: 0.92rem;
+            font-weight: 700;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 6px 14px rgba(0, 0, 0, 0.25);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .filter-trigger-btn:hover {
+            transform: translateY(-1px);
+            border-color: rgba(193, 154, 107, 0.76);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 18px rgba(0, 0, 0, 0.3);
+        }
+
+        @media (max-width: 640px) {
+            .event-title {
+                font-size: 1.1rem;
+            }
+
+            .event-bullet {
+                font-size: 1.1rem;
+            }
+
+            .event-right-badges {
+                max-width: 55%;
+                gap: 0.32rem;
+            }
+
+            .filter-trigger-btn {
+                width: 2.25rem;
+                height: 2.25rem;
+                font-size: 0.84rem;
+            }
+        }
+
+        @media (max-width: 1150px) {
+            .event-carousel-card {
+                flex-basis: calc((100% - 0.8rem) / 2);
+            }
+        }
+
+        @media (max-width: 700px) {
+            .events-carousel-shell {
+                gap: 0.45rem;
+            }
+
+            .events-carousel-track {
+                gap: 0.6rem;
+            }
+
+            .event-carousel-card {
+                flex-basis: 100%;
+            }
+
+            .events-carousel-arrow {
+                width: 2.15rem;
+                height: 2.15rem;
+                font-size: 0.78rem;
+            }
+
+            .event-date-chip {
+                font-size: 0.7rem;
+            }
+        }
+
+        /* Badge styles */
+        .badge-pinned {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #000;
+            font-weight: 700;
+            text-shadow: none;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+        }
+        .badge-completed {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.2) 100%);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+        }
+        
+        /* Responsive improvements */
+        @media (max-width: 1280px) {
+            .day-header {
+                top: 10px;
+            }
+        }
+
+        /* Scroll tylko w liście wydarzeń (bez scrolla na całej podstronie) */
+        main {
+            min-height: 0;
+            overflow: hidden;
+            display: flex;
+            flex: 1 1 auto;
+        }
+        main > .max-w-4xl {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 0.5rem;
+        }
+        #events-container {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            padding: 0.3rem 0 4.8rem;
+            margin-bottom: -1rem;
+        }
+
+        #events-container::after {
+            content: '';
+            display: block;
+            height: 1.5rem;
+        }
+
+        #events-container {
+            scrollbar-width: thin;
+            scrollbar-color: var(--coyote) rgba(255, 255, 255, 0.08);
+        }
+
+        #events-container::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        #events-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 999px;
+        }
+
+        #events-container::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, var(--coyote-light) 0%, var(--coyote) 55%, var(--coyote-dark) 100%);
+            border-radius: 999px;
+            border: 2px solid rgba(10, 10, 10, 0.35);
+        }
+
+        #events-container::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #e0c5a3 0%, var(--coyote-light) 60%, var(--coyote) 100%);
+        }
+
+        footer {
+            position: relative;
+            z-index: 2;
+            margin-top: 0;
+            background: transparent;
+        }
+
+        /* Cookie/consent bar – tło jak reszta strony (bez czarnej belki) */
+        #cookie-banner,
+        #cookies,
+        #cookie-consent,
+        #consent-banner,
+        #consent,
+        .sc-consent-modal,
+        .sc-consent-overlay,
+        .cookie-banner,
+        .cookie-consent,
+        .consent-banner,
+        .consent-modal,
+        .consent-widget {
+            background: rgba(10, 10, 10, 0.55) !important;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Wzorzec sklepu: identyczny shell + karty, różnice tylko: przypięcia i filtr */
+        .card-dark {
+            background: #111;
+            border: 1px solid #1f1f1f;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        #arsenal {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            width: 100%;
+        }
+        .events-toolbar {
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto 0.75rem;
+            display: flex;
+            justify-content: flex-end;
+        }
+        .shop-carousel {
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 14px;
+        }
+        .carousel-viewport {
+            overflow: hidden;
+            width: 100%;
+        }
+        #events-track {
+            display: flex;
+            gap: 20px;
+            transition: transform 0.18s cubic-bezier(0.22, 0.61, 0.36, 1);
+            will-change: transform;
+        }
+        .event-carousel-card {
+            flex: 0 0 calc((100% - 40px) / 3);
+            min-width: 0;
+            min-height: 0;
+            cursor: pointer;
+            padding: 1rem 1rem 0.95rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            border-radius: 12px;
+            background: rgba(17, 17, 17, 0.72);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border: 1px solid #1f1f1f;
+        }
+        .event-carousel-card.event-pinned {
+            background: rgba(31, 24, 14, 0.82);
+            border-color: rgba(193, 154, 107, 0.65);
+        }
+        .event-carousel-card.event-completed {
+            border-color: rgba(229, 96, 96, 0.75);
+            box-shadow: 0 0 0 1px rgba(229, 96, 96, 0.18);
+        }
+        .event-category-slot {
+            text-align: center;
+            text-transform: uppercase;
+            font-size: 0.74rem;
+            letter-spacing: 0.16em;
+            font-weight: 800;
+            color: #d8dce7;
+            min-height: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .event-divider {
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.14) 18%, rgba(255, 255, 255, 0.14) 82%, transparent 100%);
+        }
+        .event-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            line-height: 1.3;
+            color: #f6f7fb;
+            margin: 0;
+            text-align: center;
+            min-height: 2.7em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-wrap: balance;
+        }
+        .event-carousel-card.event-pinned .event-title {
+            color: #f0d3a8;
+        }
+        .event-carousel-card.event-completed .event-title {
+            color: #ffb1b1;
+        }
+        .event-data-slot {
+            margin-top: 0.05rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.34rem;
+        }
+        .event-meta-row {
+            font-size: 0.84rem;
+            color: #a1a1aa;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.34rem;
             text-align: center;
         }
+        .badge-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.22rem 0.52rem;
+            border-radius: 10px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: 0.02em;
+        }
+        .badge-chip.category {
+            background: rgba(41, 46, 58, 0.72);
+            border: 1px solid rgba(120, 128, 152, 0.25);
+            color: #c7ccd9;
+        }
+        .badge-chip.completed {
+            background: rgba(130, 27, 27, 0.28);
+            border: 1px solid rgba(229, 96, 96, 0.32);
+            color: #ff9f9f;
+        }
+        .badge-chip.pinned {
+            background: rgba(193, 154, 107, 0.2);
+            border: 1px solid rgba(193, 154, 107, 0.46);
+            color: #f4d7ae;
+        }
+        .carousel-arrow {
+            width: 44px;
+            height: 44px;
+            border: 1px solid #2b2b2b;
+            border-radius: 999px;
+            color: #f4f4f5;
+            background: rgba(10, 10, 10, 0.9);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        .carousel-arrow:hover:not(:disabled) {
+            background: rgba(193, 154, 107, 0.95);
+            color: #050505;
+            border-color: rgba(193, 154, 107, 0.95);
+        }
+        .carousel-arrow:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        .filter-trigger-btn {
+            width: 44px;
+            height: 44px;
+            border: 1px solid rgba(193, 154, 107, 0.44);
+            border-radius: 12px;
+            background: linear-gradient(150deg, rgba(193, 154, 107, 0.28) 0%, rgba(193, 154, 107, 0.08) 100%);
+            color: #f8e5c8;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 6px 14px rgba(0, 0, 0, 0.25);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .filter-trigger-btn:hover {
+            transform: translateY(-1px);
+            border-color: rgba(193, 154, 107, 0.76);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 18px rgba(0, 0, 0, 0.3);
+        }
+        @media (max-width: 1150px) {
+            .event-carousel-card {
+                flex-basis: calc((100% - 20px) / 2);
+            }
+        }
+        @media (max-width: 700px) {
+            .shop-carousel {
+                gap: 8px;
+            }
+            #events-track {
+                gap: 12px;
+            }
+            .event-carousel-card {
+                flex-basis: 100%;
+            }
+            .carousel-arrow {
+                width: 38px;
+                height: 38px;
+            }
+            .filter-trigger-btn {
+                width: 38px;
+                height: 38px;
+            }
+        }
     </style>
-    <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-02-06-1" />
 </head>
 <body>
-    <!-- Panel użytkownika -->
-    <div id="user-panel" class="fixed top-4 right-4 z-50 hidden">
-        <div class="relative">
-            <!-- Avatar - widoczny zawsze -->
-            <button
-                id="user-avatar-button"
-                class="w-12 h-12 rounded-full bg-[#C19A6B] flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-80 transition shadow-lg overflow-hidden"
-                onclick="toggleUserMenu()"
-            >
-                <div id="user-avatar" class="w-full h-full flex items-center justify-center">
-                    <i class="fa-solid fa-user"></i>
-                </div>
-            </button>
-            
-            <!-- Menu rozwijane -->
-            <div
-                id="user-menu"
-                class="absolute top-14 right-0 bg-zinc-900/95 backdrop-blur-md border border-zinc-700 rounded-2xl p-4 shadow-2xl min-w-[200px] hidden"
-            >
-                <div class="space-y-2">
-                    <div
-                        id="user-display-name"
-                        class="text-white font-semibold text-sm mb-3 pb-3 border-b border-zinc-700"
-                    ></div>
-                    <a
-                        id="profile-link"
-                        href="https://konto.strzelca.pl/profil.html"
-                        class="block text-zinc-300 hover:text-[#C19A6B] transition text-sm"
-                    >
-                        <i class="fa-solid fa-user mr-2"></i>Mój profil
-                    </a>
-                    <button onclick="logout()" class="block w-full text-left text-zinc-300 hover:text-red-400 transition text-sm">
-                        <i class="fa-solid fa-sign-out-alt mr-2"></i>Wyloguj się
-                    </button>
+        <!-- Panel użytkownika -->
+        <div id="user-panel" class="fixed top-4 right-4 z-50 hidden">
+            <div class="relative">
+                <!-- Avatar - widoczny zawsze -->
+                <button
+                    id="user-avatar-button"
+                    class="w-12 h-12 rounded-full bg-coyote flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-80 transition shadow-lg overflow-hidden"
+                    onclick="toggleUserMenu()"
+                >
+                    <div id="user-avatar" class="w-full h-full flex items-center justify-center">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                </button>
+                
+                <!-- Menu rozwijane -->
+                <div
+                    id="user-menu"
+                    class="absolute top-14 right-0 bg-zinc-900/95 backdrop-blur-md border border-zinc-700 rounded-2xl p-4 shadow-2xl min-w-[200px] hidden"
+                >
+                    <div class="space-y-2">
+                        <div
+                            id="user-display-name"
+                            class="text-white font-semibold text-sm mb-3 pb-3 border-b border-zinc-700"
+                        ></div>
+                        <a
+                            id="profile-link"
+                            href="https://konto.strzelca.pl/profil.html"
+                            class="block text-zinc-300 hover:text-coyote transition text-sm"
+                        >
+                            <i class="fa-solid fa-user mr-2"></i>Mój profil
+                        </a>
+                        <button onclick="logout()" class="block w-full text-left text-zinc-300 hover:text-red-400 transition text-sm">
+                            <i class="fa-solid fa-sign-out-alt mr-2"></i>Wyloguj się
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Przycisk logowania dla niezalogowanych -->
-    <div id="login-button" class="fixed top-4 right-4 z-50">
-        <a href="https://konto.strzelca.pl/login.html" class="bg-[#C19A6B] text-black w-10 h-10 rounded-full flex items-center justify-center hover:bg-white transition shadow-lg" title="Zaloguj się">
-            <i class="fa-solid fa-sign-in-alt text-lg"></i>
-        </a>
-    </div>
+        <!-- Przycisk logowania dla niezalogowanych -->
+        <div id="login-button" class="fixed top-4 right-4 z-50">
+            <a href="https://konto.strzelca.pl/login.html" class="bg-coyote text-black w-10 h-10 rounded-full flex items-center justify-center hover:bg-white transition shadow-lg" title="Zaloguj się">
+                <i class="fa-solid fa-sign-in-alt text-lg"></i>
+            </a>
+        </div>
 
-    <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative" role="navigation" aria-label="Nawigacja główna">
+    <!-- Top nav - spójny z innymi podstronami -->
+    <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative w-full" role="navigation" aria-label="Nawigacja główna">
         <a href="https://strzelca.pl" aria-label="Powrót do centrum dowodzenia" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl z-[60]">
             <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
         </a>
-        <div class="container mx-auto px-6 flex justify-center items-center">
+        <div class="container mx-auto px-6 flex justify-center items-center w-full">
             <div class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400">
-                BLOG.<span class="coyote-text">STRZELCA</span>.PL
+                WYDARZENIA.<span class="coyote-text">STRZELCA</span>.PL
+                </div>
             </div>
-        </div>
     </nav>
 
-    <main class="blog-main">
-        <div class="max-w-2xl mx-auto bg-zinc-900/85 border border-zinc-800 rounded-2xl p-8 md:p-12 shadow-2xl">
-            <h1 class="text-3xl md:text-5xl font-black uppercase italic font-[Orbitron] tracking-tight">
-                Recenzje <span class="coyote-text">wkrótce</span> dostępne
-            </h1>
-            <p class="mt-4 text-zinc-300">
-                Sekcja recenzji jest w trakcie rozwoju.
-            </p>
-            <a href="https://strzelca.pl" class="inline-block mt-8 coyote-text font-semibold hover:text-white transition">
-                ← Powrót do Centrum Dowodzenia
-            </a>
-        </div>
-    </main>
+    <div class="main-wrapper">
 
-    <footer class="w-full py-10 text-center text-zinc-700 text-[10px] uppercase font-bold tracking-[0.4em] bg-transparent" role="contentinfo">
-        <a href="https://strzelca.pl" class="hover:text-zinc-500 transition">STRZELCA.PL</a> |
-        <a href="?cookies=1" class="hover:text-zinc-500 transition ml-4">Ustawienia cookies</a>
-    </footer>
+
+        <!-- Filters Panel (desktop modal) -->
+        <div id="desktop-filters" class="filters-modal-overlay hidden" onclick="if(event.target === this) window.toggleFilters()">
+            <div class="filters-modal p-5 md:p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg md:text-xl font-bold coyote-text flex items-center gap-2">
+                        <i class="fa-solid fa-filter"></i>
+                        <span>Filtry</span>
+                    </h3>
+                    <div class="flex items-center gap-2">
+                        <button onclick="window.resetFilters(); event.stopPropagation();" class="text-xs text-zinc-400 hover:text-coyote transition" title="Wyczyść filtry">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </button>
+                        <button onclick="window.toggleFilters(); event.stopPropagation();" class="text-zinc-400 hover:text-white text-lg">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Category Filter -->
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-zinc-300 mb-2">
+                        <i class="fa-solid fa-tag mr-2 text-coyote"></i>Rodzaj wydarzenia
+                    </label>
+                    <select id="category-filter" onchange="window.applyFilters()" class="w-full bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-coyote transition">
+                        <option value="">Wszystkie</option>
+                        <option value="zawody">Zawody Strzeleckie</option>
+                        <option value="szkolenie">Szkolenie</option>
+                        <option value="wystawa">Wystawa</option>
+                        <option value="inne">Inne</option>
+                    </select>
+                </div>
+
+                <!-- Date Range Filter -->
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-zinc-300 mb-2">
+                        <i class="fa-solid fa-calendar-range mr-2 text-coyote"></i>Data od
+                    </label>
+                    <input type="date" id="date-from-filter" onchange="window.applyFilters()" class="w-full bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-coyote transition">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-zinc-300 mb-2">
+                        <i class="fa-solid fa-calendar-range mr-2 text-coyote"></i>Data do
+                    </label>
+                    <input type="date" id="date-to-filter" onchange="window.applyFilters()" class="w-full bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-coyote transition">
+                </div>
+
+                <!-- Show completed -->
+                <div class="mb-4">
+                    <label class="flex items-center gap-3 text-sm font-semibold text-zinc-300 cursor-pointer select-none">
+                        <input
+                            id="show-completed-filter"
+                            type="checkbox"
+                            class="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-coyote focus:ring-0 accent-coyote"
+                            onchange="window.applyFilters()"
+                        >
+                        <span class="text-zinc-200">Pokaż zakończone</span>
+                    </label>
+                </div>
+
+                <!-- Active Filters Info -->
+                <div id="active-filters-info" class="mt-4 pt-4 border-t border-zinc-700/50 text-xs text-zinc-400">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fa-solid fa-info-circle text-coyote"></i>
+                        <span class="font-semibold">Aktywne filtry:</span>
+                        </div>
+                    <div id="filters-display" class="space-y-1 text-zinc-500">
+                        Brak aktywnych filtrów
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <main class="w-full px-4 md:px-8 py-6 md:py-10 flex-grow">
+            <section id="arsenal">
+                <div class="events-toolbar">
+                    <button id="filters-toggle-btn" onclick="window.toggleFilters()" class="filter-trigger-btn" aria-label="Filtry" title="Filtry">
+                        <i class="fa-solid fa-filter"></i>
+                    </button>
+                </div>
+                <div class="shop-carousel">
+                    <button id="events-carousel-prev" class="carousel-arrow" type="button" aria-label="Poprzednie wydarzenie" onclick="window.moveEventsCarousel(-1)">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <div class="carousel-viewport">
+                        <div id="events-track">
+                            <article class="card-dark event-carousel-card">
+                                <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs">Ładowanie wydarzeń...</p>
+                            </article>
+                        </div>
+                    </div>
+                    <button id="events-carousel-next" class="carousel-arrow" type="button" aria-label="Następne wydarzenie" onclick="window.moveEventsCarousel(1)">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Event Detail Modal -->
+        <div id="event-modal" class="fixed inset-0 z-50 hidden event-detail-modal" onclick="if(!event.target.closest('#event-modal-panel')) closeEventModal()">
+            <div class="flex items-center justify-center min-h-screen p-2 md:p-4">
+                <div id="event-modal-panel" class="bg-zinc-900/98 backdrop-blur-md border border-zinc-700 rounded-xl md:rounded-2xl max-w-3xl w-full max-h-[95vh] md:max-h-[90vh] overflow-y-auto shadow-2xl">
+                    <div class="p-4 md:p-6 lg:p-8">
+                        <div class="flex justify-between items-start mb-4 md:mb-6">
+                            <div class="min-w-0 flex-1 pr-4">
+                                <h2 id="modal-title" class="text-xl md:text-2xl lg:text-3xl font-bold coyote-text mb-3 break-words"></h2>
+                                <div id="modal-meta" class="text-sm md:text-base text-zinc-400 space-y-2"></div>
+                            </div>
+                            <button onclick="closeEventModal()" class="text-zinc-400 hover:text-white text-xl md:text-2xl ml-3 flex-shrink-0 bg-zinc-800 hover:bg-zinc-700 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition">
+                                <i class="fa-solid fa-times"></i>
+                            </button>
+                        </div>
+
+                        <div class="border-t border-zinc-700 pt-4 md:pt-6 mb-4 md:mb-6">
+                            <div id="modal-content" class="text-zinc-300 text-sm md:text-base leading-relaxed whitespace-pre-wrap">
+                            <!-- Event content will be loaded here -->
+                            </div>
+                        </div>
+
+                        <div class="flex space-x-2 md:space-x-4 pt-4 border-t border-zinc-700">
+                            <button onclick="closeEventModal()" class="flex-1 bg-coyote hover:bg-opacity-90 text-black px-4 md:px-6 py-2 md:py-3 rounded-lg transition font-bold text-sm md:text-base">
+                                Zamknij
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="w-full py-10 text-center text-zinc-700 text-[10px] uppercase font-bold tracking-[0.4em] bg-transparent">
+            <a href="https://strzelca.pl" class="hover:text-zinc-500 transition">STRZELCA.PL</a> |
+            <a href="?cookies=1" class="hover:text-zinc-500 transition ml-4">Ustawienia cookies</a>
+        </footer>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { initializeFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { initializeFirestore, collection, query, orderBy, getDocs, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
 
         
       async function getFirebaseApiKey() {
-        const urls = ["/api/firebase-config"];
+        const cachedKey = localStorage.getItem("firebase_web_api_key");
+        if (cachedKey) return cachedKey;
+
+        // Na subdomenach endpoint /api/* może nie być podpięty.
+        // Dlatego mamy fallback do głównej domeny.
+        const urls = [
+          "https://strzelca.pl/api/firebase-config",
+          "/api/firebase-config"
+        ];
 
         for (const url of urls) {
           try {
-            const res = await fetch(url, { cache: "no-store" });
+            const res = await fetch(url, {
+              cache: "force-cache",
+              credentials: url.startsWith("http") ? "omit" : "same-origin",
+            });
             if (!res.ok) continue;
             const data = await res.json().catch(() => null);
             if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
+              localStorage.setItem("firebase_web_api_key", data.apiKey);
               return data.apiKey;
             }
           } catch (_) {
@@ -225,8 +1200,8 @@ const firebaseConfig = {
 
             if (user) {
                 // Użytkownik zalogowany
-                loginBtn.classList.add("hidden");
-                userPanel.classList.remove("hidden");
+                if (loginBtn) loginBtn.classList.add("hidden");
+                if (userPanel) userPanel.classList.remove("hidden");
 
                 // Wyświetl nazwę użytkownika
                 const displayName = user.displayName || user.email.split("@")[0];
@@ -270,8 +1245,8 @@ const firebaseConfig = {
                 }
             } else {
                 // Użytkownik niezalogowany
-                loginBtn.classList.remove("hidden");
-                userPanel.classList.add("hidden");
+                if (loginBtn) loginBtn.classList.remove("hidden");
+                if (userPanel) userPanel.classList.add("hidden");
             }
         }
 
@@ -324,26 +1299,867 @@ const firebaseConfig = {
             updateUserInterface(user);
         });
 
-        // Funkcja logowania aktywności (przygotowana na przyszłość)
-        async function logActivity(type, userId, userName, details, timestamp = null) {
-            try {
-                const activityData = {
-                    type: type,
-                    userId: userId,
-                    userName: userName,
-                    details: details,
-                    timestamp: timestamp || new Date()
-                };
+        let allEvents = [];
+        let filteredEvents = [];
+        let currentView = 'week'; // legacy (calendar)
+        let currentDate = new Date(); // legacy (calendar)
+        let userScrollPosition = null; // legacy (calendar)
+        let activeFilters = {
+            category: '',
+            dateFrom: '',
+            dateTo: '',
+            showCompleted: false
+        };
 
-                // Tutaj będzie kod do logowania w Firestore gdy blog zostanie zaimplementowany
-                console.log('Aktywność do zalogowania:', activityData);
-            } catch (error) {
-                console.error('Błąd podczas logowania aktywności:', error);
+        const EVENT_CAROUSEL_DURATION_MS = 180;
+        let eventLoopEnabled = false;
+        let eventCarouselAnimating = false;
+        let eventPendingMoves = 0;
+
+        function getVisibleEventsCardsCount() {
+            if (window.innerWidth <= 700) return 1;
+            if (window.innerWidth <= 1150) return 2;
+            return 3;
+        }
+
+        function getEventsStepWidth() {
+            const track = document.getElementById('events-track');
+            if (!track) return 0;
+
+            const cards = track.querySelectorAll('.event-carousel-card');
+            if (cards.length >= 2) {
+                return cards[1].offsetLeft - cards[0].offsetLeft;
+            }
+            return cards[0] ? cards[0].offsetWidth : 0;
+        }
+
+        function updateEventsCarouselControls() {
+            const track = document.getElementById('events-track');
+            const prevBtn = document.getElementById('events-carousel-prev');
+            const nextBtn = document.getElementById('events-carousel-next');
+            if (!track || !prevBtn || !nextBtn) return;
+
+            const cards = track.querySelectorAll('.event-carousel-card');
+            const visibleCards = getVisibleEventsCardsCount();
+            eventLoopEnabled = cards.length > visibleCards;
+            prevBtn.disabled = !eventLoopEnabled;
+            nextBtn.disabled = !eventLoopEnabled;
+
+            if (!eventLoopEnabled) {
+                track.style.transition = 'none';
+                track.style.transform = 'translateX(0)';
+                window.requestAnimationFrame(() => {
+                    track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                });
             }
         }
 
-        // Globalna funkcja dla przyszłych funkcji blogu
-        window.logActivity = logActivity;
+        function consumeQueuedEventMove() {
+            if (!eventLoopEnabled || eventPendingMoves === 0 || eventCarouselAnimating) return;
+            const nextDir = eventPendingMoves > 0 ? 1 : -1;
+            eventPendingMoves -= nextDir;
+            window.moveEventsCarousel(nextDir);
+        }
+
+        window.moveEventsCarousel = (direction) => {
+            if (!eventLoopEnabled) return;
+            const moveDir = direction > 0 ? 1 : -1;
+
+            if (eventCarouselAnimating) {
+                eventPendingMoves += moveDir;
+                eventPendingMoves = Math.max(-8, Math.min(8, eventPendingMoves));
+                return;
+            }
+
+            const track = document.getElementById('events-track');
+            if (!track) return;
+
+            const stepWidth = getEventsStepWidth();
+            if (stepWidth <= 0) return;
+
+            eventCarouselAnimating = true;
+            let finished = false;
+            let fallbackTimer = null;
+
+            const finalizeMove = (afterFinalize) => {
+                if (finished) return;
+                finished = true;
+                if (fallbackTimer) clearTimeout(fallbackTimer);
+                if (typeof afterFinalize === 'function') afterFinalize();
+                eventCarouselAnimating = false;
+                consumeQueuedEventMove();
+            };
+
+            if (moveDir > 0) {
+                track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                track.style.transform = `translateX(-${stepWidth}px)`;
+
+                const onEnd = (event) => {
+                    if (event.propertyName && event.propertyName !== 'transform') return;
+                    track.style.transition = 'none';
+                    const firstCard = track.firstElementChild;
+                    if (firstCard) track.appendChild(firstCard);
+                    track.style.transform = 'translateX(0)';
+                    void track.offsetHeight;
+                    track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                    finalizeMove();
+                };
+
+                track.addEventListener('transitionend', onEnd, { once: true });
+                fallbackTimer = setTimeout(() => {
+                    finalizeMove(() => {
+                        track.style.transition = 'none';
+                        const firstCard = track.firstElementChild;
+                        if (firstCard) track.appendChild(firstCard);
+                        track.style.transform = 'translateX(0)';
+                        void track.offsetHeight;
+                        track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                    });
+                }, EVENT_CAROUSEL_DURATION_MS + 120);
+            } else {
+                track.style.transition = 'none';
+                const lastCard = track.lastElementChild;
+                if (lastCard) track.insertBefore(lastCard, track.firstElementChild);
+                track.style.transform = `translateX(-${stepWidth}px)`;
+                void track.offsetHeight;
+                track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                track.style.transform = 'translateX(0)';
+
+                const onEnd = (event) => {
+                    if (event.propertyName && event.propertyName !== 'transform') return;
+                    finalizeMove();
+                };
+
+                track.addEventListener('transitionend', onEnd, { once: true });
+                fallbackTimer = setTimeout(() => {
+                    finalizeMove();
+                }, EVENT_CAROUSEL_DURATION_MS + 120);
+            }
+        };
+
+        window.addEventListener('resize', () => {
+            window.requestAnimationFrame(updateEventsCarouselControls);
+        });
+
+        function normalizeEventCategory(category) {
+            const value = String(category || '').trim().toLowerCase();
+            const map = {
+                training: 'szkolenie',
+                meeting: 'inne',
+                competition: 'zawody',
+                other: 'inne',
+                zawody: 'zawody',
+                szkolenie: 'szkolenie',
+                wystawa: 'wystawa',
+                inne: 'inne'
+            };
+            return map[value] || 'inne';
+        }
+
+        function getEventCategoryName(category) {
+            const normalized = normalizeEventCategory(category);
+            const categories = {
+                zawody: 'Zawody Strzeleckie',
+                szkolenie: 'Szkolenie',
+                wystawa: 'Wystawa',
+                inne: 'Inne'
+            };
+            return categories[normalized] || 'Inne';
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function isEventCompleted(event, now = new Date()) {
+            const date = event?.dateObj instanceof Date ? event.dateObj : new Date(event?.dateObj || event?.date || 0);
+            return date < now;
+        }
+
+        function resolveFilterSource(sourceHint = 'auto') {
+            if (sourceHint === 'mobile' || sourceHint === 'desktop') {
+                return sourceHint;
+            }
+
+            const activeId = document.activeElement?.id || '';
+            if (activeId.endsWith('-mobile')) {
+                return 'mobile';
+            }
+            if (activeId === 'category-filter' || activeId === 'date-from-filter' || activeId === 'date-to-filter' || activeId === 'show-completed-filter') {
+                return 'desktop';
+            }
+
+            return window.innerWidth < 1280 ? 'mobile' : 'desktop';
+        }
+
+        function getFilterValues(sourceHint = 'auto') {
+            const source = resolveFilterSource(sourceHint);
+            const suffix = source === 'mobile' ? '-mobile' : '';
+
+            const categoryEl = document.getElementById(`category-filter${suffix}`) || document.getElementById(source === 'mobile' ? 'category-filter' : 'category-filter-mobile');
+            const dateFromEl = document.getElementById(`date-from-filter${suffix}`) || document.getElementById(source === 'mobile' ? 'date-from-filter' : 'date-from-filter-mobile');
+            const dateToEl = document.getElementById(`date-to-filter${suffix}`) || document.getElementById(source === 'mobile' ? 'date-to-filter' : 'date-to-filter-mobile');
+            const showCompletedEl = document.getElementById(`show-completed-filter${suffix}`) || document.getElementById(source === 'mobile' ? 'show-completed-filter' : 'show-completed-filter-mobile');
+            const rawCategory = categoryEl ? categoryEl.value : '';
+
+            return {
+                category: rawCategory ? normalizeEventCategory(rawCategory) : '',
+                dateFrom: dateFromEl ? dateFromEl.value : '',
+                dateTo: dateToEl ? dateToEl.value : '',
+                showCompleted: showCompletedEl ? !!showCompletedEl.checked : false
+            };
+        }
+
+        function syncFilters(filters) {
+            const categoryDesktop = document.getElementById('category-filter');
+            const categoryMobile = document.getElementById('category-filter-mobile');
+            const dateFromDesktop = document.getElementById('date-from-filter');
+            const dateFromMobile = document.getElementById('date-from-filter-mobile');
+            const dateToDesktop = document.getElementById('date-to-filter');
+            const dateToMobile = document.getElementById('date-to-filter-mobile');
+            const showCompletedDesktop = document.getElementById('show-completed-filter');
+            const showCompletedMobile = document.getElementById('show-completed-filter-mobile');
+
+            if (categoryDesktop) categoryDesktop.value = filters.category || '';
+            if (categoryMobile) categoryMobile.value = filters.category || '';
+            if (dateFromDesktop) dateFromDesktop.value = filters.dateFrom || '';
+            if (dateFromMobile) dateFromMobile.value = filters.dateFrom || '';
+            if (dateToDesktop) dateToDesktop.value = filters.dateTo || '';
+            if (dateToMobile) dateToMobile.value = filters.dateTo || '';
+            if (showCompletedDesktop) showCompletedDesktop.checked = !!filters.showCompleted;
+            if (showCompletedMobile) showCompletedMobile.checked = !!filters.showCompleted;
+        }
+
+        function compareEvents(a, b, now = new Date()) {
+            const isPastA = isEventCompleted(a, now);
+            const isPastB = isEventCompleted(b, now);
+            if (isPastA !== isPastB) return isPastA ? 1 : -1;
+            return a.dateObj - b.dateObj;
+        }
+
+        function showFatalError(err, label) {
+            try {
+                const track = document.getElementById('events-track');
+                if (!track) return;
+                const msg = (err && (err.message || String(err))) || 'Nieznany błąd';
+                track.innerHTML = `
+                    <article class="card-dark event-carousel-card text-center">
+                        <p class="text-red-500 font-bold mb-2">${label || 'Błąd aplikacji'}</p>
+                        <p class="text-sm text-zinc-500 break-words">${msg}</p>
+                    </article>
+                `;
+                updateEventsCarouselControls();
+            } catch (_) {}
+        }
+
+        function initPage() {
+            try {
+                loadEvents();
+            } catch (e) {
+                console.error('initPage/loadEvents failed:', e);
+                showFatalError(e, 'Błąd inicjalizacji');
+            }
+        }
+
+        window.addEventListener('error', (e) => {
+            console.error('Window error:', e?.error || e);
+            showFatalError(e?.error || e, 'Błąd skryptu');
+        });
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('Unhandled promise rejection:', e?.reason || e);
+            showFatalError(e?.reason || e, 'Błąd ładowania (Promise)');
+        });
+
+        // Initialize (działa też, gdy DOM już załadowany)
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initPage);
+        } else {
+            initPage();
+        }
+
+        // Load events from Firebase
+        async function loadEvents() {
+            try {
+                console.log('Loading events from Firestore...');
+                allEvents = [];
+                let skippedCount = 0;
+                let querySnapshot;
+                const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+                const maxAttempts = 3;
+
+                for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                    try {
+                        const q = query(collection(db, "events"), orderBy("date", "asc"));
+                        querySnapshot = await getDocs(q);
+                        console.log(`Found ${querySnapshot.size} events in Firestore (with orderBy)`);
+                        break;
+                    } catch (orderByError) {
+                        console.warn(`orderBy failed attempt ${attempt}:`, orderByError);
+                        try {
+                            querySnapshot = await getDocs(collection(db, "events"));
+                            console.log(`Found ${querySnapshot.size} events in Firestore (without orderBy)`);
+                            break;
+                        } catch (fallbackError) {
+                            console.warn(`Fallback without orderBy also failed attempt ${attempt}:`, fallbackError);
+                            if (attempt < maxAttempts) {
+                                await wait(450 * attempt);
+                            } else {
+                                throw fallbackError;
+                            }
+                        }
+                    }
+                }
+
+                querySnapshot.forEach((doc) => {
+                    const event = doc.data();
+                    console.log(`Event ${doc.id}:`, { 
+                        title: event.title, 
+                        published: event.published, 
+                        date: event.date,
+                        fullData: event
+                    });
+                    
+                    // Allow events without published field or with published=true
+                    if (event.published !== false) {
+                        // Sprawdź czy data istnieje
+                        if (!event.date) {
+                            console.warn(`Event ${doc.id} missing date field`);
+                            return;
+                        }
+                        
+                        // Obsługa różnych formatów daty
+                        let dateObj;
+                        if (event.date?.toDate) {
+                            // Firestore Timestamp
+                            dateObj = event.date.toDate();
+                        } else if (event.date instanceof Date) {
+                            // JavaScript Date
+                            dateObj = event.date;
+                        } else if (typeof event.date === 'string' || typeof event.date === 'number') {
+                            // String lub timestamp
+                            dateObj = new Date(event.date);
+                        } else {
+                            console.warn(`Event ${doc.id} has invalid date format:`, event.date);
+                            return;
+                        }
+                        
+                        // Sprawdź czy data jest poprawna
+                        if (isNaN(dateObj.getTime())) {
+                            console.warn(`Event ${doc.id} has invalid date:`, event.date);
+                            return;
+                        }
+                        
+                        allEvents.push({
+                            id: doc.id,
+                            ...event,
+                            dateObj: dateObj,
+                            status: isEventCompleted({ dateObj }) ? 'completed' : 'active',
+                            category: normalizeEventCategory(event.category),
+                            pinned: event.pinned || false,
+                            location: event.location || ''
+                        });
+                    } else {
+                        skippedCount++;
+                        console.log(`Skipping event ${doc.id} - published is false`);
+                    }
+                });
+
+                console.log(`Loaded ${allEvents.length} published events, skipped ${skippedCount} unpublished events`);
+
+                // Sort events: pinned first, then active (upcoming), then completed
+                allEvents.sort((a, b) => {
+                    if (a.pinned && !b.pinned) return -1;
+                    if (!a.pinned && b.pinned) return 1;
+                    return compareEvents(a, b);
+                });
+
+                updateLastUpdate();
+                applyFilters();
+            } catch (error) {
+                console.error('Error loading events:', error);
+                console.error('Error details:', {
+                    message: error.message,
+                    code: error.code,
+                    stack: error.stack
+                });
+                
+                // Jeśli błąd związany z indeksem, pokaż bardziej pomocny komunikat
+                let errorMessage = 'Błąd ładowania wydarzeń';
+                if (error.code === 'failed-precondition') {
+                    errorMessage = 'Błąd: Brak indeksu w Firestore. Skontaktuj się z administratorem.';
+                } else if (error.message?.includes('index')) {
+                    errorMessage = 'Błąd: Wymagany indeks Firestore. Sprawdź konsolę przeglądarki.';
+                }
+                
+                const track = document.getElementById('events-track');
+                if (track) {
+                    track.innerHTML = `
+                        <article class="card-dark event-carousel-card text-center">
+                            <p class="text-red-500 font-bold mb-2">${errorMessage}</p>
+                            <p class="text-sm text-zinc-500">${error.message || 'Nieznany błąd'}</p>
+                        </article>
+                    `;
+                    updateEventsCarouselControls();
+                }
+            }
+        }
+
+        function updateLastUpdate() {
+            const el = document.getElementById('last-update');
+            if (el) {
+                el.textContent = new Date().toLocaleString('pl-PL');
+            }
+        }
+
+        function updateEventsCount() {
+            const now = new Date();
+            const totalCount = filteredEvents.length;
+            const activeCount = filteredEvents.filter(e => !isEventCompleted(e, now)).length;
+
+            const legacyEl = document.getElementById('events-count');
+            if (legacyEl) {
+                if (totalCount === 0) {
+                    legacyEl.textContent = 'Brak wydarzeń';
+                } else if (activeCount === totalCount) {
+                    legacyEl.textContent = `${totalCount} ${totalCount === 1 ? 'wydarzenie' : totalCount < 5 ? 'wydarzenia' : 'wydarzeń'}`;
+                } else {
+                    legacyEl.textContent = `${activeCount} aktywnych z ${totalCount}`;
+                }
+            }
+        }
+
+        // Filter functions
+        function applyFilters(sourceHint = 'auto') {
+            const filters = getFilterValues(sourceHint);
+            syncFilters(filters);
+            activeFilters = filters;
+            const now = new Date();
+
+            filteredEvents = allEvents.filter(event => {
+                // Domyślnie nie pokazujemy zakończonych.
+                // Zakończone pojawiają się dopiero po włączeniu checkboxa.
+                if (!filters.showCompleted && isEventCompleted(event, now)) {
+                    return false;
+                }
+
+                // Category filter
+                if (filters.category && normalizeEventCategory(event.category) !== filters.category) {
+                    return false;
+                }
+
+                // Date filters
+                const eventDate = new Date(event.dateObj);
+                eventDate.setHours(0, 0, 0, 0);
+
+                if (filters.dateFrom) {
+                    const fromDate = new Date(filters.dateFrom);
+                    fromDate.setHours(0, 0, 0, 0);
+                    if (eventDate < fromDate) {
+                        return false;
+                    }
+                }
+
+                if (filters.dateTo) {
+                    const toDate = new Date(filters.dateTo);
+                    toDate.setHours(23, 59, 59, 999);
+                    if (eventDate > toDate) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+            updateFiltersDisplay();
+            updateEventsCount();
+            renderEventsList();
+        }
+
+        function resetFilters() {
+            const categoryEl = document.getElementById('category-filter');
+            const categoryMobileEl = document.getElementById('category-filter-mobile');
+            const dateFromEl = document.getElementById('date-from-filter');
+            const dateFromMobileEl = document.getElementById('date-from-filter-mobile');
+            const dateToEl = document.getElementById('date-to-filter');
+            const dateToMobileEl = document.getElementById('date-to-filter-mobile');
+            const showCompletedDesktopEl = document.getElementById('show-completed-filter');
+            const showCompletedMobileEl = document.getElementById('show-completed-filter-mobile');
+
+            if (categoryEl) categoryEl.value = '';
+            if (categoryMobileEl) categoryMobileEl.value = '';
+            if (dateFromEl) dateFromEl.value = '';
+            if (dateFromMobileEl) dateFromMobileEl.value = '';
+            if (dateToEl) dateToEl.value = '';
+            if (dateToMobileEl) dateToMobileEl.value = '';
+            if (showCompletedDesktopEl) showCompletedDesktopEl.checked = false;
+            if (showCompletedMobileEl) showCompletedMobileEl.checked = false;
+
+            applyFilters(resolveFilterSource());
+        }
+
+        function updateFiltersDisplay() {
+            const displayEl = document.getElementById('filters-display');
+            if (!displayEl) return;
+
+            const filters = activeFilters;
+            const parts = [];
+
+            if (filters.category) {
+                const categoryNames = {
+                    zawody: 'Zawody Strzeleckie',
+                    szkolenie: 'Szkolenie',
+                    wystawa: 'Wystawa',
+                    inne: 'Inne'
+                };
+                parts.push(`Kategoria: ${categoryNames[filters.category] || filters.category}`);
+            }
+
+            if (filters.dateFrom) {
+                const fromDate = new Date(filters.dateFrom);
+                parts.push(`Od: ${fromDate.toLocaleDateString('pl-PL')}`);
+            }
+
+            if (filters.dateTo) {
+                const toDate = new Date(filters.dateTo);
+                parts.push(`Do: ${toDate.toLocaleDateString('pl-PL')}`);
+            }
+
+            if (filters.showCompleted) {
+                parts.push('Pokaż zakończone');
+            }
+
+            if (parts.length === 0) {
+                displayEl.innerHTML = '<span class="text-zinc-500">Brak aktywnych filtrów</span>';
+            } else {
+                displayEl.innerHTML = parts.map(p => `<div class="text-zinc-400">• ${p}</div>`).join('');
+            }
+        }
+
+        function toggleFilters() {
+            const desktopFilters = document.getElementById('desktop-filters');
+            if (desktopFilters) {
+                desktopFilters.classList.toggle('hidden');
+            }
+        }
+
+        // Scroll tracking for calendar highlighting
+        function setupScrollTracking() {
+            const container = document.getElementById('events-container');
+            if (!container) return;
+            container.addEventListener('scroll', updateScrollPosition, { passive: true });
+
+            // Also track window scroll if needed
+            window.addEventListener('scroll', updateScrollPosition, { passive: true });
+        }
+
+        function updateScrollPosition() {
+            const dayHeaders = document.querySelectorAll('.day-header');
+            const calendarDays = document.querySelectorAll('.calendar-day');
+
+            // Find which day is currently most visible
+            let currentDay = null;
+            dayHeaders.forEach(header => {
+                const rect = header.getBoundingClientRect();
+                if (rect.top <= window.innerHeight / 2 && rect.bottom >= window.innerHeight / 2) {
+                    currentDay = header.dataset.date;
+                }
+            });
+
+            if (currentDay) {
+                userScrollPosition = currentDay;
+                highlightCalendarDay(currentDay);
+            }
+        }
+
+        function highlightCalendarDay(dateStr) {
+            document.querySelectorAll('.calendar-day').forEach(day => {
+                day.classList.remove('selected');
+                if (day.dataset.date === dateStr) {
+                    day.classList.add('selected');
+                }
+            });
+        }
+
+        // Render events as a single carousel track in shop style
+        function renderEventsList() {
+            const track = document.getElementById('events-track');
+            if (!track) return;
+
+            eventCarouselAnimating = false;
+            eventPendingMoves = 0;
+
+            if (filteredEvents.length === 0) {
+                track.innerHTML = `
+                    <article class="card-dark event-carousel-card text-center">
+                        <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs">Brak wydarzeń do wyświetlenia</p>
+                    </article>
+                `;
+                updateEventsCarouselControls();
+                return;
+            }
+
+            const now = new Date();
+            const sortedEvents = [...filteredEvents].sort((a, b) => {
+                if (a.pinned && !b.pinned) return -1;
+                if (!a.pinned && b.pinned) return 1;
+                return compareEvents(a, b, now);
+            });
+
+            track.innerHTML = sortedEvents.map((event) => {
+                const safeTitle = escapeHtml(event.title || 'Bez tytułu');
+                const safeLocation = escapeHtml(event.location || '');
+                const safeCategory = escapeHtml(getEventCategoryName(event.category).toLocaleUpperCase('pl-PL'));
+                const dateLabel = event.dateObj.toLocaleDateString('pl-PL', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                });
+                const timeLabel = event.dateObj.toLocaleTimeString('pl-PL', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                const isPast = isEventCompleted(event, now);
+                const isPinned = !!event.pinned;
+
+                return `
+                    <article class="card-dark event-carousel-card ${isPinned ? 'event-pinned' : ''} ${isPast ? 'event-completed opacity-70' : ''}" data-event-id="${encodeURIComponent(event.id)}">
+                        <p class="event-category-slot">${safeCategory}</p>
+                        <div class="event-divider"></div>
+                        <h3 class="event-title">${safeTitle}</h3>
+                        <div class="event-divider"></div>
+                        <div class="event-data-slot">
+                            <p class="event-meta-row"><i class="fa-solid fa-calendar-day text-coyote/80 mr-1"></i>${dateLabel}</p>
+                            <p class="event-meta-row"><i class="fa-solid fa-clock text-coyote/80 mr-1"></i>${timeLabel}</p>
+                            ${safeLocation ? `<p class="event-meta-row"><i class="fa-solid fa-location-dot text-coyote/80 mr-1"></i>${safeLocation}</p>` : ''}
+                        </div>
+                    </article>
+                `;
+            }).join('');
+
+            track.querySelectorAll('.event-carousel-card[data-event-id]').forEach((cardEl) => {
+                cardEl.addEventListener('click', () => {
+                    const eventId = decodeURIComponent(cardEl.dataset.eventId || '');
+                    if (eventId) showEventDetail(eventId);
+                });
+            });
+
+            track.style.transition = 'none';
+            track.style.transform = 'translateX(0)';
+            void track.offsetHeight;
+            track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+            window.requestAnimationFrame(updateEventsCarouselControls);
+        }
+
+        // Calendar functions
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+
+            const today = new Date();
+            const todayStr = today.toDateString();
+
+            if (currentView === 'month') {
+                // Month view - current month
+                const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+                const startDate = new Date(firstDay);
+                startDate.setDate(startDate.getDate() - firstDay.getDay() + 1); // Start from Monday
+
+                for (let i = 0; i < 42; i++) {
+                    const date = new Date(startDate);
+                    date.setDate(startDate.getDate() + i);
+
+                    const dateStr = date.toDateString();
+                    const isCurrentMonth = date.getMonth() === currentDate.getMonth() && date.getFullYear() === currentDate.getFullYear();
+                    const isToday = dateStr === todayStr;
+                    const dayEvents = allEvents.filter(event =>
+                        event.dateObj.toDateString() === dateStr
+                    );
+
+                    const dayDiv = document.createElement('div');
+                    dayDiv.className = `calendar-day text-center ${isCurrentMonth ? '' : 'text-zinc-600'} ${isToday ? 'today' : ''} ${dayEvents.length > 0 ? 'has-events' : ''}`;
+                    dayDiv.dataset.date = dateStr;
+                    dayDiv.onclick = () => selectDate(date);
+
+                    dayDiv.innerHTML = `
+                        <div class="font-bold">${date.getDate()}</div>
+                        ${dayEvents.length > 0 ? `<div class="text-xs">${dayEvents.length}</div>` : ''}
+                    `;
+
+                    grid.appendChild(dayDiv);
+                }
+            } else {
+                // Week view - current week
+                const startOfWeek = new Date(currentDate);
+                startOfWeek.setDate(currentDate.getDate() - currentDate.getDay() + 1); // Monday
+
+                for (let i = 0; i < 7; i++) {
+                    const date = new Date(startOfWeek);
+                    date.setDate(startOfWeek.getDate() + i);
+
+                    const dateStr = date.toDateString();
+                    const isToday = dateStr === todayStr;
+                    const dayEvents = allEvents.filter(event =>
+                        event.dateObj.toDateString() === dateStr
+                    );
+
+                    const dayDiv = document.createElement('div');
+                    dayDiv.className = `calendar-day text-center ${isToday ? 'today' : ''} ${dayEvents.length > 0 ? 'has-events' : ''}`;
+                    dayDiv.dataset.date = dateStr;
+                    dayDiv.onclick = () => selectDate(date);
+
+                    dayDiv.innerHTML = `
+                        <div class="font-bold">${date.getDate()}</div>
+                        ${dayEvents.length > 0 ? `<div class="text-xs">${dayEvents.length}</div>` : ''}
+                    `;
+
+                    grid.appendChild(dayDiv);
+                }
+            }
+        }
+
+        function updateCalendarPeriodDisplay() {
+            const display = document.getElementById('calendar-period-display');
+            if (currentView === 'month') {
+                const monthNames = ['Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
+                                   'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'];
+                display.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+            } else {
+                const startOfWeek = new Date(currentDate);
+                startOfWeek.setDate(currentDate.getDate() - currentDate.getDay() + 1);
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+                const startDay = startOfWeek.getDate();
+                const endDay = endOfWeek.getDate();
+                const monthNames = ['Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze',
+                                   'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru'];
+
+                if (startOfWeek.getMonth() === endOfWeek.getMonth()) {
+                    display.textContent = `${startDay}-${endDay} ${monthNames[startOfWeek.getMonth()]}`;
+                } else {
+                    display.textContent = `${startDay} ${monthNames[startOfWeek.getMonth()]} - ${endDay} ${monthNames[endOfWeek.getMonth()]}`;
+                }
+            }
+        }
+
+        function toggleCalendarView() {
+            currentView = currentView === 'week' ? 'month' : 'week';
+            const toggleBtn = document.getElementById('view-toggle-btn');
+            toggleBtn.innerHTML = currentView === 'week' ?
+                '<i class="fa-solid fa-calendar-week"></i>' :
+                '<i class="fa-solid fa-calendar"></i>';
+            toggleBtn.title = currentView === 'week' ? 'Widok tygodnia' : 'Widok miesiąca';
+            updateCalendarPeriodDisplay();
+            renderCalendar();
+        }
+
+        function previousPeriod() {
+            if (currentView === 'month') {
+                currentDate.setMonth(currentDate.getMonth() - 1);
+            } else {
+                currentDate.setDate(currentDate.getDate() - 7);
+            }
+            updateCalendarPeriodDisplay();
+            renderCalendar();
+        }
+
+        function nextPeriod() {
+            if (currentView === 'month') {
+                currentDate.setMonth(currentDate.getMonth() + 1);
+            } else {
+                currentDate.setDate(currentDate.getDate() + 7);
+            }
+            updateCalendarPeriodDisplay();
+            renderCalendar();
+        }
+
+        function selectDate(date) {
+            const dateStr = date.toDateString();
+
+            // Highlight selected date
+            highlightCalendarDay(dateStr);
+
+            // Scroll to the day in the events list
+            const dayHeader = document.querySelector(`.day-header[data-date="${dateStr}"]`);
+            if (dayHeader) {
+                dayHeader.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start',
+                    inline: 'nearest'
+                });
+            } else {
+                showNotification(`Brak wydarzeń w dniu ${date.toLocaleDateString('pl-PL')}`);
+            }
+        }
+
+        function showNotification(message) {
+            // Simple notification - you can enhance this
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-zinc-900 border border-zinc-700 rounded-lg p-4 z-50 max-w-sm';
+            notification.innerHTML = `
+                <div class="text-sm">${message}</div>
+                <button onclick="this.parentElement.remove()" class="mt-2 text-coyote hover:underline text-xs">Zamknij</button>
+            `;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 5000);
+        }
+
+        // Event detail modal
+        function showEventDetail(eventId) {
+            const event = allEvents.find(e => e.id === eventId);
+            if (!event) {
+                console.error('Event not found:', eventId);
+                return;
+            }
+
+            document.getElementById('modal-title').textContent = event.title;
+
+            const meta = [];
+            meta.push(`<div class="flex items-center"><i class="fa-solid fa-calendar mr-2 text-coyote w-5"></i><span>${event.dateObj.toLocaleString('pl-PL', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            })}</span></div>`);
+            meta.push(`<div class="flex items-center"><i class="fa-solid fa-map-marker-alt mr-2 text-coyote w-5"></i><span>${event.location || 'Nie podano lokalizacji'}</span></div>`);
+            meta.push(`<div class="flex items-center"><i class="fa-solid fa-tag mr-2 text-coyote w-5"></i><span>${getEventCategoryName(event.category)}</span></div>`);
+            if (event.pinned) {
+                meta.push(`<div class="flex items-center"><i class="fa-solid fa-thumbtack mr-2 text-yellow-500 w-5"></i><span class="text-yellow-500 font-semibold">Przypięte wydarzenie</span></div>`);
+            }
+            if (isEventCompleted(event)) {
+                meta.push(`<div class="flex items-center"><i class="fa-solid fa-check-circle mr-2 text-red-400 w-5"></i><span class="text-red-400 font-semibold">Wydarzenie zakończone</span></div>`);
+            }
+
+            document.getElementById('modal-meta').innerHTML = meta.join('');
+
+            // Formatowanie opisu z zachowaniem podziałów linii
+            const description = event.description || 'Brak opisu wydarzenia.';
+            document.getElementById('modal-content').textContent = description;
+
+            document.getElementById('event-modal').classList.remove('hidden');
+        }
+
+        function closeEventModal() {
+            document.getElementById('event-modal').classList.add('hidden');
+        }
+
+        // Global functions for onclick handlers
+        window.showEventDetail = showEventDetail;
+        window.closeEventModal = closeEventModal;
+        window.toggleCalendarView = toggleCalendarView;
+        window.previousPeriod = previousPeriod;
+        window.nextPeriod = nextPeriod;
+        window.applyFilters = applyFilters;
+        window.resetFilters = resetFilters;
+        window.toggleFilters = toggleFilters;
     </script>
     <script
       type="module"
