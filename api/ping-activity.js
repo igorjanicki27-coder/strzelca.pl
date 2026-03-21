@@ -1,17 +1,14 @@
 // =============================================================================
 // API: PING ACTIVITY - strzelca.pl (Vercel Serverless)
 // =============================================================================
-// Endpoint do zapisywania "heartbeata" gości w kolekcji activityLogs
-// Działa głównie dla niezalogowanych użytkowników w celu zliczania "Gości" w panelu admina
+// Endpoint do zapisywania "heartbeata" gości w kolekcji guestPresence (nie activityLogs).
+// Dziennik aktywności (activityLogs) ma służyć audytowi — same wejścia na stronę go tam nie trafiają.
 // =============================================================================
 
 const {
   initAdmin,
   admin,
   setCors,
-  parseCookies,
-  getCookieName,
-  verifyLocalSessionJwt,
   readJsonBody,
 } = require("./_sso-utils");
 
@@ -53,26 +50,11 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const { visitorId, pageUrl, userAgent } = body;
+    const { visitorId, userAgent } = body;
 
     if (!visitorId) {
       res.status(400).json({ success: false, error: "Missing visitorId" });
       return;
-    }
-
-    // Dodatkowe sprawdzenie czy uzytkownik jest zalogowany - dla zalogowanych to API nie powinno byc tak potrzebne (mają lastSeen)
-    // Ale na wszelki wypadek pobieramy
-    let verifiedUserId = null;
-    const cookies = parseCookies(req.headers.cookie || "");
-    const sessionCookie = cookies[getCookieName()];
-    
-    if (sessionCookie) {
-      try {
-        const decoded = verifyLocalSessionJwt(sessionCookie);
-        verifiedUserId = decoded.uid;
-      } catch (error) {
-        verifiedUserId = null;
-      }
     }
 
     const ipAddress = req.headers['x-forwarded-for']?.split(',')[0]?.trim() 
@@ -80,18 +62,15 @@ module.exports = async (req, res) => {
       || req.connection?.remoteAddress 
       || 'unknown';
 
-    // Utwórz wpis aktywności gościa
-    const activityData = {
-      userId: verifiedUserId, // null dla niezalogowanych gości
-      visitorId: visitorId,
-      action: "PAGE_VIEW",
-      details: `PageView: ${pageUrl || req.url}`,
+    // Minimalny zapis obecności gościa (bez URL — nie trafia do dziennika zdarzeń)
+    const presenceData = {
+      visitorId,
       ipAddress: ipAddress,
       userAgent: userAgent || req.headers['user-agent'] || '',
-      timestamp: admin.firestore.FieldValue.serverTimestamp()
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
     };
-    
-    const docRef = await db.collection("activityLogs").add(activityData);
+
+    const docRef = await db.collection("guestPresence").add(presenceData);
 
     res.status(200).json({ 
       success: true, 

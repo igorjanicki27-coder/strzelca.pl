@@ -291,7 +291,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Na Vercel podsciezki nie trafiaja do tego pliku — uzyj /api/bazar/cron/expire (api/bazar/cron/expire.js).
+    // Na Vercel cron jest na plaskim URL: /api/bazar-cron-expire (api/bazar-cron-expire.js).
     // Zostawione dla kompatybilnosci, jesli hosting przekaze pelna sciezke do tego handlera.
     if ((req.method === 'POST' || req.method === 'GET') && action === 'cron' && subAction === 'expire') {
       const { handleBazarExpireCron } = require('./_bazar-expire-cron');

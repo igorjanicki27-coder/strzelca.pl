@@ -116,7 +116,7 @@ async function trackVisit(userId = null) {
 }
 
 /**
- * Wysyła "heartbeat" aktywności dla niezalogowanych użytkowników do Firestore (activityLogs)
+ * Wysyła "heartbeat" obecności gościa do API (zapis w guestPresence, nie w dzienniku activityLogs)
  */
 async function pingGuestActivity(userId = null) {
   // Nie pingujemy dla użytkowników zalogowanych, oni mają status lastSeen aktualizowany w inny sposób

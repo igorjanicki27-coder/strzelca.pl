@@ -385,6 +385,12 @@ service cloud.firestore {
       allow update, delete: if isAdminOrSuperAdmin();
     }
 
+    // Obecność gości (heartbeat z API ping-activity) — tylko odczyt dla admina; zapis wyłącznie przez backend
+    match /guestPresence/{docId} {
+      allow read: if isAdminOrSuperAdmin();
+      allow create, update, delete: if false;
+    }
+
     match /user_events/{eventId} {
       allow read: if isAdminOrSuperAdmin() || (isAuthenticated() &&
         resource.data.userId == request.auth.uid);

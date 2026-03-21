@@ -10192,32 +10192,26 @@
               if (activeUsersEl) activeUsersEl.textContent = "0";
             }
 
-            // Aktywni goście (ostatnie 30 minut - na podstawie activityLogs z userId null lub brak userId)
+            // Aktywni goście (ostatnie 30 minut) — kolekcja guestPresence (heartbeat), nie activityLogs
             let activeGuestsCount = 0;
             try {
               const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
               const thirtyMinutesAgoTimestamp = Timestamp.fromDate(thirtyMinutesAgo);
               
-              // Pobierz activityLogs z ostatnich 30 minut
-              const activityLogsQuery = query(
-                collection(db, "activityLogs"),
+              const guestPresenceQuery = query(
+                collection(db, "guestPresence"),
                 where("timestamp", ">=", thirtyMinutesAgoTimestamp),
                 orderBy("timestamp", "desc")
               );
-              const activityLogsSnapshot = await getDocs(activityLogsQuery);
+              const guestPresenceSnapshot = await getDocs(guestPresenceQuery);
               
-              // Zlicz unikalnych gości (userId === null, undefined, lub nie istnieje)
               const guestUserIds = new Set();
-              activityLogsSnapshot.forEach((doc) => {
+              guestPresenceSnapshot.forEach((doc) => {
                 const logData = doc.data();
-                // Gość to taki, który nie ma userId lub ma userId === null
-                if (!logData.userId || logData.userId === null) {
-                  // Użyj visitorId, a jeśli go nie ma - kombinacji ipAddress + userAgent
-                  const ipAddress = logData.ipAddress || 'no-ip';
-                  const userAgent = logData.userAgent || 'no-ua';
-                  const guestId = logData.visitorId || `${ipAddress}-${userAgent}`;
-                  guestUserIds.add(guestId);
-                }
+                const ipAddress = logData.ipAddress || 'no-ip';
+                const userAgent = logData.userAgent || 'no-ua';
+                const guestId = logData.visitorId || `${ipAddress}-${userAgent}`;
+                guestUserIds.add(guestId);
               });
               
               activeGuestsCount = guestUserIds.size;

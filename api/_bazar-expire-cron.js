@@ -2,7 +2,8 @@ const { initAdmin, admin, setCors } = require('./_sso-utils');
 
 /**
  * Wygaszanie ofert bazaru (ACTIVE → EXPIRED po expires_at).
- * Wywolywane z /api/bazar/cron/expire (Vercel Cron) lub z routera api/bazar.js.
+ * Produkcja Vercel: GET/POST /api/bazar-cron-expire (plik api/bazar-cron-expire.js).
+ * Opcjonalnie: pelna sciezka przez api/bazar.js → cron/expire.
  */
 async function handleBazarExpireCron(req, res) {
   setCors(res);
@@ -40,7 +41,16 @@ async function handleBazarExpireCron(req, res) {
     return res.json({ success: true, expired });
   } catch (e) {
     console.error('Bazar expire cron:', e);
-    return res.status(500).json({ success: false, error: 'Blad serwera' });
+    const msg = e?.message || String(e);
+    return res.status(500).json({
+      success: false,
+      error: 'Blad serwera',
+      detail: msg,
+      hint:
+        msg.includes('index') || msg.includes('INDEX')
+          ? 'Wdroz indeksy Firestore: firebase deploy --only firestore:indexes'
+          : undefined,
+    });
   }
 }
 
