@@ -37,7 +37,8 @@ Upewnij się, że wszystkie poniższe zmienne są ustawione zarówno w środowis
 **Cron** to harmonogram: o ustalonej porze Vercel sam wywołuje podany adres URL Twojej aplikacji. Tu endpoint oznacza ogłoszenia z przekroczonym `expires_at` statusem `EXPIRED`.
 
 **Najprostsza konfiguracja (ten projekt):**
-1. W repozytorium jest już wpis w **`vercel.json`** → `crons` → ścieżka `/api/bazar/cron/expire` (domyślnie raz dziennie o **04:00 UTC** — możesz zmienić wyrażenie `schedule`).
+1. W repozytorium jest już wpis w **`vercel.json`** → `crons` → ścieżka `/api/bazar/cron/expire` (domyślnie raz dziennie o **04:00 UTC** — możesz zmienić wyrażenie `schedule`).  
+   **Uwaga (Vercel):** sam plik `api/bazar.js` obsługuje tylko URL **`/api/bazar`** — podścieżki wymagają osobnej funkcji. Endpoint crona jest w **`api/bazar/cron/expire.js`**, inaczej dostaniesz **404 NOT_FOUND**.
 2. W Vercel: **Settings → Environment Variables** ustaw **`CRON_SECRET`** na długi losowy ciąg (np. 32+ znaków). Zgodnie z dokumentacją Vercel, przy wywołaniu cron joba do żądania zostanie dołączony nagłówek **`Authorization: Bearer <CRON_SECRET>`** — backend porównuje go z `process.env.CRON_SECRET` lub `BAZAR_CRON_SECRET`.
 3. Wdróż projekt na **Production**. Crony Vercel działają na produkcji, nie na każdym preview.
 

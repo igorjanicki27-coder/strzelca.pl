@@ -291,31 +291,11 @@ module.exports = async (req, res) => {
       });
     }
 
-    // GET lub POST /api/bazar/cron/expire — Vercel Cron wywoluje zwykle GET + Authorization: Bearer CRON_SECRET
+    // Na Vercel podsciezki nie trafiaja do tego pliku — uzyj /api/bazar/cron/expire (api/bazar/cron/expire.js).
+    // Zostawione dla kompatybilnosci, jesli hosting przekaze pelna sciezke do tego handlera.
     if ((req.method === 'POST' || req.method === 'GET') && action === 'cron' && subAction === 'expire') {
-      const expected = process.env.BAZAR_CRON_SECRET || process.env.CRON_SECRET || '';
-      const got =
-        req.headers['x-bazar-cron-secret'] ||
-        (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-      if (!expected || got !== expected) {
-        return res.status(401).json({ success: false, error: 'Brak autoryzacji crona' });
-      }
-
-      const now = admin.firestore.Timestamp.now();
-      const snap = await db.collection('bazarOffers')
-        .where('status', '==', 'ACTIVE')
-        .where('expires_at', '<=', now)
-        .limit(300)
-        .get();
-
-      let expired = 0;
-      const batch = db.batch();
-      snap.forEach(d => {
-        batch.update(d.ref, { status: 'EXPIRED' });
-        expired++;
-      });
-      if (expired) await batch.commit();
-      return res.json({ success: true, expired });
+      const { handleBazarExpireCron } = require('./_bazar-expire-cron');
+      return handleBazarExpireCron(req, res);
     }
 
     // POST /api/bazar/create - nowa oferta (wymaga zalogowania)

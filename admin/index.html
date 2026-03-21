@@ -2064,9 +2064,11 @@
             </h1>
 
             <div class="flex flex-wrap gap-4 justify-between items-center mb-8">
-              <p class="text-zinc-400 max-w-xl">
-                Lista pochodzi z kolekcji Firestore <code class="text-zinc-500">documents</code> (ta sama jest na
-                dokumenty.strzelca.pl). Jeśli widzisz pustkę, a na stronie są wzory PDF — użyj importu poniżej.
+              <p class="text-zinc-400 max-w-2xl">
+                <strong class="text-zinc-300">Dwie warstwy:</strong> regulaminy i polityki są <strong class="text-zinc-300">w kodzie</strong>
+                (<code class="text-zinc-500">dokumenty.strzelca.pl/index.html</code>) — lista poniżej je tylko linkuje.
+                Sekcja „Wzory PDF” na stronie bierze wpisy z Firestore <code class="text-zinc-500">documents</code>; gdy baza jest pusta,
+                strona pokazuje listę zapasową z kodu — wtedy użyj importu.
               </p>
               <div class="flex flex-wrap gap-2">
                 <button type="button" onclick="importDefaultSitePdfDocuments()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
@@ -2155,6 +2157,27 @@
 
             <!-- Lista dokumentów -->
             <div class="admin-card">
+              <div class="mb-8 pb-8 border-b border-zinc-700">
+                <h3 class="text-lg font-bold text-zinc-200 mb-1">
+                  <i class="fa-solid fa-file-contract text-coyote mr-2"></i>
+                  Regulaminy i polityki (treść w HTML)
+                </h3>
+                <p class="text-sm text-zinc-500 mb-4">
+                  Edycja w repozytorium: <code class="text-zinc-400">dokumenty.strzelca.pl/index.html</code>. Tu: skrót i link do podglądu na żywo.
+                </p>
+                <div id="static-legal-documents-list" class="space-y-2">
+                  <!-- Wypełnia JS -->
+                </div>
+              </div>
+
+              <h3 class="text-lg font-bold text-zinc-200 mb-1">
+                <i class="fa-solid fa-file-pdf text-coyote mr-2"></i>
+                Wzory plików — kolekcja Firestore <code class="text-zinc-500 text-sm font-normal">documents</code>
+              </h3>
+              <p class="text-sm text-zinc-500 mb-4">
+                To jest lista w sekcji „Wzory dokumentów (PDF)” na dokumenty.strzelca.pl (zastępuje domyślną z kodu, gdy są wpisy).
+              </p>
+
               <div id="documents-list" class="space-y-4">
                 <!-- Dokumenty będą ładowane dynamicznie -->
               </div>
@@ -13212,6 +13235,47 @@
         { title: "Procedura monitorowania po wprowadzeniu do obrotu", url: "https://dokumenty.strzelca.pl/pdf/procedura-monitorowania.html", category: "Wzory PDF", icon: "fa-chart-line" },
       ];
 
+      /** Te pozycje są w HTML dokumenty.strzelca.pl (akordeon + modal), nie w Firestore. */
+      const STATIC_SITE_LEGAL_DOCUMENTS = [
+        { title: "Regulamin Platformy", hash: "regulamin-platformy", icon: "fa-users" },
+        { title: "Regulamin Sklepu i Serwisu", hash: "regulamin-sklepu", icon: "fa-store" },
+        { title: "Regulamin bazaru", hash: "regulamin-bazar", icon: "fa-handshake" },
+        { title: "Polityka prywatności platformy", hash: "polityka-prywatnosci-platformy", icon: "fa-user-shield" },
+        { title: "Polityka prywatności sklepu", hash: "polityka-prywatnosci", icon: "fa-shield-alt" },
+        { title: "Regulamin szkoleń strzeleckich", hash: "regulamin-szkolen", icon: "fa-graduation-cap" },
+        {
+          title: "Wzory dokumentów (PDF) — sekcja na stronie",
+          hash: "wzory-dokumentow",
+          icon: "fa-file-pdf",
+          note: "Lista linków: z Firestore lub domyślna z kodu strony",
+        },
+      ];
+
+      function renderStaticLegalDocumentsList() {
+        const el = document.getElementById("static-legal-documents-list");
+        if (!el) return;
+        const base = "https://dokumenty.strzelca.pl";
+        el.innerHTML = STATIC_SITE_LEGAL_DOCUMENTS.map(
+          (row) => `
+            <div class="flex flex-wrap items-center justify-between gap-3 p-3 bg-zinc-800/80 rounded-lg border border-zinc-700">
+              <div class="flex items-center gap-3 min-w-0">
+                <i class="fa-solid ${row.icon || "fa-file-lines"} text-coyote shrink-0"></i>
+                <div class="min-w-0">
+                  <div class="font-medium text-white">${row.title}</div>
+                  ${row.note ? `<div class="text-xs text-zinc-500">${row.note}</div>` : ""}
+                </div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span class="text-[10px] uppercase tracking-wider text-amber-500/90 border border-amber-500/40 px-2 py-0.5 rounded">HTML</span>
+                <a href="${base}#${row.hash}" target="_blank" rel="noopener noreferrer" class="text-coyote hover:text-white text-sm px-3 py-1 border border-coyote/50 rounded transition">
+                  <i class="fa-solid fa-up-right-from-square mr-1"></i>Otwórz
+                </a>
+              </div>
+            </div>
+          `,
+        ).join("");
+      }
+
       window.importDefaultSitePdfDocuments = async () => {
         let existingTitles = new Set();
         let nextOrder = 0;
@@ -13259,6 +13323,8 @@
       let currentDocumentId = null;
 
       async function loadDocuments() {
+        renderStaticLegalDocumentsList();
+
         const loadingEl = document.getElementById("documents-loading");
         const emptyEl = document.getElementById("documents-empty");
         const listEl = document.getElementById("documents-list");
@@ -13296,7 +13362,7 @@
         if (!listEl) return;
 
         if (documentsList.length === 0) {
-          listEl.innerHTML = '<div class="text-center text-zinc-500 py-8">Brak dokumentów do wyświetlenia</div>';
+          listEl.innerHTML = "";
           return;
         }
 

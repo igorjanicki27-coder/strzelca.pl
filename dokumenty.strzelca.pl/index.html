@@ -1292,7 +1292,11 @@
 
         
       async function getFirebaseApiKey() {
-        const urls = ["/api/firebase-config"];
+        // Na subdomenach (np. dokumenty.strzelca.pl) względny /api/… trafia na złą hostę i daje 404.
+        const urls = [
+          "https://strzelca.pl/api/firebase-config",
+          "/api/firebase-config",
+        ];
 
         for (const url of urls) {
           try {
@@ -1307,7 +1311,7 @@
           }
         }
 
-        throw new Error("Nie udało się pobrać FIREBASE_WEB_API_KEY z /api/firebase-config");
+        throw new Error("Nie udało się pobrać FIREBASE_WEB_API_KEY (strzelca.pl/api/firebase-config)");
       }
 const firebaseConfig = {
             apiKey: await getFirebaseApiKey(),
