@@ -691,8 +691,8 @@ const firebaseConfig = {
                     <article onclick="window.showTrainingDetails('${item.id}')" class="card-dark training-card flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50 cursor-pointer" role="article">
                         <div class="training-img-container"><img src="${item.img}" alt="${item.title}" loading="lazy"></div>
                         <div class="p-4 md:p-6 flex flex-col flex-grow text-center">
-                            <h3 class="text-lg md:text-xl font-bold uppercase mb-2 font-[Orbitron] text-white tracking-tight">${item.title}</h3>
-                            <p class="coyote-text font-black text-xl md:text-2xl mb-4 md:mb-5" aria-label="Cena: ${item.price} złotych">${item.price} PLN</p>
+                            <h3 class="text-xl md:text-2xl font-black uppercase mb-2 font-[Orbitron] text-white tracking-tight">${item.title}</h3>
+                            <p class="coyote-text font-bold text-lg md:text-xl mb-4 md:mb-5" aria-label="Cena: ${item.price} złotych">${item.price} PLN</p>
                             <div class="mt-auto flex flex-col gap-2 md:gap-3">
                                 ${buttonHtml}
                             </div>
@@ -947,18 +947,119 @@ const firebaseConfig = {
                     </button>`;
                 }
 
+                // Pobierz zdjęcia szkolenia
+                let images = [];
+                if (t.images && Array.isArray(t.images) && t.images.length > 0) {
+                    images = t.images.map(img => typeof img === 'string' ? img : img.url);
+                } else if (t.img) {
+                    images = [t.img];
+                }
+                
+                if (images.length === 0 && t.desc) {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = t.desc;
+                    const imgs = tempDiv.querySelectorAll('img');
+                    imgs.forEach(img => {
+                        if (img.src && !images.includes(img.src)) {
+                            images.push(img.src);
+                        }
+                    });
+                }
+                
+                let galleryHTML = '';
+                if (images.length > 0) {
+                    galleryHTML = `
+                        <div class="product-gallery" id="product-gallery">
+                            <img id="gallery-main-img" src="${images[0]}" alt="${t.title}" />
+                            ${images.length > 1 ? `
+                                <button class="gallery-nav prev" onclick="changeGalleryImage(-1, ${images.length})" id="gallery-prev" style="opacity: 0.3; cursor: not-allowed;">
+                                    <i class="fa-solid fa-chevron-left"></i>
+                                </button>
+                                <button class="gallery-nav next" onclick="changeGalleryImage(1, ${images.length})" id="gallery-next">
+                                    <i class="fa-solid fa-chevron-right"></i>
+                                </button>
+                                <div class="gallery-counter">
+                                    <span id="gallery-current">1</span> / <span id="gallery-total">${images.length}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                    
+                    window.currentTrainingImages = images;
+                    window.currentGalleryIndex = 0;
+                    
+                    const handleKeyPress = (e) => {
+                        if (e.key === 'ArrowLeft' && window.currentGalleryIndex > 0) {
+                            changeGalleryImage(-1, images.length);
+                        } else if (e.key === 'ArrowRight' && window.currentGalleryIndex < images.length - 1) {
+                            changeGalleryImage(1, images.length);
+                        }
+                    };
+                    
+                    if (window.galleryKeyHandler) {
+                        document.removeEventListener('keydown', window.galleryKeyHandler);
+                    }
+                    window.galleryKeyHandler = handleKeyPress;
+                    document.addEventListener('keydown', handleKeyPress);
+                }
+
+                let descriptionHTML = t.desc || '';
+                if (descriptionHTML && images.length > 0) {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = descriptionHTML;
+                    const imgs = tempDiv.querySelectorAll('img');
+                    imgs.forEach(img => {
+                        if (images.includes(img.src)) {
+                            img.remove();
+                        }
+                    });
+                    descriptionHTML = tempDiv.innerHTML;
+                }
+
                 document.getElementById("details-content").innerHTML = `
-                <h2 class="text-2xl font-black uppercase mb-4 font-[Orbitron] text-white">${t.title}</h2>
+                <h2 class="text-3xl font-black uppercase mb-4 font-[Orbitron] text-white">${t.title}</h2>
+                ${galleryHTML}
                 <div class="text-zinc-400 text-sm mb-8 custom-render details-scroll-area leading-relaxed">
-                    ${t.desc || ''}
+                    ${descriptionHTML}
                 </div>
                 <div class="flex justify-between items-center border-t border-zinc-800 pt-6">
-                    <p class="text-3xl font-black coyote-text">${t.price} PLN</p>
+                    <p class="text-2xl font-bold coyote-text">${t.price} PLN</p>
                     ${buttonHtml}
                 </div>`;
                 document
                     .getElementById("details-modal")
                     .classList.remove("hidden");
+            };
+
+            window.changeGalleryImage = (direction, total) => {
+                if (!window.currentTrainingImages || window.currentTrainingImages.length === 0) return;
+                
+                const newIndex = window.currentGalleryIndex + direction;
+                if (newIndex < 0 || newIndex >= total) return;
+                
+                window.currentGalleryIndex = newIndex;
+                const img = document.getElementById('gallery-main-img');
+                const counter = document.getElementById('gallery-current');
+                
+                if (img) img.src = window.currentTrainingImages[window.currentGalleryIndex];
+                if (counter) counter.textContent = window.currentGalleryIndex + 1;
+                
+                const prevBtn = document.getElementById('gallery-prev');
+                const nextBtn = document.getElementById('gallery-next');
+                if (prevBtn) {
+                    if (window.currentGalleryIndex === 0) {
+                        prevBtn.style.opacity = '0.3'; prevBtn.style.cursor = 'not-allowed';
+                    } else {
+                        prevBtn.style.opacity = '1'; prevBtn.style.cursor = 'pointer';
+                    }
+                }
+                if (nextBtn) {
+                    if (window.currentGalleryIndex === total - 1) {
+                        nextBtn.style.opacity = '0.3'; nextBtn.style.cursor = 'not-allowed';
+                    } else {
+                        nextBtn.style.opacity = '1'; nextBtn.style.cursor = 'pointer';
+                    }
+                }
             };
 
             // Flaga zapobiegająca wielokrotnemu wywołaniu fetchAll()

@@ -1983,6 +1983,8 @@ async function main() {
     badgeTimer = null;
   }
 
+  window.__strzelcaMessagesOpen = openPanel;
+
   function closePanel() {
     isOpen = false;
     setStoredOpen(false);

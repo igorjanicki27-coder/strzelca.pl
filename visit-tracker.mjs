@@ -116,6 +116,47 @@ async function trackVisit(userId = null) {
 }
 
 /**
+ * Wysyła "heartbeat" aktywności dla niezalogowanych użytkowników do Firestore (activityLogs)
+ */
+async function pingGuestActivity(userId = null) {
+  // Nie pingujemy dla użytkowników zalogowanych, oni mają status lastSeen aktualizowany w inny sposób
+  if (userId) return;
+  
+  const lastPing = sessionStorage.getItem('lastGuestActivityPing');
+  const now = Date.now();
+  
+  // Pinguj co najwyżej co 10 minut (600000 ms) w obrębie sesji
+  if (lastPing && (now - parseInt(lastPing, 10) < 600000)) {
+    return;
+  }
+  
+  const visitorId = generateVisitorId();
+  console.log('[Visit Tracker] Pinging guest activity...', { visitorId });
+  
+  try {
+    const response = await fetch('https://strzelca.pl/api/ping-activity', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        visitorId: visitorId,
+        pageUrl: window.location.href,
+        userAgent: navigator.userAgent
+      }),
+      keepalive: true
+    });
+    
+    if (response.ok) {
+      sessionStorage.setItem('lastGuestActivityPing', now.toString());
+      console.log('[Visit Tracker] Guest activity pinged successfully');
+    }
+  } catch (error) {
+    console.warn('[Visit Tracker] Error pinging guest activity:', error);
+  }
+}
+
+/**
  * Inicjalizuje śledzenie odwiedzin
  * @param {Object} auth - Firebase Auth instance (opcjonalne, dla zalogowanych użytkowników)
  */
@@ -199,6 +240,9 @@ async function handleVisitTracking(auth) {
     visitTracked = true;
     await trackVisit(null);
   }
+  
+  // Niezależnie od tego, czy zliczyliśmy wizytę (dzienną), dla gości wyślij "ping" aktywności teraz
+  pingGuestActivity(userId);
   
   // Śledź również przy zamknięciu strony (sendBeacon dla niezawodności)
   window.addEventListener('beforeunload', () => {

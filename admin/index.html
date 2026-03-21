@@ -8558,7 +8558,18 @@
         if (!confirm("Czy na pewno chcesz usunąć to wydarzenie?")) return;
 
         try {
+          const event = eventsList.find(e => e.id === eventId);
+          const eventName = event ? event.title : "Nieznane wydarzenie";
+          
           await deleteDoc(doc(db, "events", eventId));
+          
+          if (currentUser) {
+            await logActivity(currentUser.uid, "EVENT_DELETED", {
+              eventTitle: eventName,
+              eventId: eventId
+            });
+          }
+          
           showNotification("Wydarzenie zostało usunięte.", "success");
           await loadEvents();
         } catch (error) {
@@ -8662,6 +8673,7 @@
 
       // Funkcje zarządzania akcjami charytatywnymi
       let charityActionsList = [];
+      let charityImages = [];
 
       async function loadCharity() {
         // Funkcja do ładowania akcji charytatywnych
@@ -8734,6 +8746,7 @@
 
       function openCharityModal(charityId = null) {
         const charity = charityId ? charityActionsList.find((c) => c.id === charityId) : null;
+        charityImages = charity ? [...(charity.images || (charity.image ? [{url: charity.image, order: 0}] : []))] : [];
 
         const modalHtml = `
           <div id="charity-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onclick="if(event.target.id === 'charity-form-modal') closeCharityFormModal()">
@@ -8761,11 +8774,11 @@
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium mb-2">Data akcji *</label>
+                  <label class="block text-sm font-medium mb-2">Data i czas zakończenia wydarzenia *</label>
                   <input
-                    type="date"
+                    type="datetime-local"
                     id="charity-date"
-                    value="${charity && charity.date ? (new Date(charity.date).toISOString().split('T')[0]) : ""}"
+                    value="${charity && charity.date ? formatDateTimeForInput(charity.date) : ""}"
                     required
                     class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
                   />
@@ -8782,25 +8795,27 @@
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium mb-2">Zdjęcie (URL lub base64)</label>
+                  <label class="block text-sm font-medium mb-2">Link do zbiórki / przycisku (&lt;3 WESPRZYJ &lt;3) (opcjonalnie)</label>
                   <input
-                    type="text"
-                    id="charity-image-url"
-                    placeholder="URL zdjęcia lub zostaw puste"
-                    value="${charity && charity.image ? charity.image : ""}"
+                    type="url"
+                    id="charity-button-link"
+                    placeholder="np. https://donate.stripe.com/..."
+                    value="${charity && charity.buttonLink ? charity.buttonLink : ""}"
                     class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
                   />
-                  <p class="text-xs text-zinc-500 mt-1">Możesz też użyć pola poniżej do przesłania pliku</p>
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium mb-2">Lub wybierz plik</label>
-                  <input
-                    type="file"
-                    id="charity-image-file"
-                    accept="image/*"
-                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
-                  />
+                  <label class="block text-sm font-medium mb-2">Zdjęcia akcji charytatywnej</label>
+                  <div class="mb-2">
+                    <label class="cursor-pointer bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm text-center block transition">
+                      <i class="fa-solid fa-upload mr-2"></i>Wybierz zdjęcia z dysku
+                      <input type="file" multiple accept="image/*" class="hidden" onchange="handleCharityImageUpload(event)">
+                    </label>
+                  </div>
+                  <div id="charity-images-container" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                    <!-- Zdjęcia będą renderowane w JS -->
+                  </div>
                 </div>
 
                 <div class="flex items-center gap-2">
@@ -8842,6 +8857,8 @@
         if (form) {
           form.addEventListener("submit", handleCharityFormSubmit);
         }
+
+        renderCharityImages();
 
         // Dodaj obsługę klawisza ESC
         const handleEscape = (e) => {
@@ -8885,6 +8902,81 @@
         });
       }
 
+      window.handleCharityImageUpload = async (event) => {
+        const files = event.target.files;
+        if (!files || files.length === 0) return;
+        try {
+          const processPromises = Array.from(files).map(file => processProductImage(file));
+          const base64Images = await Promise.all(processPromises);
+          base64Images.forEach(base64 => {
+            charityImages.push({ url: base64, order: charityImages.length });
+          });
+          renderCharityImages();
+          showNotification(\`Dodano \${base64Images.length} zdjęć.\`, 'success');
+        } catch (error) {
+          console.error("Błąd przesyłania zdjęć charytatywnych:", error);
+          showNotification("Błąd podczas wgrywania zdjęć.", "error");
+        }
+      };
+
+      window.removeCharityImage = (index) => {
+        if (confirm("Usunąć to zdjęcie?")) {
+          charityImages.splice(index, 1);
+          charityImages.forEach((img, idx) => img.order = idx);
+          renderCharityImages();
+        }
+      };
+
+      window.moveCharityImageUp = (index) => {
+        if (index > 0) {
+          [charityImages[index], charityImages[index - 1]] = [charityImages[index - 1], charityImages[index]];
+          charityImages.forEach((img, idx) => img.order = idx);
+          renderCharityImages();
+        }
+      };
+
+      window.moveCharityImageDown = (index) => {
+        if (index < charityImages.length - 1) {
+          [charityImages[index], charityImages[index + 1]] = [charityImages[index + 1], charityImages[index]];
+          charityImages.forEach((img, idx) => img.order = idx);
+          renderCharityImages();
+        }
+      };
+
+      function renderCharityImages() {
+        const container = document.getElementById("charity-images-container");
+        if (!container) return;
+
+        if (charityImages.length === 0) {
+          container.innerHTML = '<div class="col-span-full py-6 text-center text-zinc-500 bg-zinc-800/50 rounded-lg border border-zinc-700/50">Brak dodanych zdjęć</div>';
+          return;
+        }
+
+        container.innerHTML = charityImages.map((img, index) => \`
+          <div class="relative group bg-zinc-800 rounded-lg overflow-hidden border border-zinc-700">
+            <div class="aspect-square relative flex items-center justify-center bg-black">
+              <img src="\${img.url}" alt="Zdjęcie \${index + 1}" class="w-full h-full object-cover">
+              \${index === 0 ? '<div class="absolute top-2 left-2 bg-coyote text-black text-[10px] font-bold px-2 py-1 rounded">Okładka</div>' : ''}
+              <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                <button type="button" onclick="moveCharityImageUp(\${index})" class="p-2 bg-zinc-900 rounded-full hover:bg-coyote hover:text-black transition \${index === 0 ? 'opacity-50 cursor-not-allowed' : ''}" \${index === 0 ? 'disabled' : ''}>
+                  <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <button type="button" onclick="removeCharityImage(\${index})" class="p-2 bg-red-900/80 rounded-full hover:bg-red-500 transition text-white">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+                <button type="button" onclick="moveCharityImageDown(\${index})" class="p-2 bg-zinc-900 rounded-full hover:bg-coyote hover:text-black transition \${index === charityImages.length - 1 ? 'opacity-50 cursor-not-allowed' : ''}" \${index === charityImages.length - 1 ? 'disabled' : ''}>
+                  <i class="fa-solid fa-arrow-right"></i>
+                </button>
+              </div>
+            </div>
+            <div class="px-2 py-1 bg-zinc-800/80 text-[10px] text-zinc-400 text-center flex justify-between items-center relative z-10">
+              <span>\${index + 1} z \${charityImages.length}</span>
+              <span class="opacity-50 cursor-move" title="Zmień kolejność strzałkami"><i class="fa-solid fa-grip-vertical"></i></span>
+            </div>
+          </div>
+        \`).join("");
+      }
+
       async function handleCharityFormSubmit(e) {
         e.preventDefault();
 
@@ -8892,8 +8984,7 @@
         const title = document.getElementById("charity-title").value.trim();
         const date = document.getElementById("charity-date").value;
         const description = document.getElementById("charity-description").value.trim();
-        const imageUrl = document.getElementById("charity-image-url").value.trim();
-        const imageFile = document.getElementById("charity-image-file").files[0];
+        const buttonLink = document.getElementById("charity-button-link").value.trim();
         const active = document.getElementById("charity-active").checked;
 
         if (!title || !date) {
@@ -8902,24 +8993,18 @@
         }
 
         try {
-          let finalImageUrl = imageUrl;
-          
-          // Jeśli wybrano plik, użyj go (ma priorytet nad URL)
-          if (imageFile) {
-            finalImageUrl = await compressImage(imageFile);
-          } else if (charityId && !imageUrl) {
-            // Jeśli edytujemy i nie podano nowego obrazu, zachowaj stary
-            const existing = charityActionsList.find(c => c.id === charityId);
-            if (existing) {
-              finalImageUrl = existing.image || "";
-            }
-          }
+          // Używamy zaktualizowanej tablicy zdjęć
+          let finalImages = [...charityImages];
+          // Backward kompatybilność, zachowaj pierwsze zdjęcie z tablicy jako główne
+          let finalImageUrl = finalImages.length > 0 ? finalImages[0].url : "";
 
           const charityData = {
             title,
             date,
             description: description || "",
             image: finalImageUrl || "",
+            images: finalImages,
+            buttonLink: buttonLink || "",
             active,
             order: charityId ? (charityActionsList.find(c => c.id === charityId)?.order || charityActionsList.length) : charityActionsList.length,
             updatedAt: new Date(),
@@ -10431,9 +10516,18 @@
           "USER_REGISTER": "Rejestracja użytkownika",
           "PRODUCT_VIEW": "Przeglądanie produktu",
           "PRODUCT_CREATED": "Wystawienie oferty w sklepie",
+          "PRODUCT_EDITED": "Edycja oferty w sklepie",
+          "PRODUCT_DELETED": "Usunięcie oferty ze sklepu",
           "REVIEW_CREATED": "Wystawienie opinii",
           "EVENT_CREATED": "Dodanie wydarzenia",
           "EVENT_UPDATED": "Edycja wydarzenia",
+          "EVENT_DELETED": "Usunięcie wydarzenia",
+          "TRAINING_CREATED": "Dodanie szkolenia",
+          "TRAINING_UPDATED": "Edycja szkolenia",
+          "TRAINING_DELETED": "Usunięcie szkolenia",
+          "DOCUMENT_CREATED": "Dodanie dokumentu pomocy",
+          "DOCUMENT_UPDATED": "Edycja dokumentu pomocy",
+          "DOCUMENT_DELETED": "Usunięcie dokumentu pomocy",
           "service_online": "Usługa włączona",
           "service_offline": "Usługa wyłączona",
           "site_online": "Strona włączona",
@@ -10660,6 +10754,51 @@
               ? updatedEventDateObj.toLocaleString("pl-PL")
               : null;
             details = `Administrator ${userDisplayName} zaktualizował wydarzenie "${content}"${updatedEventDateText ? ` (termin: ${updatedEventDateText})` : ""}${eventDetails.category ? `. Kategoria: ${eventDetails.category}` : ""}`;
+            break;
+          case "PRODUCT_EDITED":
+            description = `${userDisplayName} zaktualizował ofertę w sklepie`;
+            content = eventDetails.productName || "Produkt";
+            details = `Użytkownik ${userDisplayName} zaktualizował ofertę: "${content}"`;
+            break;
+          case "PRODUCT_DELETED":
+            description = `${userDisplayName} usunął ofertę ze sklepu`;
+            content = eventDetails.productName || "Produkt";
+            details = `Użytkownik ${userDisplayName} usunął ofertę: "${content}"`;
+            break;
+          case "EVENT_DELETED":
+            description = `${userDisplayName} usunął wydarzenie`;
+            content = eventDetails.eventTitle || eventDetails.title || "Wydarzenie";
+            details = `Administrator ${userDisplayName} usunął wydarzenie "${content}"`;
+            break;
+          case "TRAINING_CREATED":
+            description = `${userDisplayName} dodał szkolenie`;
+            content = eventDetails.trainingTitle || eventDetails.title || "Szkolenie";
+            details = `Administrator ${userDisplayName} dodał szkolenie "${content}"`;
+            break;
+          case "TRAINING_UPDATED":
+            description = `${userDisplayName} zaktualizował szkolenie`;
+            content = eventDetails.trainingTitle || eventDetails.title || "Szkolenie";
+            details = `Administrator ${userDisplayName} zaktualizował szkolenie "${content}"`;
+            break;
+          case "TRAINING_DELETED":
+            description = `${userDisplayName} usunął szkolenie`;
+            content = eventDetails.trainingTitle || eventDetails.title || "Szkolenie";
+            details = `Administrator ${userDisplayName} usunął szkolenie "${content}"`;
+            break;
+          case "DOCUMENT_CREATED":
+            description = `${userDisplayName} dodał dokument pomocy`;
+            content = eventDetails.documentTitle || eventDetails.title || "Dokument";
+            details = `Administrator ${userDisplayName} dodał dokument pomocy "${content}"`;
+            break;
+          case "DOCUMENT_UPDATED":
+            description = `${userDisplayName} zaktualizował dokument pomocy`;
+            content = eventDetails.documentTitle || eventDetails.title || "Dokument";
+            details = `Administrator ${userDisplayName} zaktualizował dokument pomocy "${content}"`;
+            break;
+          case "DOCUMENT_DELETED":
+            description = `${userDisplayName} usunął dokument pomocy`;
+            content = eventDetails.documentTitle || eventDetails.title || "Dokument";
+            details = `Administrator ${userDisplayName} usunął dokument pomocy "${content}"`;
             break;
           case "REVIEW_CREATED":
             description = `${userDisplayName} wystawił opinię`;
@@ -11053,7 +11192,18 @@
         if (!confirm("Czy na pewno chcesz usunąć ten produkt?")) return;
 
         try {
+          const product = productsList.find((p) => p.id === productId);
+          const productName = product ? product.title : "Nieznany produkt";
+          
           await deleteDoc(doc(db, "products", productId));
+          
+          if (currentUser) {
+            await logActivity(currentUser.uid, "PRODUCT_DELETED", {
+              productName: productName,
+              productId: productId
+            });
+          }
+          
           showNotification("Produkt został usunięty.");
           loadProducts();
         } catch (error) {
@@ -11116,6 +11266,12 @@
               // Aktualizacja istniejącego produktu
               await updateDoc(doc(db, "products", productId), productData);
               showNotification("Produkt został zapisany poprawnie.", 'success');
+              if (currentUser) {
+                await logActivity(currentUser.uid, "PRODUCT_EDITED", {
+                  productName: title,
+                  productId: productId
+                });
+              }
               // Odśwież dane w modalu
               await editProduct(productId);
             } else {
@@ -11206,6 +11362,89 @@
       // ============================================
       // MODAL PUBLICZNYCH INFORMACJI SZKOLENIA
       // ============================================
+      let trainingImages = [];
+
+      window.handleTrainingImagesUpload = async (event) => {
+        const files = event.target.files;
+        if (!files || files.length === 0) return;
+        
+        try {
+          const processPromises = Array.from(files).map(file => processProductImage(file));
+          const base64Images = await Promise.all(processPromises);
+          
+          base64Images.forEach(base64 => {
+            trainingImages.push({
+              url: base64,
+              order: trainingImages.length
+            });
+          });
+          
+          renderTrainingImages();
+          showNotification(`Dodano ${base64Images.length} zdjęć.`, 'success');
+        } catch (error) {
+          console.error("Error compressing images:", error);
+          showNotification("Błąd przetwarzania zdjęć.", "error");
+        }
+        
+        event.target.value = '';
+      };
+
+      window.removeTrainingImage = (index) => {
+        trainingImages.splice(index, 1);
+        trainingImages.forEach((img, idx) => img.order = idx);
+        renderTrainingImages();
+      };
+
+      window.moveTrainingImageUp = (index) => {
+        if (index > 0) {
+          [trainingImages[index], trainingImages[index - 1]] = [trainingImages[index - 1], trainingImages[index]];
+          trainingImages.forEach((img, idx) => img.order = idx);
+          renderTrainingImages();
+        }
+      };
+
+      window.moveTrainingImageDown = (index) => {
+        if (index < trainingImages.length - 1) {
+          [trainingImages[index], trainingImages[index + 1]] = [trainingImages[index + 1], trainingImages[index]];
+          trainingImages.forEach((img, idx) => img.order = idx);
+          renderTrainingImages();
+        }
+      };
+
+      function renderTrainingImages() {
+        const container = document.getElementById("training-public-images-container");
+        if (!container) return;
+
+        if (trainingImages.length === 0) {
+          container.innerHTML = '<div class="col-span-full text-center text-sm text-zinc-500 py-4">Brak zdjęć szkolenia</div>';
+          return;
+        }
+
+        container.innerHTML = trainingImages.map((img, index) => `
+          <div class="relative group bg-zinc-800 rounded-lg p-2 border border-zinc-700 mx-auto">
+            <span class="absolute top-1 left-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded z-10">
+              ${index === 0 ? 'Główne' : index + 1}
+            </span>
+            <div class="aspect-square mb-2 overflow-hidden rounded relative">
+              <img src="${img.url}" alt="Zdjęcie ${index + 1}" class="w-full h-full object-cover">
+              <button type="button" onclick="removeTrainingImage(${index})" class="absolute top-1 right-1 bg-red-600/80 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition opacity-0 group-hover:opacity-100">
+                <i class="fa-solid fa-times text-xs"></i>
+              </button>
+            </div>
+            <div class="flex justify-between items-center px-1">
+                <button type="button" onclick="moveTrainingImageUp(${index})" class="p-2 bg-zinc-900 rounded-full hover:bg-coyote hover:text-black transition ${index === 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${index === 0 ? 'disabled' : ''}>
+                    <i class="fa-solid fa-arrow-left text-xs"></i>
+                </button>
+                <div class="text-xs text-zinc-400 font-mono text-center flex-1">
+                  <span>${index + 1} z ${trainingImages.length}</span>
+                </div>
+                <button type="button" onclick="moveTrainingImageDown(${index})" class="p-2 bg-zinc-900 rounded-full hover:bg-coyote hover:text-black transition ${index === trainingImages.length - 1 ? 'opacity-50 cursor-not-allowed' : ''}" ${index === trainingImages.length - 1 ? 'disabled' : ''}>
+                    <i class="fa-solid fa-arrow-right text-xs"></i>
+                </button>
+            </div>
+          </div>
+        `).join('');
+      }
       let trainingPublicImageBase64 = null;
 
       window.openTrainingPublicForm = async (trainingId = null) => {
@@ -11238,20 +11477,8 @@
         document.getElementById("training-public-title").value = training.title || "";
         document.getElementById("training-public-price").value = training.price || "";
         
-        const trainingImg = training.img || "";
-        trainingPublicImageBase64 = trainingImg;
-        document.getElementById("training-public-img").value = trainingImg;
-        
-        const previewContainer = document.getElementById('training-public-image-preview');
-        if (trainingImg) {
-          previewContainer.classList.remove('hidden');
-          const previewImg = document.getElementById('training-public-image-preview-img');
-          if (previewImg) {
-            previewImg.src = trainingImg;
-          }
-        } else {
-          previewContainer.classList.add('hidden');
-        }
+        trainingImages = training.images ? [...training.images] : (training.img ? [{url: training.img, order: 0}] : []);
+        renderTrainingImages();
         
         document.getElementById("training-public-available-all").checked = training.available === true;
         document.getElementById("training-public-hidden").checked = training.hidden === true;
@@ -11266,7 +11493,8 @@
         document.getElementById("training-public-id").value = "";
         document.getElementById("training-public-available-all").checked = false;
         document.getElementById("training-public-hidden").checked = false;
-        clearTrainingPublicImage();
+        trainingImages = [];
+        renderTrainingImages();
         currentTrainingId = null;
       };
 
@@ -11600,7 +11828,18 @@
           const deletePromises = accessSnapshot.docs.map(doc => deleteDoc(doc.ref));
           await Promise.all(deletePromises);
 
+          const training = trainingsList.find(t => t.id === trainingId);
+          const trainingTitle = training ? training.title : "Nieznane szkolenie";
+
           await deleteDoc(doc(db, "trainings", trainingId));
+          
+          if (currentUser) {
+            await logActivity(currentUser.uid, "TRAINING_DELETED", {
+              trainingTitle: trainingTitle,
+              trainingId: trainingId
+            });
+          }
+          
           showNotification("Szkolenie zostało usunięte.");
           loadTrainings();
         } catch (error) {
@@ -12211,7 +12450,18 @@
         }
 
         try {
+          const docItem = documentsList.find((d) => d.id === documentId);
+          const documentTitle = docItem ? docItem.title : "Nieznany dokument";
+
           await deleteDoc(doc(db, "documents", documentId));
+          
+          if (currentUser) {
+            await logActivity(currentUser.uid, "DOCUMENT_DELETED", {
+              documentTitle: documentTitle,
+              documentId: documentId
+            });
+          }
+          
           showNotification("Dokument został usunięty.", "success");
           await loadDocuments();
         } catch (error) {
@@ -12219,6 +12469,67 @@
           showNotification("Błąd usuwania dokumentu.", "error");
         }
       };
+
+      // Obsługa formularza dokumentów
+      window.clearDocumentForm = () => {
+        document.getElementById("document-form").reset();
+        const formSection = document.getElementById("document-form-section");
+        if (formSection) formSection.classList.add("hidden");
+      };
+
+      const documentForm = document.getElementById("document-form");
+      if (documentForm) {
+        documentForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const docId = document.getElementById("document-id").value;
+          const title = document.getElementById("document-title").value.trim();
+          const description = document.getElementById("document-description").value.trim();
+          const url = document.getElementById("document-url").value.trim();
+          const category = document.getElementById("document-category").value.trim();
+          const orderVal = document.getElementById("document-order").value;
+
+          if (!title || !url) {
+            showNotification("Wypełnij wymagane pola (Tytuł i URL).", "error");
+            return;
+          }
+
+          const docData = {
+            title,
+            description,
+            url,
+            category,
+            order: orderVal ? parseInt(orderVal) : documentsList.length,
+            date: Date.now()
+          };
+
+          try {
+            if (docId) {
+              await updateDoc(doc(db, "documents", docId), docData);
+              showNotification("Dokument zaktualizowany.", "success");
+              if (currentUser) {
+                await logActivity(currentUser.uid, "DOCUMENT_UPDATED", {
+                  documentTitle: title,
+                  documentId: docId
+                });
+              }
+            } else {
+              const newRef = await addDoc(collection(db, "documents"), docData);
+              showNotification("Dokument dodany.", "success");
+              if (currentUser) {
+                await logActivity(currentUser.uid, "DOCUMENT_CREATED", {
+                  documentTitle: title,
+                  documentId: newRef.id
+                });
+              }
+            }
+            window.clearDocumentForm();
+            await loadDocuments();
+          } catch (error) {
+            console.error("Error saving document:", error);
+            showNotification("Błąd zapisywania dokumentu.", "error");
+          }
+        });
+      }
 
       window.openTrainingUserDialog = async () => {
         if (!currentTrainingId) {
@@ -12430,13 +12741,12 @@
           const trainingId = document.getElementById("training-public-id").value;
           const title = document.getElementById("training-public-title").value.trim();
           const price = document.getElementById("training-public-price").value.trim();
-          const img = trainingPublicImageBase64 || document.getElementById("training-public-img").value.trim();
           const desc = document.getElementById("training-public-description").innerHTML;
           const available = document.getElementById("training-public-available-all").checked;
           const hidden = document.getElementById("training-public-hidden").checked;
 
-          if (!title || !price || !img) {
-            showNotification("Wypełnij wszystkie wymagane pola (w tym zdjęcie).", "error");
+          if (!title || !price || trainingImages.length === 0) {
+            showNotification("Wypełnij wszystkie wymagane pola (w tym zdjęcia).", "error");
             return;
           }
 
@@ -12444,7 +12754,8 @@
             const trainingData = {
               title,
               price,
-              img,
+              images: trainingImages.map(img => ({ url: img.url, order: img.order })),
+              img: trainingImages[0] ? trainingImages[0].url : "",
               desc,
               available: available ? true : false,
               hidden: hidden ? true : false,
@@ -12460,6 +12771,12 @@
               }
               await updateDoc(doc(db, "trainings", trainingId), trainingData);
               showNotification("Szkolenie zostało zapisane poprawnie.", 'success');
+              if (currentUser) {
+                await logActivity(currentUser.uid, "TRAINING_UPDATED", {
+                  trainingTitle: title,
+                  trainingId: trainingId
+                });
+              }
               await editTrainingPublic(trainingId);
             } else {
               // Dodanie nowego szkolenia
@@ -12467,6 +12784,12 @@
               const newTrainingRef = await addDoc(collection(db, "trainings"), trainingData);
               currentTrainingId = newTrainingRef.id;
               showNotification("Szkolenie zostało zapisane poprawnie.", 'success');
+              if (currentUser) {
+                await logActivity(currentUser.uid, "TRAINING_CREATED", {
+                  trainingTitle: title,
+                  trainingId: currentTrainingId
+                });
+              }
               await loadTrainingAccessList(currentTrainingId);
               clearTrainingPublicForm();
               closeTrainingPublicForm();
@@ -16575,32 +16898,22 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium mb-2">Zdjęcie szkolenia *</label>
+            <label class="block text-sm font-medium mb-2">Zdjęcia szkolenia *</label>
             <label class="w-full py-2 border border-zinc-600 rounded text-sm hover:bg-zinc-800 transition cursor-pointer flex items-center justify-center">
               <input
                 type="file"
                 id="training-public-image-input"
                 accept="image/*"
                 class="hidden"
-                onchange="handleTrainingPublicImageUpload(event)"
+                multiple
+                onchange="handleTrainingImagesUpload(event)"
               />
               <i class="fa-solid fa-upload mr-2"></i>
-              Wybierz zdjęcie
+              Wybierz zdjęcia (możesz zaznaczyć wiele)
             </label>
-            <div id="training-public-image-preview" class="mt-3 hidden">
-              <div class="relative inline-block">
-                <img id="training-public-image-preview-img" src="" alt="Podgląd zdjęcia" class="max-w-full max-h-48 rounded-lg border border-zinc-700">
-                <button
-                  type="button"
-                  onclick="clearTrainingPublicImage()"
-                  class="absolute top-2 right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-700 transition"
-                  title="Usuń zdjęcie"
-                >
-                  <i class="fa-solid fa-times text-xs"></i>
-                </button>
-              </div>
+            <div id="training-public-images-container" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+              <!-- Dodane zdjęcia pojawią się tutaj -->
             </div>
-            <input type="hidden" id="training-public-img" />
           </div>
 
           <div class="border-t border-zinc-700 pt-4">

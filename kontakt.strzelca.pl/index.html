@@ -504,12 +504,14 @@
       window.toggleUserMenu = function () { document.getElementById('user-menu')?.classList.toggle('hidden'); };
 
       window.openContactForm = function () {
-        var modal = document.getElementById('contact-form-modal');
-        if (!modal) return;
         if (window.currentUser) {
-          window.location.href = 'https://konto.strzelca.pl/profil.html#messages';
+          if (typeof window.__strzelcaMessagesOpen === 'function') {
+            window.__strzelcaMessagesOpen();
+          }
           return;
         }
+        var modal = document.getElementById('contact-form-modal');
+        if (!modal) return;
         document.getElementById('contact-form')?.classList.remove('form-disabled');
         document.getElementById('logged-user-message')?.classList.add('hidden');
         modal.classList.remove('hidden');
