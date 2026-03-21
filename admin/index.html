@@ -1497,89 +1497,86 @@
               </button>
             </div>
 
-            <!-- Statystyki wydarzeń -->
+            <!-- Statystyki + filtry (jedna karta) -->
             <div class="admin-card mb-8">
-              <h3 class="text-xl font-bold mb-6">Statystyki Wydarzeń</h3>
-
-              <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div class="text-center">
-                  <div class="text-2xl font-bold coyote-text" id="total-events">
-                    0
-                  </div>
-                  <div class="text-sm text-zinc-400">Razem wydarzeń</div>
-                </div>
-                <div class="text-center">
-                  <div
-                    class="text-2xl font-bold text-green-400"
-                    id="upcoming-events"
+              <div class="flex flex-col gap-4">
+                <div
+                  class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-zinc-300 pb-3 border-b border-zinc-800/80"
+                  role="group"
+                  aria-label="Statystyki wydarzeń"
+                >
+                  <span
+                    >Razem: <strong id="total-events" class="tabular-nums coyote-text">0</strong></span
                   >
-                    0
-                  </div>
-                  <div class="text-sm text-zinc-400">Nadchodzących</div>
-                </div>
-                <div class="text-center">
-                  <div class="text-2xl font-bold text-blue-400" id="past-events">
-                    0
-                  </div>
-                  <div class="text-sm text-zinc-400">Przeszłych</div>
-                </div>
-                <div class="text-center">
-                  <div
-                    class="text-2xl font-bold text-yellow-400"
-                    id="pinned-events"
+                  <span
+                    >Nadchodzące: <strong id="upcoming-events" class="tabular-nums text-green-400">0</strong></span
                   >
-                    0
+                  <span
+                    >Przeszłe: <strong id="past-events" class="tabular-nums text-blue-400">0</strong></span
+                  >
+                  <span
+                    >Przypięte: <strong id="pinned-events" class="tabular-nums text-yellow-400">0</strong></span
+                  >
+                </div>
+                <div class="flex flex-wrap items-end gap-3">
+                  <div class="grow min-w-[180px] max-w-md">
+                    <label class="block text-sm font-medium mb-2" for="events-status-filter">Status</label>
+                    <select id="events-status-filter" class="w-full">
+                      <option value="all">Wszystkie</option>
+                      <option value="upcoming">Nadchodzące</option>
+                      <option value="past">Przeszłe</option>
+                      <option value="pinned">Przypięte</option>
+                    </select>
                   </div>
-                  <div class="text-sm text-zinc-400">Przypiętych</div>
-                </div>
-              </div>
-          </div>
-
-            <!-- Filtry wydarzeń -->
-            <div class="admin-card mb-8">
-              <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <label class="block text-sm font-medium mb-2">Status</label>
-                  <select id="events-status-filter" class="w-full">
-                    <option value="all">Wszystkie</option>
-                    <option value="upcoming">Nadchodzące</option>
-                    <option value="past">Przeszłe</option>
-                    <option value="pinned">Przypięte</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium mb-2">Kategoria</label>
-                  <select id="events-category-filter" class="w-full">
-                    <option value="all">Wszystkie kategorie</option>
-                    <option value="zawody">Zawody</option>
-                    <option value="szkolenie">Szkolenie</option>
-                    <option value="wystawa">Wystawa</option>
-                    <option value="inne">Inne</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium mb-2">Sortowanie</label>
-                  <select id="events-sort-filter" class="w-full">
-                    <option value="date-asc">Data ↑</option>
-                    <option value="date-desc">Data ↓</option>
-                    <option value="title">Tytuł</option>
-                    <option value="pinned">Przypięte pierwsze</option>
-                  </select>
-                </div>
-                <div class="flex items-end">
-                  <button onclick="applyEventsFilters()" class="btn-admin w-full">
+                  <button type="button" onclick="applyEventsFilters()" class="btn-admin shrink-0 px-6">
                     <i class="fa-solid fa-filter mr-2"></i>
                     Filtruj
                   </button>
+                  <button
+                    type="button"
+                    id="events-more-filters-toggle"
+                    class="shrink-0 flex items-center justify-center w-12 h-12 rounded-lg border border-zinc-700 text-zinc-400 hover:text-coyote hover:border-coyote/60 transition-colors"
+                    onclick="toggleEventsMoreFilters()"
+                    aria-expanded="false"
+                    aria-controls="events-more-filters"
+                    aria-label="Więcej filtrów"
+                    title="Więcej opcji filtrowania"
+                  >
+                    <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+                  </button>
                 </div>
-                <div class="md:col-span-4 flex items-center gap-2 pt-1">
-                  <input
-                    type="checkbox"
-                    id="events-show-completed"
-                    class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote"
-                    onchange="applyEventsFilters()"
-                  />
-                  <label for="events-show-completed" class="text-sm text-zinc-300 cursor-pointer select-none">Pokaż zakończone (przeszłe)</label>
+                <div id="events-more-filters" class="hidden pt-3 border-t border-zinc-800/80">
+                  <p class="text-xs text-zinc-500 mb-3">Kategoria, sortowanie i opcje widoku</p>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium mb-2" for="events-category-filter">Kategoria</label>
+                      <select id="events-category-filter" class="w-full">
+                        <option value="all">Wszystkie kategorie</option>
+                        <option value="zawody">Zawody</option>
+                        <option value="szkolenie">Szkolenie</option>
+                        <option value="wystawa">Wystawa</option>
+                        <option value="inne">Inne</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium mb-2" for="events-sort-filter">Sortowanie</label>
+                      <select id="events-sort-filter" class="w-full">
+                        <option value="date-asc">Data ↑</option>
+                        <option value="date-desc">Data ↓</option>
+                        <option value="title">Tytuł</option>
+                        <option value="pinned">Przypięte pierwsze</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2 pt-3">
+                    <input
+                      type="checkbox"
+                      id="events-show-completed"
+                      class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote"
+                      onchange="applyEventsFilters()"
+                    />
+                    <label for="events-show-completed" class="text-sm text-zinc-300 cursor-pointer select-none">Pokaż zakończone (przeszłe)</label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1613,33 +1610,56 @@
               Zarządzanie Pomocą Charytatywną
           </h1>
 
-          <div
-            id="charity-stats-bar"
-            class="flex flex-wrap items-center gap-x-8 gap-y-3 mb-6 text-sm text-zinc-300"
-          >
-            <span
-              >Aktywne:
-              <strong id="charity-count-active" class="text-white tabular-nums">0</strong></span
-            >
-            <span
-              >Zakończone:
-              <strong id="charity-count-ended" class="text-white tabular-nums">0</strong></span
-            >
-            <span
-              >Razem:
-              <strong id="charity-count-total" class="text-white tabular-nums">0</strong></span
-            >
-            <label
-              class="flex items-center gap-2 cursor-pointer select-none ml-auto"
-            >
-              <input
-                type="checkbox"
-                id="charity-show-completed"
-                class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote"
-                onchange="applyCharityListFilter()"
-              />
-              <span class="text-sm text-zinc-300">Pokaż zakończone (przeszłe)</span>
-            </label>
+          <div class="admin-card mb-8">
+            <div class="flex flex-col gap-4">
+              <div
+                class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-zinc-300 pb-3 border-b border-zinc-800/80"
+                role="group"
+                aria-label="Statystyki akcji Pomoc"
+              >
+                <span
+                  >Aktywne: <strong id="charity-count-active" class="tabular-nums text-green-400">0</strong></span
+                >
+                <span
+                  >Zakończone: <strong id="charity-count-ended" class="tabular-nums text-zinc-400">0</strong></span
+                >
+                <span
+                  >Razem: <strong id="charity-count-total" class="tabular-nums coyote-text">0</strong></span
+                >
+              </div>
+              <div class="flex flex-wrap items-end gap-3">
+                <div class="grow min-w-[200px] max-w-md">
+                  <label class="block text-sm font-medium mb-2" for="charity-list-view">Widok listy</label>
+                  <select id="charity-list-view" class="w-full">
+                    <option value="upcoming">Tylko bieżące (bez zakończonych)</option>
+                    <option value="all">Wszystkie (wraz z zakończonymi)</option>
+                  </select>
+                </div>
+                <button type="button" onclick="applyCharityListFilter()" class="btn-admin shrink-0 px-6">
+                  <i class="fa-solid fa-filter mr-2"></i>
+                  Filtruj
+                </button>
+                <button
+                  type="button"
+                  id="charity-more-filters-toggle"
+                  class="shrink-0 flex items-center justify-center w-12 h-12 rounded-lg border border-zinc-700 text-zinc-400 hover:text-coyote hover:border-coyote/60 transition-colors"
+                  onclick="toggleCharityMoreFilters()"
+                  aria-expanded="false"
+                  aria-controls="charity-more-filters"
+                  aria-label="Więcej informacji o widoku"
+                  title="Szczegóły widoku listy"
+                >
+                  <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+                </button>
+              </div>
+              <div id="charity-more-filters" class="hidden pt-3 border-t border-zinc-800/80">
+                <p class="text-sm text-zinc-400 leading-relaxed">
+                  Akcja jest <strong class="text-zinc-300">zakończona</strong>, gdy jej data i godzina już minęły — wtedy na karcie widać etykietę „Zakończona”.
+                  Widok <strong class="text-zinc-300">„Tylko bieżące”</strong> ukrywa takie wpisy na tej liście; <strong class="text-zinc-300">„Wszystkie”</strong> pokazuje pełne archiwum.
+                  Strzałki ↑↓ zmieniają kolejność na stronie pomoc.strzelca.pl (względem całej listy w bazie).
+                </p>
+              </div>
+            </div>
           </div>
 
             <div class="flex justify-between items-center mb-8">
@@ -1679,7 +1699,7 @@
                 <i class="fa-solid fa-filter-circle-xmark text-4xl mb-4 text-zinc-600"></i>
                 <p>Brak akcji do wyświetlenia przy obecnym filtrze.</p>
                 <p class="text-sm text-zinc-500 mt-2">
-                  Zaznacz „Pokaż zakończone (przeszłe)”, aby zobaczyć archiwalne akcje.
+                  Wybierz widok „Wszystkie (wraz z zakończonymi)” i kliknij Filtruj, aby zobaczyć archiwalne akcje.
                 </p>
               </div>
         </div>
@@ -2118,66 +2138,78 @@
             </div>
 
             <div class="admin-card mb-8">
-              <h3 class="text-xl font-bold mb-6">Statystyki bloga</h3>
-              <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div class="text-center">
-                  <div class="text-2xl font-bold coyote-text" id="total-blog-posts">0</div>
-                  <div class="text-sm text-zinc-400">Wszystkich wpisów</div>
+              <div class="flex flex-col gap-4">
+                <div
+                  class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-zinc-300 pb-3 border-b border-zinc-800/80"
+                  role="group"
+                  aria-label="Statystyki bloga"
+                >
+                  <span
+                    >Wszystkich: <strong id="total-blog-posts" class="tabular-nums coyote-text">0</strong></span
+                  >
+                  <span
+                    >Opublikowane: <strong id="blog-published-count" class="tabular-nums text-green-400">0</strong></span
+                  >
+                  <span
+                    >Szkice: <strong id="blog-drafts-count" class="tabular-nums text-yellow-400">0</strong></span
+                  >
+                  <span
+                    >Archiwum: <strong id="blog-archived-count" class="tabular-nums text-zinc-400">0</strong></span
+                  >
                 </div>
-                <div class="text-center">
-                  <div class="text-2xl font-bold text-green-400" id="blog-published-count">0</div>
-                  <div class="text-sm text-zinc-400">Opublikowanych</div>
-                </div>
-                <div class="text-center">
-                  <div class="text-2xl font-bold text-yellow-400" id="blog-drafts-count">0</div>
-                  <div class="text-sm text-zinc-400">Szkiców</div>
-                </div>
-                <div class="text-center">
-                  <div class="text-2xl font-bold text-zinc-400" id="blog-archived-count">0</div>
-                  <div class="text-sm text-zinc-400">Zarchiwizowanych</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="admin-card mb-8">
-              <h3 class="text-xl font-bold mb-4">Filtry i sortowanie</h3>
-              <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <label class="block text-sm font-medium mb-2">Status</label>
-                  <select id="blog-status-filter" class="w-full">
-                    <option value="all">Wszystkie</option>
-                    <option value="published">Opublikowane</option>
-                    <option value="draft">Szkice</option>
-                    <option value="archived">Zarchiwizowane</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium mb-2">Kategoria</label>
-                  <select id="blog-category-filter" class="w-full">
-                    <option value="all">Wszystkie kategorie</option>
-                    <option value="news">Aktualności</option>
-                    <option value="tips">Porady</option>
-                    <option value="tutorials">Poradniki</option>
-                    <option value="reviews">Recenzje</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium mb-2">Sortowanie</label>
-                  <select id="blog-sort-filter" class="w-full">
-                    <option value="date-desc">Data dodania ↓</option>
-                    <option value="date-asc">Data dodania ↑</option>
-                    <option value="title">Tytuł A–Z</option>
-                    <option value="list-order">Kolejność na stronie (↑↓)</option>
-                  </select>
-                  <p class="text-xs text-zinc-500 mt-1">
-                    Strzałki (↑↓) pojawią się przy tym sortowaniu oraz przy filtrach „Wszystkie” (status i kategoria) — wtedy kolejność odpowiada widokowi na blogu.
-                  </p>
-                </div>
-                <div class="flex items-end">
-                  <button type="button" onclick="applyBlogFilters()" class="btn-admin w-full">
+                <div class="flex flex-wrap items-end gap-3">
+                  <div class="grow min-w-[180px] max-w-md">
+                    <label class="block text-sm font-medium mb-2" for="blog-status-filter">Status</label>
+                    <select id="blog-status-filter" class="w-full">
+                      <option value="all">Wszystkie</option>
+                      <option value="published">Opublikowane</option>
+                      <option value="draft">Szkice</option>
+                      <option value="archived">Zarchiwizowane</option>
+                    </select>
+                  </div>
+                  <button type="button" onclick="applyBlogFilters()" class="btn-admin shrink-0 px-6">
                     <i class="fa-solid fa-filter mr-2"></i>
                     Filtruj
                   </button>
+                  <button
+                    type="button"
+                    id="blog-more-filters-toggle"
+                    class="shrink-0 flex items-center justify-center w-12 h-12 rounded-lg border border-zinc-700 text-zinc-400 hover:text-coyote hover:border-coyote/60 transition-colors"
+                    onclick="toggleBlogMoreFilters()"
+                    aria-expanded="false"
+                    aria-controls="blog-more-filters"
+                    aria-label="Więcej filtrów"
+                    title="Więcej opcji filtrowania"
+                  >
+                    <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <div id="blog-more-filters" class="hidden pt-3 border-t border-zinc-800/80">
+                  <p class="text-xs text-zinc-500 mb-3">Kategoria i sortowanie</p>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium mb-2" for="blog-category-filter">Kategoria</label>
+                      <select id="blog-category-filter" class="w-full">
+                        <option value="all">Wszystkie kategorie</option>
+                        <option value="news">Aktualności</option>
+                        <option value="tips">Porady</option>
+                        <option value="tutorials">Poradniki</option>
+                        <option value="reviews">Recenzje</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium mb-2" for="blog-sort-filter">Sortowanie</label>
+                      <select id="blog-sort-filter" class="w-full">
+                        <option value="date-desc">Data dodania ↓</option>
+                        <option value="date-asc">Data dodania ↑</option>
+                        <option value="title">Tytuł A–Z</option>
+                        <option value="list-order">Kolejność na stronie (↑↓)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <p class="text-xs text-zinc-500 mt-3">
+                    Strzałki (↑↓) pojawią się przy sortowaniu „Kolejność na stronie” oraz przy filtrach „Wszystkie” (status i kategoria) — wtedy kolejność odpowiada widokowi na blogu.
+                  </p>
                 </div>
               </div>
             </div>
@@ -2206,18 +2238,15 @@
 
             <div class="flex flex-wrap gap-4 justify-between items-center mb-8">
               <p class="text-zinc-400 max-w-2xl">
-                Jedna lista na <code class="text-zinc-500">dokumenty.strzelca.pl</code>: pozycja <strong class="text-zinc-300">Tekst</strong>
-                otwiera treść z HTML strony (regulaminy), pozycja <strong class="text-zinc-300">Plik</strong> — link do katalogu
-                <code class="text-zinc-500">pdf/</code>. Kolejność: strzałki (↑↓) jak w sklepie. Przy każdym wejściu w tę zakładkę
-                brakujące regulaminy i pliki ze szablonu są <strong class="text-zinc-300">dopisywane do Firestore</strong> (bez duplikatów).
-                Pełna treść regulaminów nadal edytujesz w repozytorium w pliku
-                <code class="text-zinc-500">dokumenty.strzelca.pl/index.html</code> — tu ustawiasz kolejność, tytuł i opis skrótowy.
+                Ta zakładka pokazuje <strong class="text-zinc-300">tę samą listę i kolejność</strong> co
+                <code class="text-zinc-500">dokumenty.strzelca.pl</code> (szablon + Firestore). Przy otwarciu dopisywane są
+                wyłącznie brakujące pozycje ze wspólnego szablonu — bez osobnego importu.
+                <strong class="text-zinc-300">Tekst</strong> = regulamin z HTML strony dokumentów,
+                <strong class="text-zinc-300">Plik</strong> = <code class="text-zinc-500">pdf/</code>,
+                <strong class="text-zinc-300">Formularz</strong> = logika w kodzie strony. Regulaminy edytujesz w repozytorium
+                (<code class="text-zinc-500">dokumenty.strzelca.pl/index.html</code>); tutaj kolejność, tytuł i krótki opis.
               </p>
               <div class="flex flex-wrap gap-2">
-                <button type="button" onclick="importDefaultSiteDocuments()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
-                  <i class="fa-solid fa-cloud-arrow-down mr-2"></i>
-                  Importuj domyślną listę strony
-                </button>
                 <button type="button" onclick="addNewDocument()" class="btn-admin">
                   <i class="fa-solid fa-plus mr-2"></i>
                   Dodaj dokument
@@ -2319,10 +2348,8 @@
             <div class="admin-card">
               <h3 class="text-xl font-bold mb-4">Kolejność na stronie dokumentów</h3>
               <p class="text-sm text-zinc-500 mb-4">
-                Kolekcja Firestore <code class="text-zinc-400">documents</code>. Na stronie dokumentów kolejność wierszy odpowiada polu
-                <code class="text-zinc-400">order</code> (po scaleniu ze szablonem strony). Przyciski ↑ ↓ zamieniają
-                <code class="text-zinc-400">order</code> z sąsiadem. Jeśli na stronie publicznej widać więcej pozycji niż tutaj, uruchom
-                import / synchronizację domyślnej listy — dopisze brakujące wpisy do bazy.
+                Kolekcja <code class="text-zinc-400">documents</code>. Widok jest scalany tak jak na stronie publicznej; ↑ ↓ przepisują
+                pole <code class="text-zinc-400">order</code> dla całej widocznej kolejności (jak kolejność szkoleń w panelu).
               </p>
 
               <div id="documents-list" class="space-y-4">
@@ -2339,11 +2366,7 @@
                 class="text-center py-8 text-zinc-400 hidden"
               >
                 <i class="fa-solid fa-folder-open text-4xl mb-4 text-zinc-600"></i>
-                <p class="mb-4">Brak wpisów w bazie — na stronie widać listę domyślną z kodu.</p>
-                <button type="button" onclick="importDefaultSiteDocuments()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
-                  <i class="fa-solid fa-cloud-arrow-down mr-2"></i>
-                  Importuj domyślną listę strony
-                </button>
+                <p class="mb-4">Brak wpisów w bazie lub błąd ładowania. Odśwież zakładkę — szablon zostanie dopisany automatycznie.</p>
               </div>
             </div>
           </div>
@@ -3159,6 +3182,24 @@
           // Ignoruj błąd jeśli zmienna nie jest jeszcze zdefiniowana
         }
       };
+
+      /**
+       * Zamykanie po „kliknięciu” tła: tylko gdy mousedown i mouseup były na samym overlayu.
+       * Zapobiega zamknięciu przy zaznaczaniu tekstu (np. Quill), gdy mouseup pada poza kartą.
+       */
+      window.adminModalBackdropMouseDown = function (ev) {
+        const root = ev.currentTarget;
+        delete root.dataset.adminBackdropDown;
+        if (ev.target === root) root.dataset.adminBackdropDown = "1";
+      };
+      window.adminModalBackdropMouseUp = function (ev, closeFnName) {
+        const root = ev.currentTarget;
+        const shouldClose = root.dataset.adminBackdropDown === "1" && ev.target === root;
+        delete root.dataset.adminBackdropDown;
+        if (!shouldClose) return;
+        const fn = typeof closeFnName === "string" ? window[closeFnName] : closeFnName;
+        if (typeof fn === "function") fn();
+      };
     </script>
 
     <script type="module">
@@ -3184,8 +3225,16 @@
         serverTimestamp,
         Timestamp,
         deleteField,
+        increment,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
       import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-03-21-1";
+      import {
+        FALLBACK_SITE_DOCUMENTS,
+        mergeSiteDocumentsWithFallback,
+        normalizeFirestoreCatalogDocument,
+        normDocPath,
+        catalogFileUrlForFirestore,
+      } from "https://strzelca.pl/documents-catalog-shared.mjs?v=2026-03-22-1";
 
       
       async function getFirebaseApiKey() {
@@ -3359,6 +3408,38 @@
         throw error; // Rzuć błąd dalej, aby zatrzymać wykonanie
       }
 
+      let publicListCacheMetaBootstrapped = false;
+
+      async function ensurePublicListCacheMetaOnce() {
+        if (publicListCacheMetaBootstrapped || !db) return;
+        publicListCacheMetaBootstrapped = true;
+        const keys = ["products", "trainings", "events", "blogPosts", "charity", "documents", "bazarOffers"];
+        try {
+          for (const k of keys) {
+            const r = await getDoc(doc(db, "publicListCacheMeta", k));
+            if (!r.exists()) {
+              await setDoc(doc(db, "publicListCacheMeta", k), { v: 1, updatedAt: serverTimestamp() });
+            }
+          }
+        } catch (e) {
+          console.warn("[publicListCacheMeta] bootstrap", e);
+          publicListCacheMetaBootstrapped = false;
+        }
+      }
+
+      async function bumpPublicListCacheVersion(metaKey) {
+        if (!db || !metaKey) return;
+        try {
+          await setDoc(
+            doc(db, "publicListCacheMeta", metaKey),
+            { v: increment(1), updatedAt: serverTimestamp() },
+            { merge: true },
+          );
+        } catch (e) {
+          console.warn("[publicListCacheMeta] bump", metaKey, e);
+        }
+      }
+
       let currentUser = null;
       let currentTab = "dashboard";
       let currentUserFilter = "all";
@@ -3489,6 +3570,7 @@
           switchTab("dashboard");
           // Załaduj stats dla SuperAdmin'a
           setTimeout(() => loadDashboardStats(), 100);
+          void ensurePublicListCacheMetaOnce();
           return true;
         }
 
@@ -3572,6 +3654,7 @@
               switchTab("dashboard");
               // Opóźnij ładowanie stats, żeby dać czas na zakończenie ładowania profilu
               setTimeout(() => loadDashboardStats(), 100);
+              void ensurePublicListCacheMetaOnce();
               return true;
             } else {
               console.warn('[ADMIN CHECK] ❌ User has role:', userData.role, 'but expected admin');
@@ -8454,7 +8537,7 @@
           };
           if (topic) payload.topic = topic;
 
-          const res = await fetch('/api/messages', {
+          const res = await fetch(strzelcaActivityLogApiUrl('/api/messages'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -8632,9 +8715,11 @@
           // Dla wiadomości od administratora, użyj specjalnego endpointu, który usuwa wszystkie wiadomości od "Administrator"
           let url;
           if (isAdminMessage) {
-            url = `/api/messages/delete-admin-messages`;
+            url = strzelcaActivityLogApiUrl('/api/messages/delete-admin-messages');
           } else {
-            url = `/api/messages?senderId=${encodeURIComponent(userId)}&recipientId=admin`;
+            url = strzelcaActivityLogApiUrl(
+              `/api/messages?senderId=${encodeURIComponent(userId)}&recipientId=admin`
+            );
           }
           
           const res = await fetch(url, {
@@ -8888,7 +8973,7 @@
         const normalizedCategory = event ? normalizeEventCategory(event.category) : "inne";
 
         const modalHtml = `
-          <div id="event-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onclick="if(event.target.id === 'event-form-modal') closeEventFormModal()">
+          <div id="event-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeEventFormModal')">
             <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
               <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold coyote-text">${event ? "Edytuj wydarzenie" : "Dodaj nowe wydarzenie"}</h2>
@@ -8945,6 +9030,18 @@
                     value="${event ? (event.location || "") : ""}"
                     class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
                   />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">Link „Weź udział” (URL zapisów)</label>
+                  <input
+                    type="url"
+                    id="event-participation-url"
+                    placeholder="https://… (opcjonalnie — bez linku pokaże się informacja o kontakcie)"
+                    value="${event ? escapeHtml(event.participationUrl || "") : ""}"
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                  />
+                  <p class="text-xs text-zinc-500 mt-1">Działa jak przycisk „Wesprzyj” w pomocy: pusty adres = komunikat z możliwością kontaktu.</p>
                 </div>
 
                 <div>
@@ -9051,6 +9148,7 @@
         const dateTime = document.getElementById("event-date").value;
         const category = normalizeEventCategory(document.getElementById("event-category").value);
         const location = document.getElementById("event-location")?.value.trim() || "";
+        const participationUrl = document.getElementById("event-participation-url")?.value.trim() || "";
         const description = eventQuill ? eventQuill.root.innerHTML.trim() : "";
         const pinned = document.getElementById("event-pinned").checked;
         const published = document.getElementById("event-published").checked;
@@ -9067,6 +9165,7 @@
             date: eventDate,
             category,
             location,
+            participationUrl: participationUrl || "",
             description: description || "",
             pinned,
             published,
@@ -9125,6 +9224,7 @@
             }
           }
 
+          await bumpPublicListCacheVersion("events");
           closeEventFormModal();
           await loadEvents();
         } catch (error) {
@@ -9145,7 +9245,7 @@
           const eventName = event ? event.title : "Nieznane wydarzenie";
           
           await deleteDoc(doc(db, "events", eventId));
-          
+          await bumpPublicListCacheVersion("events");
           const delActor = getActivityLogActorUid();
           showNotification("Wydarzenie zostało usunięte.", "success");
           if (delActor) {
@@ -9166,6 +9266,17 @@
 
       window.applyEventsFilters = () => {
         renderEventsList();
+      };
+
+      window.toggleEventsMoreFilters = () => {
+        const panel = document.getElementById("events-more-filters");
+        const btn = document.getElementById("events-more-filters-toggle");
+        if (!panel || !btn) return;
+        panel.classList.toggle("hidden");
+        const open = !panel.classList.contains("hidden");
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+        btn.classList.toggle("border-coyote", open);
+        btn.classList.toggle("text-coyote", open);
       };
 
       // Funkcje zarządzania akcjami charytatywnymi
@@ -9270,7 +9381,8 @@
         const filterEmptyEl = document.getElementById("charity-filter-empty");
         if (!listEl) return;
 
-        const showCompleted = document.getElementById("charity-show-completed")?.checked;
+        const viewMode = document.getElementById("charity-list-view")?.value || "upcoming";
+        const showCompleted = viewMode === "all";
         const fullLen = charityActionsList.length;
 
         if (fullLen === 0) {
@@ -9345,6 +9457,17 @@
         renderCharityActionsListDOM();
       };
 
+      window.toggleCharityMoreFilters = () => {
+        const panel = document.getElementById("charity-more-filters");
+        const btn = document.getElementById("charity-more-filters-toggle");
+        if (!panel || !btn) return;
+        panel.classList.toggle("hidden");
+        const open = !panel.classList.contains("hidden");
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+        btn.classList.toggle("border-coyote", open);
+        btn.classList.toggle("text-coyote", open);
+      };
+
       async function loadCharity() {
         const loadingEl = document.getElementById("charity-loading");
         const listEl = document.getElementById("charity-actions-list");
@@ -9410,7 +9533,7 @@
         charityImages = charity ? [...(charity.images || (charity.image ? [{url: charity.image, order: 0}] : []))] : [];
 
         const modalHtml = `
-          <div id="charity-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onclick="if(event.target.id === 'charity-form-modal') closeCharityFormModal()">
+          <div id="charity-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeCharityFormModal')">
             <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
               <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold coyote-text">${charity ? "Edytuj akcję charytatywną" : "Dodaj nową akcję charytatywną"}</h2>
@@ -9714,6 +9837,7 @@
             }
           }
 
+          await bumpPublicListCacheVersion("charity");
           closeCharityFormModal();
           await loadCharity();
         } catch (error) {
@@ -9737,6 +9861,7 @@
           const removed = charityActionsList.find((c) => c.id === charityId);
           const removedTitle = removed?.title || charityId;
           await deleteDoc(doc(db, "charity", charityId));
+          await bumpPublicListCacheVersion("charity");
           showNotification("Akcja charytatywna została usunięta.", "success");
           const actorUid = getActivityLogActorUid();
           if (actorUid) {
@@ -9766,6 +9891,7 @@
         try {
           await updateDoc(doc(db, "charity", cur.id), { order: po, updatedAt: new Date() });
           await updateDoc(doc(db, "charity", prev.id), { order: co, updatedAt: new Date() });
+          await bumpPublicListCacheVersion("charity");
           await loadCharity();
         } catch (error) {
           console.error("moveCharityActionUp:", error);
@@ -9784,6 +9910,7 @@
         try {
           await updateDoc(doc(db, "charity", cur.id), { order: no, updatedAt: new Date() });
           await updateDoc(doc(db, "charity", next.id), { order: co, updatedAt: new Date() });
+          await bumpPublicListCacheVersion("charity");
           await loadCharity();
         } catch (error) {
           console.error("moveCharityActionDown:", error);
@@ -9906,6 +10033,7 @@
             },
             { merge: true }
           );
+          await bumpPublicListCacheVersion("charity");
 
           showNotification("Kafelek wpłat został zapisany.", "success");
           const actorUid = getActivityLogActorUid();
@@ -9938,7 +10066,7 @@
         if (existing) existing.remove();
 
         const modalHtml = `
-          <div id="pinned-donations-form-modal" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onclick="if(event.target.id === 'pinned-donations-form-modal') closePinnedDonationsModal()">
+          <div id="pinned-donations-form-modal" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closePinnedDonationsModal')">
             <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
               <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold coyote-text">Stały kafelek: dobrowolne wpłaty</h2>
@@ -10100,9 +10228,10 @@
 
           try {
             if (!auth?.currentUser) throw new Error("Zaloguj się ponownie.");
-            const token = await auth.currentUser.getIdToken();
+            const token = await auth.currentUser.getIdToken(true);
             const res = await fetch(`${BAZAR_API}/admin/all?${params.toString()}`, {
               headers: { Authorization: `Bearer ${token}` },
+              credentials: "include",
             });
             const data = await res.json();
             if (!data.success) throw new Error(data.error || "Błąd API bazaru");
@@ -10189,14 +10318,24 @@
         }
 
         async function bazarAuthHeadersJson() {
-          const token = await auth.currentUser.getIdToken();
-          return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+          const token = await auth.currentUser.getIdToken(true);
+          return {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          };
+        }
+
+        function bazarFetchInit(extra = {}) {
+          return { credentials: "include", ...extra };
         }
 
         window.bazarApprove = async (id) => {
           try {
             const h = await bazarAuthHeadersJson();
-            const res = await fetch(`${BAZAR_API}/admin/approve/${id}`, { method: "POST", headers: h, body: "{}" });
+            const res = await fetch(
+              `${BAZAR_API}/admin/approve/${id}`,
+              bazarFetchInit({ method: "POST", headers: h, body: "{}" }),
+            );
             const data = await res.json();
             if (!data.success) throw new Error(data.error || "Błąd");
             showNotification("Oferta zaakceptowana.", "success");
@@ -10215,11 +10354,14 @@
           }
           try {
             const h = await bazarAuthHeadersJson();
-            const res = await fetch(`${BAZAR_API}/admin/reject/${id}`, {
-              method: "POST",
-              headers: h,
-              body: JSON.stringify({ reason: reason.trim() }),
-            });
+            const res = await fetch(
+              `${BAZAR_API}/admin/reject/${id}`,
+              bazarFetchInit({
+                method: "POST",
+                headers: h,
+                body: JSON.stringify({ reason: reason.trim() }),
+              }),
+            );
             const data = await res.json();
             if (!data.success) throw new Error(data.error || "Błąd");
             showNotification("Oferta odrzucona.", "success");
@@ -10232,11 +10374,14 @@
         window.bazarTogglePin = async (id, pinned) => {
           try {
             const h = await bazarAuthHeadersJson();
-            const res = await fetch(`${BAZAR_API}/admin/pin/${id}`, {
-              method: "POST",
-              headers: h,
-              body: JSON.stringify({ pinned }),
-            });
+            const res = await fetch(
+              `${BAZAR_API}/admin/pin/${id}`,
+              bazarFetchInit({
+                method: "POST",
+                headers: h,
+                body: JSON.stringify({ pinned }),
+              }),
+            );
             const data = await res.json();
             if (!data.success) throw new Error(data.error || "Błąd");
             showNotification(pinned ? "Oferta przypięta." : "Oferta odpięta.", "success");
@@ -10250,7 +10395,10 @@
           if (!confirm("Oznaczyć ofertę jako sprzedaną?")) return;
           try {
             const h = await bazarAuthHeadersJson();
-            const res = await fetch(`${BAZAR_API}/admin/sold/${id}`, { method: "POST", headers: h, body: "{}" });
+            const res = await fetch(
+              `${BAZAR_API}/admin/sold/${id}`,
+              bazarFetchInit({ method: "POST", headers: h, body: "{}" }),
+            );
             const data = await res.json();
             if (!data.success) throw new Error(data.error || "Błąd");
             showNotification("Status: sprzedana.", "success");
@@ -10338,20 +10486,23 @@
             .slice(0, 5);
           try {
             const h = await bazarAuthHeadersJson();
-            const res = await fetch(`${BAZAR_API}/offer/${id}`, {
-              method: "PUT",
-              headers: h,
-              body: JSON.stringify({
-                title,
-                price,
-                category,
-                condition,
-                wojewodztwo,
-                miejscowosc,
-                description,
-                images,
+            const res = await fetch(
+              `${BAZAR_API}/offer/${id}`,
+              bazarFetchInit({
+                method: "PUT",
+                headers: h,
+                body: JSON.stringify({
+                  title,
+                  price,
+                  category,
+                  condition,
+                  wojewodztwo,
+                  miejscowosc,
+                  description,
+                  images,
+                }),
               }),
-            });
+            );
             const data = await res.json();
             if (!data.success) throw new Error(data.error || "Błąd zapisu");
             showNotification("Oferta zapisana.", "success");
@@ -11282,7 +11433,7 @@
 
           // Utwórz modal
           const modalHtml = `
-            <div id="event-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onclick="if(event.target.id === 'event-modal') closeEventModal()">
+            <div id="event-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeEventModal')">
               <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-2xl w-full max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation()">
                 <div class="flex justify-between items-center mb-6">
                   <h2 class="text-2xl font-bold coyote-text">Szczegóły Zdarzenia</h2>
@@ -12772,7 +12923,7 @@
           
           await updateDoc(doc(db, "products", currentProduct.id), { order: previousOrder });
           await updateDoc(doc(db, "products", previousProduct.id), { order: currentOrder });
-          
+          await bumpPublicListCacheVersion("products");
           await loadProducts();
         } catch (error) {
           console.error("Error moving product up:", error);
@@ -12793,7 +12944,7 @@
           
           await updateDoc(doc(db, "products", currentProduct.id), { order: nextOrder });
           await updateDoc(doc(db, "products", nextProduct.id), { order: currentOrder });
-          
+          await bumpPublicListCacheVersion("products");
           await loadProducts();
         } catch (error) {
           console.error("Error moving product down:", error);
@@ -12809,7 +12960,7 @@
           const productName = product ? product.title : "Nieznany produkt";
           
           await deleteDoc(doc(db, "products", productId));
-          
+          await bumpPublicListCacheVersion("products");
           if (currentUser) {
             await logActivity(currentUser.uid, "PRODUCT_DELETED", {
               productName: productName,
@@ -12902,6 +13053,7 @@
               closeProductForm();
             }
 
+            await bumpPublicListCacheVersion("products");
             loadProducts();
           } catch (error) {
             console.error("Error saving product:", error);
@@ -13139,6 +13291,7 @@
             available: available ? true : false,
             hidden: hidden ? true : false,
           });
+          await bumpPublicListCacheVersion("trainings");
           showNotification("Ustawienia dostępu zostały zapisane.", "success");
           if (currentUser) {
             const t = trainingsList.find((x) => x.id === tid);
@@ -13533,7 +13686,7 @@
           const trainingTitle = training ? training.title : "Nieznane szkolenie";
 
           await deleteDoc(doc(db, "trainings", trainingId));
-          
+          await bumpPublicListCacheVersion("trainings");
           if (currentUser) {
             await logActivity(currentUser.uid, "TRAINING_DELETED", {
               trainingTitle: trainingTitle,
@@ -13562,7 +13715,7 @@
             batch.update(doc(db, "trainings", t.id), { order: i });
           });
           await batch.commit();
-
+          await bumpPublicListCacheVersion("trainings");
           await loadTrainings();
         } catch (error) {
           console.error("Error moving training up:", error);
@@ -13583,7 +13736,7 @@
             batch.update(doc(db, "trainings", t.id), { order: i });
           });
           await batch.commit();
-
+          await bumpPublicListCacheVersion("trainings");
           await loadTrainings();
         } catch (error) {
           console.error("Error moving training down:", error);
@@ -14190,7 +14343,7 @@
         syncBlogPostImagesFromPost(post);
 
         const modalHtml = `
-          <div id="blog-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onclick="if(event.target.id === 'blog-form-modal') closeBlogModal()">
+          <div id="blog-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeBlogModal')">
             <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
               <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold coyote-text">${modalTitle}</h2>
@@ -14365,6 +14518,7 @@
             logActivity("BLOG_CREATED", `Dodano wpis na bloga: ${postData.title}`);
           }
 
+          await bumpPublicListCacheVersion("blogPosts");
           closeBlogModal();
           await loadBlogPosts();
         } catch (error) {
@@ -14398,6 +14552,7 @@
 
         try {
           await deleteDoc(doc(db, "blogPosts", postId));
+          await bumpPublicListCacheVersion("blogPosts");
           showNotification("Wpis został usunięty.", "success");
           await loadBlogPosts();
         } catch (error) {
@@ -14420,6 +14575,7 @@
         try {
           await updateDoc(doc(db, "blogPosts", cur.id), { order: po, updatedAt: Timestamp.now() });
           await updateDoc(doc(db, "blogPosts", prev.id), { order: co, updatedAt: Timestamp.now() });
+          await bumpPublicListCacheVersion("blogPosts");
           await loadBlogPosts();
           showNotification("Zaktualizowano kolejność na blogu.", "success");
         } catch (error) {
@@ -14442,6 +14598,7 @@
         try {
           await updateDoc(doc(db, "blogPosts", cur.id), { order: no, updatedAt: Timestamp.now() });
           await updateDoc(doc(db, "blogPosts", next.id), { order: co, updatedAt: Timestamp.now() });
+          await bumpPublicListCacheVersion("blogPosts");
           await loadBlogPosts();
           showNotification("Zaktualizowano kolejność na blogu.", "success");
         } catch (error) {
@@ -14464,32 +14621,18 @@
         renderBlogPostsList();
       };
 
+      window.toggleBlogMoreFilters = () => {
+        const panel = document.getElementById("blog-more-filters");
+        const btn = document.getElementById("blog-more-filters-toggle");
+        if (!panel || !btn) return;
+        panel.classList.toggle("hidden");
+        const open = !panel.classList.contains("hidden");
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+        btn.classList.toggle("border-coyote", open);
+        btn.classList.toggle("text-coyote", open);
+      };
+
       // ==================== FUNKCJE ZARZĄDZANIA DOKUMENTAMI ====================
-
-      const DEFAULT_SITE_MODAL_DOCUMENTS = [
-        { kind: "modal", title: "Regulamin Platformy", modalTarget: "regulamin-platformy", icon: "fa-users" },
-        { kind: "modal", title: "Regulamin Sklepu i Serwisu", modalTarget: "regulamin-sklepu", icon: "fa-store" },
-        { kind: "modal", title: "Regulamin bazaru", modalTarget: "regulamin-bazar", icon: "fa-handshake" },
-        { kind: "modal", title: "Polityka Prywatności Platformy", modalTarget: "polityka-prywatnosci-platformy", icon: "fa-user-shield" },
-        { kind: "modal", title: "Polityka Prywatności Sklepu", modalTarget: "polityka-prywatnosci", icon: "fa-shield-alt" },
-        { kind: "modal", title: "Regulamin Szkoleń", modalTarget: "regulamin-szkolen", icon: "fa-graduation-cap" },
-        { kind: "modal", title: "Procedura monitorowania po wprowadzeniu do obrotu", modalTarget: "procedura-monitorowania", icon: "fa-chart-line" },
-        { kind: "modal", title: "Klauzula Donacji", modalTarget: "klauzula-donacji", icon: "fa-heart" },
-      ];
-
-      const DEFAULT_SITE_FORM_DOCUMENTS = [
-        {
-          kind: "form",
-          title: "Formularz odstąpienia od umowy zwrotu/reklamacji",
-          formId: "zwrot-reklamacja",
-          icon: "fa-file-signature",
-        },
-      ];
-
-      const DEFAULT_SITE_FILE_DOCUMENTS = [
-        { kind: "file", title: "Instrukcja Bezpieczeństwa Zestawu", url: "https://dokumenty.strzelca.pl/pdf/instrukcja-bezpieczenstwa.html", icon: "fa-shield-alt" },
-        { kind: "file", title: "Oświadczenie o zgodności zestawu", url: "https://dokumenty.strzelca.pl/pdf/oswiadczenie-zgodnosci.html", icon: "fa-check-circle" },
-      ];
 
       function escapeAdminDocText(s) {
         return String(s || "")
@@ -14498,87 +14641,71 @@
           .replace(/>/g, "&gt;");
       }
 
-      function normDocUrlPath(url) {
-        try {
-          const t = String(url || "").trim();
-          if (!t) return "";
-          if (/^https?:\/\//i.test(t)) {
-            const p = new URL(t).pathname.replace(/^\/+|\/+$/g, "");
-            return p.toLowerCase();
-          }
-          return t.replace(/^\/+|\/+$/g, "").toLowerCase();
-        } catch {
-          return String(url || "").trim().toLowerCase();
-        }
-      }
-
-      /** Dopisuje do Firestore brakujące wpisy ze szablonu (modal / formularz / plik) — bez duplikatów. */
+      /** Dopisuje brakujące wpisy z documents-catalog-shared (ta sama lista co dokumenty.strzelca.pl). */
       async function syncMissingDefaultSiteDocuments() {
         const q = query(collection(db, "documents"), orderBy("order", "asc"));
         const snapshot = await getDocs(q);
         const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
         const modalTargets = new Set();
-        list.forEach((d) => {
-          if (d.kind === "modal" && d.modalTarget) modalTargets.add(String(d.modalTarget).trim());
-        });
         const formIds = new Set();
-        list.forEach((d) => {
-          if (d.kind === "form" && d.formId) formIds.add(String(d.formId).trim());
-        });
         const filePaths = new Set();
         list.forEach((d) => {
+          if (d.kind === "modal" && d.modalTarget) modalTargets.add(String(d.modalTarget).trim());
+          if (d.kind === "form" && d.formId) formIds.add(String(d.formId).trim());
           const isFile = d.kind === "file" || (!d.kind && d.url);
-          if (isFile && d.url) filePaths.add(normDocUrlPath(d.url));
+          if (isFile && d.url) filePaths.add(normDocPath(d.url));
         });
         let nextOrder = list.length;
         let added = 0;
-        for (const row of DEFAULT_SITE_MODAL_DOCUMENTS) {
-          const mt = (row.modalTarget || "").trim();
-          if (!mt || modalTargets.has(mt)) continue;
-          await addDoc(collection(db, "documents"), {
-            kind: "modal",
-            title: row.title,
-            description: "",
-            modalTarget: mt,
-            order: nextOrder,
-            date: Date.now(),
-            ...(row.icon ? { icon: row.icon } : {}),
-          });
-          modalTargets.add(mt);
-          nextOrder += 1;
-          added += 1;
-        }
-        for (const row of DEFAULT_SITE_FORM_DOCUMENTS) {
-          const fid = (row.formId || "").trim();
-          if (!fid || formIds.has(fid)) continue;
-          await addDoc(collection(db, "documents"), {
-            kind: "form",
-            title: row.title,
-            description: "",
-            formId: fid,
-            order: nextOrder,
-            date: Date.now(),
-            ...(row.icon ? { icon: row.icon } : {}),
-          });
-          formIds.add(fid);
-          nextOrder += 1;
-          added += 1;
-        }
-        for (const row of DEFAULT_SITE_FILE_DOCUMENTS) {
-          const pk = normDocUrlPath(row.url);
-          if (!pk || filePaths.has(pk)) continue;
-          await addDoc(collection(db, "documents"), {
-            kind: "file",
-            title: row.title,
-            description: "",
-            url: row.url,
-            order: nextOrder,
-            date: Date.now(),
-            ...(row.icon ? { icon: row.icon } : {}),
-          });
-          filePaths.add(pk);
-          nextOrder += 1;
-          added += 1;
+        for (const row of FALLBACK_SITE_DOCUMENTS) {
+          const ord = typeof row.order === "number" ? row.order : nextOrder;
+          if (row.kind === "modal") {
+            const mt = (row.modalTarget || "").trim();
+            if (!mt || modalTargets.has(mt)) continue;
+            await addDoc(collection(db, "documents"), {
+              kind: "modal",
+              title: row.title,
+              description: "",
+              modalTarget: mt,
+              order: ord,
+              date: Date.now(),
+              ...(row.icon ? { icon: row.icon } : {}),
+            });
+            modalTargets.add(mt);
+            nextOrder = Math.max(nextOrder, ord + 1);
+            added += 1;
+          } else if (row.kind === "form") {
+            const fid = (row.formId || "").trim();
+            if (!fid || formIds.has(fid)) continue;
+            await addDoc(collection(db, "documents"), {
+              kind: "form",
+              title: row.title,
+              description: "",
+              formId: fid,
+              order: ord,
+              date: Date.now(),
+              ...(row.icon ? { icon: row.icon } : {}),
+            });
+            formIds.add(fid);
+            nextOrder = Math.max(nextOrder, ord + 1);
+            added += 1;
+          } else {
+            const storeUrl = catalogFileUrlForFirestore(row.url);
+            const pk = normDocPath(storeUrl);
+            if (!pk || filePaths.has(pk)) continue;
+            await addDoc(collection(db, "documents"), {
+              kind: "file",
+              title: row.title,
+              description: "",
+              url: storeUrl,
+              order: ord,
+              date: Date.now(),
+              ...(row.icon ? { icon: row.icon } : {}),
+            });
+            filePaths.add(pk);
+            nextOrder = Math.max(nextOrder, ord + 1);
+            added += 1;
+          }
         }
         return added;
       }
@@ -14628,14 +14755,9 @@
         if (di) dom.getElementById("document-icon").value = di;
       };
 
-      window.importDefaultSiteDocuments = async () => {
-        await loadDocuments({ notifyIfSynced: true });
-      };
-      
       let currentDocumentId = null;
 
-      async function loadDocuments(options = {}) {
-        const { notifyIfSynced = false } = options;
+      async function loadDocuments() {
         const dom = window.document;
         const loadingEl = dom.getElementById("documents-loading");
         const emptyEl = dom.getElementById("documents-empty");
@@ -14646,26 +14768,22 @@
         if (listEl) listEl.innerHTML = "";
 
         try {
-          let synced = 0;
           try {
-            synced = await syncMissingDefaultSiteDocuments();
+            await syncMissingDefaultSiteDocuments();
           } catch (syncErr) {
             console.warn("syncMissingDefaultSiteDocuments:", syncErr);
-          }
-          if (notifyIfSynced) {
-            if (synced > 0) {
-              showNotification(`Dodano ${synced} brakujących pozycji (regulaminy / pliki).`, "success");
-            } else {
-              showNotification("Wszystkie pozycje ze szablonu są już w bazie.", "info");
-            }
           }
 
           const q = query(collection(db, "documents"), orderBy("order", "asc"));
           const snapshot = await getDocs(q);
-          documentsList = snapshot.docs.map((docSnap) => ({
-            id: docSnap.id,
-            ...docSnap.data(),
-          }));
+          const normalized = snapshot.docs
+            .map((docSnap) => {
+              const n = normalizeFirestoreCatalogDocument(docSnap.data());
+              if (!n) return null;
+              return { id: docSnap.id, ...n };
+            })
+            .filter(Boolean);
+          documentsList = mergeSiteDocumentsWithFallback(normalized);
 
           renderDocumentsList();
           
@@ -14718,6 +14836,7 @@
               : kind === "form"
                 ? "border-l-4 border-l-green-500"
                 : "border-l-4 border-l-[#c19a6b]";
+          const hasId = Boolean(docRow.id);
           const rowId = String(docRow.id || "").replace(/'/g, "\\'");
           const editBtn = `<button type="button" onclick="window.editDocument('${rowId}')" class="text-blue-400 hover:text-blue-300 px-3 py-1 border border-blue-400 rounded text-sm transition">
                   <i class="fa-solid fa-edit mr-1"></i>Edytuj
@@ -14727,10 +14846,12 @@
                 </button>`;
           let extraActions = "";
           if (kind === "modal") {
-            extraActions = `${editBtn}${deleteBtn}`;
+            extraActions = `${hasId ? editBtn : ""}${hasId ? deleteBtn : ""}`;
           } else if (kind === "file") {
-            extraActions = deleteBtn;
+            extraActions = hasId ? deleteBtn : "";
           }
+          const upDisabled = index === 0 || !hasId;
+          const downDisabled = index === n - 1 || !hasId;
           return `
             <div class="flex flex-wrap justify-between items-start gap-4 p-4 bg-zinc-800 rounded-lg border border-zinc-700 hover:border-coyote/60 transition ${border}">
               <div class="flex-1 min-w-[200px]">
@@ -14739,11 +14860,11 @@
                   <div class="font-semibold text-white text-lg">${escapeAdminDocText(docRow.title || "Bez tytułu")}</div>
                 </div>
                 ${docRow.description ? `<p class="text-sm text-zinc-400 mb-2">${escapeAdminDocText(docRow.description)}</p>` : ""}
-                <div class="text-xs text-zinc-500 space-y-1">${sub}</div>
+                <div class="text-xs text-zinc-500 space-y-1">${sub}${!hasId ? `<div class="text-amber-600/90 mt-1">Brak rekordu w Firestore — odśwież zakładkę (dopisze się automatycznie).</div>` : ""}</div>
               </div>
               <div class="flex flex-wrap items-center gap-2 shrink-0">
-                <button type="button" onclick="window.moveDocumentUp('${rowId}')" class="text-zinc-400 hover:text-zinc-200 px-2 py-1 border border-zinc-500 rounded text-xs disabled:opacity-30" ${index === 0 ? "disabled" : ""} title="Wyżej">↑</button>
-                <button type="button" onclick="window.moveDocumentDown('${rowId}')" class="text-zinc-400 hover:text-zinc-200 px-2 py-1 border border-zinc-500 rounded text-xs disabled:opacity-30" ${index === n - 1 ? "disabled" : ""} title="Niżej">↓</button>
+                <button type="button" onclick="window.moveDocumentUp('${rowId}')" class="text-zinc-400 hover:text-zinc-200 px-2 py-1 border border-zinc-500 rounded text-xs disabled:opacity-30" ${upDisabled ? "disabled" : ""} title="Wyżej">↑</button>
+                <button type="button" onclick="window.moveDocumentDown('${rowId}')" class="text-zinc-400 hover:text-zinc-200 px-2 py-1 border border-zinc-500 rounded text-xs disabled:opacity-30" ${downDisabled ? "disabled" : ""} title="Niżej">↓</button>
                 ${extraActions}
               </div>
             </div>
@@ -14820,15 +14941,18 @@
       };
 
       window.moveDocumentUp = async (documentId) => {
+        if (!documentId) return;
         const index = documentsList.findIndex((d) => d.id === documentId);
         if (index <= 0) return;
-        const cur = documentsList[index];
-        const prev = documentsList[index - 1];
-        const co = typeof cur.order === "number" ? cur.order : index;
-        const po = typeof prev.order === "number" ? prev.order : index - 1;
+        const reordered = [...documentsList];
+        [reordered[index - 1], reordered[index]] = [reordered[index], reordered[index - 1]];
         try {
-          await updateDoc(doc(db, "documents", cur.id), { order: po });
-          await updateDoc(doc(db, "documents", prev.id), { order: co });
+          const batch = writeBatch(db);
+          reordered.forEach((row, order) => {
+            if (row?.id) batch.update(doc(db, "documents", row.id), { order });
+          });
+          await batch.commit();
+          await bumpPublicListCacheVersion("documents");
           await loadDocuments();
         } catch (error) {
           console.error("moveDocumentUp:", error);
@@ -14837,15 +14961,18 @@
       };
 
       window.moveDocumentDown = async (documentId) => {
+        if (!documentId) return;
         const index = documentsList.findIndex((d) => d.id === documentId);
         if (index < 0 || index >= documentsList.length - 1) return;
-        const cur = documentsList[index];
-        const next = documentsList[index + 1];
-        const co = typeof cur.order === "number" ? cur.order : index;
-        const no = typeof next.order === "number" ? next.order : index + 1;
+        const reordered = [...documentsList];
+        [reordered[index], reordered[index + 1]] = [reordered[index + 1], reordered[index]];
         try {
-          await updateDoc(doc(db, "documents", cur.id), { order: no });
-          await updateDoc(doc(db, "documents", next.id), { order: co });
+          const batch = writeBatch(db);
+          reordered.forEach((row, order) => {
+            if (row?.id) batch.update(doc(db, "documents", row.id), { order });
+          });
+          await batch.commit();
+          await bumpPublicListCacheVersion("documents");
           await loadDocuments();
         } catch (error) {
           console.error("moveDocumentDown:", error);
@@ -14868,7 +14995,7 @@
           const documentTitle = docItem ? docItem.title : "Nieznany dokument";
 
           await deleteDoc(doc(db, "documents", documentId));
-
+          await bumpPublicListCacheVersion("documents");
           showNotification("Dokument został usunięty.", "success");
           await loadDocuments();
         } catch (error) {
@@ -14952,6 +15079,7 @@
               await addDoc(collection(db, "documents"), docData);
               showNotification("Dodano pozycję.", "success");
             }
+            await bumpPublicListCacheVersion("documents");
             window.clearDocumentForm();
             await loadDocuments();
           } catch (error) {
@@ -15226,6 +15354,7 @@
               closeTrainingPublicForm();
             }
 
+            await bumpPublicListCacheVersion("trainings");
             loadTrainings();
           } catch (error) {
             console.error("Error saving training:", error);
@@ -15848,7 +15977,7 @@
           }
           
           console.log('loadMessagesStatus: Fetching stats from /api/messages/stats');
-          const response = await fetch('/api/messages/stats', {
+          const response = await fetch(strzelcaActivityLogApiUrl('/api/messages/stats'), {
             method: 'GET',
             headers,
             credentials: 'include',
@@ -16046,7 +16175,7 @@
           }
 
           // Pobierz wiadomości przez API
-          const apiUrl = `/api/messages?${apiParams.toString()}`;
+          const apiUrl = strzelcaActivityLogApiUrl(`/api/messages?${apiParams.toString()}`);
           console.log('loadMessagesWithFilters: Fetching messages from API:', apiUrl);
           
           // Pobierz Firebase Auth token
@@ -16618,7 +16747,11 @@
               headers['Authorization'] = `Bearer ${authToken}`;
             }
             
-            const latest = await fetch(`/api/messages?senderId=${userId}&recipientId=admin&limit=1`, {
+            const latest = await fetch(
+              strzelcaActivityLogApiUrl(
+                `/api/messages?senderId=${userId}&recipientId=admin&limit=1`
+              ),
+              {
               method: 'GET',
               headers,
               credentials: 'include',
@@ -16697,7 +16830,9 @@
           
           console.log('toggleConversationPin: Making request to:', `/api/messages/conversation/${userId}/${action}`);
           
-          const response = await fetch(`/api/messages/conversation/${userId}/${action}`, {
+          const response = await fetch(
+            strzelcaActivityLogApiUrl(`/api/messages/conversation/${userId}/${action}`),
+            {
             method: 'PUT',
             headers,
             credentials: 'include'
@@ -16754,7 +16889,9 @@
           // Wybierz akcję: jeśli są nieprzeczytane, oznacz jako przeczytane, w przeciwnym razie jako nieprzeczytane
           const action = currentlyUnread ? 'read' : 'unread';
           
-          const response = await fetch(`/api/messages/conversation/${userId}/${action}`, {
+          const response = await fetch(
+            strzelcaActivityLogApiUrl(`/api/messages/conversation/${userId}/${action}`),
+            {
             method: 'PUT',
             headers,
             credentials: 'include'
@@ -16802,7 +16939,11 @@
           }
           
           // Pobierz wszystkie nieprzeczytane wiadomości od użytkownika
-          const response = await fetch(`/api/messages?senderId=${userId}&recipientId=admin&isRead=false&limit=100`, {
+          const response = await fetch(
+            strzelcaActivityLogApiUrl(
+              `/api/messages?senderId=${userId}&recipientId=admin&isRead=false&limit=100`
+            ),
+            {
             method: 'GET',
             headers,
             credentials: 'include',
@@ -16822,7 +16963,7 @@
           
           // Oznacz wszystkie wiadomości jako przeczytane przez API
           const markPromises = unreadMessages.map(msg => 
-            fetch(`/api/messages/${msg.id}/read`, {
+            fetch(strzelcaActivityLogApiUrl(`/api/messages/${msg.id}/read`), {
               method: 'PUT',
               headers,
               credentials: 'include'
@@ -16985,7 +17126,11 @@
           if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
           // Jeden endpoint zwracający wątek w obie strony (unikanie Firestore Listen/channel w przeglądarce)
-          const response = await fetch(`/api/messages/thread?peerId=admin&userId=${encodeURIComponent(userId)}&limit=200`, {
+          const response = await fetch(
+            strzelcaActivityLogApiUrl(
+              `/api/messages/thread?peerId=admin&userId=${encodeURIComponent(userId)}&limit=200`
+            ),
+            {
             method: 'GET',
             headers,
             credentials: 'include',
@@ -17155,7 +17300,11 @@
           // Wyślij odpowiedź przez API /api/messages (wspólna "Pomoc STRZELCA.PL")
           let categoryId = null;
           try {
-            const latest = await fetch(`/api/messages?senderId=${currentConversationUser.id}&recipientId=admin&limit=1`, {
+            const latest = await fetch(
+              strzelcaActivityLogApiUrl(
+                `/api/messages?senderId=${currentConversationUser.id}&recipientId=admin&limit=1`
+              ),
+              {
               method: 'GET',
               credentials: 'include',
               cache: 'no-store',
@@ -17188,7 +17337,7 @@
             headers['Authorization'] = `Bearer ${authToken}`;
           }
 
-          const res = await fetch('/api/messages', {
+          const res = await fetch(strzelcaActivityLogApiUrl('/api/messages'), {
             method: 'POST',
             headers,
             credentials: 'include',
@@ -17222,12 +17371,16 @@
           // Restart the conversation (from completed to in_progress)
           try {
             // Znajdź najnowszą wiadomość w konwersacji i przywróć do in_progress
-            const response = await fetch(`/api/messages?senderId=${currentConversationUser.id}&recipientId=admin&status=completed&limit=1`);
+            const response = await fetch(
+              strzelcaActivityLogApiUrl(
+                `/api/messages?senderId=${currentConversationUser.id}&recipientId=admin&status=completed&limit=1`
+              )
+            );
             const data = await response.json();
 
             if (data.success && data.data.messages.length > 0) {
               const latestMessage = data.data.messages[0];
-              await fetch(`/api/messages/${latestMessage.id}/status`, {
+              await fetch(strzelcaActivityLogApiUrl(`/api/messages/${latestMessage.id}/status`), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'in_progress' })
@@ -17250,12 +17403,16 @@
 
           try {
             // Znajdź najnowszą wiadomość w konwersacji i oznacz jako completed
-            const response = await fetch(`/api/messages?senderId=${currentConversationUser.id}&recipientId=admin&status=in_progress&limit=1`);
+            const response = await fetch(
+              strzelcaActivityLogApiUrl(
+                `/api/messages?senderId=${currentConversationUser.id}&recipientId=admin&status=in_progress&limit=1`
+              )
+            );
             const data = await response.json();
 
             if (data.success && data.data.messages.length > 0) {
               const latestMessage = data.data.messages[0];
-              await fetch(`/api/messages/${latestMessage.id}/status`, {
+              await fetch(strzelcaActivityLogApiUrl(`/api/messages/${latestMessage.id}/status`), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'completed' })
@@ -17286,7 +17443,11 @@
         if (!btn) return;
 
         // Sprawdź czy konwersacja jest zakończona
-        fetch(`/api/messages?senderId=${currentConversationUser.id}&recipientId=admin&status=completed&limit=1`)
+        fetch(
+          strzelcaActivityLogApiUrl(
+            `/api/messages?senderId=${currentConversationUser.id}&recipientId=admin&status=completed&limit=1`
+          )
+        )
           .then(response => response.json())
           .then(data => {
             if (data.success && data.data.messages.length > 0) {
@@ -17648,7 +17809,7 @@
         if (!confirm('Czy na pewno chcesz usunąć tę kategorię?')) return;
 
         try {
-          const response = await fetch(`/api/messages/categories/${id}`, {
+          const response = await fetch(strzelcaActivityLogApiUrl(`/api/messages/categories/${id}`), {
             method: 'DELETE'
           });
 
@@ -19262,7 +19423,7 @@
     </div>
 
     <!-- Modal formularza produktu -->
-    <div id="product-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onclick="if(event.target.id === 'product-form-modal') closeProductForm()">
+    <div id="product-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeProductForm')">
       <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold coyote-text" id="product-form-title">Dodaj produkt</h2>
@@ -19339,7 +19500,7 @@
     </div>
 
     <!-- Modal formularza publicznych informacji szkolenia -->
-    <div id="training-public-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onclick="if(event.target.id === 'training-public-form-modal') closeTrainingPublicForm()">
+    <div id="training-public-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeTrainingPublicForm')">
       <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold coyote-text" id="training-public-form-title">Dodaj szkolenie</h2>
@@ -19433,7 +19594,7 @@
     </div>
 
     <!-- Modal dostępu do szkolenia (widoczność + lista użytkowników) -->
-    <div id="training-access-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onclick="if(event.target.id === 'training-access-modal') closeTrainingAccessModal()">
+    <div id="training-access-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeTrainingAccessModal')">
       <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold coyote-text" id="training-access-modal-title">Dostęp</h2>
@@ -19501,7 +19662,7 @@
     </div>
 
     <!-- Modal formularza treści właściwej szkolenia -->
-    <div id="training-content-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onclick="if(event.target.id === 'training-content-form-modal') closeTrainingContentForm()">
+    <div id="training-content-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeTrainingContentForm')">
       <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold coyote-text" id="training-content-form-title">Treść właściwa kursu</h2>
@@ -19543,7 +19704,7 @@
     </div>
 
     <!-- Modal formularza lekcji -->
-    <div id="lesson-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onclick="if(event.target.id === 'lesson-form-modal') closeLessonForm()">
+    <div id="lesson-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeLessonForm')">
       <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold coyote-text" id="lesson-form-title">Dodaj lekcję</h2>
@@ -19623,7 +19784,7 @@
     </div>
 
     <!-- Modal wyboru użytkowników do szkoleń -->
-    <div id="training-user-dialog" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onclick="if(event.target.id === 'training-user-dialog') closeTrainingUserDialog()">
+    <div id="training-user-dialog" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeTrainingUserDialog')">
       <div class="admin-card max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold coyote-text">Dodaj użytkowników do szkolenia</h2>
@@ -19724,13 +19885,7 @@
         }
       };
     </script>
-    <script
-      type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-02-06-1"
-    ></script>
-    <script
-      type="module"
-      src="https://strzelca.pl/messages-widget.mjs?v=2026-02-05-14"
-    ></script>
+    <!-- Bez auth-widget / messages-widget: na /admin/ inicjalizują Firestore przed initAuth
+         i psują Safari (WebChannel „access control checks”). Panel ma własny UI i zakładkę wiadomości. -->
   </body>
 </html>

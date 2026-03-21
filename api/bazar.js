@@ -63,6 +63,14 @@ const WOJEWODZTWA = [
   'swietokrzyskie','warminsko-mazurskie','wielkopolskie','zachodniopomorskie'
 ];
 
+function getBearerFromReq(req) {
+  const h = req.headers || {};
+  const raw = h.authorization || h.Authorization || h['x-authorization'] || h['X-Authorization'];
+  if (!raw || typeof raw !== 'string') return null;
+  const m = raw.match(/^Bearer\s+(.+)$/i);
+  return m ? m[1].trim() : null;
+}
+
 async function getSessionUser(req) {
   try {
     initAdmin();
@@ -75,9 +83,8 @@ async function getSessionUser(req) {
         if (decoded?.uid) return { uid: decoded.uid, emailVerified: decoded.emailVerified === true };
       } catch (_) {}
     }
-    const authHeader = req.headers.authorization || '';
-    if (authHeader.startsWith('Bearer ')) {
-      const idToken = authHeader.substring(7);
+    const idToken = getBearerFromReq(req);
+    if (idToken) {
       try {
         const decoded = await admin.auth().verifyIdToken(idToken);
         if (decoded?.uid) return { uid: decoded.uid, emailVerified: decoded.email_verified === true };
@@ -95,8 +102,31 @@ async function isAdmin(uid) {
     const db = admin.firestore();
     const profileDoc = await db.collection('userProfiles').doc(uid).get();
     if (!profileDoc.exists) return false;
-    return profileDoc.data()?.role === 'admin';
+    const role = profileDoc.data()?.role;
+    return String(role || '').toLowerCase() === 'admin';
   } catch (_) { return false; }
+}
+
+async function bumpBazarPublicListVersion(db) {
+  try {
+    const ref = db.collection('publicListCacheMeta').doc('bazarOffers');
+    await ref.set(
+      {
+        v: admin.firestore.FieldValue.increment(1),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  } catch (e) {
+    console.warn('bumpBazarPublicListVersion', e);
+  }
+}
+
+async function readBazarListVersion(db) {
+  const snap = await db.collection('publicListCacheMeta').doc('bazarOffers').get();
+  if (!snap.exists) return 0;
+  const v = snap.data()?.v;
+  return typeof v === 'number' && Number.isFinite(v) ? v : 0;
 }
 
 function generateSlug(title, wojewodztwo) {
@@ -128,6 +158,11 @@ module.exports = async (req, res) => {
 
     // GET /api/bazar - lista aktywnych ofert (publiczne)
     if (req.method === 'GET' && !action) {
+      if (url.searchParams.get('listVersionOnly') === '1') {
+        const listVersion = await readBazarListVersion(db);
+        return res.json({ success: true, listVersion });
+      }
+
       const category = url.searchParams.get('category') || '';
       const status = url.searchParams.get('status') || 'ACTIVE';
       const search = url.searchParams.get('search') || '';
@@ -196,7 +231,8 @@ module.exports = async (req, res) => {
         });
       });
 
-      return res.json({ success: true, offers, count: offers.length });
+      const listVersion = await readBazarListVersion(db);
+      return res.json({ success: true, offers, count: offers.length, listVersion });
     }
 
     // GET /api/bazar/offer/:id - szczegoly oferty (publiczne jesli ACTIVE)
@@ -406,13 +442,14 @@ module.exports = async (req, res) => {
       }
 
       await docRef.update(updates);
+      await bumpBazarPublicListVersion(db);
       return res.json({ success: true });
     }
 
     // POST /api/bazar/admin/approve/:id
     if (req.method === 'POST' && action === 'admin' && subAction === 'approve') {
       const user = await getSessionUser(req);
-      if (!user || !(await isAdmin(user.uid))) return res.status(403).json({ success: false, error: 'Brak uprawnien admina' });
+      if (!user || !(await isAdmin(user.uid))) return res.status(403).json({ success: false, error: 'Brak uprawnień administratora' });
 
       const offerId = pathParts[2];
       if (!offerId) return res.status(400).json({ success: false, error: 'Brak ID oferty' });
@@ -445,13 +482,14 @@ module.exports = async (req, res) => {
       };
       sendBazarOfferTemplateEmail(db, 'bazar_offer_approved', approvedRow, {}).catch(() => {});
 
+      await bumpBazarPublicListVersion(db);
       return res.json({ success: true });
     }
 
     // POST /api/bazar/admin/reject/:id
     if (req.method === 'POST' && action === 'admin' && subAction === 'reject') {
       const user = await getSessionUser(req);
-      if (!user || !(await isAdmin(user.uid))) return res.status(403).json({ success: false, error: 'Brak uprawnien admina' });
+      if (!user || !(await isAdmin(user.uid))) return res.status(403).json({ success: false, error: 'Brak uprawnień administratora' });
 
       const offerId = pathParts[2];
       if (!offerId) return res.status(400).json({ success: false, error: 'Brak ID oferty' });
@@ -476,13 +514,14 @@ module.exports = async (req, res) => {
         { rejectionReason: reasonShort },
       ).catch(() => {});
 
+      await bumpBazarPublicListVersion(db);
       return res.json({ success: true });
     }
 
     // POST /api/bazar/admin/pin/:id
     if (req.method === 'POST' && action === 'admin' && subAction === 'pin') {
       const user = await getSessionUser(req);
-      if (!user || !(await isAdmin(user.uid))) return res.status(403).json({ success: false, error: 'Brak uprawnien admina' });
+      if (!user || !(await isAdmin(user.uid))) return res.status(403).json({ success: false, error: 'Brak uprawnień administratora' });
 
       const offerId = pathParts[2];
       if (!offerId) return res.status(400).json({ success: false, error: 'Brak ID oferty' });
@@ -491,25 +530,27 @@ module.exports = async (req, res) => {
       const pinned = body.pinned !== false;
 
       await db.collection('bazarOffers').doc(offerId).update({ is_pinned: pinned });
+      await bumpBazarPublicListVersion(db);
       return res.json({ success: true, is_pinned: pinned });
     }
 
     // POST /api/bazar/admin/sold/:id
     if (req.method === 'POST' && action === 'admin' && subAction === 'sold') {
       const user = await getSessionUser(req);
-      if (!user || !(await isAdmin(user.uid))) return res.status(403).json({ success: false, error: 'Brak uprawnien admina' });
+      if (!user || !(await isAdmin(user.uid))) return res.status(403).json({ success: false, error: 'Brak uprawnień administratora' });
 
       const offerId = pathParts[2];
       if (!offerId) return res.status(400).json({ success: false, error: 'Brak ID oferty' });
 
       await db.collection('bazarOffers').doc(offerId).update({ status: 'SOLD' });
+      await bumpBazarPublicListVersion(db);
       return res.json({ success: true });
     }
 
     // GET /api/bazar/admin/all - wszystkie oferty (admin only)
     if (req.method === 'GET' && action === 'admin' && subAction === 'all') {
       const user = await getSessionUser(req);
-      if (!user || !(await isAdmin(user.uid))) return res.status(403).json({ success: false, error: 'Brak uprawnien admina' });
+      if (!user || !(await isAdmin(user.uid))) return res.status(403).json({ success: false, error: 'Brak uprawnień administratora' });
 
       const statusFilter = url.searchParams.get('status') || '';
       const categoryFilter = url.searchParams.get('category') || '';
@@ -600,6 +641,7 @@ module.exports = async (req, res) => {
         {},
       ).catch(() => {});
 
+      await bumpBazarPublicListVersion(db);
       return res.json({ success: true });
     }
 
@@ -651,6 +693,7 @@ module.exports = async (req, res) => {
       }
 
       await docRef.update({ status: 'SOLD' });
+      await bumpBazarPublicListVersion(db);
       return res.json({ success: true });
     }
 
@@ -669,6 +712,7 @@ module.exports = async (req, res) => {
       }
 
       await docRef.delete();
+      await bumpBazarPublicListVersion(db);
       return res.json({ success: true });
     }
 

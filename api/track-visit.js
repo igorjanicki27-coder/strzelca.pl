@@ -109,23 +109,29 @@ module.exports = async (req, res) => {
       dayOfWeek: new Date().getDay(), // 0-6 (0 = niedziela)
     };
 
-    // Zapisz odwiedzinę w Firestore
+    // Jeden dokument na użytkownika/gościa na dzień (UTC date w polu date) — brak wielokrotnego liczenia przy wielu subdomenach / odświeżeniach
+    const dedupeKey = finalUserId
+      ? `${visitData.date}_u_${String(finalUserId).replace(/\//g, "_")}`
+      : `${visitData.date}_v_${String(finalVisitorId).replace(/\//g, "_")}`;
+
     console.log("[track-visit] Saving visit to Firestore:", {
       userId: finalUserId,
       visitorId: finalVisitorId,
       pageUrl: visitData.pageUrl,
-      date: visitData.date
+      date: visitData.date,
+      dedupeKey,
     });
-    
-    const docRef = await db.collection("visits").add(visitData);
-    console.log("[track-visit] Visit saved successfully with ID:", docRef.id);
 
-    res.status(200).json({ 
-      success: true, 
+    const docRef = db.collection("visits").doc(dedupeKey);
+    await docRef.set(visitData, { merge: true });
+    console.log("[track-visit] Visit saved successfully with ID:", dedupeKey);
+
+    res.status(200).json({
+      success: true,
       message: "Visit tracked",
       userId: finalUserId,
       visitorId: finalVisitorId,
-      visitId: docRef.id
+      visitId: dedupeKey,
     });
   } catch (error) {
     console.error("[track-visit] API error:", error);

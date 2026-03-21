@@ -1479,6 +1479,12 @@
         import { initializeFirestore, doc, getDoc, collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
+        import {
+            FALLBACK_SITE_DOCUMENTS,
+            mergeSiteDocumentsWithFallback,
+            normalizeFirestoreCatalogDocument,
+        } from "https://strzelca.pl/documents-catalog-shared.mjs?v=2026-03-22-1";
+        import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
 
         
       async function getFirebaseApiKey() {
@@ -1519,27 +1525,6 @@ const firebaseConfig = {
             useFetchStreams: true,
         });
         const auth = getAuth(app);
-
-        /** Fallback gdy Firestore pusty — zgodny z domyślnym importem w panelu admina. */
-        const FALLBACK_SITE_DOCUMENTS = [
-            { kind: "modal", modalTarget: "regulamin-platformy", title: "Regulamin Platformy", icon: "fa-users", order: 0 },
-            { kind: "modal", modalTarget: "regulamin-sklepu", title: "Regulamin Sklepu i Serwisu", icon: "fa-store", order: 1 },
-            { kind: "modal", modalTarget: "regulamin-bazar", title: "Regulamin bazaru", icon: "fa-handshake", order: 2 },
-            { kind: "modal", modalTarget: "polityka-prywatnosci-platformy", title: "Polityka Prywatności Platformy", icon: "fa-user-shield", order: 3 },
-            { kind: "modal", modalTarget: "polityka-prywatnosci", title: "Polityka Prywatności Sklepu", icon: "fa-shield-alt", order: 4 },
-            { kind: "modal", modalTarget: "regulamin-szkolen", title: "Regulamin Szkoleń", icon: "fa-graduation-cap", order: 5 },
-            {
-                kind: "form",
-                formId: "zwrot-reklamacja",
-                title: "Formularz odstąpienia od umowy zwrotu/reklamacji",
-                icon: "fa-file-signature",
-                order: 6,
-            },
-            { kind: "file", url: "pdf/instrukcja-bezpieczenstwa.html", title: "Instrukcja Bezpieczeństwa Zestawu", icon: "fa-shield-alt", order: 7 },
-            { kind: "modal", modalTarget: "klauzula-donacji", title: "Klauzula Donacji", icon: "fa-heart", order: 8 },
-            { kind: "file", url: "pdf/oswiadczenie-zgodnosci.html", title: "Oświadczenie o zgodności zestawu", icon: "fa-check-circle", order: 9 },
-            { kind: "modal", modalTarget: "procedura-monitorowania", title: "Procedura monitorowania po wprowadzeniu do obrotu", icon: "fa-chart-line", order: 10 },
-        ];
 
         function escapeHtml(s) {
             return String(s || "")
@@ -1583,145 +1568,6 @@ const firebaseConfig = {
         function sanitizeFaIcon(raw) {
             const s = String(raw || "").trim();
             return /^fa-[a-z0-9-]+$/i.test(s) ? s : "fa-file-pdf";
-        }
-
-        /** Ujednolicenie ścieżki pliku (pdf/… vs pełny URL) przy scalaniu z bazą. */
-        function normDocPath(url) {
-            try {
-                const t = String(url || "").trim();
-                if (!t) return "";
-                if (/^https?:\/\//i.test(t)) {
-                    const p = new URL(t).pathname.replace(/^\/+|\/+$/g, "");
-                    return p.toLowerCase();
-                }
-                return t.replace(/^\/+|\/+$/g, "").toLowerCase();
-            } catch {
-                return String(url || "").trim().toLowerCase();
-            }
-        }
-
-        /**
-         * Gdy w bazie są tylko PDF-y, i tak pokazuj regulaminy z szablonu (treść w HTML).
-         * Wpisy z Firestore nadpisują tytuł/opis/kolejność tam, gdzie pasują.
-         */
-        function mergeSiteDocumentsWithFallback(dbItems) {
-            const consumed = new WeakSet();
-            const merged = [];
-
-            const findDbModal = (mt) =>
-                dbItems.find((i) => i.kind === "modal" && i.modalTarget === mt);
-            const findDbFile = (fbUrl) => {
-                const fp = normDocPath(fbUrl);
-                return dbItems.find((i) => i.kind === "file" && normDocPath(i.url) === fp);
-            };
-            const findDbForm = (fid) =>
-                dbItems.find((i) => i.kind === "form" && String(i.formId || "").trim() === fid);
-
-            const DEPRECATED_FILE_PATHS = new Set([
-                normDocPath("pdf/formularz-odstapienia.html"),
-                normDocPath("pdf/formularz-reklamacyjny.html"),
-            ]);
-
-            for (const fb of FALLBACK_SITE_DOCUMENTS) {
-                if (fb.kind === "modal") {
-                    const hit = findDbModal(fb.modalTarget);
-                    if (hit) {
-                        merged.push(hit);
-                        consumed.add(hit);
-                    } else {
-                        merged.push({ ...fb });
-                    }
-                } else if (fb.kind === "form") {
-                    const fid = String(fb.formId || "").trim();
-                    const hit = fid ? findDbForm(fid) : null;
-                    if (hit) {
-                        merged.push(hit);
-                        consumed.add(hit);
-                    } else {
-                        merged.push({ ...fb });
-                    }
-                } else {
-                    const hit = findDbFile(fb.url);
-                    if (hit) {
-                        merged.push(hit);
-                        consumed.add(hit);
-                    } else {
-                        merged.push({ ...fb });
-                    }
-                }
-            }
-
-            const extras = dbItems.filter((i) => !consumed.has(i));
-            /** Stare wpisy „plik” w Firestore — ukryj, gdy ta sama treść jest już jako modal w szablonie. */
-            const MODAL_LEGACY_FILE_PATHS = [
-                { modalTarget: "procedura-monitorowania", path: "pdf/procedura-monitorowania.html" },
-                { modalTarget: "klauzula-donacji", path: "pdf/klauzula-donacji.html" },
-            ];
-            const extrasDeduped = extras.filter((i) => {
-                if (i.kind === "file") {
-                    const p = normDocPath(i.url);
-                    if (DEPRECATED_FILE_PATHS.has(p)) return false;
-                    for (const { modalTarget, path } of MODAL_LEGACY_FILE_PATHS) {
-                        const hasModal = merged.some(
-                            (m) => m.kind === "modal" && m.modalTarget === modalTarget,
-                        );
-                        if (hasModal && p === normDocPath(path)) return false;
-                    }
-                }
-                return true;
-            });
-
-            /** Kolejność z panelu admina (pole order w Firestore), nie kolejność wpisów w szablonie FALLBACK. */
-            function catalogSortKey(item) {
-                const o = item.order;
-                if (typeof o === "number" && Number.isFinite(o)) return o;
-                return 1e9;
-            }
-            const combined = merged.concat(extrasDeduped);
-            combined.sort((a, b) => {
-                const d = catalogSortKey(a) - catalogSortKey(b);
-                if (d !== 0) return d;
-                return String(a.title || "").localeCompare(String(b.title || ""), "pl");
-            });
-            return combined;
-        }
-
-        function normalizeFirestoreDocument(data) {
-            const order = typeof data.order === "number" ? data.order : 0;
-            const rawKind = String(data.kind || "").toLowerCase();
-            if (rawKind === "modal") {
-                const modalTarget = String(data.modalTarget || "").trim();
-                if (!modalTarget || !/^[a-z0-9-]+$/i.test(modalTarget) || !data.title) return null;
-                return {
-                    kind: "modal",
-                    modalTarget,
-                    title: data.title,
-                    description: data.description || "",
-                    icon: data.icon || "fa-file-lines",
-                    order,
-                };
-            }
-            if (rawKind === "form") {
-                const formId = String(data.formId || "").trim();
-                if (!formId || !/^[a-z0-9-]+$/i.test(formId) || !data.title) return null;
-                return {
-                    kind: "form",
-                    formId,
-                    title: data.title,
-                    description: data.description || "",
-                    icon: data.icon || "fa-file-signature",
-                    order,
-                };
-            }
-            if (!data.title || !data.url) return null;
-            return {
-                kind: "file",
-                url: data.url,
-                title: data.title,
-                description: data.description || "",
-                icon: data.icon || "fa-file-pdf",
-                order,
-            };
         }
 
         function renderCatalogRow(item) {
@@ -2010,16 +1856,27 @@ const firebaseConfig = {
 
             let items = [];
             try {
-                const q = query(collection(db, "documents"), orderBy("order", "asc"));
-                const snapshot = await getDocs(q);
-                items = snapshot.docs
-                    .map((d) => normalizeFirestoreDocument(d.data()))
-                    .filter(Boolean);
-                if (items.length) {
-                    items.sort((a, b) =>
-                        a.order !== b.order ? a.order - b.order : String(a.title).localeCompare(String(b.title)),
-                    );
-                }
+                const { payload } = await loadWithVersionCache({
+                    db,
+                    getDoc,
+                    doc,
+                    idbKey: "list:documents",
+                    metaDocId: "documents",
+                    fetchFresh: async () => {
+                        const q = query(collection(db, "documents"), orderBy("order", "asc"));
+                        const snapshot = await getDocs(q);
+                        let raw = snapshot.docs
+                            .map((d) => normalizeFirestoreCatalogDocument(d.data()))
+                            .filter(Boolean);
+                        if (raw.length) {
+                            raw.sort((a, b) =>
+                                a.order !== b.order ? a.order - b.order : String(a.title).localeCompare(String(b.title)),
+                            );
+                        }
+                        return raw;
+                    },
+                });
+                items = Array.isArray(payload) ? payload : [];
             } catch (e) {
                 console.warn("Nie udało się wczytać dokumentów z Firestore — lista domyślna:", e?.message || e);
             }
@@ -2180,7 +2037,7 @@ const firebaseConfig = {
         
         // Inicjalizuj śledzenie odwiedzin (działa dla wszystkich użytkowników, również niezalogowanych)
         try {
-          const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-1");
+          const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2");
           await initVisitTracker(auth);
         } catch (error) {
           console.warn("Could not initialize visit tracker:", error);

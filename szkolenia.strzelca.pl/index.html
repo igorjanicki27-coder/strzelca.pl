@@ -371,6 +371,8 @@
                 browserLocalPersistence,
             } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
             import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
+            import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-21-1";
+            import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
             import {
                 initializeFirestore,
                 getFirestore,
@@ -575,83 +577,28 @@ const firebaseConfig = {
             
             // Inicjalizuj śledzenie odwiedzin (działa dla wszystkich użytkowników, również niezalogowanych)
             try {
-              const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-1");
+              const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2");
               await initVisitTracker(auth);
             } catch (error) {
               console.warn("Could not initialize visit tracker:", error);
             }
 
-            // Funkcja do obsługi zapytania o ofertę
-            window.handleOfferInquiry = async (trainingName) => {
-                // Jeśli zapytanie jest wywołane z modala szczegółów, schowaj modal,
-                // aby nie zasłaniał otwieranego widgetu wiadomości.
+            // Zapytanie o ofertę — ten sam formularz co w sklepie (bez adresu i paczkomatu), POST /api/orders
+            window.handleOfferInquiry = async (trainingName, trainingPrice = 0) => {
                 const detailsModal = document.getElementById("details-modal");
                 if (detailsModal && !detailsModal.classList.contains("hidden")) {
                     detailsModal.classList.add("hidden");
                 }
 
-                const user = auth.currentUser;
-                
-                if (user) {
-                    // Użytkownik zalogowany - otwórz czat z administracją
-                    try {
-                        // Ustaw localStorage aby widget wybrał konwersację z adminem
-                        localStorage.setItem("__strzelca_messages_widget_selected", JSON.stringify({ peerId: "admin" }));
-                        localStorage.setItem("__strzelca_messages_widget_open", "true");
-                        
-                        // Poczekaj na załadowanie widgetu (maksymalnie 2 sekundy)
-                        let attempts = 0;
-                        const maxAttempts = 20;
-                        const checkWidget = () => {
-                            const widgetHost = document.getElementById("strzelca-messages-widget");
-                            if (widgetHost && widgetHost.shadowRoot) {
-                                const btn = widgetHost.shadowRoot.querySelector("button.btn");
-                                if (btn) {
-                                    btn.click();
-                                    
-                                    // Poczekaj chwilę i wypełnij textarea z informacją o szkoleniu
-                                    setTimeout(() => {
-                                        const textarea = widgetHost.shadowRoot.querySelector("textarea");
-                                        if (textarea) {
-                                            textarea.value = `Zapytanie o ofertę szkolenia: ${trainingName}`;
-                                            textarea.dispatchEvent(new Event("input", { bubbles: true }));
-                                            textarea.focus();
-                                        }
-                                    }, 500);
-                                    return true;
-                                }
-                            }
-                            return false;
-                        };
-                        
-                        // Sprawdź od razu
-                        if (checkWidget()) {
-                            return;
-                        }
-                        
-                        // Jeśli widget nie jest jeszcze załadowany, poczekaj
-                        const interval = setInterval(() => {
-                            attempts++;
-                            if (checkWidget() || attempts >= maxAttempts) {
-                                clearInterval(interval);
-                                if (attempts >= maxAttempts) {
-                                    // Fallback: jeśli widget się nie załadował, otwórz formularz kontaktowy
-                                    const offerUrl = `https://kontakt.strzelca.pl?topic=Pytanie o szkolenie&product=${encodeURIComponent(trainingName)}`;
-                                    window.location.href = offerUrl;
-                                }
-                            }
-                        }, 100);
-                    } catch (error) {
-                        console.error("Error opening chat:", error);
-                        // Fallback: otwórz formularz kontaktowy
-                        const offerUrl = `https://kontakt.strzelca.pl?topic=Pytanie o szkolenie&product=${encodeURIComponent(trainingName)}`;
-                        window.location.href = offerUrl;
-                    }
-                } else {
-                    // Użytkownik niezalogowany - przekieruj do formularza kontaktowego
-                    const offerUrl = `https://kontakt.strzelca.pl?topic=Pytanie o szkolenie&product=${encodeURIComponent(trainingName)}`;
-                    window.location.href = offerUrl;
-                }
+                await openOrderInquiryFlow({
+                    auth,
+                    db,
+                    getDoc,
+                    doc,
+                    context: "training",
+                    rawTitle: trainingName,
+                    price: trainingPrice || 0,
+                });
             };
 
             let trainingItems = [];
@@ -684,7 +631,7 @@ const firebaseConfig = {
                 if (item.hasAccess) {
                     buttonHtml = `<button onclick="event.stopPropagation(); window.location.href='https://szkolenia.strzelca.pl/kurs.html?id=${item.id}'" aria-label="Rozpocznij kurs ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Rozpocznij kurs</button>`;
                 } else {
-                    buttonHtml = `<button onclick="event.stopPropagation(); window.handleOfferInquiry(decodeURIComponent('${encodedTitle}'))" aria-label="Zapytaj o ofertę szkolenia ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Zapytaj o ofertę</button>`;
+                    buttonHtml = `<button onclick="event.stopPropagation(); window.handleOfferInquiry(decodeURIComponent('${encodedTitle}'), ${item.price || 0})" aria-label="Zapytaj o ofertę szkolenia ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Zapytaj o ofertę</button>`;
                 }
 
                 return `
@@ -843,15 +790,57 @@ const firebaseConfig = {
                 }
                 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
                 const maxAttempts = 3;
-                let snap;
                 for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                     try {
-                        const q = query(
-                            collection(db, "trainings"),
-                            orderBy("order", "asc"),
-                        );
-                        snap = await getDocs(q);
-                        break;
+                        const { payload: trainingRows } = await loadWithVersionCache({
+                            db,
+                            getDoc,
+                            doc,
+                            idbKey: "list:trainings",
+                            metaDocId: "trainings",
+                            fetchFresh: async () => {
+                                const q = query(collection(db, "trainings"), orderBy("order", "asc"));
+                                const snap = await getDocs(q);
+                                const rows = [];
+                                snap.forEach((d) => {
+                                    const t = d.data();
+                                    rows.push({
+                                        id: d.id,
+                                        title: t.title || "",
+                                        price: t.price || 0,
+                                        img: t.img || "",
+                                        available: t.available === true,
+                                    });
+                                });
+                                return rows;
+                            },
+                        });
+                        const user = auth.currentUser;
+                        let userAccessList = [];
+                        if (user) {
+                            try {
+                                const accessRef = collection(db, "trainingAccess");
+                                const accessQuery = query(accessRef, where("userId", "==", user.uid));
+                                const accessSnap = await getDocs(accessQuery);
+                                userAccessList = accessSnap.docs.map((x) => x.data().trainingId);
+                            } catch (error) {
+                                console.error("Error loading user access:", error);
+                            }
+                        }
+                        const rows = Array.isArray(trainingRows) ? trainingRows : [];
+                        trainingItems = rows.map((row) => {
+                            const hasUserAccess = user && userAccessList.includes(row.id);
+                            const hasAccess = row.available === true || hasUserAccess;
+                            return {
+                                id: row.id,
+                                title: row.title,
+                                price: row.price,
+                                img: row.img,
+                                hasAccess,
+                            };
+                        });
+                        renderTrainingCarousel(false);
+                        return;
                     } catch (error) {
                         console.warn(`Load trainings attempt ${attempt}/${maxAttempts} failed:`, error);
                         if (attempt < maxAttempts) {
@@ -861,7 +850,7 @@ const firebaseConfig = {
                                 track.innerHTML = `
                                     <article class="card-dark training-card p-8 text-center w-full">
                                         <p class="text-red-400 uppercase tracking-[0.1em] text-xs mb-3">Nie udało się załadować szkoleń</p>
-                                        <button onclick="fetchAll()" class="px-4 py-2 border border-zinc-700 rounded text-zinc-300 hover:border-[#C19A6B] hover:text-[#C19A6B] transition text-xs uppercase tracking-[0.12em]">Spróbuj ponownie</button>
+                                        <button onclick="window.fetchAllTrainings && window.fetchAllTrainings()" class="px-4 py-2 border border-zinc-700 rounded text-zinc-300 hover:border-[#C19A6B] hover:text-[#C19A6B] transition text-xs uppercase tracking-[0.12em]">Spróbuj ponownie</button>
                                     </article>
                                 `;
                             }
@@ -876,42 +865,8 @@ const firebaseConfig = {
                         }
                     }
                 }
-                trainingItems = [];
-
-                // Sprawdź czy użytkownik jest zalogowany
-                const user = auth.currentUser;
-
-                // Pobierz listę dostępów użytkownika (jeśli jest zalogowany)
-                let userAccessList = [];
-                if (user) {
-                    try {
-                        const accessRef = collection(db, "trainingAccess");
-                        const accessQuery = query(accessRef, where("userId", "==", user.uid));
-                        const accessSnap = await getDocs(accessQuery);
-                        userAccessList = accessSnap.docs.map(doc => doc.data().trainingId);
-                    } catch (error) {
-                        console.error("Error loading user access:", error);
-                    }
-                }
-
-                snap.forEach((d) => {
-                    const t = d.data();
-                    // Sprawdź czy użytkownik ma dostęp do kursu
-                    const isAvailableForAll = t.available === true;
-                    const hasUserAccess = user && userAccessList.includes(d.id);
-                    const hasAccess = isAvailableForAll || hasUserAccess;
-
-                    trainingItems.push({
-                        id: d.id,
-                        title: t.title || "",
-                        price: t.price || 0,
-                        img: t.img || "",
-                        hasAccess,
-                    });
-                });
-
-                renderTrainingCarousel(false);
             };
+            window.fetchAllTrainings = fetchAll;
 
             window.showTrainingDetails = async (id) => {
                 const d = await getDoc(doc(db, "trainings", id));
@@ -941,7 +896,7 @@ const firebaseConfig = {
                         Rozpocznij kurs
                     </button>`;
                 } else {
-                    buttonHtml = `<button type="button" onclick="window.handleOfferInquiry(decodeURIComponent('${encodedTitle}'))" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition flex items-center justify-center gap-2">
+                    buttonHtml = `<button type="button" onclick="window.handleOfferInquiry(decodeURIComponent('${encodedTitle}'), ${t.price || 0})" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition flex items-center justify-center gap-2">
                         <i class="fas fa-envelope"></i>
                         Zapytaj o ofertę
                     </button>`;

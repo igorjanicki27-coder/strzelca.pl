@@ -537,6 +537,30 @@
             text-overflow: ellipsis;
         }
 
+        /* Przycisk „Weź udział” — wzorowany na pomocy (Wesprzyj), podświetlenie na zielono */
+        .event-participate-btn {
+            background: var(--coyote);
+            color: #fff;
+            border: 1px solid rgba(193, 154, 107, 0.85);
+        }
+        .event-participate-btn:hover {
+            background: #a67f52;
+            border-color: #a67f52;
+        }
+        .event-participate-btn .event-participate-label {
+            color: #fff;
+        }
+        .event-participate-btn:hover .event-participate-label {
+            color: #22c55e;
+        }
+        .event-participate-btn .event-participate-heart {
+            color: #22c55e;
+            font-size: 0.95rem;
+        }
+        .event-participate-btn:hover .event-participate-heart {
+            color: #4ade80;
+        }
+
         .events-empty-card {
             width: 100%;
             min-height: 130px;
@@ -1101,6 +1125,8 @@
                             </button>
                         </div>
 
+                        <div id="modal-participate-wrap" class="mt-4 md:mt-5"></div>
+
                         <div class="border-t border-zinc-700 pt-4 md:pt-6">
                             <div id="modal-content" class="text-zinc-300 text-sm md:text-base leading-relaxed custom-render">
                             <!-- Event content will be loaded here -->
@@ -1108,6 +1134,38 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Brak URL zapisów — informacja + kontakt -->
+        <div id="event-no-signup-modal" class="fixed inset-0 z-[55] hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onclick="if(event.target===this) window.closeEventNoSignupModal()">
+            <div class="bg-zinc-900 border border-zinc-700 rounded-2xl max-w-md w-full p-6 shadow-2xl" onclick="event.stopPropagation()">
+                <p class="text-zinc-200 text-sm leading-relaxed mb-6">
+                    Cieszymy się, że chcesz być z nami! Wydarzenie nie posiada zapisów lub są one aktualnie niedostępne.
+                    W celu uzyskania dodatkowych informacji prosimy o kontakt.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button type="button" id="event-no-signup-contact-btn" class="event-participate-btn flex-1 font-bold text-sm tracking-widest py-3 px-4 rounded-lg uppercase flex items-center justify-center gap-2 transition-all duration-300">
+                        <i class="fa-solid fa-envelope event-participate-heart" aria-hidden="true"></i>
+                        <span class="event-participate-label transition-colors">Kontakt</span>
+                    </button>
+                    <button type="button" onclick="window.closeEventNoSignupModal()" class="flex-1 py-3 px-4 rounded-lg border border-zinc-600 text-zinc-300 hover:bg-zinc-800 transition text-sm font-semibold uppercase tracking-wide">
+                        Zamknij
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formularz kontaktowy (iframe z kontakt.strzelca.pl) dla niezalogowanych -->
+        <div id="event-contact-iframe-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-3 md:p-4 bg-black/85 backdrop-blur-sm" onclick="if(event.target===this) window.closeEventContactIframeModal()">
+            <div class="bg-zinc-900 border border-zinc-700 rounded-xl md:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col shadow-2xl overflow-hidden" onclick="event.stopPropagation()">
+                <div class="flex justify-between items-center px-4 py-3 border-b border-zinc-700 shrink-0">
+                    <span class="text-sm font-bold coyote-text uppercase tracking-widest">Kontakt</span>
+                    <button type="button" onclick="window.closeEventContactIframeModal()" class="text-zinc-400 hover:text-white text-xl w-9 h-9 rounded-full bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center transition" aria-label="Zamknij">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+                <iframe id="event-contact-iframe" class="w-full h-[min(520px,75vh)] border-0 bg-zinc-950" title="Formularz kontaktowy STRZELCA.PL"></iframe>
             </div>
         </div>
 
@@ -1122,6 +1180,7 @@
         import { initializeFirestore, collection, query, orderBy, getDocs, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
+        import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
 
         
       async function getFirebaseApiKey() {
@@ -1309,7 +1368,7 @@ const firebaseConfig = {
         
         // Inicjalizuj śledzenie odwiedzin (działa dla wszystkich użytkowników, również niezalogowanych)
         try {
-          const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-1");
+          const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2");
           await initVisitTracker(auth);
         } catch (error) {
           console.warn("Could not initialize visit tracker:", error);
@@ -1318,6 +1377,13 @@ const firebaseConfig = {
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
             updateUserInterface(user);
+        });
+
+        window.addEventListener('message', (ev) => {
+            if (ev.origin !== 'https://kontakt.strzelca.pl') return;
+            if (ev.data && ev.data.type === 'strzelca-contact-embed-done') {
+                window.closeEventContactIframeModal();
+            }
         });
 
         let allEvents = [];
@@ -1614,101 +1680,75 @@ const firebaseConfig = {
         // Load events from Firebase
         async function loadEvents() {
             try {
-                console.log('Loading events from Firestore...');
-                allEvents = [];
-                let skippedCount = 0;
-                let querySnapshot;
                 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
                 const maxAttempts = 3;
 
                 for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                     try {
-                        const q = query(collection(db, "events"), orderBy("date", "asc"));
-                        querySnapshot = await getDocs(q);
-                        console.log(`Found ${querySnapshot.size} events in Firestore (with orderBy)`);
-                        break;
-                    } catch (orderByError) {
-                        console.warn(`orderBy failed attempt ${attempt}:`, orderByError);
-                        try {
-                            querySnapshot = await getDocs(collection(db, "events"));
-                            console.log(`Found ${querySnapshot.size} events in Firestore (without orderBy)`);
-                            break;
-                        } catch (fallbackError) {
-                            console.warn(`Fallback without orderBy also failed attempt ${attempt}:`, fallbackError);
-                            if (attempt < maxAttempts) {
-                                await wait(450 * attempt);
-                            } else {
-                                throw fallbackError;
-                            }
+                        const { payload } = await loadWithVersionCache({
+                            db,
+                            getDoc,
+                            doc,
+                            idbKey: "list:events",
+                            metaDocId: "events",
+                            fetchFresh: async () => {
+                                let querySnapshot;
+                                try {
+                                    const q = query(collection(db, "events"), orderBy("date", "asc"));
+                                    querySnapshot = await getDocs(q);
+                                } catch (orderByError) {
+                                    console.warn("events orderBy failed, fallback:", orderByError);
+                                    querySnapshot = await getDocs(collection(db, "events"));
+                                }
+                                const built = [];
+                                querySnapshot.forEach((docSnap) => {
+                                    const event = docSnap.data();
+                                    if (event.published !== false) {
+                                        if (!event.date) return;
+                                        let dateObj;
+                                        if (event.date?.toDate) {
+                                            dateObj = event.date.toDate();
+                                        } else if (event.date instanceof Date) {
+                                            dateObj = event.date;
+                                        } else if (typeof event.date === 'string' || typeof event.date === 'number') {
+                                            dateObj = new Date(event.date);
+                                        } else {
+                                            return;
+                                        }
+                                        if (isNaN(dateObj.getTime())) return;
+                                        built.push({
+                                            id: docSnap.id,
+                                            ...event,
+                                            dateObj: dateObj,
+                                            status: isEventCompleted({ dateObj }) ? 'completed' : 'active',
+                                            category: normalizeEventCategory(event.category),
+                                            pinned: event.pinned || false,
+                                            location: event.location || '',
+                                            participationUrl: (event.participationUrl && String(event.participationUrl).trim()) || ''
+                                        });
+                                    }
+                                });
+                                return built;
+                            },
+                        });
+                        allEvents = Array.isArray(payload) ? payload : [];
+                        allEvents.sort((a, b) => {
+                            if (a.pinned && !b.pinned) return -1;
+                            if (!a.pinned && b.pinned) return 1;
+                            return compareEvents(a, b);
+                        });
+                        updateLastUpdate();
+                        applyFilters();
+                        return;
+                    } catch (error) {
+                        console.warn(`Load events attempt ${attempt}/${maxAttempts} failed:`, error);
+                        if (attempt < maxAttempts) {
+                            await wait(450 * attempt);
+                            continue;
                         }
+                        throw error;
                     }
                 }
-
-                querySnapshot.forEach((doc) => {
-                    const event = doc.data();
-                    console.log(`Event ${doc.id}:`, { 
-                        title: event.title, 
-                        published: event.published, 
-                        date: event.date,
-                        fullData: event
-                    });
-                    
-                    // Allow events without published field or with published=true
-                    if (event.published !== false) {
-                        // Sprawdź czy data istnieje
-                        if (!event.date) {
-                            console.warn(`Event ${doc.id} missing date field`);
-                            return;
-                        }
-                        
-                        // Obsługa różnych formatów daty
-                        let dateObj;
-                        if (event.date?.toDate) {
-                            // Firestore Timestamp
-                            dateObj = event.date.toDate();
-                        } else if (event.date instanceof Date) {
-                            // JavaScript Date
-                            dateObj = event.date;
-                        } else if (typeof event.date === 'string' || typeof event.date === 'number') {
-                            // String lub timestamp
-                            dateObj = new Date(event.date);
-                        } else {
-                            console.warn(`Event ${doc.id} has invalid date format:`, event.date);
-                            return;
-                        }
-                        
-                        // Sprawdź czy data jest poprawna
-                        if (isNaN(dateObj.getTime())) {
-                            console.warn(`Event ${doc.id} has invalid date:`, event.date);
-                            return;
-                        }
-                        
-                        allEvents.push({
-                            id: doc.id,
-                            ...event,
-                            dateObj: dateObj,
-                            status: isEventCompleted({ dateObj }) ? 'completed' : 'active',
-                            category: normalizeEventCategory(event.category),
-                            pinned: event.pinned || false,
-                            location: event.location || ''
-                        });
-                    } else {
-                        skippedCount++;
-                        console.log(`Skipping event ${doc.id} - published is false`);
-                    }
-                });
-
-                console.log(`Loaded ${allEvents.length} published events, skipped ${skippedCount} unpublished events`);
-
-                // Sort events: pinned first, then active (upcoming), then completed
-                allEvents.sort((a, b) => {
-                    if (a.pinned && !b.pinned) return -1;
-                    if (!a.pinned && b.pinned) return 1;
-                    return compareEvents(a, b);
-                });
-
-                updateLastUpdate();
-                applyFilters();
             } catch (error) {
                 console.error('Error loading events:', error);
                 console.error('Error details:', {
@@ -1966,6 +2006,13 @@ const firebaseConfig = {
                             <p class="event-meta-row"><i class="fa-solid fa-clock text-coyote/80 mr-1"></i>${timeLabel}</p>
                             ${safeLocation ? `<p class="event-meta-row"><i class="fa-solid fa-location-dot text-coyote/80 mr-1"></i>${safeLocation}</p>` : ''}
                         </div>
+                        <div class="mt-3 pt-2 border-t border-zinc-700/50">
+                            <button type="button" data-participate-event-id="${encodeURIComponent(event.id)}" class="event-participate-btn w-full font-bold text-sm tracking-widest py-3 px-4 rounded-lg uppercase flex items-center justify-center gap-2 transition-all duration-300">
+                                <i class="fa-solid fa-heart event-participate-heart" aria-hidden="true"></i>
+                                <span class="event-participate-label transition-colors">Weź udział</span>
+                                <i class="fa-solid fa-heart event-participate-heart" aria-hidden="true"></i>
+                            </button>
+                        </div>
                     </article>
                 `;
             }).join('');
@@ -1974,6 +2021,15 @@ const firebaseConfig = {
                 cardEl.addEventListener('click', () => {
                     const eventId = decodeURIComponent(cardEl.dataset.eventId || '');
                     if (eventId) showEventDetail(eventId);
+                });
+            });
+
+            track.querySelectorAll('[data-participate-event-id]').forEach((btn) => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const id = decodeURIComponent(btn.getAttribute('data-participate-event-id') || '');
+                    const ev = allEvents.find((x) => x.id === id);
+                    if (ev) handleEventParticipateClick(ev);
                 });
             });
 
@@ -2139,6 +2195,75 @@ const firebaseConfig = {
             setTimeout(() => notification.remove(), 5000);
         }
 
+        function buildEventContactDraft(ev) {
+            const name = (ev.title || 'Wydarzenie').trim();
+            const when = ev.dateObj.toLocaleString('pl-PL', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            return `Jestem zainteresowany wydarzeniem ${name}, które odbędzie się ${when}. Proszę o więcej informacji.`;
+        }
+
+        function openEventParticipationUrl(url) {
+            const t = (url || '').trim();
+            if (!/^https?:\/\//i.test(t)) return false;
+            window.open(t, '_blank', 'noopener,noreferrer');
+            return true;
+        }
+
+        let eventNoSignupContactDraft = '';
+
+        function handleEventParticipateClick(ev) {
+            if (!ev) return;
+            const url = (ev.participationUrl || '').trim();
+            if (url) {
+                if (openEventParticipationUrl(url)) return;
+            }
+            eventNoSignupContactDraft = buildEventContactDraft(ev);
+            document.getElementById('event-no-signup-modal')?.classList.remove('hidden');
+        }
+
+        window.closeEventNoSignupModal = () => {
+            document.getElementById('event-no-signup-modal')?.classList.add('hidden');
+            eventNoSignupContactDraft = '';
+        };
+
+        window.closeEventContactIframeModal = () => {
+            const modal = document.getElementById('event-contact-iframe-modal');
+            const iframe = document.getElementById('event-contact-iframe');
+            if (iframe) iframe.src = 'about:blank';
+            modal?.classList.add('hidden');
+        };
+
+        function openEventContactForUser() {
+            const draft = eventNoSignupContactDraft;
+            window.closeEventNoSignupModal();
+            if (currentUser) {
+                if (typeof window.__strzelcaMessagesOpenSupport === 'function') {
+                    window.__strzelcaMessagesOpenSupport({ draftText: draft });
+                } else if (typeof window.__strzelcaMessagesOpen === 'function') {
+                    window.__strzelcaMessagesOpen();
+                } else {
+                    window.open('https://konto.strzelca.pl/profil.html#messages', '_blank', 'noopener,noreferrer');
+                }
+                return;
+            }
+            const prefill = encodeURIComponent(draft);
+            const iframe = document.getElementById('event-contact-iframe');
+            if (iframe) {
+                iframe.src = `https://kontakt.strzelca.pl/?embed=1&prefill=${prefill}`;
+            }
+            document.getElementById('event-contact-iframe-modal')?.classList.remove('hidden');
+        }
+
+        document.getElementById('event-no-signup-contact-btn')?.addEventListener('click', () => {
+            openEventContactForUser();
+        });
+
         // Event detail modal
         function showEventDetail(eventId) {
             const event = allEvents.find(e => e.id === eventId);
@@ -2169,6 +2294,24 @@ const firebaseConfig = {
 
             document.getElementById('modal-meta').innerHTML = meta.join('');
 
+            const wrap = document.getElementById('modal-participate-wrap');
+            if (wrap) {
+                wrap.innerHTML = `
+                    <button type="button" class="event-participate-btn w-full md:w-auto font-bold text-sm tracking-widest py-3 px-6 rounded-lg uppercase inline-flex items-center justify-center gap-2 transition-all duration-300">
+                        <i class="fa-solid fa-heart event-participate-heart" aria-hidden="true"></i>
+                        <span class="event-participate-label transition-colors">Weź udział</span>
+                        <i class="fa-solid fa-heart event-participate-heart" aria-hidden="true"></i>
+                    </button>
+                `;
+                const pb = wrap.querySelector('button');
+                if (pb) {
+                    pb.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        handleEventParticipateClick(event);
+                    });
+                }
+            }
+
             document.getElementById('modal-content').innerHTML = formatEventDescriptionForModal(event.description);
 
             document.getElementById('event-modal').classList.remove('hidden');
@@ -2194,7 +2337,7 @@ const firebaseConfig = {
     ></script>
     <script
       type="module"
-      src="https://strzelca.pl/messages-widget.mjs?v=2026-02-05-14"
+      src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-3"
     ></script>
   </body>
 </html>

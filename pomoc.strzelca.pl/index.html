@@ -484,6 +484,7 @@
         import { initializeFirestore, doc, setDoc, getDoc, getDocs, collection, deleteDoc, query, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
+        import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
 
         
       async function getFirebaseApiKey() {
@@ -551,7 +552,7 @@ const firebaseConfig = {
         
         // Inicjalizuj śledzenie odwiedzin (działa dla wszystkich użytkowników, również niezalogowanych)
         try {
-          const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-1");
+          const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2");
           await initVisitTracker(auth);
         } catch (error) {
           console.warn("Could not initialize visit tracker:", error);
@@ -1370,40 +1371,69 @@ const firebaseConfig = {
         }
 
         async function fetchCharityActions() {
-            const pinnedRef = doc(db, 'charity', PINNED_CHARITY_ID);
-            const pinnedSnap = await getDoc(pinnedRef);
-            pinnedDonationsData = pinnedSnap.exists() ? { id: pinnedSnap.id, ...pinnedSnap.data() } : null;
-
-            const q = query(collection(db, "charity"), orderBy("order", "asc"));
-            const snap = await getDocs(q);
             const list = document.getElementById('charity-list-admin');
+            try {
+                const { payload } = await loadWithVersionCache({
+                    db,
+                    getDoc,
+                    doc,
+                    idbKey: "list:charity_pomoc",
+                    metaDocId: "charity",
+                    fetchFresh: async () => {
+                        const pinnedRef = doc(db, 'charity', PINNED_CHARITY_ID);
+                        const pinnedSnap = await getDoc(pinnedRef);
+                        const pinnedDonationsDataFresh = pinnedSnap.exists()
+                            ? { id: pinnedSnap.id, ...pinnedSnap.data() }
+                            : null;
+                        const q = query(collection(db, "charity"), orderBy("order", "asc"));
+                        const snap = await getDocs(q);
+                        const charityActionsFresh = [];
+                        const publicCharityItemsFresh = [];
+                        snap.forEach((d) => {
+                            if (d.id === PINNED_CHARITY_ID) return;
+                            const data = d.data();
+                            charityActionsFresh.push({ id: d.id, ...data });
+                            const eventDate = data.date ? new Date(data.date) : null;
+                            const hasValidDate = eventDate && !isNaN(eventDate.getTime());
+                            const isPast = hasValidDate && eventDate < new Date();
+                            if (data.active && !isPast) {
+                                publicCharityItemsFresh.push({ id: d.id, ...data });
+                            }
+                        });
+                        return {
+                            pinnedDonationsData: pinnedDonationsDataFresh,
+                            charityActions: charityActionsFresh,
+                            publicCharityItems: publicCharityItemsFresh,
+                        };
+                    },
+                });
+                const p = payload && typeof payload === "object" ? payload : {};
+                pinnedDonationsData = p.pinnedDonationsData ?? null;
+                charityActions = Array.isArray(p.charityActions) ? p.charityActions : [];
+                publicCharityItems = Array.isArray(p.publicCharityItems) ? p.publicCharityItems : [];
+            } catch (e) {
+                console.warn("fetchCharityActions:", e?.message || e);
+                pinnedDonationsData = null;
+                charityActions = [];
+                publicCharityItems = [];
+            }
 
-            list.innerHTML = "";
-            charityActions = [];
-            publicCharityItems = [];
-
-            snap.forEach(d => {
-                if (d.id === PINNED_CHARITY_ID) return;
-                const data = d.data();
-                charityActions.push({id: d.id, ...data});
-
-                const eventDate = data.date ? new Date(data.date) : null;
-                const hasValidDate = eventDate && !isNaN(eventDate.getTime());
-                const isPast = hasValidDate && eventDate < new Date();
-
-                // Lista w panelu admina
-                list.innerHTML += `<div class="flex justify-between items-center p-3 bg-black/40 border border-zinc-800 rounded mb-1">
+            if (list) {
+                list.innerHTML = "";
+                charityActions.forEach((row) => {
+                    const data = row;
+                    const eventDate = data.date ? new Date(data.date) : null;
+                    const hasValidDate = eventDate && !isNaN(eventDate.getTime());
+                    const isPast = hasValidDate && eventDate < new Date();
+                    list.innerHTML += `<div class="flex justify-between items-center p-3 bg-black/40 border border-zinc-800 rounded mb-1">
                     <span class="text-[10px] font-bold uppercase">${escapeHtml(data.title || '')}${isPast ? ' <span class="text-zinc-500">(zakończona)</span>' : ''}</span>
                     <div class="flex space-x-2">
-                        <button onclick="window.editCharity('${d.id}')" class="text-blue-400 text-xs">Edytuj</button>
-                        <button onclick="window.deleteCharity('${d.id}')" class="text-red-400 text-xs">Usuń</button>
+                        <button onclick="window.editCharity('${data.id}')" class="text-blue-400 text-xs">Edytuj</button>
+                        <button onclick="window.deleteCharity('${data.id}')" class="text-red-400 text-xs">Usuń</button>
                     </div>
                 </div>`;
-
-                if (data.active && !isPast) {
-                    publicCharityItems.push({id: d.id, ...data});
-                }
-            });
+                });
+            }
 
             renderCharityCarousel();
         }

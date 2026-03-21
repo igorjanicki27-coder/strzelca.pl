@@ -253,6 +253,8 @@
         import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { initializeFirestore, getFirestore, collection, getDocs, doc, getDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
+        import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-21-1";
+        import { loadWithVersionCache, idbDeleteEntry } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
 
         
       async function getFirebaseApiKey() {
@@ -465,7 +467,7 @@
         
         // Inicjalizuj śledzenie odwiedzin (działa dla wszystkich użytkowników, również niezalogowanych)
         try {
-          const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-1");
+          const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2");
           await initVisitTracker(auth);
         } catch (error) {
           console.warn("Could not initialize visit tracker:", error);
@@ -477,273 +479,16 @@
             updateUserInterface(user);
         });
 
-        // Funkcja logowania aktywności
-        async function logActivity(type, userId, userName, details, timestamp = null) {
-            try {
-                const activityData = {
-                    type: type,
-                    userId: userId,
-                    userName: userName,
-                    details: details,
-                    timestamp: timestamp || new Date()
-                };
-
-                const { addDoc, collection } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-                await addDoc(collection(db, "activityLogs"), activityData);
-
-                console.log('Aktywność zalogowana:', activityData);
-            } catch (error) {
-                console.error('Błąd podczas logowania aktywności:', error);
-            }
-        }
-
-        // Funkcja do obsługi zamówienia
         window.handleOrder = async (productName, productPrice = null) => {
-            const user = auth.currentUser;
-            
-            if (!user) {
-                // Użytkownik niezalogowany - pokaż modal
-                showOrderLoginModal(productName);
-                return;
-            }
-
-            // Użytkownik zalogowany - pokaż formularz zamówienia
-            showOrderForm(productName, productPrice);
-        };
-
-        // Modal dla niezalogowanych użytkowników
-        function showOrderLoginModal(productName) {
-            const modal = document.createElement('div');
-            modal.id = 'order-login-modal';
-            modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md';
-            modal.onclick = function(e) {
-                if (e.target.id === 'order-login-modal') {
-                    modal.remove();
-                }
-            };
-
-            modal.innerHTML = `
-                <div class="bg-zinc-900 p-8 rounded-2xl max-w-md w-full border border-zinc-800 shadow-2xl" onclick="event.stopPropagation()">
-                    <h2 class="text-2xl font-bold coyote-text mb-4">Zamówienie produktu</h2>
-                    <p class="text-zinc-300 mb-6">
-                        Aby złożyć zamówienie produktu <strong>${productName}</strong>, musisz być zalogowany.
-                    </p>
-                    <div class="space-y-3">
-                        <a href="https://konto.strzelca.pl/logowanie.html?redirect=${encodeURIComponent(window.location.href)}" 
-                           class="block w-full bg-coyote text-black px-6 py-3 rounded-lg font-bold text-center hover:bg-opacity-90 transition">
-                            <i class="fa-solid fa-sign-in-alt mr-2"></i>
-                            Zaloguj się
-                        </a>
-                        <a href="https://kontakt.strzelca.pl?topic=Zamówienie&product=${encodeURIComponent(productName)}" 
-                           class="block w-full border border-zinc-700 text-zinc-300 px-6 py-3 rounded-lg font-bold text-center hover:bg-zinc-800 transition">
-                            <i class="fa-solid fa-envelope mr-2"></i>
-                            Przejdź do formularza kontaktowego
-                        </a>
-                        <button onclick="this.closest('#order-login-modal').remove()" 
-                                class="block w-full text-zinc-400 px-6 py-2 text-sm hover:text-white transition">
-                            Anuluj
-                        </button>
-                    </div>
-                </div>
-            `;
-
-            document.body.appendChild(modal);
-        }
-
-        // Formularz zamówienia dla zalogowanych
-        async function showOrderForm(productName, productPrice = null) {
-            const user = auth.currentUser;
-            if (!user) return;
-
-            // Pobierz dane z profilu
-            let userProfile = null;
-            try {
-                const profileDoc = await getDoc(doc(db, 'userProfiles', user.uid));
-                if (profileDoc.exists()) {
-                    userProfile = profileDoc.data();
-                }
-            } catch (error) {
-                console.error('Error loading user profile:', error);
-            }
-
-            // Funkcja dekodowania base64
-            function b64DecodeUtf8(str) {
-                if (!str) return '';
-                try {
-                    return decodeURIComponent(escape(atob(str)));
-                } catch {
-                    return '';
-                }
-            }
-
-            const modal = document.createElement('div');
-            modal.id = 'order-form-modal';
-            modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md';
-            modal.style.overflowY = 'auto';
-            modal.onclick = function(e) {
-                if (e.target.id === 'order-form-modal') {
-                    modal.remove();
-                }
-            };
-
-            const address = userProfile?.address || {};
-            const decodedAddress = {
-                street: b64DecodeUtf8(address.street || ''),
-                buildingNumber: b64DecodeUtf8(address.buildingNumber || ''),
-                postalCode: b64DecodeUtf8(address.postalCode || ''),
-                city: b64DecodeUtf8(address.city || '')
-            };
-
-            modal.innerHTML = `
-                <div class="bg-zinc-900 p-6 md:p-8 rounded-2xl max-w-2xl w-full border border-zinc-800 shadow-2xl my-8" onclick="event.stopPropagation()">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-bold coyote-text">Złóż zamówienie</h2>
-                        <button onclick="document.getElementById('order-form-modal').remove()" 
-                                class="text-zinc-400 hover:text-white">
-                            <i class="fa-solid fa-times text-xl"></i>
-                        </button>
-                    </div>
-
-                    <form id="shop-order-form" onsubmit="submitShopOrder(event, '${productName}', ${productPrice || 0})">
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium mb-2">Produkt *</label>
-                            <input type="text" value="${productName}" class="w-full bg-zinc-800" readonly>
-                            ${productPrice ? `<p class="text-coyote font-bold text-lg mt-2">Cena: ${productPrice} PLN</p>` : ''}
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium mb-2">Email *</label>
-                            <input type="email" id="order-email" value="${userProfile?.email || user.email || ''}" 
-                                   class="w-full" required>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium mb-2">Telefon</label>
-                            <input type="text" id="order-phone" 
-                                   value="${userProfile?.phone ? b64DecodeUtf8(userProfile.phone) : ''}" 
-                                   class="w-full">
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium mb-2">Paczkomat</label>
-                            <input type="text" id="order-parcelLocker" 
-                                   value="${userProfile?.parcelLocker ? b64DecodeUtf8(userProfile.parcelLocker) : ''}" 
-                                   class="w-full" placeholder="Kod paczkomatu">
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium mb-2">Adres</label>
-                            <div class="grid grid-cols-2 gap-4">
-                                <input type="text" id="order-address-street" 
-                                       value="${decodedAddress.street}" 
-                                       class="w-full" placeholder="Ulica">
-                                <input type="text" id="order-address-building" 
-                                       value="${decodedAddress.buildingNumber}" 
-                                       class="w-full" placeholder="Nr budynku">
-                                <input type="text" id="order-address-postal" 
-                                       value="${decodedAddress.postalCode}" 
-                                       class="w-full" placeholder="Kod pocztowy">
-                                <input type="text" id="order-address-city" 
-                                       value="${decodedAddress.city}" 
-                                       class="w-full" placeholder="Miasto">
-                            </div>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium mb-2">Uwagi</label>
-                            <textarea id="order-notes" class="w-full" rows="3" 
-                                      placeholder="Dodatkowe uwagi dotyczące zamówienia..."></textarea>
-                        </div>
-
-                        <div class="mb-6 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
-                            <p class="text-xs text-zinc-400">
-                                <strong>Uwaga:</strong> Zamówienie może nie zostać zaakceptowane. 
-                                Regulamin zamówień dostępny w <a href="https://dokumenty.strzelca.pl" 
-                                target="_blank" class="text-coyote hover:underline">dokumentach strzelca.pl</a>.
-                            </p>
-                        </div>
-
-                        <div class="flex justify-end gap-4">
-                            <button type="button" onclick="document.getElementById('order-form-modal').remove()" 
-                                    class="px-6 py-2 border border-zinc-700 rounded-lg hover:bg-zinc-800 transition">
-                                Anuluj
-                            </button>
-                            <button type="submit" class="px-6 py-2 bg-coyote text-black rounded-lg font-bold hover:bg-opacity-90 transition">
-                                <i class="fa-solid fa-shopping-cart mr-2"></i>
-                                Złóż zamówienie
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            `;
-
-            document.body.appendChild(modal);
-        }
-
-        // Wysyłanie zamówienia
-        window.submitShopOrder = async function(event, productName, productPrice) {
-            event.preventDefault();
-            
-            try {
-                const user = auth.currentUser;
-                if (!user) {
-                    alert('Musisz być zalogowany, aby złożyć zamówienie');
-                    return;
-                }
-
-                const orderData = {
-                    userId: user.uid,
-                    email: document.getElementById('order-email').value,
-                    orderDetails: `Produkt: ${productName}${productPrice ? ` (${productPrice} PLN)` : ''}`,
-                    notes: document.getElementById('order-notes').value || '',
-                    phone: document.getElementById('order-phone').value || '',
-                    parcelLocker: document.getElementById('order-parcelLocker').value || '',
-                    address: {
-                        street: document.getElementById('order-address-street').value || '',
-                        buildingNumber: document.getElementById('order-address-building').value || '',
-                        postalCode: document.getElementById('order-address-postal').value || '',
-                        city: document.getElementById('order-address-city').value || '',
-                    },
-                    price: productPrice || 0,
-                    shipping: 0,
-                    additionalCosts: 0,
-                    tax: 0,
-                    status: 'zlozone'
-                };
-
-                const response = await fetch('/api/orders', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify(orderData),
-                });
-
-                const data = await response.json();
-                
-                if (!data.success) {
-                    throw new Error(data.error || 'Failed to create order');
-                }
-
-                // Zaloguj aktywność
-                    await logActivity(
-                        'ORDER-PLACED',
-                        user.uid,
-                        user.displayName || user.email.split('@')[0] || 'Użytkownik',
-                        `Zamówienie produktu: ${productName}`
-                    );
-
-                // Zamknij modal i pokaż komunikat
-                document.getElementById('order-form-modal').remove();
-                alert('Zamówienie zostało złożone pomyślnie! Otrzymasz potwierdzenie na adres email.');
-                
-                // Opcjonalnie: przekieruj do profilu z zamówieniami
-                // window.location.href = 'https://konto.strzelca.pl/profil.html';
-            } catch (error) {
-                console.error('Error submitting order:', error);
-                alert('Błąd składania zamówienia: ' + error.message);
-            }
+            await openOrderInquiryFlow({
+                auth,
+                db,
+                getDoc,
+                doc,
+                context: "shop",
+                rawTitle: productName,
+                price: productPrice || 0,
+            });
         };
 
         let productItems = [];
@@ -934,31 +679,39 @@
 
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                 try {
-                    let snap;
-                    try {
-                        const q = query(collection(db, "products"), orderBy("order", "asc"));
-                        snap = await getDocs(q);
-                    } catch (orderError) {
-                        console.warn("products orderBy failed, trying fallback:", orderError);
-                        snap = await getDocs(collection(db, "products"));
-                    }
-
-                    productItems = [];
-                    snap.forEach((d) => {
-                        const p = d.data();
-                        let mainImage = p.img || '';
-                        if (p.images && Array.isArray(p.images) && p.images.length > 0) {
-                            mainImage = typeof p.images[0] === 'string' ? p.images[0] : p.images[0].url;
-                        }
-
-                        productItems.push({
-                            id: d.id,
-                            title: p.title || '',
-                            price: p.price || 0,
-                            mainImage,
-                        });
+                    const { payload } = await loadWithVersionCache({
+                        db,
+                        getDoc,
+                        doc,
+                        idbKey: "list:products",
+                        metaDocId: "products",
+                        fetchFresh: async () => {
+                            let snap;
+                            try {
+                                const q = query(collection(db, "products"), orderBy("order", "asc"));
+                                snap = await getDocs(q);
+                            } catch (orderError) {
+                                console.warn("products orderBy failed, trying fallback:", orderError);
+                                snap = await getDocs(collection(db, "products"));
+                            }
+                            const rows = [];
+                            snap.forEach((d) => {
+                                const p = d.data();
+                                let mainImage = p.img || '';
+                                if (p.images && Array.isArray(p.images) && p.images.length > 0) {
+                                    mainImage = typeof p.images[0] === 'string' ? p.images[0] : p.images[0].url;
+                                }
+                                rows.push({
+                                    id: d.id,
+                                    title: p.title || '',
+                                    price: p.price || 0,
+                                    mainImage,
+                                });
+                            });
+                            return rows;
+                        },
                     });
-
+                    productItems = Array.isArray(payload) ? payload : [];
                     renderProductCarousel(false);
                     return;
                 } catch (error) {
@@ -987,7 +740,8 @@
             if (nextBtn) nextBtn.disabled = true;
         };
 
-        window.reloadProducts = () => {
+        window.reloadProducts = async () => {
+            await idbDeleteEntry("list:products");
             fetchAll();
         };
 

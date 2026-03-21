@@ -192,6 +192,39 @@
         max-height: 90vh;
         overflow-y: auto;
       }
+
+      /* Osadzenie w iframe (np. okno z wydarzenia.strzelca.pl) — ?embed=1&prefill=… */
+      html.kontakt-embed #user-panel,
+      html.kontakt-embed #login-button,
+      html.kontakt-embed nav,
+      html.kontakt-embed #arsenal,
+      html.kontakt-embed footer {
+        display: none !important;
+      }
+      html.kontakt-embed {
+        overflow-y: auto !important;
+      }
+      html.kontakt-embed body {
+        overflow: visible !important;
+        min-height: 100vh !important;
+      }
+      html.kontakt-embed .contact-modal-overlay.kontakt-embed-visible {
+        position: static !important;
+        inset: auto !important;
+        min-height: 100vh !important;
+        background: transparent !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        display: flex !important;
+        align-items: flex-start !important;
+        justify-content: center !important;
+        padding: 1rem !important;
+        z-index: 1 !important;
+      }
+      html.kontakt-embed .contact-modal-overlay.kontakt-embed-visible.hidden {
+        display: flex !important;
+      }
+
       input, select, textarea {
         background: #111 !important;
         border: 1px solid #222 !important;
@@ -231,6 +264,15 @@
     </style>
   </head>
   <body>
+    <script>
+      (function () {
+        try {
+          if (new URLSearchParams(window.location.search).get("embed") === "1") {
+            document.documentElement.classList.add("kontakt-embed");
+          }
+        } catch (e) {}
+      })();
+    </script>
     <!-- Panel użytkownika -->
     <div id="user-panel" class="fixed top-4 right-4 z-50 hidden">
       <div class="relative">
@@ -508,7 +550,9 @@
 
       window.openContactForm = function () {
         if (window.currentUser) {
-          if (typeof window.__strzelcaMessagesOpen === 'function') {
+          if (typeof window.__strzelcaMessagesOpenSupport === 'function') {
+            window.__strzelcaMessagesOpenSupport();
+          } else if (typeof window.__strzelcaMessagesOpen === 'function') {
             window.__strzelcaMessagesOpen();
           } else {
             var widgetHost = document.getElementById('strzelca-messages-widget');
@@ -651,7 +695,7 @@
       } catch (error) { console.warn("Could not initialize activity tracker:", error); }
 
       try {
-        const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-1");
+        const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2");
         await initVisitTracker(auth);
       } catch (error) { console.warn("Could not initialize visit tracker:", error); }
 
@@ -659,6 +703,26 @@
         window.currentUser = user;
         updateUserInterface(user);
       });
+
+      if (document.documentElement.classList.contains("kontakt-embed")) {
+        const modal = document.getElementById("contact-form-modal");
+        if (modal) {
+          modal.onclick = null;
+          modal.classList.remove("hidden");
+          modal.classList.add("kontakt-embed-visible");
+        }
+        const params = new URLSearchParams(location.search);
+        const rawPrefill = params.get("prefill");
+        if (rawPrefill) {
+          try {
+            const dec = decodeURIComponent(rawPrefill);
+            const msgEl = document.getElementById("contact-message");
+            if (msgEl) msgEl.value = dec;
+          } catch (e) {
+            console.warn("kontakt embed: prefill decode failed", e);
+          }
+        }
+      }
 
       function validateEmail(email) {
         if (!email || email.length > 50) return { valid: false, error: 'Email musi mieć maksymalnie 50 znaków' };
@@ -731,6 +795,11 @@
 
           alert('Wiadomość wysłana! Otrzymasz email potwierdzający.');
           document.getElementById('contact-form').reset();
+          try {
+            if (document.documentElement.classList.contains('kontakt-embed') && window.parent && window.parent !== window) {
+              window.parent.postMessage({ type: 'strzelca-contact-embed-done' }, '*');
+            }
+          } catch (_) {}
           window.closeContactForm();
         } catch (err) {
           console.error('Błąd wysyłania:', err);
@@ -739,6 +808,6 @@
       });
     </script>
     <script type="module" src="https://strzelca.pl/auth-widget.mjs?v=2026-02-06-1"></script>
-    <script type="module" src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-1"></script>
+    <script type="module" src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-3"></script>
   </body>
 </html>

@@ -255,6 +255,7 @@
         import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { initializeFirestore, getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
+        import { loadBazarOffersWithCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
 
         async function getFirebaseApiKey() {
             const cachedKey = localStorage.getItem("firebase_web_api_key");
@@ -406,10 +407,11 @@
 
         async function loadAllOffers() {
             try {
-                const res = await fetch(`${API_BASE}?limit=100`);
-                const data = await res.json();
-                if (data.success) allOffers = data.offers;
-            } catch (e) { console.error('Error loading offers:', e); }
+                const { offers } = await loadBazarOffersWithCache(API_BASE, "bazar:home100");
+                allOffers = offers;
+            } catch (e) {
+                console.error('Error loading offers:', e);
+            }
         }
 
         function renderCarousels() {
@@ -1239,7 +1241,7 @@
         } catch (_) {}
 
         try {
-            const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-1");
+            const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2");
             await initVisitTracker(auth);
         } catch (_) {}
 

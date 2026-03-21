@@ -54,7 +54,7 @@ Upewnij się, że wszystkie poniższe zmienne są ustawione zarówno w środowis
 curl -sS -H 'Authorization: Bearer TU_WPISZ_CALY_SEKRET' 'https://strzelca.pl/api/bazar-cron-expire'
 ```
 
-Odpowiedź `401` = zły lub obcięty sekret; `500` + pole `detail` w JSON = zwykle brak indeksu Firestore (`firebase deploy --only firestore:indexes`) albo brak `FIREBASE_SERVICE_ACCOUNT_KEY` w Vercel.
+Odpowiedź `401` = zły lub obcięty sekret; `500` + pole `detail` w JSON = zwykle brak indeksu Firestore (`firebase deploy --only firestore:indexes`) albo brak `FIREBASE_SERVICE_ACCOUNT_KEY` w Vercel. Cron używa złożonego zapytania `status` + `expires_at` (wpis **bazarOffers** w `firestore.indexes.json` — po zmianach w indeksach zrób deploy indeksów).
 
 #### `503` + `"Cron nie skonfigurowany"` mimo ustawionego sekretu w panelu
 

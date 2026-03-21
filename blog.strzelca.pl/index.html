@@ -1148,6 +1148,7 @@
         import { initializeFirestore, collection, query, orderBy, getDocs, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
+        import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
 
         
       async function getFirebaseApiKey() {
@@ -1335,7 +1336,7 @@ const firebaseConfig = {
         
         // Inicjalizuj śledzenie odwiedzin (działa dla wszystkich użytkowników, również niezalogowanych)
         try {
-          const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-1");
+          const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2");
           await initVisitTracker(auth);
         } catch (error) {
           console.warn("Could not initialize visit tracker:", error);
@@ -1657,76 +1658,67 @@ const firebaseConfig = {
         // Load events from Firebase
         async function loadEvents() {
             try {
-                console.log('Loading events from Firestore...');
-                allEvents = [];
-                let skippedCount = 0;
-                let querySnapshot;
                 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
                 const maxAttempts = 3;
 
                 for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                     try {
-                        const q = query(collection(db, "blogPosts"), where("status", "==", "published"));
-                        querySnapshot = await getDocs(q);
-                        console.log(`Found ${querySnapshot.size} events in Firestore (with orderBy)`);
-                        break;
-                    } catch (orderByError) {
-                        console.warn(`orderBy failed attempt ${attempt}:`, orderByError);
-                        try {
-                            querySnapshot = await getDocs(collection(db, "blogPosts"));
-                            console.log(`Found ${querySnapshot.size} events in Firestore (without orderBy)`);
-                            break;
-                        } catch (fallbackError) {
-                            console.warn(`Fallback without orderBy also failed attempt ${attempt}:`, fallbackError);
-                            if (attempt < maxAttempts) {
-                                await wait(450 * attempt);
-                            } else {
-                                throw fallbackError;
-                            }
+                        const { payload } = await loadWithVersionCache({
+                            db,
+                            getDoc,
+                            doc,
+                            idbKey: "list:blogPosts",
+                            metaDocId: "blogPosts",
+                            fetchFresh: async () => {
+                                let querySnapshot;
+                                try {
+                                    const q = query(collection(db, "blogPosts"), where("status", "==", "published"));
+                                    querySnapshot = await getDocs(q);
+                                } catch (orderByError) {
+                                    console.warn("blogPosts query failed, fallback:", orderByError);
+                                    querySnapshot = await getDocs(collection(db, "blogPosts"));
+                                }
+                                const built = [];
+                                querySnapshot.forEach((docSnap) => {
+                                    const event = docSnap.data();
+                                    if (event.status === 'published') {
+                                        let dateObj = new Date();
+                                        const ca = event.createdAt;
+                                        if (ca) {
+                                            if (typeof ca.toDate === 'function') {
+                                                dateObj = ca.toDate();
+                                            } else if (typeof ca === 'object' && ca.seconds != null) {
+                                                dateObj = new Date(ca.seconds * 1000);
+                                            } else {
+                                                dateObj = new Date(ca);
+                                            }
+                                        }
+                                        built.push({
+                                            id: docSnap.id,
+                                            ...event,
+                                            dateObj: dateObj,
+                                            category: event.category || 'news',
+                                            pinned: !!event.pinned
+                                        });
+                                    }
+                                });
+                                return built;
+                            },
+                        });
+                        allEvents = Array.isArray(payload) ? payload : [];
+                        allEvents.sort((a, b) => compareBlogPosts(a, b));
+                        updateLastUpdate();
+                        applyBlogSearch();
+                        return;
+                    } catch (error) {
+                        console.warn(`Load blog attempt ${attempt}/${maxAttempts} failed:`, error);
+                        if (attempt < maxAttempts) {
+                            await wait(450 * attempt);
+                            continue;
                         }
+                        throw error;
                     }
                 }
-
-                querySnapshot.forEach((doc) => {
-                    const event = doc.data();
-                    console.log(`Event ${doc.id}:`, { 
-                        title: event.title, 
-                        published: event.published, 
-                        date: event.date,
-                        fullData: event
-                    });
-                    
-                    if (event.status === 'published') {
-                        let dateObj = new Date();
-                        const ca = event.createdAt;
-                        if (ca) {
-                            if (typeof ca.toDate === 'function') {
-                                dateObj = ca.toDate();
-                            } else if (typeof ca === 'object' && ca.seconds != null) {
-                                dateObj = new Date(ca.seconds * 1000);
-                            } else {
-                                dateObj = new Date(ca);
-                            }
-                        }
-                        
-                        allEvents.push({
-                            id: doc.id,
-                            ...event,
-                            dateObj: dateObj,
-                            category: event.category || 'news',
-                            pinned: !!event.pinned
-                        });
-                    } else {
-                        skippedCount++;
-                    }
-                });
-
-                console.log(`Loaded ${allEvents.length} published events, skipped ${skippedCount} unpublished events`);
-
-                allEvents.sort((a, b) => compareBlogPosts(a, b));
-
-                updateLastUpdate();
-                applyBlogSearch();
             } catch (error) {
                 console.error('Error loading events:', error);
                 console.error('Error details:', {

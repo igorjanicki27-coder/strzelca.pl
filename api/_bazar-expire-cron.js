@@ -52,9 +52,9 @@ function expiresAtToMillis(exp) {
  * Sekret (pierwsza niepusta wartość): STRZELCA_BAZAR_EXPIRE_SECRET → BAZAR_CRON_SECRET → CRON_SECRET.
  * Unikalna nazwa STRZELCA_* pomaga uniknac pomyłki (inne projekty Vercel / zarezerwowane nazwy).
  *
- * Zapytanie: tylko where('status','==','ACTIVE') — bez drugiego filtra w Firestore,
- * zeby nie wymagac indeksu zlozonego (unika 500 / FAILED_PRECONDITION na swiezym projekcie).
- * Filtrowanie expires_at odbywa sie w pamieci (do limitu odczytu).
+ * Wygaszanie: where status==ACTIVE oraz expires_at<=teraz (indeks złożony w firestore.indexes.json:
+ * bazarOffers: status ASC, expires_at ASC). Ostrzeżenia 72h: ten sam indeks, zakres expires_at
+ * (now, now+72h] — bez skanowania wszystkich ACTIVE.
  *
  * Sekret (kolejność): zmienne env (dynamiczny odczyt), potem Firestore
  * dokument serverSecrets/bazarCronExpire pole cronSecret (tylko Admin SDK).
@@ -130,35 +130,77 @@ async function handleBazarExpireCron(req, res) {
 
     const db = admin.firestore();
     const nowMs = Date.now();
+    const nowTs = admin.firestore.Timestamp.fromMillis(nowMs);
+    const warnHorizonMs = nowMs + 72 * 60 * 60 * 1000;
+    const warnHorizonTs = admin.firestore.Timestamp.fromMillis(warnHorizonMs);
 
-    const snap = await db.collection('bazarOffers').where('status', '==', 'ACTIVE').limit(500).get();
-
-    const refsToExpire = [];
-    snap.forEach((d) => {
-      const ms = expiresAtToMillis(d.data().expires_at);
-      if (ms != null && ms <= nowMs) refsToExpire.push(d.ref);
-    });
-
-    const CHUNK = 400;
+    const EXPIRE_PAGE = 400;
     let expired = 0;
-    for (let i = 0; i < refsToExpire.length; i += CHUNK) {
-      const slice = refsToExpire.slice(i, i + CHUNK);
+    let scannedExpire = 0;
+    let lastExpireSnap = null;
+
+    for (;;) {
+      let q = db
+        .collection('bazarOffers')
+        .where('status', '==', 'ACTIVE')
+        .where('expires_at', '<=', nowTs)
+        .orderBy('expires_at', 'asc')
+        .limit(EXPIRE_PAGE);
+      if (lastExpireSnap && lastExpireSnap.docs.length > 0) {
+        q = q.startAfter(lastExpireSnap.docs[lastExpireSnap.docs.length - 1]);
+      }
+      const snap = await q.get();
+      lastExpireSnap = snap;
+      scannedExpire += snap.size;
+      if (snap.empty) break;
+
       const batch = db.batch();
-      slice.forEach((ref) => batch.update(ref, { status: 'EXPIRED' }));
+      snap.docs.forEach((d) => batch.update(d.ref, { status: 'EXPIRED' }));
       await batch.commit();
-      expired += slice.length;
+      expired += snap.size;
+
+      if (snap.size < EXPIRE_PAGE) break;
     }
 
-    const snapActive = await db.collection('bazarOffers').where('status', '==', 'ACTIVE').limit(500).get();
-    const warnHorizon = nowMs + 72 * 60 * 60 * 1000;
+    if (expired > 0) {
+      try {
+        await db
+          .collection('publicListCacheMeta')
+          .doc('bazarOffers')
+          .set(
+            {
+              v: admin.firestore.FieldValue.increment(1),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true },
+          );
+      } catch (e) {
+        console.warn('bump bazar list version after expire', e);
+      }
+    }
+
     const MAX_EXPIRY_WARNINGS_PER_RUN = 25;
+    const WARN_CANDIDATE_LIMIT = 80;
     let warningsSent = 0;
-    for (const d of snapActive.docs) {
+    let scannedWarnings = 0;
+
+    const snapWarn = await db
+      .collection('bazarOffers')
+      .where('status', '==', 'ACTIVE')
+      .where('expires_at', '>', nowTs)
+      .where('expires_at', '<=', warnHorizonTs)
+      .orderBy('expires_at', 'asc')
+      .limit(WARN_CANDIDATE_LIMIT)
+      .get();
+
+    scannedWarnings = snapWarn.size;
+
+    for (const d of snapWarn.docs) {
       if (warningsSent >= MAX_EXPIRY_WARNINGS_PER_RUN) break;
       const row = d.data();
-      const ms = expiresAtToMillis(row.expires_at);
-      if (ms == null || ms <= nowMs || ms > warnHorizon) continue;
       if (row.expiry_warning_sent_at) continue;
+      const ms = expiresAtToMillis(row.expires_at);
+      if (ms == null || ms <= nowMs || ms > warnHorizonMs) continue;
       const daysLeft = Math.max(1, Math.ceil((ms - nowMs) / (24 * 60 * 60 * 1000)));
       const sent = await sendBazarOfferTemplateEmail(
         db,
@@ -172,12 +214,13 @@ async function handleBazarExpireCron(req, res) {
       }
     }
 
+    // scannedActive = odczyt z zapytania o oknie 72h (nie pełna lista ACTIVE)
     return res.status(200).json({
       success: true,
       expired,
-      scanned: snap.size,
+      scanned: scannedExpire,
       warningsSent,
-      scannedActive: snapActive.size,
+      scannedActive: scannedWarnings,
     });
   } catch (e) {
     console.error('Bazar expire cron:', e);
@@ -187,10 +230,15 @@ async function handleBazarExpireCron(req, res) {
         success: false,
         error: 'Blad serwera',
         detail: msg,
-        hint:
-          /credential|Could not load|default credentials/i.test(msg)
-            ? 'Ustaw FIREBASE_SERVICE_ACCOUNT_KEY (JSON) w Vercel Environment Variables'
-            : undefined,
+        hint: (() => {
+          if (/credential|Could not load|default credentials/i.test(msg)) {
+            return 'Ustaw FIREBASE_SERVICE_ACCOUNT_KEY (JSON) w Vercel Environment Variables';
+          }
+          if (/index|FAILED_PRECONDITION|failed-precondition/i.test(msg)) {
+            return 'Wymagany indeks Firestore: bazarOffers (status ASC, expires_at ASC). Wdróż: firebase deploy --only firestore:indexes';
+          }
+          return undefined;
+        })(),
       });
     }
   }

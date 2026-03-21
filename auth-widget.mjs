@@ -157,12 +157,13 @@ function isAdminRole(role) {
 
 async function tryGetFirebaseSession() {
   try {
-    const [{ initializeApp, getApps }, { getAuth, browserLocalPersistence, setPersistence }, { getFirestore, doc, getDoc }] =
+    const [{ initializeApp, getApps }, { getAuth, browserLocalPersistence, setPersistence }, fsMod] =
       await Promise.all([
         import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"),
         import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"),
         import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"),
       ]);
+    const { initializeFirestore, getFirestore, doc, getDoc } = fsMod;
 
     let app = getApps()[0] || null;
     if (!app) {
@@ -192,7 +193,19 @@ async function tryGetFirebaseSession() {
 
     let profile = null;
     try {
-      const db = getFirestore(app);
+      let db;
+      try {
+        db = initializeFirestore(app, {
+          experimentalForceLongPolling: true,
+          useFetchStreams: false,
+        });
+      } catch (initErr) {
+        if (initErr?.code === "failed-precondition") {
+          db = getFirestore(app);
+        } else {
+          throw initErr;
+        }
+      }
       const snap = await getDoc(doc(db, "userProfiles", user.uid));
       if (snap.exists()) profile = snap.data();
     } catch {}

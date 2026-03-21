@@ -776,13 +776,17 @@ async function main() {
   let db;
   try {
     db = initializeFirestore(app, {
-      // Transport Firestore: nie wymuszaj XHR long-pollingu (na części konfiguracji przeglądarek
-      // potrafi to skończyć się błędami "access control checks"). Pozwól SDK dobrać tryb.
-      experimentalAutoDetectLongPolling: true,
-      useFetchStreams: true,
+      // Spójnie z auth-init.mjs — Safari/WebKit: wymuszenie long polling + wyłączenie fetch streams
+      // ogranicza błędy WebChannel „access control checks”.
+      experimentalForceLongPolling: true,
+      useFetchStreams: false,
     });
-  } catch {
-    db = getFirestore(app);
+  } catch (initErr) {
+    if (initErr?.code === "failed-precondition") {
+      db = getFirestore(app);
+    } else {
+      throw initErr;
+    }
   }
 
   // Wycisz logi Firestore (w tym szum WebChannel/Listen w konsoli).
@@ -1983,7 +1987,32 @@ async function main() {
     badgeTimer = null;
   }
 
-  window.__strzelcaMessagesOpen = openPanel;
+  // Otwieranie z zewnątrz (np. kafelek na kontakt.strzelca.pl): nie możemy wywołać openPanel()
+  // synchronicznie w handlerze kliknięcia — ten sam event bąbelkuje do document, gdzie mamy
+  // „klik poza widgetem = zamknij”, przy czym w chwili obsługi document isOpen jest jeszcze false.
+  window.__strzelcaMessagesOpen = () => {
+    queueMicrotask(() => openPanel());
+  };
+
+  /** Otwiera panel wiadomości na konwersacji „Pomoc STRZELCA.PL” z opcjonalnym szkicem w polu wpisywania. */
+  window.__strzelcaMessagesOpenSupport = (opts = {}) => {
+    queueMicrotask(() => {
+      const draft = (opts && typeof opts.draftText === "string") ? opts.draftText : "";
+      state.selectedPeerId = SUPPORT_PEER_ID;
+      setStoredSelectedPeerId(SUPPORT_PEER_ID);
+      if (!isOpen) openPanel();
+      else subscribeConversations();
+      selectPeer(SUPPORT_PEER_ID, "Pomoc STRZELCA.PL");
+      if (draft) {
+        ta.value = draft;
+        try {
+          ta.focus();
+        } catch {
+          // ignore
+        }
+      }
+    });
+  };
 
   function closePanel() {
     isOpen = false;

@@ -88,6 +88,12 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // Wersje list publicznych (1 dokument = 1 odczyt zamiast getDocs całej kolekcji przy cache w przeglądarce)
+    match /publicListCacheMeta/{key} {
+      allow read: if true;
+      allow create, update, delete: if isAdminOrSuperAdmin();
+    }
+
     // =============================================================================
     // MESSAGES & CONVERSATIONS
     // =============================================================================

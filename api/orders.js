@@ -421,17 +421,21 @@ module.exports = async (req, res) => {
       }
     }
 
-    // POST - utworzenie zamówienia (tylko admin)
+    // POST — utworzenie zamówienia (admin dowolny klient; zalogowany użytkownik tylko dla siebie, status złożone)
     if (req.method === 'POST') {
-      if (!isUserAdmin) {
-        res.status(403).json({ success: false, error: 'Forbidden - admin only' });
-        return;
-      }
-
       const body = readJsonBody(req);
       if (!body) {
         res.status(400).json({ success: false, error: 'Invalid request body' });
         return;
+      }
+
+      if (!isUserAdmin) {
+        if (body.userId !== sessionUser.uid) {
+          res.status(403).json({ success: false, error: 'Forbidden' });
+          return;
+        }
+        body.status = 'zlozone';
+        body.invoiceFile = null;
       }
 
       const {
@@ -476,14 +480,19 @@ module.exports = async (req, res) => {
         parcelLocker: parcelLocker || '',
         address: address || {},
         phone: phone || '',
-        // Ustaw flagę że faktura istnieje (jeśli została przesłana)
-        invoiceFile: invoiceFile ? `/api/download-invoice?orderId=${orderRef.id}` : null,
+        invoiceFile: null,
         createdAt: now,
         updatedAt: now,
         createdBy: sessionUser.uid,
       };
 
       const orderRef = await db.collection('orders').add(orderData);
+
+      if (isUserAdmin && invoiceFile) {
+        await orderRef.update({
+          invoiceFile: `/api/download-invoice?orderId=${orderRef.id}`,
+        });
+      }
       
       // Pobierz utworzone zamówienie
       const createdOrder = await orderRef.get();

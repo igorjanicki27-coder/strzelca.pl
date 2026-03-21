@@ -5,9 +5,36 @@
  * - działa dla zalogowanych i niezalogowanych użytkowników
  * 
  * Użycie:
- *   import { initVisitTracker } from "https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-1";
+ *   import { initVisitTracker } from "https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2";
  *   await initVisitTracker();
  */
+
+/** Dzisiejszy dzień w strefie lokalnej (spójnie z panelem admina) */
+function localCalendarDayKey() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function readVisitDayCookie() {
+  try {
+    const m = document.cookie.match(/(?:^|;\s*)strzelca_visit_day=([^;]*)/);
+    return m ? decodeURIComponent(m[1].trim()) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeVisitDayCookie(dayKey) {
+  try {
+    const secure = location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `strzelca_visit_day=${encodeURIComponent(dayKey)}; Path=/; Domain=.strzelca.pl; Max-Age=90000; SameSite=Lax${secure}`;
+  } catch {
+    // np. plik lokalny / nieobsługiwany domain
+  }
+}
 
 /**
  * Generuje unikalny identyfikator użytkownika (dla niezalogowanych)
@@ -45,11 +72,14 @@ function generateVisitorId() {
 }
 
 /**
- * Sprawdza, czy odwiedzina dzisiaj została już zarejestrowana
+ * Sprawdza, czy odwiedzina dzisiaj została już zarejestrowana.
+ * Cookie Domain=.strzelca.pl współdzielone między subdomenami; localStorage — zapas per-origin.
  */
 function hasVisitedToday() {
-  const lastVisitDate = localStorage.getItem('lastVisitDate');
-  const today = new Date().toDateString();
+  const today = localCalendarDayKey();
+  const cookieDay = readVisitDayCookie();
+  if (cookieDay === today) return true;
+  const lastVisitDate = localStorage.getItem("lastVisitDate");
   return lastVisitDate === today;
 }
 
@@ -57,8 +87,9 @@ function hasVisitedToday() {
  * Zaznacza, że odwiedzina dzisiaj została zarejestrowana
  */
 function markVisitedToday() {
-  const today = new Date().toDateString();
-  localStorage.setItem('lastVisitDate', today);
+  const today = localCalendarDayKey();
+  localStorage.setItem("lastVisitDate", today);
+  writeVisitDayCookie(today);
 }
 
 /**
@@ -83,11 +114,12 @@ async function trackVisit(userId = null) {
   console.log('[Visit Tracker] Sending visit data to API', { userId, visitorId, pageUrl });
   
   try {
-    const response = await fetch('https://strzelca.pl/api/track-visit', {
-      method: 'POST',
+    const response = await fetch("https://strzelca.pl/api/track-visit", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
+      credentials: "include",
       body: JSON.stringify({
         userId: userId,
         visitorId: visitorId,
@@ -95,10 +127,9 @@ async function trackVisit(userId = null) {
         pageTitle: pageTitle,
         referrer: referrer,
         userAgent: navigator.userAgent,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
-      // Użyj keepalive dla lepszej niezawodności
-      keepalive: true
+      keepalive: true,
     });
     
     if (response.ok) {
@@ -164,11 +195,12 @@ async function sendGuestPresencePing() {
   const visitorId = generateVisitorId();
   console.log('[Visit Tracker] Guest presence heartbeat...', { visitorId });
   try {
-    const response = await fetch('https://strzelca.pl/api/ping-activity', {
-      method: 'POST',
+    const response = await fetch("https://strzelca.pl/api/ping-activity", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
+      credentials: "include",
       body: JSON.stringify({
         visitorId,
         userAgent: navigator.userAgent,
@@ -313,30 +345,36 @@ async function handleVisitTracking(auth) {
   // Gość: heartbeat co kilka minut + skasowanie obecności przy zamknięciu / zalogowaniu
   await startGuestHeartbeatSession(userId, auth);
   
-  // Śledź również przy zamknięciu strony (sendBeacon dla niezawodności)
-  window.addEventListener('beforeunload', () => {
+  // Przy zamknięciu karty: fetch + keepalive + credentials (sendBeacon bez credentials nie wysyła ciasteczek SSO między originami)
+  window.addEventListener("beforeunload", () => {
     if (!hasVisitedToday()) {
-      const visitorId = userId || generateVisitorId();
+      const vid = userId ? null : generateVisitorId();
       const pageUrl = window.location.href;
       const pageTitle = document.title;
-      const referrer = document.referrer || '';
-      
+      const referrer = document.referrer || "";
       try {
-        navigator.sendBeacon && navigator.sendBeacon(
-          'https://strzelca.pl/api/track-visit',
-          JSON.stringify({
+        fetch("https://strzelca.pl/api/track-visit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          keepalive: true,
+          body: JSON.stringify({
             userId: userId,
-            visitorId: visitorId,
-            pageUrl: pageUrl,
-            pageTitle: pageTitle,
-            referrer: referrer,
+            visitorId: vid,
+            pageUrl,
+            pageTitle,
+            referrer,
             userAgent: navigator.userAgent,
-            timestamp: new Date().toISOString()
-          })
+            timestamp: new Date().toISOString(),
+          }),
+        }).then(
+          (r) => {
+            if (r.ok) markVisitedToday();
+          },
+          () => {}
         );
-        markVisitedToday();
-      } catch (e) {
-        // Ignoruj błędy przy zamykaniu
+      } catch {
+        // Ignoruj przy zamykaniu
       }
     }
   });
