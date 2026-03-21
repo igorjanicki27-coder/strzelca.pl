@@ -29,18 +29,23 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root { --coyote: #C19A6B; }
-        html, body { height: 100%; overflow: hidden; }
+        html { height: 100%; }
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background-color: #0a0a0a;
             background-image: linear-gradient(rgba(10, 10, 10, 0.22) 0%, rgba(10, 10, 10, 0.55) 55%, rgba(10, 10, 10, 0.9) 100%), url('https://strzelca.pl/tlo.png');
             background-size: cover;
             background-position: top center;
+            background-attachment: scroll;
             color: #e5e5e5;
             margin: 0;
             display: flex;
             flex-direction: column;
-            min-height: 100vh;
+            min-height: 100%;
+            min-height: 100dvh;
+            overflow-x: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
         .main-wrapper {
             flex: 1;
@@ -271,7 +276,7 @@
         }
     </style>
     <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-02-06-1" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-2" />
 </head>
 <body>
     <div class="main-wrapper">
@@ -485,6 +490,7 @@
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
         import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
+        import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
 
         
       async function getFirebaseApiKey() {
@@ -1053,6 +1059,14 @@ const firebaseConfig = {
         window.addEventListener('resize', () => {
             window.requestAnimationFrame(updateCharityCarouselControls);
         });
+
+        const _charityVp = document.querySelector('#arsenal .carousel-viewport');
+        if (_charityVp) {
+            attachHorizontalCarouselSwipe(_charityVp, {
+                onPrev: () => window.moveCharityCarousel(-1),
+                onNext: () => window.moveCharityCarousel(1),
+            });
+        }
 
         // Globalne funkcje
         window.toggleAdminModal = () => document.getElementById('admin-modal').classList.toggle('hidden');

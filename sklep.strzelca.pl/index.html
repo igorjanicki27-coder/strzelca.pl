@@ -27,18 +27,23 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root { --coyote: #C19A6B; }
-        html, body { height: 100%; overflow: hidden; }
+        html { height: 100%; }
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background-color: #0a0a0a;
             background-image: linear-gradient(rgba(10,10,10,0.22) 0%, rgba(10,10,10,0.55) 55%, rgba(10,10,10,0.9) 100%), url('https://strzelca.pl/tlo.png');
             background-size: cover;
             background-position: top center;
+            background-attachment: scroll;
             color: #e5e5e5;
             margin: 0;
             display: flex;
             flex-direction: column;
-            min-height: 100vh;
+            min-height: 100%;
+            min-height: 100dvh;
+            overflow-x: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
         
         .hero-bg {
@@ -162,7 +167,7 @@
         }
     </style>
     <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-02-06-1" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-2" />
 </head>
 <body>
     <!-- Panel użytkownika -->
@@ -255,6 +260,7 @@
         import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
         import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-21-1";
         import { loadWithVersionCache, idbDeleteEntry } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
+        import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
 
         
       async function getFirebaseApiKey() {
@@ -663,6 +669,14 @@
             if (productItems.length === 0) return;
             renderProductCarousel(false);
         });
+
+        const _shopCarouselVp = document.querySelector('#arsenal .carousel-viewport');
+        if (_shopCarouselVp) {
+            attachHorizontalCarouselSwipe(_shopCarouselVp, {
+                onPrev: () => window.moveProductCarousel(-1),
+                onNext: () => window.moveProductCarousel(1),
+            });
+        }
 
         const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
