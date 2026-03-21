@@ -56,6 +56,18 @@ curl -sS -H 'Authorization: Bearer TU_WPISZ_CALY_SEKRET' 'https://strzelca.pl/ap
 
 Odpowiedź `401` = zły lub obcięty sekret; `500` + pole `detail` w JSON = zwykle brak indeksu Firestore (`firebase deploy --only firestore:indexes`) albo brak `FIREBASE_SERVICE_ACCOUNT_KEY` w Vercel.
 
+#### `503` + `"Cron nie skonfigurowany"` mimo ustawionego `CRON_SECRET`
+
+To znaczy, że **w runtime produkcyjnej funkcji** zmienne `CRON_SECRET` / `BAZAR_CRON_SECRET` są **niedostępne albo puste** (nie to samo co „wpisałem w panelu” — ważne jest, dla **którego środowiska** i **który deployment**).
+
+1. **Zakres środowiska** — przy edycji zmiennej w Vercel zaznacz **Production** (nie tylko Preview / Development). Domena `strzelca.pl` korzysta z deploymentu **Production**.
+2. **Redeploy** — po dodaniu lub zmianie zmiennej wejdź w **Deployments** → ostatni deploy produkcji → **⋯** → **Redeploy** (bez zmian w kodzie). Bez tego stary deployment często nadal widzi pusty sekret.
+3. **Właściwy projekt i zespół** — upewnij się, że zmienna jest w **tym samym** projekcie Vercel, który obsługuje `strzelca.pl` (Dashboard → ten projekt → Environment Variables).
+4. **Pusta wartość** — jeśli w polu Value jest tylko spacja albo pustka, po `.trim()` sekret jest pusty.
+5. **Pole `diag` w JSON** (po wdrożeniu nowszej wersji API) — `cronSecretKeyPresent` / `cronSecretTrimmedLength` pokazują, czy klucz w ogóle trafił do funkcji i czy po obcięciu spacji ma niezerową długość.
+
+**Alternatywa:** dodaj **`BAZAR_CRON_SECRET`** z tą samą wartością co planujesz w `curl` — kod czyta najpierw `BAZAR_CRON_SECRET`, potem `CRON_SECRET` (pomaga przy konfliktach nazw lub pomyłkach w zakresie env).
+
 
 ### Development - Opcjonalne
 - **ALLOW_LOCALHOST** - Czy pozwolić na localhost (domyślnie: `false`, ustaw na `true` tylko dla developmentu)

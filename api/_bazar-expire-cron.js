@@ -25,19 +25,28 @@ async function handleBazarExpireCron(req, res) {
     }
 
     initAdmin();
-    const expected = String(
-      process.env.BAZAR_CRON_SECRET || process.env.CRON_SECRET || ''
-    ).trim();
+    const rawBazar = process.env.BAZAR_CRON_SECRET;
+    const rawCron = process.env.CRON_SECRET;
+    const expected = String(rawBazar || rawCron || '').trim();
     const h = req.headers || {};
     const bearer = String(h.authorization || h.Authorization || '').replace(/^Bearer\s+/i, '').trim();
     const got = String(h['x-bazar-cron-secret'] || '').trim() || bearer;
 
     if (!expected) {
+      const diag = {
+        vercelEnv: process.env.VERCEL_ENV || null,
+        bazarCronSecretKeyPresent: rawBazar !== undefined,
+        bazarCronSecretTrimmedLength: rawBazar != null ? String(rawBazar).trim().length : 0,
+        cronSecretKeyPresent: rawCron !== undefined,
+        cronSecretTrimmedLength: rawCron != null ? String(rawCron).trim().length : 0,
+      };
+      console.error('[bazar-cron-expire] Brak sekretu crona (BAZAR_CRON_SECRET / CRON_SECRET)', diag);
       return res.status(503).json({
         success: false,
         error: 'Cron nie skonfigurowany',
         detail:
-          'Ustaw w Vercel (Production) zmienna BAZAR_CRON_SECRET lub CRON_SECRET — ta sama wartość co w Authorization: Bearer … przy ręcznym curl.',
+          'W tej funkcji serwerowej nie ma niepustej wartości BAZAR_CRON_SECRET ani CRON_SECRET. W Vercel: Settings → Environment Variables — zmienna musi być zaznaczona dla środowiska Production, potem wykonaj Redeploy produkcji. Opcjonalnie dodaj drugą nazwę: BAZAR_CRON_SECRET (ta sama wartość).',
+        diag,
       });
     }
     if (got !== expected) {

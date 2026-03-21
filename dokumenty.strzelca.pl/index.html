@@ -1410,6 +1410,63 @@ const firebaseConfig = {
             return /^fa-[a-z0-9-]+$/i.test(s) ? s : "fa-file-pdf";
         }
 
+        /** Ujednolicenie ścieżki pliku (pdf/… vs pełny URL) przy scalaniu z bazą. */
+        function normDocPath(url) {
+            try {
+                const t = String(url || "").trim();
+                if (!t) return "";
+                if (/^https?:\/\//i.test(t)) {
+                    const p = new URL(t).pathname.replace(/^\/+|\/+$/g, "");
+                    return p.toLowerCase();
+                }
+                return t.replace(/^\/+|\/+$/g, "").toLowerCase();
+            } catch {
+                return String(url || "").trim().toLowerCase();
+            }
+        }
+
+        /**
+         * Gdy w bazie są tylko PDF-y, i tak pokazuj regulaminy z szablonu (treść w HTML).
+         * Wpisy z Firestore nadpisują tytuł/opis/kolejność tam, gdzie pasują.
+         */
+        function mergeSiteDocumentsWithFallback(dbItems) {
+            const consumed = new WeakSet();
+            const merged = [];
+
+            const findDbModal = (mt) =>
+                dbItems.find((i) => i.kind === "modal" && i.modalTarget === mt);
+            const findDbFile = (fbUrl) => {
+                const fp = normDocPath(fbUrl);
+                return dbItems.find((i) => i.kind === "file" && normDocPath(i.url) === fp);
+            };
+
+            for (const fb of FALLBACK_SITE_DOCUMENTS) {
+                if (fb.kind === "modal") {
+                    const hit = findDbModal(fb.modalTarget);
+                    if (hit) {
+                        merged.push(hit);
+                        consumed.add(hit);
+                    } else {
+                        merged.push({ ...fb });
+                    }
+                } else {
+                    const hit = findDbFile(fb.url);
+                    if (hit) {
+                        merged.push(hit);
+                        consumed.add(hit);
+                    } else {
+                        merged.push({ ...fb });
+                    }
+                }
+            }
+
+            const extras = dbItems.filter((i) => !consumed.has(i));
+            extras.sort((a, b) =>
+                a.order !== b.order ? a.order - b.order : String(a.title).localeCompare(String(b.title)),
+            );
+            return merged.concat(extras);
+        }
+
         function normalizeFirestoreDocument(data) {
             const kind = data.kind === "modal" ? "modal" : "file";
             const order = typeof data.order === "number" ? data.order : 0;
@@ -1482,6 +1539,7 @@ const firebaseConfig = {
             if (!grid) return;
 
             let items = [];
+            let dbHadModal = false;
             try {
                 const q = query(collection(db, "documents"), orderBy("order", "asc"));
                 const snapshot = await getDocs(q);
@@ -1489,6 +1547,7 @@ const firebaseConfig = {
                     .map((d) => normalizeFirestoreDocument(d.data()))
                     .filter(Boolean);
                 if (items.length) {
+                    dbHadModal = items.some((i) => i.kind === "modal");
                     items.sort((a, b) =>
                         a.order !== b.order ? a.order - b.order : String(a.title).localeCompare(String(b.title)),
                     );
@@ -1501,11 +1560,20 @@ const firebaseConfig = {
                 items = FALLBACK_SITE_DOCUMENTS.slice();
                 if (noteEl) {
                     noteEl.textContent =
-                        "Lista domyślna (brak wpisów w bazie). W panelu admina użyj „Importuj domyślną listę strony”, potem ustaw kolejność strzałkami.";
+                        "Brak wpisów w bazie — pełna lista z szablonu strony. W panelu admina otwórz zakładkę Dokumenty, aby zapisać ją w Firestore i ustawić kolejność.";
                     noteEl.classList.remove("hidden");
                 }
-            } else if (noteEl) {
-                noteEl.classList.add("hidden");
+            } else {
+                items = mergeSiteDocumentsWithFallback(items);
+                if (noteEl) {
+                    if (!dbHadModal) {
+                        noteEl.textContent =
+                            "W bazie były tylko pliki — lista została uzupełniona o regulaminy z szablonu strony. Otwórz zakładkę Dokumenty w panelu admina: brakujące wpisy dopiszą się do Firestore i będzie można ustawić jedną wspólną kolejność.";
+                        noteEl.classList.remove("hidden");
+                    } else {
+                        noteEl.classList.add("hidden");
+                    }
+                }
             }
 
             grid.innerHTML = items.map((row) => renderCatalogRow(row)).join("");

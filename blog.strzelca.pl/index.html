@@ -74,6 +74,95 @@
             color: var(--coyote); 
             font-family: 'Orbitron', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
         }
+
+        /* Treść wpisu z edytora Quill (jak opis produktu w sklepie) */
+        .blog-post-body {
+            line-height: 1.65;
+            color: #d4d4d8;
+            font-size: 0.95rem;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+        }
+        .blog-post-body p { margin: 0.85em 0; }
+        .blog-post-body h1, .blog-post-body h2, .blog-post-body h3 {
+            color: var(--coyote);
+            margin: 1.1em 0 0.45em;
+            line-height: 1.25;
+        }
+        .blog-post-body h1 { font-size: 1.5rem; }
+        .blog-post-body h2 { font-size: 1.25rem; }
+        .blog-post-body h3 { font-size: 1.1rem; }
+        .blog-post-body ul, .blog-post-body ol { margin: 0.75em 0; padding-left: 1.5em; }
+        .blog-post-body a { color: var(--coyote); }
+        .blog-post-body img, .blog-post-body video { max-width: 100%; height: auto; border-radius: 8px; }
+        .blog-post-body blockquote {
+            border-left: 3px solid var(--coyote);
+            margin: 1em 0;
+            padding: 0.25em 0 0.25em 1em;
+            color: #a1a1aa;
+        }
+        .blog-post-body pre, .blog-post-body .ql-syntax {
+            background: #171717;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 0.75em 1em;
+            overflow-x: auto;
+            font-size: 0.85rem;
+        }
+        .blog-post-body .ql-align-center { text-align: center; }
+        .blog-post-body .ql-align-right { text-align: right; }
+        .blog-post-body .ql-align-justify { text-align: justify; }
+
+        /* Galeria zdjęć wpisu (jak modal produktu w sklepie) */
+        .blog-post-gallery {
+            position: relative;
+            width: 100%;
+            height: min(400px, 55vh);
+            background: #080808;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 1.25rem;
+        }
+        .blog-post-gallery img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .blog-gallery-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            cursor: pointer;
+            font-size: 18px;
+            z-index: 10;
+            transition: background 0.3s;
+            border-radius: 4px;
+        }
+        .blog-gallery-nav:hover:not(:disabled) {
+            background: rgba(193, 154, 107, 0.9);
+            color: #0a0a0a;
+        }
+        .blog-gallery-nav.prev { left: 10px; }
+        .blog-gallery-nav.next { right: 10px; }
+        .blog-gallery-nav:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        .blog-gallery-counter {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.65);
+            color: #e5e5e5;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+        }
         
         /* Event Cards - Nowoczesny design */
         .event-card { 
@@ -1033,8 +1122,8 @@
                         </div>
 
                         <div class="border-t border-zinc-700 pt-4 md:pt-6 mb-4 md:mb-6">
-                            <div id="modal-content" class="text-zinc-300 text-sm md:text-base leading-relaxed whitespace-pre-wrap">
-                            <!-- Event content will be loaded here -->
+                            <div id="modal-content" class="text-zinc-300 text-sm md:text-base leading-relaxed">
+                            <!-- Treść wpisu (galeria + HTML z edytora) -->
                             </div>
                         </div>
 
@@ -1436,6 +1525,59 @@ const firebaseConfig = {
                 .trim();
         }
 
+        /** Treść z panelu (Quill HTML) albo stary zwykły tekst — bezpieczne wyświetlanie w modalu. */
+        function formatBlogPostBody(raw) {
+            const s = String(raw || '').trim();
+            if (!s) return '<p class="text-zinc-500">Brak treści wpisu.</p>';
+            if (/<[a-z][\s\S]*>/i.test(s)) return s;
+            return `<p>${escapeHtml(s).replace(/\n/g, '<br>')}</p>`;
+        }
+
+        /** Adresy zdjęć w kolejności z panelu (tablica images lub pojedyncze imageUrl). */
+        function getBlogPostImageUrls(event) {
+            if (!event) return [];
+            const urls = [];
+            if (event.images && Array.isArray(event.images) && event.images.length > 0) {
+                const items = event.images
+                    .map((img, idx) => {
+                        const url = typeof img === 'string' ? img : img && img.url;
+                        const order = typeof img === 'object' && img != null && img.order != null ? img.order : idx;
+                        return { url, order };
+                    })
+                    .filter((x) => x.url);
+                items.sort((a, b) => a.order - b.order);
+                items.forEach((x) => urls.push(x.url));
+            }
+            if (urls.length === 0 && event.imageUrl) {
+                urls.push(event.imageUrl);
+            }
+            return urls;
+        }
+
+        function updateBlogGalleryNavButtons(total) {
+            const prevBtn = document.getElementById('blog-gallery-prev');
+            const nextBtn = document.getElementById('blog-gallery-next');
+            const idx = window.currentBlogGalleryIndex || 0;
+            if (prevBtn) prevBtn.disabled = idx <= 0;
+            if (nextBtn) nextBtn.disabled = idx >= total - 1;
+        }
+
+        window.changeBlogGalleryImage = (direction, total) => {
+            if (!window.currentBlogPostImages || window.currentBlogPostImages.length === 0) return;
+            const newIndex = (window.currentBlogGalleryIndex || 0) + direction;
+            if (newIndex < 0 || newIndex >= total) return;
+            window.currentBlogGalleryIndex = newIndex;
+            const imgEl = document.getElementById('blog-gallery-main-img');
+            if (imgEl) {
+                imgEl.src = window.currentBlogPostImages[window.currentBlogGalleryIndex];
+            }
+            const counter = document.getElementById('blog-gallery-current');
+            if (counter) {
+                counter.textContent = String(window.currentBlogGalleryIndex + 1);
+            }
+            updateBlogGalleryNavButtons(total);
+        };
+
         function blogPostMatchesQuery(post, qLower) {
             if (!qLower) return true;
             const parts = [
@@ -1722,9 +1864,10 @@ const firebaseConfig = {
                     year: 'numeric'
                 });
 
+                const cardThumb = getBlogPostImageUrls(event)[0];
                 return `
                     <article class="card-dark event-carousel-card" style="padding: 0; padding-bottom: 1rem;" data-event-id="${encodeURIComponent(event.id)}">
-                        ${event.imageUrl ? `<img src="${event.imageUrl}" style="width: 100%; height: 160px; object-fit: cover; border-top-left-radius: 12px; border-top-right-radius: 12px; margin-bottom: 0.5rem;" alt="Okładka wpisu">` : ''}
+                        ${cardThumb ? `<img src="${cardThumb}" style="width: 100%; height: 160px; object-fit: cover; border-top-left-radius: 12px; border-top-right-radius: 12px; margin-bottom: 0.5rem;" alt="">` : ''}
                         <div style="padding: 0 1rem;">
                             <p class="event-category-slot" style="margin-top: 0.5rem;">${safeCategory}</p>
                             <div class="event-divider"></div>
@@ -1926,12 +2069,52 @@ const firebaseConfig = {
             meta.push(`<div class="flex items-center"><i class="fa-solid fa-tag mr-2 text-coyote w-5"></i><span>${getEventCategoryName(event.category)}</span></div>`);
 
             document.getElementById('modal-meta').innerHTML = meta.join('');
-            
-            let htmlContent = '';
-            if (event.imageUrl) {
-                htmlContent += `<img src="${event.imageUrl}" style="width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px; margin-bottom: 1.5rem;" alt="Okładka">`;
+
+            if (window.blogGalleryKeyHandler) {
+                document.removeEventListener('keydown', window.blogGalleryKeyHandler);
+                window.blogGalleryKeyHandler = null;
             }
-            htmlContent += `<div>${event.content ? String(event.content).replace(/\n/g, '<br>') : 'Brak treści wpisu.'}</div>`;
+
+            const images = getBlogPostImageUrls(event);
+            const safeTitle = escapeHtml(event.title || 'Wpis');
+            let htmlContent = '';
+
+            if (images.length > 0) {
+                htmlContent += `
+                    <div class="blog-post-gallery" id="blog-post-gallery">
+                        <img id="blog-gallery-main-img" src="${images[0]}" alt="${safeTitle}" />
+                        ${images.length > 1 ? `
+                            <button type="button" class="blog-gallery-nav prev" onclick="window.changeBlogGalleryImage(-1, ${images.length})" id="blog-gallery-prev" disabled aria-label="Poprzednie zdjęcie">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <button type="button" class="blog-gallery-nav next" onclick="window.changeBlogGalleryImage(1, ${images.length})" id="blog-gallery-next" aria-label="Następne zdjęcie">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                            <div class="blog-gallery-counter" aria-live="polite">
+                                <span id="blog-gallery-current">1</span> / <span id="blog-gallery-total">${images.length}</span>
+                            </div>
+                        ` : ''}
+                    </div>`;
+                window.currentBlogPostImages = images;
+                window.currentBlogGalleryIndex = 0;
+                if (images.length > 1) {
+                    const handleKeyPress = (e) => {
+                        if (e.key === 'ArrowLeft' && window.currentBlogGalleryIndex > 0) {
+                            window.changeBlogGalleryImage(-1, images.length);
+                        } else if (e.key === 'ArrowRight' && window.currentBlogGalleryIndex < images.length - 1) {
+                            window.changeBlogGalleryImage(1, images.length);
+                        }
+                    };
+                    window.blogGalleryKeyHandler = handleKeyPress;
+                    document.addEventListener('keydown', handleKeyPress);
+                }
+                updateBlogGalleryNavButtons(images.length);
+            } else {
+                window.currentBlogPostImages = [];
+                window.currentBlogGalleryIndex = 0;
+            }
+
+            htmlContent += `<div class="blog-post-body">${formatBlogPostBody(event.content)}</div>`;
 
             document.getElementById('modal-content').innerHTML = htmlContent;
 
@@ -1940,6 +2123,10 @@ const firebaseConfig = {
 
         function closeEventModal() {
             document.getElementById('event-modal').classList.add('hidden');
+            if (window.blogGalleryKeyHandler) {
+                document.removeEventListener('keydown', window.blogGalleryKeyHandler);
+                window.blogGalleryKeyHandler = null;
+            }
         }
 
         // Global functions for onclick handlers
