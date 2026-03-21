@@ -25,12 +25,27 @@ async function handleBazarExpireCron(req, res) {
     }
 
     initAdmin();
-    const expected = process.env.BAZAR_CRON_SECRET || process.env.CRON_SECRET || '';
-    const got =
-      req.headers['x-bazar-cron-secret'] ||
-      (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-    if (!expected || got !== expected) {
-      return res.status(401).json({ success: false, error: 'Brak autoryzacji crona' });
+    const expected = String(
+      process.env.BAZAR_CRON_SECRET || process.env.CRON_SECRET || ''
+    ).trim();
+    const h = req.headers || {};
+    const bearer = String(h.authorization || h.Authorization || '').replace(/^Bearer\s+/i, '').trim();
+    const got = String(h['x-bazar-cron-secret'] || '').trim() || bearer;
+
+    if (!expected) {
+      return res.status(503).json({
+        success: false,
+        error: 'Cron nie skonfigurowany',
+        detail:
+          'Ustaw w Vercel (Production) zmienna BAZAR_CRON_SECRET lub CRON_SECRET — ta sama wartość co w Authorization: Bearer … przy ręcznym curl.',
+      });
+    }
+    if (got !== expected) {
+      return res.status(401).json({
+        success: false,
+        error: 'Brak autoryzacji crona',
+        hint: 'Wartość Bearer musi być identyczna z BAZAR_CRON_SECRET lub CRON_SECRET (bez dodatkowych spacji na końcu wiersza w panelu Vercel).',
+      });
     }
 
     const db = admin.firestore();
