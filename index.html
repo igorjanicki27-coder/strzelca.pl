@@ -29,6 +29,9 @@
     <link rel="apple-touch-icon" href="./ikona.svg" />
 
     <title>Strefa STRZELCA.PL</title>
+    <link rel="modulepreload" href="https://strzelca.pl/auth-init.mjs?v=2026-03-21-1" crossorigin />
+    <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
+    <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
     <script src="https://cdn.tailwindcss.com/3.4.1"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;700&display=swap"
@@ -464,26 +467,24 @@
         logAuthReady: true,
         logSSO: true,
       });
-      
-      // Inicjalizuj śledzenie aktywności
-      try {
-        const { initActivityTracker } = await import("https://strzelca.pl/activity-tracker.mjs?v=2026-03-21-2");
-        await initActivityTracker(auth, db);
-        
-        // Monitorowanie statusu użytkownika (blokowanie)
-        const { initUserStatusMonitor } = await import("https://strzelca.pl/user-status-monitor.mjs?v=2026-02-06-1");
-        await initUserStatusMonitor(auth, db);
-      } catch (error) {
-        console.warn("Could not initialize activity tracker:", error);
-      }
-      
-      // Inicjalizuj śledzenie odwiedzin (działa dla wszystkich użytkowników, również niezalogowanych)
-      try {
-        const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2");
-        await initVisitTracker(auth);
-      } catch (error) {
-        console.warn("Could not initialize visit tracker:", error);
-      }
+
+      void (async () => {
+        try {
+          const [{ initActivityTracker }, { initUserStatusMonitor }, { initVisitTracker }] =
+            await Promise.all([
+              import("https://strzelca.pl/activity-tracker.mjs?v=2026-03-21-2"),
+              import("https://strzelca.pl/user-status-monitor.mjs?v=2026-02-06-1"),
+              import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2"),
+            ]);
+          await Promise.all([
+            initActivityTracker(auth, db),
+            initUserStatusMonitor(auth, db),
+            initVisitTracker(auth),
+          ]);
+        } catch (error) {
+          console.warn("Could not initialize trackers:", error);
+        }
+      })();
       
       let productsList = [];
       let contactTopics = [];

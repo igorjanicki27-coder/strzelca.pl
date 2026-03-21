@@ -146,6 +146,9 @@
         }
     </style>
     <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
+    <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
+    <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
+    <link rel="modulepreload" href="https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1" crossorigin />
 </head>
 <body>
     <div class="main-wrapper">
@@ -323,6 +326,22 @@
 
         await setPersistence(auth, browserLocalPersistence);
         try { await ensureFirebaseSSO(auth); } catch (_) {}
+
+        void (async () => {
+            try {
+                const [{ initActivityTracker }, { initUserStatusMonitor }, { initVisitTracker }] =
+                    await Promise.all([
+                        import("https://strzelca.pl/activity-tracker.mjs?v=2026-03-21-2"),
+                        import("https://strzelca.pl/user-status-monitor.mjs?v=2026-02-06-1"),
+                        import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2"),
+                    ]);
+                await Promise.all([
+                    initActivityTracker(auth, db),
+                    initUserStatusMonitor(auth, db),
+                    initVisitTracker(auth),
+                ]);
+            } catch (_) {}
+        })();
 
         let currentUser = null;
         const API_BASE = 'https://strzelca.pl/api/bazar';
@@ -1285,18 +1304,6 @@
                 document.getElementById("user-menu")?.classList.add("hidden");
             } catch (_) {}
         };
-
-        try {
-            const { initActivityTracker } = await import("https://strzelca.pl/activity-tracker.mjs?v=2026-03-21-2");
-            await initActivityTracker(auth, db);
-            const { initUserStatusMonitor } = await import("https://strzelca.pl/user-status-monitor.mjs?v=2026-02-06-1");
-            await initUserStatusMonitor(auth, db);
-        } catch (_) {}
-
-        try {
-            const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2");
-            await initVisitTracker(auth);
-        } catch (_) {}
 
         onAuthStateChanged(auth, (user) => {
             currentUser = user;

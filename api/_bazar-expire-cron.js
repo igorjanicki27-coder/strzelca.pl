@@ -63,6 +63,18 @@ function expiresAtToMillis(exp) {
  */
 const FIRESTORE_BAZAR_CRON_SECRET_PATH = 'serverSecrets/bazarCronExpire';
 
+function envHasAdminCredentials() {
+  const e = process.env;
+  const kSa = ['FIREBASE', 'SERVICE', 'ACCOUNT', 'KEY'].join('_');
+  const kGaj = ['GOOGLE', 'APPLICATION', 'CREDENTIALS', 'JSON'].join('_');
+  const kGac = ['GOOGLE', 'APPLICATION', 'CREDENTIALS'].join('_');
+  return {
+    firebaseServiceAccountKeyPresent: e[kSa] !== undefined,
+    googleApplicationCredentialsJsonPresent: e[kGaj] !== undefined,
+    googleApplicationCredentialsPathPresent: e[kGac] !== undefined,
+  };
+}
+
 async function resolveExpectedCronSecret() {
   const { expected: fromEnv, diag } = resolveCronSecretFromEnv();
   if (fromEnv) {
@@ -72,7 +84,8 @@ async function resolveExpectedCronSecret() {
     };
   }
 
-  const secretDiag = { ...diag, cronEnvReadMode: 'dynamic' };
+  const credsDiag = envHasAdminCredentials();
+  const secretDiag = { ...diag, cronEnvReadMode: 'dynamic', ...credsDiag };
   let expected = '';
   try {
     const snap = await admin.firestore().doc(FIRESTORE_BAZAR_CRON_SECRET_PATH).get();
@@ -89,6 +102,7 @@ async function resolveExpectedCronSecret() {
   } catch (err) {
     console.error('[bazar-cron-expire] Odczyt sekretu z Firestore:', err?.message || err);
     secretDiag.firestoreCronSecretReadFailed = true;
+    secretDiag.firestoreCronSecretErrorCode = err?.code || null;
     secretDiag.cronSecretSource = 'none';
   }
 
@@ -111,11 +125,26 @@ async function handleBazarExpireCron(req, res) {
 
     if (!expected) {
       console.error('[bazar-cron-expire] Brak sekretu crona (env + Firestore)', secretDiag);
+      const hasCreds =
+        secretDiag.firebaseServiceAccountKeyPresent ||
+        secretDiag.googleApplicationCredentialsJsonPresent ||
+        secretDiag.googleApplicationCredentialsPathPresent;
+      let detail =
+        'Brak sekretu crona: ustaw STRZELCA_BAZAR_EXPIRE_SECRET / BAZAR_CRON_SECRET / CRON_SECRET w Vercel (Production + Redeploy) albo pole cronSecret w Firestore: serverSecrets/bazarCronExpire.';
+      if (secretDiag.firestoreCronSecretReadFailed) {
+        detail =
+          'Odczyt Firestore (fallback sekretu) się nie powiódł. Najczęściej na Vercel brakuje zmiennej FIREBASE_SERVICE_ACCOUNT_KEY (JSON konta serwisowego) dla Production — bez niej Admin SDK nie łączy się z Firestore; wtedy często padają też inne endpointy API i „strona nie działa”. Ustaw klucz w Vercel → Redeploy. Potem ustaw sekret crona (env lub dokument serverSecrets/bazarCronExpire).';
+      } else if (!hasCreds) {
+        detail +=
+          ' W diag wszystkie trzy flagi *Credentials* są false — to zwykle oznacza, że Vercel nie wstrzykuje żadnych credentiali Firebase do tej funkcji (sprawdź Production i redeploy).';
+      } else if (secretDiag.firestoreCronSecretDocExists === false) {
+        detail +=
+          ' Dokument serverSecrets/bazarCronExpire nie istnieje lub pole cronSecret jest puste — utwórz go w konsoli Firebase albo użyj zmiennych env.';
+      }
       return res.status(503).json({
         success: false,
         error: 'Cron nie skonfigurowany',
-        detail:
-          'Brak sekretu: ani w process.env (STRZELCA_BAZAR_EXPIRE_SECRET / BAZAR_CRON_SECRET / CRON_SECRET), ani w Firestore w dokumencie serverSecrets/bazarCronExpire (pole cronSecret). Ustaw jedno z tych — Firestore działa przez Admin SDK i omija problemy Vercel env. Wdróż też reguły firestore.rules.',
+        detail,
         diag: secretDiag,
       });
     }

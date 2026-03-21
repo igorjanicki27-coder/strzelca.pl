@@ -266,8 +266,8 @@ export async function openOrderInquiryFlow(deps) {
   const rawTitleSafe = escapeHtml(String(rawTitle || "").trim());
   const priceLine =
     price > 0
-      ? `<span class="text-[#C19A6B] font-bold tabular-nums shrink-0">${escapeHtml(String(price))} PLN</span>`
-      : `<span class="text-zinc-500 text-sm shrink-0">—</span>`;
+      ? `<span class="text-[1.225rem] md:text-[1.4rem] text-[#C19A6B] font-bold tabular-nums shrink-0 leading-tight">${escapeHtml(String(price))} PLN</span>`
+      : `<span class="text-zinc-500 text-[1.225rem] md:text-[1.4rem] shrink-0 leading-tight">—</span>`;
 
   const contactParcel = cfg.showParcel
     ? `
@@ -320,7 +320,7 @@ export async function openOrderInquiryFlow(deps) {
 
       <form id="shop-order-form" class="flex flex-col min-h-0 flex-1 overflow-y-auto" onsubmit="window.submitStrzelcaOrderInquiry(event)">
         <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-3 pb-3 border-b border-zinc-800">
-          <span class="font-[Orbitron] font-black uppercase text-white text-sm md:text-base tracking-tight min-w-0 flex-1 truncate" title="${rawTitleSafe}">${rawTitleSafe}</span>
+          <span class="font-[Orbitron] font-black uppercase text-white text-[1.225rem] md:text-[1.4rem] tracking-tight min-w-0 flex-1 truncate leading-tight" title="${rawTitleSafe}">${rawTitleSafe}</span>
           ${priceLine}
         </div>
 
@@ -346,7 +346,7 @@ export async function openOrderInquiryFlow(deps) {
         <div class="mb-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700">
           <p class="text-[11px] text-zinc-400 leading-snug">
             <strong>Uwaga:</strong> ${escapeHtml(cfg.disclaimerWarning)} ${cfg.disclaimerAcceptHtml}
-            <button type="button" class="text-white hover:text-[#C19A6B] hover:underline font-bold align-baseline bg-transparent border-0 p-0 cursor-pointer transition-colors" onclick="window.openStrzelcaRegulaminModal(event)">${escapeHtml(cfg.regulaminLinkLabel)}</button>.
+            <button type="button" class="text-zinc-400 hover:text-[#C19A6B] hover:underline font-normal align-baseline bg-transparent border-0 p-0 cursor-pointer transition-colors" onclick="window.openStrzelcaRegulaminModal(event)">${escapeHtml(cfg.regulaminLinkLabel)}</button>.
           </p>
         </div>
 

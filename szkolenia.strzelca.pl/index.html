@@ -52,6 +52,9 @@
         />
         <!-- Wspólne poprawki responsywności -->
         <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
+        <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
+        <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
+        <link rel="modulepreload" href="https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-5" crossorigin />
         <style>
             :root {
                 --coyote: #c19a6b;
@@ -379,7 +382,7 @@
                 getHeaderProfileFromCache,
                 setHeaderProfileCache,
             } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
-            import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-3";
+            import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-5";
             import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
             import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
             import {
@@ -456,6 +459,24 @@ const firebaseConfig = {
             } catch (e) {
                 console.warn("SSO ensure failed (ignored):", e?.message || e);
             }
+
+            void (async () => {
+                try {
+                    const [{ initActivityTracker }, { initUserStatusMonitor }, { initVisitTracker }] =
+                        await Promise.all([
+                            import("https://strzelca.pl/activity-tracker.mjs?v=2026-03-21-2"),
+                            import("https://strzelca.pl/user-status-monitor.mjs?v=2026-02-06-1"),
+                            import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2"),
+                        ]);
+                    await Promise.all([
+                        initActivityTracker(auth, db),
+                        initUserStatusMonitor(auth, db),
+                        initVisitTracker(auth),
+                    ]);
+                } catch (error) {
+                    console.warn("Could not initialize trackers:", error);
+                }
+            })();
 
             let currentUser = null;
 
@@ -604,27 +625,6 @@ const firebaseConfig = {
                     console.error("Logout error:", error);
                 }
             };
-
-            // Monitorowanie stanu logowania
-            // Inicjalizuj śledzenie aktywności
-            try {
-                const { initActivityTracker } = await import("https://strzelca.pl/activity-tracker.mjs?v=2026-03-21-2");
-                await initActivityTracker(auth, db);
-                
-                // Monitorowanie statusu użytkownika (blokowanie)
-                const { initUserStatusMonitor } = await import("https://strzelca.pl/user-status-monitor.mjs?v=2026-02-06-1");
-                await initUserStatusMonitor(auth, db);
-            } catch (error) {
-                console.warn("Could not initialize activity tracker:", error);
-            }
-            
-            // Inicjalizuj śledzenie odwiedzin (działa dla wszystkich użytkowników, również niezalogowanych)
-            try {
-              const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2");
-              await initVisitTracker(auth);
-            } catch (error) {
-              console.warn("Could not initialize visit tracker:", error);
-            }
 
             // Zapytanie o ofertę — ten sam formularz co w sklepie (bez adresu i paczkomatu), POST /api/orders
             window.handleOfferInquiry = async (trainingName, trainingPrice = 0) => {

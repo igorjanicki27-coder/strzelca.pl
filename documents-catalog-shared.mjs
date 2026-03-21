@@ -4,6 +4,14 @@
  */
 
 export const FALLBACK_SITE_DOCUMENTS = [
+  {
+    kind: "file",
+    url: "regulamin-witryny.html",
+    title: "Regulamin witryny (scalony)",
+    description: "Jeden dokument: wszystkie regulaminy z dokumentów strzelca.pl + regulamin zamówień.",
+    icon: "fa-file-contract",
+    order: -1,
+  },
   { kind: "modal", modalTarget: "regulamin-platformy", title: "Regulamin Platformy", icon: "fa-users", order: 0 },
   { kind: "modal", modalTarget: "regulamin-sklepu", title: "Regulamin Sklepu i Serwisu", icon: "fa-store", order: 1 },
   { kind: "modal", modalTarget: "regulamin-bazar", title: "Regulamin bazaru", icon: "fa-handshake", order: 2 },

@@ -40,6 +40,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Wspólne poprawki responsywności -->
     <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
+    <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
+    <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
+    <link rel="modulepreload" href="https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1" crossorigin />
     <style>
         :root { 
             --coyote: #C19A6B; 
@@ -1251,6 +1254,24 @@ const firebaseConfig = {
             console.warn("SSO ensure failed (ignored):", e?.message || e);
         }
 
+        void (async () => {
+            try {
+                const [{ initActivityTracker }, { initUserStatusMonitor }, { initVisitTracker }] =
+                    await Promise.all([
+                        import("https://strzelca.pl/activity-tracker.mjs?v=2026-03-21-2"),
+                        import("https://strzelca.pl/user-status-monitor.mjs?v=2026-02-06-1"),
+                        import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2"),
+                    ]);
+                await Promise.all([
+                    initActivityTracker(auth, db),
+                    initUserStatusMonitor(auth, db),
+                    initVisitTracker(auth),
+                ]);
+            } catch (error) {
+                console.warn("Could not initialize trackers:", error);
+            }
+        })();
+
         let currentUser = null;
 
         // Funkcja pomocnicza do generowania domyślnego awatara
@@ -1397,27 +1418,6 @@ const firebaseConfig = {
                 console.error("Logout error:", error);
             }
         };
-
-        // Monitorowanie stanu logowania
-        // Inicjalizuj śledzenie aktywności
-        try {
-            const { initActivityTracker } = await import("https://strzelca.pl/activity-tracker.mjs?v=2026-03-21-2");
-            await initActivityTracker(auth, db);
-            
-            // Monitorowanie statusu użytkownika (blokowanie)
-            const { initUserStatusMonitor } = await import("https://strzelca.pl/user-status-monitor.mjs?v=2026-02-06-1");
-            await initUserStatusMonitor(auth, db);
-        } catch (error) {
-            console.warn("Could not initialize activity tracker:", error);
-        }
-        
-        // Inicjalizuj śledzenie odwiedzin (działa dla wszystkich użytkowników, również niezalogowanych)
-        try {
-          const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2");
-          await initVisitTracker(auth);
-        } catch (error) {
-          console.warn("Could not initialize visit tracker:", error);
-        }
 
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
