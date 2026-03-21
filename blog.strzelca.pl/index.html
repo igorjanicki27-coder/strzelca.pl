@@ -22,7 +22,7 @@
     <link rel="apple-touch-icon" href="https://strzelca.pl/ikona.svg">
 
     <title>Blog STRZELCA.PL</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="blog.tailwind.min.css?v=2026-03-21" />
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Wspólne poprawki responsywności -->
@@ -1621,8 +1621,15 @@ const firebaseConfig = {
                     
                     if (event.status === 'published') {
                         let dateObj = new Date();
-                        if (event.createdAt) {
-                            dateObj = new Date(event.createdAt);
+                        const ca = event.createdAt;
+                        if (ca) {
+                            if (typeof ca.toDate === 'function') {
+                                dateObj = ca.toDate();
+                            } else if (typeof ca === 'object' && ca.seconds != null) {
+                                dateObj = new Date(ca.seconds * 1000);
+                            } else {
+                                dateObj = new Date(ca);
+                            }
                         }
                         
                         allEvents.push({

@@ -13,8 +13,7 @@
     <link rel="apple-touch-icon" href="https://strzelca.pl/ikona.svg" />
 
     <title>Panel Administracyjny STRZELCA.PL</title>
-    <!-- Restored to working version: dzien 20 wsad 25 -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="admin.tailwind.min.css?v=2026-03-21" />
     <link
       href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;700&display=swap"
       rel="stylesheet"
@@ -516,7 +515,9 @@
       }
 
       /* Quill Editor Styles - Dark Theme */
-      #product-description-editor .ql-container {
+      #product-description-editor .ql-container,
+      #charity-description-editor .ql-container,
+      #pinned-donations-description-editor .ql-container {
         background: #161616;
         border: 1px solid #222;
         border-radius: 0 0 8px 8px;
@@ -524,57 +525,90 @@
         font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       }
       
-      #product-description-editor .ql-editor {
+      #product-description-editor .ql-editor,
+      #charity-description-editor .ql-editor,
+      #pinned-donations-description-editor .ql-editor {
         min-height: 300px;
         color: white;
       }
       
-      #product-description-editor .ql-editor.ql-blank::before {
+      #charity-description-editor .ql-editor,
+      #pinned-donations-description-editor .ql-editor {
+        min-height: 220px;
+      }
+      
+      #product-description-editor .ql-editor.ql-blank::before,
+      #charity-description-editor .ql-editor.ql-blank::before,
+      #pinned-donations-description-editor .ql-editor.ql-blank::before {
         color: #666;
         font-style: normal;
       }
       
-      #product-description-editor .ql-toolbar {
+      #product-description-editor .ql-toolbar,
+      #charity-description-editor .ql-toolbar,
+      #pinned-donations-description-editor .ql-toolbar {
         background: #111;
         border: 1px solid #222;
         border-radius: 8px 8px 0 0;
         padding: 10px;
       }
       
-      #product-description-editor .ql-toolbar .ql-stroke {
+      #product-description-editor .ql-toolbar .ql-stroke,
+      #charity-description-editor .ql-toolbar .ql-stroke,
+      #pinned-donations-description-editor .ql-toolbar .ql-stroke {
         stroke: white;
       }
       
-      #product-description-editor .ql-toolbar .ql-fill {
+      #product-description-editor .ql-toolbar .ql-fill,
+      #charity-description-editor .ql-toolbar .ql-fill,
+      #pinned-donations-description-editor .ql-toolbar .ql-fill {
         fill: white;
       }
       
       #product-description-editor .ql-toolbar button:hover,
-      #product-description-editor .ql-toolbar button.ql-active {
+      #product-description-editor .ql-toolbar button.ql-active,
+      #charity-description-editor .ql-toolbar button:hover,
+      #charity-description-editor .ql-toolbar button.ql-active,
+      #pinned-donations-description-editor .ql-toolbar button:hover,
+      #pinned-donations-description-editor .ql-toolbar button.ql-active {
         background: var(--coyote);
       }
       
       #product-description-editor .ql-toolbar button:hover .ql-stroke,
-      #product-description-editor .ql-toolbar button.ql-active .ql-stroke {
+      #product-description-editor .ql-toolbar button.ql-active .ql-stroke,
+      #charity-description-editor .ql-toolbar button:hover .ql-stroke,
+      #charity-description-editor .ql-toolbar button.ql-active .ql-stroke,
+      #pinned-donations-description-editor .ql-toolbar button:hover .ql-stroke,
+      #pinned-donations-description-editor .ql-toolbar button.ql-active .ql-stroke {
         stroke: black;
       }
       
       #product-description-editor .ql-toolbar button:hover .ql-fill,
-      #product-description-editor .ql-toolbar button.ql-active .ql-fill {
+      #product-description-editor .ql-toolbar button.ql-active .ql-fill,
+      #charity-description-editor .ql-toolbar button:hover .ql-fill,
+      #charity-description-editor .ql-toolbar button.ql-active .ql-fill,
+      #pinned-donations-description-editor .ql-toolbar button:hover .ql-fill,
+      #pinned-donations-description-editor .ql-toolbar button.ql-active .ql-fill {
         fill: black;
       }
       
-      #product-description-editor .ql-toolbar .ql-picker-label {
+      #product-description-editor .ql-toolbar .ql-picker-label,
+      #charity-description-editor .ql-toolbar .ql-picker-label,
+      #pinned-donations-description-editor .ql-toolbar .ql-picker-label {
         color: white;
       }
       
-      #product-description-editor .ql-toolbar .ql-picker-options {
+      #product-description-editor .ql-toolbar .ql-picker-options,
+      #charity-description-editor .ql-toolbar .ql-picker-options,
+      #pinned-donations-description-editor .ql-toolbar .ql-picker-options {
         background: #222;
         border: 1px solid #333;
         color: white;
       }
       
-      #product-description-editor .ql-toolbar .ql-picker-item:hover {
+      #product-description-editor .ql-toolbar .ql-picker-item:hover,
+      #charity-description-editor .ql-toolbar .ql-picker-item:hover,
+      #pinned-donations-description-editor .ql-toolbar .ql-picker-item:hover {
         background: var(--coyote);
         color: black;
       }
@@ -1342,9 +1376,15 @@
             <h1 class="text-3xl font-bold coyote-text">
               Zarządzanie Produktami
             </h1>
-            <button onclick="refreshProducts()" class="text-zinc-400 hover:text-coyote transition-colors p-2" id="refresh-products-btn">
-              <i class="fa-solid fa-sync-alt text-lg" id="refresh-products-icon"></i>
-            </button>
+            <div class="flex items-center gap-4">
+              <button onclick="refreshProducts()" class="text-zinc-400 hover:text-coyote transition-colors p-2" id="refresh-products-btn">
+                <i class="fa-solid fa-sync-alt text-lg" id="refresh-products-icon"></i>
+              </button>
+              <button onclick="openProductForm()" class="btn-admin">
+                <i class="fa-solid fa-plus mr-2"></i>
+                Dodaj produkt
+              </button>
+            </div>
           </div>
 
           <!-- Lista produktów -->
@@ -1368,13 +1408,7 @@
               </div>
             </div>
 
-          <!-- Przycisk dodaj produkt -->
-          <div class="flex justify-end">
-            <button onclick="openProductForm()" class="btn-admin">
-              <i class="fa-solid fa-plus mr-2"></i>
-              Dodaj produkt
-            </button>
-          </div>
+
         </div>
 
         <!-- Wydarzenia -->
@@ -1510,6 +1544,21 @@
                 <i class="fa-solid fa-plus mr-2"></i>
                 Dodaj akcję
               </button>
+            </div>
+
+            <div class="admin-card mb-8 border border-amber-900/40 bg-amber-950/10">
+              <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 p-5">
+                <div>
+                  <h3 class="text-lg font-bold coyote-text">Stały kafelek: dobrowolne wpłaty</h3>
+                  <p class="text-sm text-zinc-400 mt-1">
+                    Widoczny na pomoc.strzelca.pl — zdjęcia, opis (edytor jak w sklepie), przycisk Stripe „Na nową 🔫”.
+                  </p>
+                </div>
+                <button type="button" onclick="openPinnedDonationsEditor()" class="btn-admin shrink-0">
+                  <i class="fa-solid fa-pen-to-square mr-2"></i>
+                  Edytuj kafelek wpłat
+                </button>
+              </div>
             </div>
 
             <!-- Lista akcji charytatywnych -->
@@ -1866,9 +1915,15 @@
               <h1 class="text-3xl font-bold coyote-text">
                 Zarządzanie Szkoleniami
               </h1>
-              <button onclick="refreshTrainings()" class="text-zinc-400 hover:text-coyote transition-colors p-2" id="refresh-trainings-btn">
-                <i class="fa-solid fa-sync-alt text-lg" id="refresh-trainings-icon"></i>
-              </button>
+              <div class="flex items-center gap-4">
+                <button onclick="refreshTrainings()" class="text-zinc-400 hover:text-coyote transition-colors p-2" id="refresh-trainings-btn">
+                  <i class="fa-solid fa-sync-alt text-lg" id="refresh-trainings-icon"></i>
+                </button>
+                <button onclick="openTrainingPublicForm()" class="btn-admin">
+                  <i class="fa-solid fa-plus mr-2"></i>
+                  Dodaj szkolenie
+                </button>
+              </div>
             </div>
 
             <!-- Lista szkoleń -->
@@ -1894,92 +1949,56 @@
                 </div>
               </div>
 
-            <!-- Przycisk dodaj szkolenie -->
-            <div class="flex justify-end">
-              <button onclick="openTrainingPublicForm()" class="btn-admin">
-                <i class="fa-solid fa-plus mr-2"></i>
-                Dodaj szkolenie
-              </button>
-          </div>
+
         </div>
 
-          <!-- Blog -->
+          <!-- Blog (układ jak wydarzenia: statystyki, filtry w jednym rzędzie z przyciskiem, lista; formularz w modalu) -->
           <div id="tab-blog" class="tab-content">
             <h1 class="text-3xl font-bold coyote-text mb-8">
               Zarządzanie Blogiem
             </h1>
 
-            <div class="flex justify-between items-center mb-8">
-              <p class="text-zinc-400">
-                Zarządzaj wpisami na blogu. Dodawaj nowe artykuły, moderuj
-                komentarze i pozycjonuj treści.
+            <div class="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-start mb-8">
+              <p class="text-zinc-400 max-w-2xl">
+                Zarządzaj wpisami na blogu. Dodawaj artykuły, ustawiaj status publikacji
+                i kategorie — tak jak przy wydarzeniach lub produktach w sklepie.
               </p>
-              <button onclick="addNewBlogPost()" class="btn-admin">
-                <i class="fa-solid fa-plus mr-2"></i>
-                DODAJ WPIS
-              </button>
+              <div class="flex items-center gap-4 shrink-0">
+                <button type="button" onclick="refreshBlogPosts()" class="text-zinc-400 hover:text-coyote transition-colors p-2" title="Odśwież listę" id="refresh-blog-btn">
+                  <i class="fa-solid fa-sync-alt text-lg" id="refresh-blog-icon"></i>
+                </button>
+                <button type="button" onclick="addNewBlogPost()" class="btn-admin">
+                  <i class="fa-solid fa-plus mr-2"></i>
+                  Dodaj wpis
+                </button>
+              </div>
             </div>
 
-            <!-- Formularz dodawania/edycji wpisu na blogu -->
-            <div id="blog-form-section" class="admin-card mb-8 hidden">
-              <h3 class="text-xl font-bold mb-4" id="blog-form-title">Dodaj/Edytuj Wpis</h3>
-              <form id="blog-form" class="space-y-4">
-                <input type="hidden" id="blog-id" />
-                
-                <div>
-                  <label class="block text-sm font-medium mb-2">Tytuł wpisu *</label>
-                  <input type="text" id="blog-title" placeholder="Wprowadź tytuł wpisu" class="w-full" required />
+            <div class="admin-card mb-8">
+              <h3 class="text-xl font-bold mb-6">Statystyki bloga</h3>
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="text-center">
+                  <div class="text-2xl font-bold coyote-text" id="total-blog-posts">0</div>
+                  <div class="text-sm text-zinc-400">Wszystkich wpisów</div>
                 </div>
-
-                <div>
-                  <label class="block text-sm font-medium mb-2">Krótki opis (zajawka) *</label>
-                  <textarea id="blog-excerpt" placeholder="Krótki opis widoczny na liście..." class="w-full" rows="2" required></textarea>
+                <div class="text-center">
+                  <div class="text-2xl font-bold text-green-400" id="blog-published-count">0</div>
+                  <div class="text-sm text-zinc-400">Opublikowanych</div>
                 </div>
-
-                <div>
-                  <label class="block text-sm font-medium mb-2">Treść wpisu *</label>
-                  <textarea id="blog-content" placeholder="Treść bloga..." class="w-full editor-content" rows="10" required></textarea>
+                <div class="text-center">
+                  <div class="text-2xl font-bold text-yellow-400" id="blog-drafts-count">0</div>
+                  <div class="text-sm text-zinc-400">Szkiców</div>
                 </div>
-
-                <div>
-                  <label class="block text-sm font-medium mb-2">URL zdjęcia okładkowego *</label>
-                  <input type="url" id="blog-imageUrl" placeholder="https://example.com/image.jpg" class="w-full" required />
+                <div class="text-center">
+                  <div class="text-2xl font-bold text-zinc-400" id="blog-archived-count">0</div>
+                  <div class="text-sm text-zinc-400">Zarchiwizowanych</div>
                 </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm font-medium mb-2">Status</label>
-                    <select id="blog-status" class="w-full">
-                      <option value="draft">Szkic</option>
-                      <option value="published">Opublikowany</option>
-                      <option value="archived">Zarchiwizowany</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium mb-2">Kategoria</label>
-                    <select id="blog-category" class="w-full">
-                      <option value="news">Aktualności</option>
-                      <option value="tips">Porady</option>
-                      <option value="tutorials">Poradniki</option>
-                      <option value="reviews">Recenzje</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div class="flex space-x-4 pt-4">
-                  <button type="submit" class="btn-admin">
-                    <i class="fa-solid fa-save mr-2"></i>Zapisz
-                  </button>
-                  <button type="button" onclick="cancelBlogEdit()" class="px-6 py-3 border border-zinc-600 rounded-lg hover:bg-zinc-800 transition">
-                    Anuluj
-                  </button>
-                </div>
-              </form>
+              </div>
             </div>
 
-            <!-- Filtry -->
-            <div class="admin-card mb-8 max-w-2xl">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="admin-card mb-8">
+              <h3 class="text-xl font-bold mb-4">Filtry i sortowanie</h3>
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <label class="block text-sm font-medium mb-2">Status</label>
                   <select id="blog-status-filter" class="w-full">
@@ -1999,20 +2018,26 @@
                     <option value="reviews">Recenzje</option>
                   </select>
                 </div>
-              </div>
-              <div class="mt-4">
-                <button onclick="applyBlogFilters()" class="btn-admin w-full md:w-auto">
-                  <i class="fa-solid fa-filter mr-2"></i>
-                  FILTRUJ
-                </button>
+                <div>
+                  <label class="block text-sm font-medium mb-2">Sortowanie</label>
+                  <select id="blog-sort-filter" class="w-full">
+                    <option value="date-desc">Data dodania ↓</option>
+                    <option value="date-asc">Data dodania ↑</option>
+                    <option value="title">Tytuł A–Z</option>
+                  </select>
+                </div>
+                <div class="flex items-end">
+                  <button type="button" onclick="applyBlogFilters()" class="btn-admin w-full">
+                    <i class="fa-solid fa-filter mr-2"></i>
+                    Filtruj
+                  </button>
+                </div>
               </div>
             </div>
 
-            <!-- Lista wpisów -->
             <div class="admin-card">
-              <div id="blog-posts-list" class="space-y-4">
-                <!-- Wpisy będą ładowane dynamicznie -->
-              </div>
+              <h3 class="text-xl font-bold mb-4">Lista wpisów</h3>
+              <div id="blog-posts-list" class="space-y-4"></div>
 
               <div id="blog-loading" class="text-center py-8 text-zinc-400">
                 <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
@@ -2032,15 +2057,21 @@
               Zarządzanie Dokumentami
             </h1>
 
-            <div class="flex justify-between items-center mb-8">
-              <p class="text-zinc-400">
-                Zarządzaj dokumentami PDF. Dodawaj nowe pliki, organizuj kategorie
-                i kontroluj dostępność.
+            <div class="flex flex-wrap gap-4 justify-between items-center mb-8">
+              <p class="text-zinc-400 max-w-xl">
+                Lista pochodzi z kolekcji Firestore <code class="text-zinc-500">documents</code> (ta sama jest na
+                dokumenty.strzelca.pl). Jeśli widzisz pustkę, a na stronie są wzory PDF — użyj importu poniżej.
               </p>
-              <button onclick="addNewDocument()" class="btn-admin">
-                <i class="fa-solid fa-plus mr-2"></i>
-                Dodaj dokument
-              </button>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" onclick="importDefaultSitePdfDocuments()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
+                  <i class="fa-solid fa-cloud-arrow-down mr-2"></i>
+                  Importuj wzory PDF ze strony
+                </button>
+                <button type="button" onclick="addNewDocument()" class="btn-admin">
+                  <i class="fa-solid fa-plus mr-2"></i>
+                  Dodaj dokument
+                </button>
+              </div>
             </div>
 
             <!-- Formularz dodawania/edycji dokumentu -->
@@ -2071,14 +2102,15 @@
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium mb-2">URL do pliku PDF *</label>
+                  <label class="block text-sm font-medium mb-2">Adres pliku (URL lub ścieżka) *</label>
                   <input
-                    type="url"
+                    type="text"
                     id="document-url"
-                    placeholder="https://example.com/document.pdf"
+                    placeholder="https://dokumenty.strzelca.pl/pdf/… lub pdf/nazwa.html"
                     class="w-full"
                     required
                   />
+                  <p class="text-xs text-zinc-500 mt-1">Pełny https lub ścieżka względna do pliku na dokumenty.strzelca.pl.</p>
                 </div>
 
                 <div>
@@ -2131,7 +2163,11 @@
                 class="text-center py-8 text-zinc-400 hidden"
               >
                 <i class="fa-solid fa-file-pdf text-4xl mb-4 text-zinc-600"></i>
-                <p>Brak dokumentów do wyświetlenia</p>
+                <p class="mb-4">Brak dokumentów w bazie — publiczna strona pokazuje wtedy listę zapasową z kodu.</p>
+                <button type="button" onclick="importDefaultSitePdfDocuments()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
+                  <i class="fa-solid fa-cloud-arrow-down mr-2"></i>
+                  Importuj wzory PDF ze strony
+                </button>
               </div>
             </div>
           </div>
@@ -8672,8 +8708,74 @@
       };
 
       // Funkcje zarządzania akcjami charytatywnymi
+      const PINNED_CHARITY_ID = "__pinned_company_donations";
+      const DEFAULT_CHARITY_STRIPE_BUY_BTN = "buy_btn_1SmzvBCoixAPjvnwGm1XsRpP";
+      const DEFAULT_CHARITY_STRIPE_PK = "pk_test_51SmzhGCoixAPjvnwV7RfZLsfOnNOgYabPHMhKOJL1wLRaNLJcNd3O1mHxkUZw8QTytyUEwk25aqTPNDB3aGoIOSg00a7BAlDzj";
+
       let charityActionsList = [];
       let charityImages = [];
+      let pinnedDonationImages = [];
+      let pinnedDonationsRecord = null;
+      let charityActionQuill = null;
+      let pinnedDonationsQuill = null;
+
+      function destroyCharityActionQuill() {
+        charityActionQuill = null;
+      }
+
+      function destroyPinnedDonationsQuill() {
+        pinnedDonationsQuill = null;
+      }
+
+      function initCharityActionQuill(html) {
+        const host = document.getElementById("charity-description-editor");
+        if (!host || typeof Quill === "undefined") return;
+        host.innerHTML = "";
+        charityActionQuill = new Quill("#charity-description-editor", {
+          theme: "snow",
+          modules: {
+            toolbar: [
+              [{ header: [1, 2, 3, 4, 5, 6, false] }],
+              ["bold", "italic", "underline", "strike"],
+              [{ color: [] }, { background: [] }],
+              [{ list: "ordered" }, { list: "bullet" }],
+              [{ align: [] }],
+              ["link", "image", "video"],
+              ["blockquote", "code-block"],
+              ["clean"],
+            ],
+          },
+          placeholder: "Opis akcji charytatywnej...",
+        });
+        charityActionQuill.root.innerHTML = html || "";
+      }
+
+      function initPinnedDonationsQuill(html) {
+        const host = document.getElementById("pinned-donations-description-editor");
+        if (!host || typeof Quill === "undefined") return;
+        host.innerHTML = "";
+        pinnedDonationsQuill = new Quill("#pinned-donations-description-editor", {
+          theme: "snow",
+          modules: {
+            toolbar: [
+              [{ header: [1, 2, 3, 4, 5, 6, false] }],
+              ["bold", "italic", "underline", "strike"],
+              [{ color: [] }, { background: [] }],
+              [{ list: "ordered" }, { list: "bullet" }],
+              [{ align: [] }],
+              ["link", "image", "video"],
+              ["blockquote", "code-block"],
+              ["clean"],
+            ],
+          },
+          placeholder: "Opis kafelka wpłat...",
+        });
+        pinnedDonationsQuill.root.innerHTML = html || "";
+      }
+
+      function getDefaultPinnedDonationsHtml() {
+        return `<p>Twoja wpłata pomoże nam rozwijać działalność, wprowadzać nowe produkty i usługi, oraz wspierać społeczność strzelecką. Każda kwota ma znaczenie i przyczynia się do budowania lepszej przyszłości dla naszego środowiska.</p><p>Wszystkie wpłaty są dobrowolne i nie wiążą się z żadnymi zobowiązaniami. Za pośrednictwem bezpiecznej bramki płatniczej Stripe.</p><p><a href="https://dokumenty.strzelca.pl#donation-clause" rel="noopener noreferrer">Klauzula Donacji</a></p>`;
+      }
 
       async function loadCharity() {
         // Funkcja do ładowania akcji charytatywnych
@@ -8686,51 +8788,60 @@
         if (emptyEl) emptyEl.classList.add("hidden");
         
         try {
-          const { collection, getDocs, query, orderBy } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+          const { collection, getDocs, getDoc, doc, query, orderBy } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+          const pinnedSnap = await getDoc(doc(db, "charity", PINNED_CHARITY_ID));
+          pinnedDonationsRecord = pinnedSnap.exists() ? { id: pinnedSnap.id, ...pinnedSnap.data() } : null;
+
           const q = query(collection(db, "charity"), orderBy("order", "asc"));
           const snap = await getDocs(q);
           
           if (loadingEl) loadingEl.classList.add("hidden");
-          
+
+          charityActionsList = [];
+          if (listEl) listEl.innerHTML = "";
+
           if (snap.empty) {
             if (emptyEl) emptyEl.classList.remove("hidden");
             return;
           }
-          
-          if (emptyEl) emptyEl.classList.add("hidden");
-          
-          // Resetuj listę akcji
-          charityActionsList = [];
-          
-          snap.forEach(docSnapshot => {
+
+          snap.forEach((docSnapshot) => {
+            if (docSnapshot.id === PINNED_CHARITY_ID) return;
             const data = docSnapshot.data();
             const charityItem = { id: docSnapshot.id, ...data };
             charityActionsList.push(charityItem);
-            
+
             if (listEl) {
               const eventDate = new Date(data.date || Date.now());
               const isPast = eventDate < new Date();
-              
+              const descPlain = (data.description || "Brak opisu").replace(/<[^>]+>/g, "").trim() || "Brak opisu";
+
               listEl.innerHTML += `
                 <div class="border border-zinc-700 rounded-lg p-4">
                   <div class="flex justify-between items-start mb-3">
-                    <h4 class="text-lg font-bold coyote-text">${data.title || 'Bez tytułu'}</h4>
+                    <h4 class="text-lg font-bold coyote-text">${data.title || "Bez tytułu"}</h4>
                     <div class="flex space-x-2">
                       <button onclick="editCharityAction('${docSnapshot.id}')" class="text-blue-400 text-sm hover:underline">Edytuj</button>
                       <button onclick="deleteCharityAction('${docSnapshot.id}')" class="text-red-400 text-sm hover:underline">Usuń</button>
                     </div>
                   </div>
                   <div class="text-sm text-zinc-400 mb-2">
-                    📅 ${eventDate.toLocaleDateString('pl-PL')}
+                    📅 ${eventDate.toLocaleDateString("pl-PL")}
                     ${isPast ? '<span class="ml-2 px-2 py-1 bg-red-600 text-white text-xs rounded">Zakończona</span>' : '<span class="ml-2 px-2 py-1 bg-green-600 text-white text-xs rounded">Aktywna</span>'}
-                    ${data.active ? '' : '<span class="ml-2 px-2 py-1 bg-zinc-600 text-white text-xs rounded">Nieaktywna</span>'}
+                    ${data.active ? "" : '<span class="ml-2 px-2 py-1 bg-zinc-600 text-white text-xs rounded">Nieaktywna</span>'}
                   </div>
-                  ${data.image ? `<img src="${data.image}" alt="${data.title}" class="w-full h-48 object-cover rounded mb-3">` : ''}
-                  <p class="text-zinc-300 text-sm">${data.description || 'Brak opisu'}</p>
+                  ${data.image ? `<img src="${data.image}" alt="${data.title}" class="w-full h-48 object-cover rounded mb-3">` : ""}
+                  <p class="text-zinc-300 text-sm line-clamp-4">${descPlain}</p>
                 </div>
               `;
             }
           });
+
+          if (charityActionsList.length === 0) {
+            if (emptyEl) emptyEl.classList.remove("hidden");
+            return;
+          }
+          if (emptyEl) emptyEl.classList.add("hidden");
         } catch (error) {
           console.error("Error loading charity actions:", error);
           if (loadingEl) loadingEl.classList.add("hidden");
@@ -8785,13 +8896,8 @@
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium mb-2">Opis</label>
-                  <textarea
-                    id="charity-description"
-                    rows="4"
-                    placeholder="Opis akcji charytatywnej..."
-                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
-                  >${charity ? (charity.description || "") : ""}</textarea>
+                  <label class="block text-sm font-medium mb-2">Opis (edytor jak w sklepie)</label>
+                  <div id="charity-description-editor" class="rounded-lg overflow-hidden border border-zinc-700 bg-zinc-900"></div>
                 </div>
 
                 <div>
@@ -8860,6 +8966,10 @@
 
         renderCharityImages();
 
+        requestAnimationFrame(() => {
+          initCharityActionQuill(charity ? charity.description || "" : "");
+        });
+
         // Dodaj obsługę klawisza ESC
         const handleEscape = (e) => {
           if (e.key === "Escape") {
@@ -8871,6 +8981,7 @@
       }
 
       window.closeCharityFormModal = () => {
+        destroyCharityActionQuill();
         const modal = document.getElementById("charity-form-modal");
         if (modal) {
           modal.remove();
@@ -8981,9 +9092,13 @@
         e.preventDefault();
 
         const charityId = document.getElementById("charity-id").value;
+        if (charityId === PINNED_CHARITY_ID) {
+          showNotification('Ten dokument edytuj przez „Edytuj kafelek wpłat”.', 'error');
+          return;
+        }
         const title = document.getElementById("charity-title").value.trim();
         const date = document.getElementById("charity-date").value;
-        const description = document.getElementById("charity-description").value.trim();
+        const description = charityActionQuill ? charityActionQuill.root.innerHTML.trim() : "";
         const buttonLink = document.getElementById("charity-button-link").value.trim();
         const active = document.getElementById("charity-active").checked;
 
@@ -9035,6 +9150,10 @@
       };
 
       window.deleteCharityAction = async (charityId) => {
+        if (charityId === PINNED_CHARITY_ID) {
+          showNotification("Tego dokumentu nie można usunąć z listy — to stały kafelek wpłat.", "error");
+          return;
+        }
         if (!confirm("Czy na pewno chcesz usunąć tę akcję charytatywną?")) return;
 
         try {
@@ -9045,6 +9164,221 @@
           console.error("Error deleting charity action:", error);
           showNotification("Błąd usuwania akcji charytatywnej.", "error");
         }
+      };
+
+      function renderPinnedDonationImages() {
+        const container = document.getElementById("pinned-donations-images-container");
+        if (!container) return;
+
+        if (pinnedDonationImages.length === 0) {
+          container.innerHTML =
+            '<div class="col-span-full py-6 text-center text-zinc-500 bg-zinc-800/50 rounded-lg border border-zinc-700/50">Brak dodanych zdjęć</div>';
+          return;
+        }
+
+        container.innerHTML = pinnedDonationImages
+          .map(
+            (img, index) => `
+          <div class="relative group bg-zinc-800 rounded-lg overflow-hidden border border-zinc-700">
+            <div class="aspect-square relative flex items-center justify-center bg-black">
+              <img src="${img.url}" alt="Zdjęcie ${index + 1}" class="w-full h-full object-cover">
+              ${index === 0 ? '<div class="absolute top-2 left-2 bg-coyote text-black text-[10px] font-bold px-2 py-1 rounded">Okładka</div>' : ""}
+              <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                <button type="button" onclick="movePinnedDonationImageUp(${index})" class="p-2 bg-zinc-900 rounded-full hover:bg-coyote hover:text-black transition ${index === 0 ? "opacity-50 cursor-not-allowed" : ""}" ${index === 0 ? "disabled" : ""}>
+                  <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <button type="button" onclick="removePinnedDonationImage(${index})" class="p-2 bg-red-900/80 rounded-full hover:bg-red-500 transition text-white">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+                <button type="button" onclick="movePinnedDonationImageDown(${index})" class="p-2 bg-zinc-900 rounded-full hover:bg-coyote hover:text-black transition ${index === pinnedDonationImages.length - 1 ? "opacity-50 cursor-not-allowed" : ""}" ${index === pinnedDonationImages.length - 1 ? "disabled" : ""}>
+                  <i class="fa-solid fa-arrow-right"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `
+          )
+          .join("");
+      }
+
+      window.handlePinnedDonationImageUpload = async (event) => {
+        const files = event.target.files;
+        if (!files || files.length === 0) return;
+        try {
+          const processPromises = Array.from(files).map((file) => processProductImage(file));
+          const base64Images = await Promise.all(processPromises);
+          base64Images.forEach((base64) => {
+            pinnedDonationImages.push({ url: base64, order: pinnedDonationImages.length });
+          });
+          renderPinnedDonationImages();
+          showNotification(`Dodano ${base64Images.length} zdjęć.`, "success");
+        } catch (error) {
+          console.error("Błąd przesyłania zdjęć (kafelek wpłat):", error);
+          showNotification("Błąd podczas wgrywania zdjęć.", "error");
+        }
+      };
+
+      window.removePinnedDonationImage = (index) => {
+        if (confirm("Usunąć to zdjęcie?")) {
+          pinnedDonationImages.splice(index, 1);
+          pinnedDonationImages.forEach((img, idx) => (img.order = idx));
+          renderPinnedDonationImages();
+        }
+      };
+
+      window.movePinnedDonationImageUp = (index) => {
+        if (index > 0) {
+          [pinnedDonationImages[index], pinnedDonationImages[index - 1]] = [
+            pinnedDonationImages[index - 1],
+            pinnedDonationImages[index],
+          ];
+          pinnedDonationImages.forEach((img, idx) => (img.order = idx));
+          renderPinnedDonationImages();
+        }
+      };
+
+      window.movePinnedDonationImageDown = (index) => {
+        if (index < pinnedDonationImages.length - 1) {
+          [pinnedDonationImages[index], pinnedDonationImages[index + 1]] = [
+            pinnedDonationImages[index + 1],
+            pinnedDonationImages[index],
+          ];
+          pinnedDonationImages.forEach((img, idx) => (img.order = idx));
+          renderPinnedDonationImages();
+        }
+      };
+
+      window.closePinnedDonationsModal = () => {
+        destroyPinnedDonationsQuill();
+        const modal = document.getElementById("pinned-donations-form-modal");
+        if (modal) modal.remove();
+      };
+
+      async function handlePinnedDonationsFormSubmit(e) {
+        e.preventDefault();
+        const title = document.getElementById("pinned-donations-title").value.trim();
+        const stripeBuy = document.getElementById("pinned-stripe-buy-btn").value.trim();
+        const stripePk = document.getElementById("pinned-stripe-pk").value.trim();
+        const description = pinnedDonationsQuill ? pinnedDonationsQuill.root.innerHTML.trim() : "";
+
+        try {
+          const finalImages = [...pinnedDonationImages];
+          const finalImageUrl = finalImages.length > 0 ? finalImages[0].url : "";
+
+          await setDoc(
+            doc(db, "charity", PINNED_CHARITY_ID),
+            {
+              kind: "pinnedCompanyDonations",
+              title: title || "Dobrowolne wpłaty na rzecz rozwoju firmy",
+              description: description || getDefaultPinnedDonationsHtml(),
+              image: finalImageUrl || "",
+              images: finalImages,
+              stripeBuyButtonId: stripeBuy || DEFAULT_CHARITY_STRIPE_BUY_BTN,
+              stripePublishableKey: stripePk || DEFAULT_CHARITY_STRIPE_PK,
+              active: true,
+              order: -999999,
+              updatedAt: new Date(),
+            },
+            { merge: true }
+          );
+
+          showNotification("Kafelek wpłat został zapisany.", "success");
+          closePinnedDonationsModal();
+          await loadCharity();
+        } catch (error) {
+          console.error("Error saving pinned donations tile:", error);
+          showNotification("Błąd zapisywania kafelka wpłat.", "error");
+        }
+      }
+
+      window.openPinnedDonationsEditor = () => {
+        const rec = pinnedDonationsRecord;
+        pinnedDonationImages = rec
+          ? [...(rec.images || (rec.image ? [{ url: rec.image, order: 0 }] : []))]
+          : [];
+
+        const existing = document.getElementById("pinned-donations-form-modal");
+        if (existing) existing.remove();
+
+        const modalHtml = `
+          <div id="pinned-donations-form-modal" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onclick="if(event.target.id === 'pinned-donations-form-modal') closePinnedDonationsModal()">
+            <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+              <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold coyote-text">Stały kafelek: dobrowolne wpłaty</h2>
+                <button type="button" onclick="closePinnedDonationsModal()" class="text-zinc-400 hover:text-white transition-colors">
+                  <i class="fa-solid fa-times text-xl"></i>
+                </button>
+              </div>
+              <form id="pinned-donations-form" class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium mb-2">Tytuł na kafelku *</label>
+                  <input type="text" id="pinned-donations-title" required
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-2">Opis (edytor jak w sklepie — widoczny po otwarciu kafelka)</label>
+                  <div id="pinned-donations-description-editor" class="rounded-lg overflow-hidden border border-zinc-700 bg-zinc-900"></div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-2">Stripe Buy Button ID</label>
+                  <input type="text" id="pinned-stripe-buy-btn"
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote font-mono text-xs" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-2">Stripe Publishable Key</label>
+                  <input type="text" id="pinned-stripe-pk"
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote font-mono text-xs" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-2">Zdjęcia kafelka</label>
+                  <label class="cursor-pointer bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm text-center block transition">
+                    <i class="fa-solid fa-upload mr-2"></i>Wybierz zdjęcia z dysku
+                    <input type="file" multiple accept="image/*" class="hidden" onchange="handlePinnedDonationImageUpload(event)">
+                  </label>
+                  <div id="pinned-donations-images-container" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4"></div>
+                </div>
+                <div class="flex space-x-4 pt-4">
+                  <button type="submit" class="btn-admin flex-1">
+                    <i class="fa-solid fa-save mr-2"></i>Zapisz kafelek
+                  </button>
+                  <button type="button" onclick="closePinnedDonationsModal()" class="px-4 py-2 border border-zinc-600 rounded-lg text-white hover:bg-zinc-800 transition">
+                    Anuluj
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `;
+
+        document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+        document.getElementById("pinned-donations-title").value =
+          rec?.title || "Dobrowolne wpłaty na rzecz rozwoju firmy";
+        document.getElementById("pinned-stripe-buy-btn").value =
+          rec?.stripeBuyButtonId || DEFAULT_CHARITY_STRIPE_BUY_BTN;
+        document.getElementById("pinned-stripe-pk").value =
+          rec?.stripePublishableKey || DEFAULT_CHARITY_STRIPE_PK;
+
+        const form = document.getElementById("pinned-donations-form");
+        if (form) form.addEventListener("submit", handlePinnedDonationsFormSubmit);
+
+        renderPinnedDonationImages();
+
+        requestAnimationFrame(() => {
+          initPinnedDonationsQuill(
+            rec?.description && String(rec.description).trim()
+              ? rec.description
+              : getDefaultPinnedDonationsHtml()
+          );
+        });
+
+        const handleEscape = (ev) => {
+          if (ev.key === "Escape") {
+            closePinnedDonationsModal();
+            document.removeEventListener("keydown", handleEscape);
+          }
+        };
+        document.addEventListener("keydown", handleEscape);
       };
 
       async function loadSettings() {
@@ -9554,14 +9888,10 @@
                 const logData = doc.data();
                 // Gość to taki, który nie ma userId lub ma userId === null
                 if (!logData.userId || logData.userId === null) {
-                  // Użyj kombinacji userAgent + IP (jeśli dostępne) jako identyfikatora gościa
-                  // Jeśli nie ma IP, użyj userAgent + timestamp (zaokrąglony do minuty) dla lepszej unikalności
+                  // Użyj visitorId, a jeśli go nie ma - kombinacji ipAddress + userAgent
                   const ipAddress = logData.ipAddress || 'no-ip';
                   const userAgent = logData.userAgent || 'no-ua';
-                  const timestamp = logData.timestamp?.toDate ? logData.timestamp.toDate() : new Date(logData.timestamp);
-                  // Zaokrąglij timestamp do minuty, żeby użytkownicy z tej samej minuty byli traktowani jako jeden gość
-                  const minuteTimestamp = new Date(timestamp.getFullYear(), timestamp.getMonth(), timestamp.getDate(), timestamp.getHours(), timestamp.getMinutes());
-                  const guestId = `${ipAddress}-${userAgent}-${minuteTimestamp.getTime()}`;
+                  const guestId = logData.visitorId || `${ipAddress}-${userAgent}`;
                   guestUserIds.add(guestId);
                 }
               });
@@ -12127,10 +12457,64 @@
       }
 
       // ==================== FUNKCJE ZARZĄDZANIA BLOGIEM ====================
-      
+
       let blogPostsList = [];
       let filteredBlogPosts = [];
       let currentBlogPostId = null;
+
+      function normalizeBlogCreatedAt(value) {
+        if (value == null) return new Date(0);
+        if (value instanceof Date && !isNaN(value.getTime())) return value;
+        if (typeof value.toDate === "function") {
+          try {
+            const d = value.toDate();
+            return d instanceof Date && !isNaN(d.getTime()) ? d : new Date(0);
+          } catch (_) {
+            return new Date(0);
+          }
+        }
+        if (typeof value === "object" && value.seconds != null) {
+          return new Date(value.seconds * 1000);
+        }
+        const parsed = new Date(value);
+        return isNaN(parsed.getTime()) ? new Date(0) : parsed;
+      }
+
+      function mapBlogDoc(docSnap) {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          ...data,
+          createdAt: normalizeBlogCreatedAt(data.createdAt),
+        };
+      }
+
+      function updateBlogStats() {
+        const total = blogPostsList.length;
+        const published = blogPostsList.filter((p) => (p.status || "draft") === "published").length;
+        const drafts = blogPostsList.filter((p) => (p.status || "draft") === "draft").length;
+        const archived = blogPostsList.filter((p) => (p.status || "draft") === "archived").length;
+        const elTotal = document.getElementById("total-blog-posts");
+        const elPub = document.getElementById("blog-published-count");
+        const elDraft = document.getElementById("blog-drafts-count");
+        const elArch = document.getElementById("blog-archived-count");
+        if (elTotal) elTotal.textContent = String(total);
+        if (elPub) elPub.textContent = String(published);
+        if (elDraft) elDraft.textContent = String(drafts);
+        if (elArch) elArch.textContent = String(archived);
+      }
+
+      function sortBlogPostsInPlace(arr, sortMode) {
+        const mode = sortMode || "date-desc";
+        arr.sort((a, b) => {
+          if (mode === "title") {
+            return (a.title || "").localeCompare(b.title || "", "pl", { sensitivity: "base" });
+          }
+          const da = normalizeBlogCreatedAt(a.createdAt);
+          const db = normalizeBlogCreatedAt(b.createdAt);
+          return mode === "date-asc" ? da - db : db - da;
+        });
+      }
 
       async function loadBlogPosts() {
         const loadingEl = document.getElementById("blog-loading");
@@ -12142,69 +12526,104 @@
         if (listEl) listEl.innerHTML = "";
 
         try {
-          const q = query(collection(db, "blogPosts"), orderBy("createdAt", "desc"));
-          const snapshot = await getDocs(q);
-          blogPostsList = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate?.() || new Date(),
-          }));
+          let snapshot;
+          try {
+            const q = query(collection(db, "blogPosts"), orderBy("createdAt", "desc"));
+            snapshot = await getDocs(q);
+          } catch (queryErr) {
+            if (queryErr.code === "failed-precondition" || queryErr.code === 9) {
+              snapshot = await getDocs(collection(db, "blogPosts"));
+            } else {
+              throw queryErr;
+            }
+          }
 
+          blogPostsList = snapshot.docs.map(mapBlogDoc);
+          sortBlogPostsInPlace(blogPostsList, "date-desc");
           filteredBlogPosts = [...blogPostsList];
+          const sortSel = document.getElementById("blog-sort-filter");
+          sortBlogPostsInPlace(filteredBlogPosts, sortSel?.value || "date-desc");
           renderBlogPostsList();
-          
+          updateBlogStats();
+
           if (loadingEl) loadingEl.classList.add("hidden");
           if (blogPostsList.length === 0 && emptyEl) {
             emptyEl.classList.remove("hidden");
           }
         } catch (error) {
           console.error("Error loading blog posts:", error);
-          showNotification("Błąd ładowania wpisów bloga.", "error");
+          let msg = "Błąd ładowania wpisów bloga.";
+          if (error.code === "permission-denied") {
+            msg =
+              "Brak uprawnień do blogPosts — wdróż reguły Firestore (firebase deploy --only firestore:rules).";
+          }
+          showNotification(msg, "error");
           if (loadingEl) loadingEl.classList.add("hidden");
           if (listEl) {
-            listEl.innerHTML = '<div class="text-center text-red-400 py-8">Błąd ładowania wpisów</div>';
+            listEl.innerHTML = `<div class="text-center text-red-400 py-8 space-y-2"><p>Nie udało się wczytać wpisów.</p>${
+              error.code === "permission-denied"
+                ? '<p class="text-sm text-zinc-400">W projekcie Firebase muszą być wdrożone reguły z pliku <span class="text-coyote">firestore.rules</span> (sekcja <span class="text-coyote">blogPosts</span>).</p>'
+                : `<p class="text-sm text-zinc-500">${error.message || ""}</p>`
+            }</div>`;
           }
+          blogPostsList = [];
+          filteredBlogPosts = [];
+          updateBlogStats();
         }
       }
+
+      window.refreshBlogPosts = async () => {
+        const icon = document.getElementById("refresh-blog-icon");
+        if (icon) icon.classList.add("fa-spin");
+        try {
+          await loadBlogPosts();
+        } finally {
+          if (icon) icon.classList.remove("fa-spin");
+        }
+      };
 
       function renderBlogPostsList() {
         const listEl = document.getElementById("blog-posts-list");
         if (!listEl) return;
 
+        if (blogPostsList.length === 0) {
+          listEl.innerHTML = "";
+          return;
+        }
         if (filteredBlogPosts.length === 0) {
-          listEl.innerHTML = '<div class="text-center text-zinc-500 py-8">Brak wpisów do wyświetlenia</div>';
+          listEl.innerHTML =
+            '<div class="text-center text-zinc-500 py-8">Brak wpisów pasujących do filtrów</div>';
           return;
         }
 
-        const postsHtml = filteredBlogPosts.map((post) => {
-          const statusLabels = {
-            published: "Opublikowany",
-            draft: "Szkic",
-            archived: "Zarchiwizowany",
-          };
-          const statusColors = {
-            published: "bg-green-900/30 text-green-400",
-            draft: "bg-yellow-900/30 text-yellow-400",
-            archived: "bg-zinc-900/30 text-zinc-400",
-          };
-          const categoryLabels = {
-            news: "Aktualności",
-            tips: "Porady",
-            tutorials: "Poradniki",
-            reviews: "Recenzje",
-          };
+        const postsHtml = filteredBlogPosts
+          .map((post) => {
+            const statusLabels = {
+              published: "Opublikowany",
+              draft: "Szkic",
+              archived: "Zarchiwizowany",
+            };
+            const statusColors = {
+              published: "bg-green-900/30 text-green-400",
+              draft: "bg-yellow-900/30 text-yellow-400",
+              archived: "bg-zinc-900/30 text-zinc-400",
+            };
+            const categoryLabels = {
+              news: "Aktualności",
+              tips: "Porady",
+              tutorials: "Poradniki",
+              reviews: "Recenzje",
+            };
 
-          const status = post.status || "draft";
-          const category = post.category || "news";
-          const createdAt = post.createdAt instanceof Date 
-            ? post.createdAt 
-            : new Date(post.createdAt);
+            const status = post.status || "draft";
+            const category = post.category || "news";
+            const createdAt = normalizeBlogCreatedAt(post.createdAt);
 
-          return `
+            return `
             <div class="flex justify-between items-start p-4 bg-zinc-800 rounded-lg border border-zinc-700 hover:border-coyote transition">
-              <div class="flex-1">
-                <div class="flex items-center gap-2 mb-2">
-                  <h3 class="font-semibold text-white text-lg">${post.title || "Bez tytułu"}</h3>
+              <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-2 mb-2">
+                  <h3 class="font-semibold text-white text-lg">${escBlogHtml(post.title) || "Bez tytułu"}</h3>
                   <span class="text-xs px-2 py-1 rounded ${statusColors[status] || statusColors.draft}">
                     ${statusLabels[status] || status}
                   </span>
@@ -12212,7 +12631,7 @@
                     ${categoryLabels[category] || category}
                   </span>
                 </div>
-                ${post.excerpt ? `<p class="text-sm text-zinc-400 mb-2 line-clamp-2">${post.excerpt}</p>` : ""}
+                ${post.excerpt ? `<p class="text-sm text-zinc-400 mb-2 line-clamp-2">${escBlogHtml(post.excerpt)}</p>` : ""}
                 <div class="text-xs text-zinc-500">
                   <i class="fa-solid fa-calendar mr-1"></i>
                   ${createdAt.toLocaleDateString("pl-PL", {
@@ -12222,90 +12641,182 @@
                   })}
                 </div>
               </div>
-              <div class="flex space-x-2 ml-4">
-                <button onclick="editBlogPost('${post.id}')" class="text-blue-400 hover:text-blue-300 px-3 py-1 border border-blue-400 rounded text-sm transition">
+              <div class="flex flex-shrink-0 space-x-2 ml-4">
+                <button type="button" onclick="editBlogPost('${post.id}')" class="text-blue-400 hover:text-blue-300 px-3 py-1 border border-blue-400 rounded text-sm transition">
                   <i class="fa-solid fa-edit mr-1"></i>Edytuj
                 </button>
-                <button onclick="deleteBlogPost('${post.id}')" class="text-red-400 hover:text-red-300 px-3 py-1 border border-red-400 rounded text-sm transition">
+                <button type="button" onclick="deleteBlogPost('${post.id}')" class="text-red-400 hover:text-red-300 px-3 py-1 border border-red-400 rounded text-sm transition">
                   <i class="fa-solid fa-trash mr-1"></i>Usuń
                 </button>
               </div>
             </div>
           `;
-        }).join("");
+          })
+          .join("");
 
         listEl.innerHTML = postsHtml;
       }
 
-      window.addNewBlogPost = () => {
-        currentBlogPostId = null;
-        document.getElementById("blog-form-title").textContent = "Dodaj nowy wpis";
-        document.getElementById("blog-form").reset();
-        document.getElementById("blog-id").value = "";
-        
-        document.getElementById("blog-form-section").classList.remove("hidden");
-        document.getElementById("blog-form-section").scrollIntoView({ behavior: "smooth" });
-      };
+      function escBlogHtml(s) {
+        return String(s || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
 
-      window.editBlogPost = async (postId) => {
+      function escBlogAttr(s) {
+        return escBlogHtml(s);
+      }
+
+      function escBlogTextarea(s) {
+        return String(s || "").replace(/<\/textarea/gi, "<\\/textarea");
+      }
+
+      function openBlogModal(postId = null) {
         currentBlogPostId = postId;
-        document.getElementById("blog-form-title").textContent = "Edytuj wpis";
-        
-        const post = blogPostsList.find((p) => p.id === postId);
-        if (!post) return;
-        
-        document.getElementById("blog-id").value = post.id || "";
-        document.getElementById("blog-title").value = post.title || "";
-        document.getElementById("blog-excerpt").value = post.excerpt || "";
-        document.getElementById("blog-content").value = post.content || "";
-        document.getElementById("blog-imageUrl").value = post.imageUrl || "";
-        document.getElementById("blog-status").value = post.status || "draft";
-        document.getElementById("blog-category").value = post.category || "news";
-        
-        document.getElementById("blog-form-section").classList.remove("hidden");
-        document.getElementById("blog-form-section").scrollIntoView({ behavior: "smooth" });
-      };
+        const post = postId ? blogPostsList.find((p) => p.id === postId) : null;
 
-      window.cancelBlogEdit = () => {
-        document.getElementById("blog-form-section").classList.add("hidden");
-        document.getElementById("blog-form").reset();
-        currentBlogPostId = null;
-      };
+        const modalTitle = post ? "Edytuj wpis" : "Dodaj nowy wpis";
+        const idVal = post ? post.id : "";
+        const tVal = (post && post.title) || "";
+        const exVal = (post && post.excerpt) || "";
+        const contentVal = (post && post.content) || "";
+        const imgVal = (post && post.imageUrl) || "";
+        const stVal = (post && post.status) || "draft";
+        const catVal = (post && post.category) || "news";
 
-      document.getElementById("blog-form")?.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        
-        const id = document.getElementById("blog-id").value;
-        const postData = {
-          title: document.getElementById("blog-title").value,
-          excerpt: document.getElementById("blog-excerpt").value,
-          content: document.getElementById("blog-content").value,
-          imageUrl: document.getElementById("blog-imageUrl").value,
-          status: document.getElementById("blog-status").value,
-          category: document.getElementById("blog-category").value,
-          updatedAt: new Date().toISOString()
+        const modalHtml = `
+          <div id="blog-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onclick="if(event.target.id === 'blog-form-modal') closeBlogModal()">
+            <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+              <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold coyote-text">${modalTitle}</h2>
+                <button type="button" onclick="closeBlogModal()" class="text-zinc-400 hover:text-white transition-colors">
+                  <i class="fa-solid fa-times text-xl"></i>
+                </button>
+              </div>
+
+              <form id="blog-form" class="space-y-4">
+                <input type="hidden" id="blog-id" value="${escBlogAttr(idVal)}" />
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">Tytuł wpisu *</label>
+                  <input type="text" id="blog-title" required value="${escBlogAttr(tVal)}"
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote" placeholder="Wprowadź tytuł" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-2">Krótki opis (zajawka) *</label>
+                  <textarea id="blog-excerpt" rows="2" required
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote" placeholder="Krótki opis na liście...">${escBlogTextarea(exVal)}</textarea>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-2">Treść wpisu *</label>
+                  <textarea id="blog-content" rows="10" required
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote editor-content" placeholder="Treść artykułu...">${escBlogTextarea(contentVal)}</textarea>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-2">URL zdjęcia okładkowego *</label>
+                  <input type="url" id="blog-imageUrl" required value="${escBlogAttr(imgVal)}"
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote" placeholder="https://..." />
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium mb-2">Status</label>
+                    <select id="blog-status" class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote">
+                      <option value="draft" ${stVal === "draft" ? "selected" : ""}>Szkic</option>
+                      <option value="published" ${stVal === "published" ? "selected" : ""}>Opublikowany</option>
+                      <option value="archived" ${stVal === "archived" ? "selected" : ""}>Zarchiwizowany</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-2">Kategoria</label>
+                    <select id="blog-category" class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote">
+                      <option value="news" ${catVal === "news" ? "selected" : ""}>Aktualności</option>
+                      <option value="tips" ${catVal === "tips" ? "selected" : ""}>Porady</option>
+                      <option value="tutorials" ${catVal === "tutorials" ? "selected" : ""}>Poradniki</option>
+                      <option value="reviews" ${catVal === "reviews" ? "selected" : ""}>Recenzje</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="flex space-x-4 pt-4">
+                  <button type="submit" class="btn-admin flex-1">
+                    <i class="fa-solid fa-save mr-2"></i>${post ? "Zapisz zmiany" : "Dodaj wpis"}
+                  </button>
+                  <button type="button" onclick="closeBlogModal()" class="px-4 py-2 border border-zinc-600 rounded-lg text-white hover:bg-zinc-800 transition">
+                    Anuluj
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `;
+
+        const existing = document.getElementById("blog-form-modal");
+        if (existing) existing.remove();
+        document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+        const form = document.getElementById("blog-form");
+        if (form) form.addEventListener("submit", handleBlogFormSubmit);
+
+        const onEsc = (e) => {
+          if (e.key === "Escape") {
+            closeBlogModal();
+            document.removeEventListener("keydown", onEsc);
+          }
         };
-        
+        document.addEventListener("keydown", onEsc);
+      }
+
+      async function handleBlogFormSubmit(e) {
+        e.preventDefault();
+
+        const id = document.getElementById("blog-id")?.value?.trim() || "";
+        const postData = {
+          title: document.getElementById("blog-title")?.value?.trim() || "",
+          excerpt: document.getElementById("blog-excerpt")?.value?.trim() || "",
+          content: document.getElementById("blog-content")?.value || "",
+          imageUrl: document.getElementById("blog-imageUrl")?.value?.trim() || "",
+          status: document.getElementById("blog-status")?.value || "draft",
+          category: document.getElementById("blog-category")?.value || "news",
+          updatedAt: Timestamp.now(),
+        };
+
         try {
           if (id) {
             await setDoc(doc(db, "blogPosts", id), postData, { merge: true });
             showNotification("Wpis zaktualizowany pomyślnie", "success");
             logActivity("BLOG_UPDATED", `Zaktualizowano wpis bloga: ${postData.title}`);
           } else {
-            postData.createdAt = new Date().toISOString();
+            postData.createdAt = Timestamp.now();
             const newDocRef = doc(collection(db, "blogPosts"));
             await setDoc(newDocRef, postData);
             showNotification("Nowy wpis dodany pomyślnie", "success");
             logActivity("BLOG_CREATED", `Dodano wpis na bloga: ${postData.title}`);
           }
-          
-          window.cancelBlogEdit();
+
+          closeBlogModal();
           await loadBlogPosts();
         } catch (error) {
           console.error("Błąd zapisywania wpisu bloga:", error);
           showNotification("Błąd podczas zapisywania wpisu", "error");
         }
-      });
+      }
+
+      window.closeBlogModal = () => {
+        const modal = document.getElementById("blog-form-modal");
+        if (modal) modal.remove();
+        currentBlogPostId = null;
+      };
+
+      window.addNewBlogPost = () => {
+        openBlogModal(null);
+      };
+
+      window.editBlogPost = (postId) => {
+        openBlogModal(postId);
+      };
+
+      window.cancelBlogEdit = () => closeBlogModal();
 
       window.deleteBlogPost = async (postId) => {
         if (!confirm("Czy na pewno chcesz usunąć ten wpis?")) {
@@ -12325,17 +12836,72 @@
       window.applyBlogFilters = () => {
         const statusFilter = document.getElementById("blog-status-filter")?.value || "all";
         const categoryFilter = document.getElementById("blog-category-filter")?.value || "all";
+        const sortMode = document.getElementById("blog-sort-filter")?.value || "date-desc";
 
         filteredBlogPosts = blogPostsList.filter((post) => {
           const statusMatch = statusFilter === "all" || (post.status || "draft") === statusFilter;
           const categoryMatch = categoryFilter === "all" || (post.category || "news") === categoryFilter;
           return statusMatch && categoryMatch;
         });
-
+        sortBlogPostsInPlace(filteredBlogPosts, sortMode);
         renderBlogPostsList();
       };
 
       // ==================== FUNKCJE ZARZĄDZANIA DOKUMENTAMI ====================
+
+      /** Zgodne z listą na dokumenty.strzelca.pl (sekcja Wzory PDF) — import dodaje tylko brakujące tytuły. */
+      const DEFAULT_SITE_PDF_DOCUMENTS = [
+        { title: "Formularz odstąpienia od umowy (zwrotu)", url: "https://dokumenty.strzelca.pl/pdf/formularz-odstapienia.html", category: "Wzory PDF", icon: "fa-undo" },
+        { title: "Formularz zgłoszenia reklamacyjnego", url: "https://dokumenty.strzelca.pl/pdf/formularz-reklamacyjny.html", category: "Wzory PDF", icon: "fa-exclamation-triangle" },
+        { title: "Instrukcja Bezpieczeństwa Zestawu", url: "https://dokumenty.strzelca.pl/pdf/instrukcja-bezpieczenstwa.html", category: "Wzory PDF", icon: "fa-shield-alt" },
+        { title: "Klauzula Donacji", url: "https://dokumenty.strzelca.pl/pdf/klauzula-donacji.html", category: "Wzory PDF", icon: "fa-heart" },
+        { title: "Oświadczenie o zgodności zestawu", url: "https://dokumenty.strzelca.pl/pdf/oswiadczenie-zgodnosci.html", category: "Wzory PDF", icon: "fa-check-circle" },
+        { title: "Procedura monitorowania po wprowadzeniu do obrotu", url: "https://dokumenty.strzelca.pl/pdf/procedura-monitorowania.html", category: "Wzory PDF", icon: "fa-chart-line" },
+      ];
+
+      window.importDefaultSitePdfDocuments = async () => {
+        let existingTitles = new Set();
+        let nextOrder = 0;
+        try {
+          const q = query(collection(db, "documents"), orderBy("order", "asc"));
+          const snapshot = await getDocs(q);
+          const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+          nextOrder = list.length;
+          existingTitles = new Set(list.map((d) => (d.title || "").trim().toLowerCase()));
+        } catch (e) {
+          console.error("importDefaultSitePdfDocuments read error:", e);
+          showNotification("Nie udało się odczytać listy dokumentów z bazy.", "error");
+          return;
+        }
+        let added = 0;
+        for (const row of DEFAULT_SITE_PDF_DOCUMENTS) {
+          const t = (row.title || "").trim();
+          if (!t || existingTitles.has(t.toLowerCase())) continue;
+          await addDoc(collection(db, "documents"), {
+            title: row.title,
+            description: "",
+            url: row.url,
+            category: row.category || "Wzory PDF",
+            order: nextOrder,
+            date: Date.now(),
+            ...(row.icon ? { icon: row.icon } : {}),
+          });
+          existingTitles.add(t.toLowerCase());
+          nextOrder += 1;
+          added += 1;
+        }
+        if (added === 0) {
+          showNotification("Wszystkie domyślne wzory są już w bazie (po tytule).", "info");
+        } else {
+          showNotification(`Dodano ${added} dokument(ów) z listy strony.`, "success");
+          if (currentUser) {
+            await logActivity(currentUser.uid, "DOCUMENT_CREATED", {
+              documentTitle: `Import zbiorczy (${added} pozycji)`,
+            });
+          }
+        }
+        await loadDocuments();
+      };
       
       let currentDocumentId = null;
 

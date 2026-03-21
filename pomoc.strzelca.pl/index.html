@@ -23,6 +23,8 @@
 
     <title>Pomoc STRZELCA.PL</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.7/quill.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -91,10 +93,62 @@
             padding: 1rem;
             gap: 0.65rem;
         }
-        .charity-card.pinned-donate {
-            background: rgba(31, 24, 14, 0.82);
-            border-color: rgba(193, 154, 107, 0.65);
+        .charity-wesprzyj-btn {
+            background: var(--coyote);
+            color: #fff;
+            border: 1px solid rgba(193, 154, 107, 0.85);
         }
+        .charity-wesprzyj-btn:hover {
+            background: #a67f52;
+            border-color: #a67f52;
+        }
+        .charity-wesprzyj-btn .charity-wesprzyj-label {
+            color: #fff;
+        }
+        .charity-wesprzyj-btn:hover .charity-wesprzyj-label {
+            color: #ef4444;
+        }
+        .charity-wesprzyj-btn .charity-heart {
+            color: #ef4444;
+        }
+        .charity-modal-carousel {
+            position: relative;
+        }
+        .charity-modal-carousel-track {
+            display: flex;
+            transition: transform 0.28s ease-out;
+        }
+        .charity-modal-carousel-slide {
+            flex: 0 0 100%;
+            min-width: 0;
+        }
+        .charity-modal-carousel-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 5;
+            width: 42px;
+            height: 42px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.55);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .charity-modal-carousel-arrow:hover:not(:disabled) {
+            background: rgba(193, 154, 107, 0.95);
+            color: #0a0a0a;
+            border-color: var(--coyote);
+        }
+        .charity-modal-carousel-arrow:disabled {
+            opacity: 0.25;
+            cursor: not-allowed;
+        }
+        .charity-modal-carousel-arrow.prev { left: 10px; }
+        .charity-modal-carousel-arrow.next { right: 10px; }
         .charity-image-wrap {
             height: clamp(140px, 24vh, 220px);
             border-radius: 10px;
@@ -106,20 +160,20 @@
             height: 100%;
             object-fit: cover;
         }
-        .pinned-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            font-size: 0.68rem;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            font-weight: 800;
-            color: #0a0a0a;
-            background: rgba(193, 154, 107, 0.95);
-            border-radius: 999px;
-            padding: 0.35rem 0.7rem;
-            width: fit-content;
+        #charity-description-editor-pomoc .ql-container {
+            background: #161616;
+            border: 1px solid #333;
+            border-radius: 0 0 8px 8px;
+            color: #fff;
         }
+        #charity-description-editor-pomoc .ql-editor { min-height: 180px; color: #fff; }
+        #charity-description-editor-pomoc .ql-toolbar {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 8px 8px 0 0;
+        }
+        #charity-description-editor-pomoc .ql-toolbar .ql-stroke { stroke: #fff; }
+        #charity-description-editor-pomoc .ql-toolbar .ql-fill { fill: #fff; }
         .carousel-arrow {
             width: 44px;
             height: 44px;
@@ -283,7 +337,8 @@
                         <input type="hidden" id="charity-edit-id">
                         <input id="charity-title" type="text" placeholder="Nazwa akcji">
                         <input id="charity-date" type="datetime-local" placeholder="Data i czas zakończenia">
-                        <textarea id="charity-description" placeholder="Opis akcji" rows="4"></textarea>
+                        <label class="block text-xs text-zinc-500 uppercase tracking-wider mb-1">Opis akcji (edytor jak w sklepie)</label>
+                        <div id="charity-description-editor-pomoc" class="rounded-lg overflow-hidden border border-zinc-700"></div>
                         <input id="charity-button-link" type="url" placeholder="Link do przycisku &lt;3 WESPRZYJ &lt;3 (np. Stripe)">
                         
                         <div>
@@ -299,6 +354,7 @@
                             <span class="text-sm">Akcja aktywna</span>
                         </label>
                         <button id="save-charity-btn" onclick="window.saveCharity()" class="bg-coyote text-black px-6 py-3 rounded-lg font-bold uppercase w-full text-xs">Zapisz akcję</button>
+                        <p class="text-[10px] text-zinc-500 text-center leading-relaxed">Stały kafelek „Dobrowolne wpłaty…” edytujesz w głównym panelu administratora → zakładka <span class="text-zinc-300">Pomoc</span> (przycisk „Edytuj kafelek wpłat”).</p>
                     </div>
                     <div id="charity-list-admin" class="space-y-2 overflow-y-auto max-h-[500px]"></div>
                 </div>
@@ -397,9 +453,16 @@ const firebaseConfig = {
           console.warn("Could not initialize visit tracker:", error);
         }
         
+        const PINNED_CHARITY_ID = '__pinned_company_donations';
+        const DEFAULT_STRIPE_BUY_BTN = 'buy_btn_1SmzvBCoixAPjvnwGm1XsRpP';
+        const DEFAULT_STRIPE_PK = 'pk_test_51SmzhGCoixAPjvnwV7RfZLsfOnNOgYabPHMhKOJL1wLRaNLJcNd3O1mHxkUZw8QTytyUEwk25aqTPNDB3aGoIOSg00a7BAlDzj';
+
         let charityActions = [];
         let publicCharityItems = [];
+        let pinnedDonationsData = null;
         let charityImages = []; // Local admin state for images
+        let pinnedDonationImages = [];
+        let charityDescriptionQuillPomoc = null;
         let currentUser = null;
         const CHARITY_CAROUSEL_DURATION_MS = 180;
         let charityLoopEnabled = false;
@@ -532,31 +595,78 @@ const firebaseConfig = {
                 .replace(/'/g, '&#39;');
         }
 
+        function getPinnedDonationsResolved() {
+            const d = pinnedDonationsData || {};
+            const title = d.title || 'Dobrowolne wpłaty na rzecz rozwoju firmy';
+            const desc = d.description || '';
+            const rawImgs = d.images && d.images.length ? d.images : (d.image ? [{ url: d.image, order: 0 }] : []);
+            const images = rawImgs.map((x) => (typeof x === 'string' ? { url: x } : x)).filter((x) => x && x.url);
+            return {
+                title,
+                description: desc,
+                images,
+                stripeBuyButtonId: d.stripeBuyButtonId || DEFAULT_STRIPE_BUY_BTN,
+                stripePublishableKey: d.stripePublishableKey || DEFAULT_STRIPE_PK,
+            };
+        }
+
+        function formatCharityDescriptionHtml(raw) {
+            const s = (raw || '').trim();
+            if (!s) return '';
+            if (/<[a-z][\s\S]*>/i.test(s)) return s;
+            return escapeHtml(s).replace(/\n/g, '<br>');
+        }
+
+        function initCharityDescriptionQuillPomoc(html) {
+            const host = document.getElementById('charity-description-editor-pomoc');
+            if (!host || typeof Quill === 'undefined') return;
+            host.innerHTML = '';
+            charityDescriptionQuillPomoc = new Quill('#charity-description-editor-pomoc', {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        [{ header: [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ color: [] }, { background: [] }],
+                        [{ list: 'ordered' }, { list: 'bullet' }],
+                        [{ align: [] }],
+                        ['link', 'image'],
+                        ['blockquote', 'clean'],
+                    ],
+                },
+                placeholder: 'Opis akcji...',
+            });
+            charityDescriptionQuillPomoc.root.innerHTML = html || '';
+        }
+
+        function ensureCharityDescriptionQuillPomoc() {
+            if (!charityDescriptionQuillPomoc) {
+                initCharityDescriptionQuillPomoc('');
+            }
+        }
+
         function buildPinnedDonateCard() {
+            const p = getPinnedDonationsResolved();
+            const title = escapeHtml(p.title);
+            let coverImage = '';
+            if (p.images.length > 0) {
+                coverImage = escapeHtml(p.images[0].url);
+            }
             return `
-                <article class="card-dark charity-card pinned-donate">
-                    <div class="charity-card-inner text-center">
-                        <div class="pinned-badge mx-auto">
-                            <i class="fa-solid fa-thumbtack"></i>
-                            <span>Przypięte</span>
+                <article class="card-dark charity-card cursor-pointer hover:border-coyote transition flex flex-col h-full" onclick="window.openPinnedDonationsDetails()">
+                    <div class="charity-card-inner flex-1 flex flex-col justify-between p-0">
+                        <div>
+                            ${coverImage ? `<div class="charity-image-wrap h-48 md:h-56"><img src="${coverImage}" alt="" class="w-full h-full object-cover"></div>` : '<div class="charity-image-wrap h-48 md:h-56 bg-zinc-800 flex items-center justify-center"><i class="fa-solid fa-seedling text-4xl coyote-text opacity-90"></i></div>'}
+                            <div class="p-4 md:p-6 pb-2 text-center">
+                                <h3 class="text-lg md:text-xl font-bold uppercase font-[Orbitron] coyote-text leading-tight mb-2">${title}</h3>
+                            </div>
                         </div>
-                        <h3 class="text-base md:text-lg font-bold uppercase font-[Orbitron] coyote-text leading-snug">
-                            Dobrowolne wpłaty na rzecz rozwoju firmy
-                        </h3>
-                        <p class="text-sm text-zinc-300 leading-relaxed">
-                            Twoja wpłata pomoże nam rozwijać działalność, wprowadzać nowe produkty i usługi, oraz wspierać społeczność strzelecką. Każda kwota ma znaczenie i przyczynia się do budowania lepszej przyszłości dla naszego środowiska.
-                        </p>
-                        <div class="mt-auto flex flex-col items-center gap-3 pt-2">
-                            <stripe-buy-button
-                              buy-button-id="buy_btn_1SmzvBCoixAPjvnwGm1XsRpP"
-                              publishable-key="pk_test_51SmzhGCoixAPjvnwV7RfZLsfOnNOgYabPHMhKOJL1wLRaNLJcNd3O1mHxkUZw8QTytyUEwk25aqTPNDB3aGoIOSg00a7BAlDzj"
-                            ></stripe-buy-button>
-                            <p class="text-xs text-zinc-500">
-                                Wszystkie wpłaty są dobrowolne i nie wiążą się z żadnymi zobowiązaniami. Za pośrednictwem bezpiecznej bramki płatniczej Stripe.
-                            </p>
-                            <a href="https://dokumenty.strzelca.pl#donation-clause" onclick="expandDonationClause(); return false;" class="text-xs text-zinc-400 hover:text-coyote transition underline">
-                                Klauzula Donacji
-                            </a>
+                        <div class="p-4 md:p-6 pt-2 mt-auto">
+                            <button type="button" onclick="event.stopPropagation(); window.openPinnedDonationsDetails()" class="charity-wesprzyj-btn w-full font-bold text-sm tracking-widest py-3 px-4 rounded-lg uppercase flex items-center justify-center gap-2 transition-all duration-300">
+                                <span class="charity-heart font-black text-lg leading-none">&lt;3</span>
+                                <span class="charity-wesprzyj-label transition-colors">Na nową 🔫</span>
+                                <span class="charity-heart font-black text-lg leading-none">&lt;3</span>
+                            </button>
                         </div>
                     </div>
                 </article>
@@ -594,30 +704,87 @@ const firebaseConfig = {
                 }
             }
 
-            const isPast = hasValidDate ? eventDate < new Date() : false;
-
             return `
-                <article class="card-dark charity-card cursor-pointer hover:border-coyote transition flex flex-col h-full ${isPast ? 'opacity-75 grayscale-[0.3]' : ''}" onclick="window.openCharityDetails('${item.id}')">
+                <article class="card-dark charity-card cursor-pointer hover:border-coyote transition flex flex-col h-full" onclick="window.openCharityDetails('${item.id}')">
                     <div class="charity-card-inner flex-1 flex flex-col justify-between p-0">
                         <div>
                             ${coverImage ? `<div class="charity-image-wrap h-48 md:h-56"><img src="${coverImage}" alt="${title}" class="w-full h-full object-cover"></div>` : '<div class="charity-image-wrap h-48 md:h-56 bg-zinc-800 flex items-center justify-center"><i class="fa-solid fa-hand-holding-heart text-4xl text-zinc-600"></i></div>'}
-                            <div class="p-4 md:p-6 pb-2">
+                            <div class="p-4 md:p-6 pb-2 text-center">
                                 <h3 class="text-lg md:text-xl font-bold uppercase font-[Orbitron] coyote-text leading-tight mb-2">${title}</h3>
-                                <div class="text-xs text-zinc-400 uppercase font-medium flex items-center gap-1">
-                                    <i class="fa-regular fa-calendar text-coyote"></i> ${dateLabel}
+                                <div class="text-xs text-zinc-400 uppercase font-medium flex items-center justify-center gap-1">
+                                    <i class="fa-regular fa-calendar coyote-text"></i> ${dateLabel}
                                 </div>
                             </div>
                         </div>
                         <div class="p-4 md:p-6 pt-2 mt-auto">
-                            <button onclick="window.handleCharityActionClick(event, '${escapeHtml(item.buttonLink || '')}')" class="w-full bg-red-800/20 hover:bg-coyote text-coyote hover:text-black border border-red-800/50 hover:border-coyote transition-all duration-300 font-bold text-sm tracking-widest py-3 px-4 rounded-lg uppercase flex items-center justify-center gap-2 group">
-                                <i class="fa-solid fa-heart text-red-500 group-hover:text-black transition-colors"></i> 
-                                WESPRZYJ 
-                                <i class="fa-solid fa-heart text-red-500 group-hover:text-black transition-colors"></i>
+                            <button onclick="window.handleCharityActionClick(event, '${escapeHtml(item.buttonLink || '')}')" class="charity-wesprzyj-btn w-full font-bold text-sm tracking-widest py-3 px-4 rounded-lg uppercase flex items-center justify-center gap-2 transition-all duration-300">
+                                <span class="charity-heart font-black text-lg leading-none">&lt;3</span>
+                                <span class="charity-wesprzyj-label transition-colors">WESPRZYJ</span>
+                                <span class="charity-heart font-black text-lg leading-none">&lt;3</span>
                             </button>
                         </div>
                     </div>
                 </article>
             `;
+        }
+
+        window.charityModalCarouselState = window.charityModalCarouselState || {};
+
+        window.initCharityModalCarousel = (cid, total) => {
+            window.charityModalCarouselState[cid] = { idx: 0, total: total || 0 };
+            const prev = document.getElementById(cid + '_prev');
+            const next = document.getElementById(cid + '_next');
+            const track = document.getElementById(cid + '_track');
+            if (!track) return;
+            const sync = () => {
+                const st = window.charityModalCarouselState[cid];
+                if (!st) return;
+                track.style.transform = `translateX(-${st.idx * 100}%)`;
+                if (prev) prev.disabled = st.total < 2;
+                if (next) next.disabled = st.total < 2;
+            };
+            sync();
+        };
+
+        window.stepCharityModalCarousel = (cid, dir) => {
+            const st = window.charityModalCarouselState[cid];
+            if (!st || st.total < 2) return;
+            st.idx = (st.idx + dir + st.total) % st.total;
+            const track = document.getElementById(cid + '_track');
+            if (track) track.style.transform = `translateX(-${st.idx * 100}%)`;
+        };
+
+        function buildCharityModalCarouselHtml(allImages) {
+            const cid = 'chcar_' + Date.now();
+            if (!allImages.length) {
+                return {
+                    html: `<div class="w-full h-48 md:h-64 bg-zinc-800 flex items-center justify-center"><i class="fa-solid fa-hand-holding-heart text-5xl text-zinc-700"></i></div>`,
+                    init: () => {}
+                };
+            }
+            const slides = allImages.map((src, i) => `
+                <div class="charity-modal-carousel-slide h-64 md:h-96">
+                    <img src="${escapeHtml(src)}" class="w-full h-full object-cover" alt="Zdjęcie ${i + 1}" />
+                </div>
+            `).join('');
+            const multi = allImages.length > 1;
+            const html = `
+                <div class="charity-modal-carousel w-full bg-black relative">
+                    <div class="overflow-hidden w-full">
+                        <div id="${cid}_track" class="charity-modal-carousel-track">
+                            ${slides}
+                        </div>
+                    </div>
+                    ${multi ? `
+                    <button type="button" id="${cid}_prev" class="charity-modal-carousel-arrow prev" onclick="window.stepCharityModalCarousel('${cid}',-1)" aria-label="Poprzednie zdjęcie"><i class="fa-solid fa-chevron-left"></i></button>
+                    <button type="button" id="${cid}_next" class="charity-modal-carousel-arrow next" onclick="window.stepCharityModalCarousel('${cid}',1)" aria-label="Następne zdjęcie"><i class="fa-solid fa-chevron-right"></i></button>
+                    ` : ''}
+                </div>
+            `;
+            return {
+                html,
+                init: () => window.initCharityModalCarousel(cid, allImages.length)
+            };
         }
 
         window.openCharityDetails = (id) => {
@@ -627,58 +794,79 @@ const firebaseConfig = {
             const modal = document.getElementById('charity-details-modal');
             const content = document.getElementById('charity-details-content');
             const body = document.getElementById('charity-details-body');
-            
-            // Przygotowanie karuzeli zdjęć wewnątrz modala
-            let imagesHtml = '';
-            const allImages = item.images && item.images.length > 0 
-                ? item.images.map(img => img.url) 
+
+            const allImages = item.images && item.images.length > 0
+                ? item.images.map(img => img.url)
                 : (item.image ? [item.image] : []);
 
-            if (allImages.length > 0) {
-                const slides = allImages.map((src, i) => `
-                    <div class="min-w-full h-64 md:h-96 snap-center relative">
-                        <img src="${src}" class="w-full h-full object-cover" alt="Zdjęcie ${i+1}" />
-                        ${allImages.length > 1 ? `<div class="absolute bottom-2 right-4 bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">${i+1}/${allImages.length}</div>` : ''}
-                    </div>
-                `).join('');
-
-                imagesHtml = `
-                    <div class="w-full flex overflow-x-auto snap-x snap-mandatory scrollbar-hide relative char-details-carousel">
-                        ${slides}
-                    </div>
-                `;
-            } else {
-                imagesHtml = `
-                    <div class="w-full h-48 bg-zinc-800 flex items-center justify-center">
-                        <i class="fa-solid fa-hand-holding-heart text-5xl text-zinc-700"></i>
-                    </div>
-                `;
-            }
+            const { html: imagesHtml, init: initCarousel } = buildCharityModalCarouselHtml(allImages);
 
             const title = escapeHtml(item.title || '');
-            const description = escapeHtml(item.description || '').replace(/\n/g, '<br>');
-            
+            const description = formatCharityDescriptionHtml(item.description);
+
             body.innerHTML = `
                 ${imagesHtml}
                 <div class="p-6 md:p-8">
-                    <h2 class="text-2xl md:text-3xl font-bold uppercase font-[Orbitron] coyote-text mb-4">${title}</h2>
+                    <h2 class="text-2xl md:text-3xl font-bold uppercase font-[Orbitron] coyote-text mb-4 text-center">${title}</h2>
                     <div class="prose prose-invert prose-stone max-w-none text-zinc-300 tracking-wide leading-relaxed text-sm md:text-base">
                         ${description || 'Brak dodatkowego opisu.'}
                     </div>
-                    
-                    <div class="mt-8 pt-6 border-t border-zinc-800 flex flex-col md:flex-row gap-4 items-center justify-between">
-                        <button onclick="window.handleCharityActionClick(event, '${escapeHtml(item.buttonLink || '')}')" class="w-full md:w-auto bg-coyote hover:bg-white text-black transition font-bold text-sm tracking-widest py-4 px-8 rounded-lg uppercase flex items-center justify-center gap-3">
-                            <i class="fa-solid fa-heart text-red-600"></i> WESPRZYJ AKCJĘ
-                        </button>
-                        <button onclick="closeCharityDetails()" class="w-full md:w-auto px-6 py-4 text-sm font-bold uppercase tracking-widest text-zinc-400 hover:text-white transition">
-                            Zamknij
+                    <div class="mt-8 pt-6 border-t border-zinc-800 flex justify-center">
+                        <button type="button" onclick="window.handleCharityActionClick(event, '${escapeHtml(item.buttonLink || '')}')" class="charity-wesprzyj-btn font-bold text-sm tracking-widest py-4 px-8 rounded-lg uppercase inline-flex items-center justify-center gap-2 transition-all duration-300">
+                            <span class="charity-heart font-black text-lg leading-none">&lt;3</span>
+                            <span class="charity-wesprzyj-label transition-colors">WESPRZYJ AKCJE</span>
+                            <span class="charity-heart font-black text-lg leading-none">&lt;3</span>
                         </button>
                     </div>
                 </div>
             `;
 
+            requestAnimationFrame(() => initCarousel());
+
             modal.classList.remove('hidden');
-            // Allow display block to apply before changing opacity
+            requestAnimationFrame(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+            });
+        };
+
+        window.openPinnedDonationsDetails = () => {
+            const p = getPinnedDonationsResolved();
+            const modal = document.getElementById('charity-details-modal');
+            const content = document.getElementById('charity-details-content');
+            const body = document.getElementById('charity-details-body');
+
+            const allImages = p.images.map((img) => (typeof img === 'string' ? img : img.url)).filter(Boolean);
+            const { html: imagesHtml, init: initCarousel } = buildCharityModalCarouselHtml(allImages);
+
+            const title = escapeHtml(p.title);
+            const description = formatCharityDescriptionHtml(p.description);
+            const buyId = escapeHtml(p.stripeBuyButtonId);
+            const pk = escapeHtml(p.stripePublishableKey);
+
+            body.innerHTML = `
+                ${imagesHtml}
+                <div class="p-6 md:p-8">
+                    <h2 class="text-2xl md:text-3xl font-bold uppercase font-[Orbitron] coyote-text mb-4 text-center">${title}</h2>
+                    <div class="prose prose-invert prose-stone max-w-none text-zinc-300 tracking-wide leading-relaxed text-sm md:text-base">
+                        ${description || '<p>Brak opisu — uzupełnij treść w panelu admina (Pomoc → Edytuj kafelek wpłat).</p>'}
+                    </div>
+                    <div class="mt-8 flex flex-col items-center gap-5 pt-6 border-t border-zinc-800">
+                        <p class="text-xs text-zinc-500 uppercase tracking-[0.2em] font-bold text-center">Na nową 🔫</p>
+                        <stripe-buy-button
+                          buy-button-id="${buyId}"
+                          publishable-key="${pk}"
+                        ></stripe-buy-button>
+                        <a href="https://dokumenty.strzelca.pl#donation-clause" onclick="expandDonationClause(); return false;" class="text-xs text-zinc-400 hover:text-[var(--coyote)] transition underline">
+                            Klauzula Donacji
+                        </a>
+                    </div>
+                </div>
+            `;
+
+            requestAnimationFrame(() => initCarousel());
+
+            modal.classList.remove('hidden');
             requestAnimationFrame(() => {
                 modal.classList.remove('opacity-0');
                 content.classList.remove('scale-95');
@@ -723,7 +911,11 @@ const firebaseConfig = {
         window.switchTab = (id) => {
             document.querySelectorAll('.admin-tab').forEach(t => t.classList.add('hidden'));
             document.getElementById('tab-' + id).classList.remove('hidden');
-            if(id === 'charity') fetchCharityActions();
+            if (id === 'charity') {
+                fetchCharityActions().then(() => {
+                    requestAnimationFrame(() => ensureCharityDescriptionQuillPomoc());
+                });
+            }
         };
 
 
@@ -984,15 +1176,21 @@ const firebaseConfig = {
         // Funkcje zarządzania akcjami charytatywnymi
         window.saveCharity = async () => {
             const id = document.getElementById('charity-edit-id').value || Date.now().toString();
+            if (id === PINNED_CHARITY_ID) {
+                alert('Tego kafelka nie edytujesz tutaj — użyj głównego panelu admina (Pomoc → Edytuj kafelek wpłat).');
+                return;
+            }
 
             try {
+                ensureCharityDescriptionQuillPomoc();
                 let finalImages = [...charityImages];
                 let finalImage = finalImages.length > 0 ? finalImages[0].url : "";
+                const descHtml = charityDescriptionQuillPomoc ? charityDescriptionQuillPomoc.root.innerHTML.trim() : '';
 
                 await setDoc(doc(db, "charity", id), {
                     title: document.getElementById('charity-title').value,
                     date: document.getElementById('charity-date').value,
-                    description: document.getElementById('charity-description').value,
+                    description: descHtml,
                     buttonLink: document.getElementById('charity-button-link').value,
                     image: finalImage,
                     images: finalImages,
@@ -1014,7 +1212,9 @@ const firebaseConfig = {
             document.getElementById('charity-edit-id').value = '';
             document.getElementById('charity-title').value = '';
             document.getElementById('charity-date').value = '';
-            document.getElementById('charity-description').value = '';
+            if (charityDescriptionQuillPomoc) {
+                charityDescriptionQuillPomoc.root.innerHTML = '';
+            }
             document.getElementById('charity-button-link').value = '';
             document.getElementById('charity-image-file').value = '';
             document.getElementById('charity-active').checked = true;
@@ -1023,6 +1223,10 @@ const firebaseConfig = {
         }
 
         async function fetchCharityActions() {
+            const pinnedRef = doc(db, 'charity', PINNED_CHARITY_ID);
+            const pinnedSnap = await getDoc(pinnedRef);
+            pinnedDonationsData = pinnedSnap.exists() ? { id: pinnedSnap.id, ...pinnedSnap.data() } : null;
+
             const q = query(collection(db, "charity"), orderBy("order", "asc"));
             const snap = await getDocs(q);
             const list = document.getElementById('charity-list-admin');
@@ -1032,20 +1236,24 @@ const firebaseConfig = {
             publicCharityItems = [];
 
             snap.forEach(d => {
+                if (d.id === PINNED_CHARITY_ID) return;
                 const data = d.data();
                 charityActions.push({id: d.id, ...data});
 
+                const eventDate = data.date ? new Date(data.date) : null;
+                const hasValidDate = eventDate && !isNaN(eventDate.getTime());
+                const isPast = hasValidDate && eventDate < new Date();
+
                 // Lista w panelu admina
                 list.innerHTML += `<div class="flex justify-between items-center p-3 bg-black/40 border border-zinc-800 rounded mb-1">
-                    <span class="text-[10px] font-bold uppercase">${data.title}</span>
+                    <span class="text-[10px] font-bold uppercase">${escapeHtml(data.title || '')}${isPast ? ' <span class="text-zinc-500">(zakończona)</span>' : ''}</span>
                     <div class="flex space-x-2">
                         <button onclick="window.editCharity('${d.id}')" class="text-blue-400 text-xs">Edytuj</button>
                         <button onclick="window.deleteCharity('${d.id}')" class="text-red-400 text-xs">Usuń</button>
                     </div>
                 </div>`;
 
-                // Wyświetlanie na stronie publicznej tylko aktywne akcje
-                if(data.active) {
+                if (data.active && !isPast) {
                     publicCharityItems.push({id: d.id, ...data});
                 }
             });
@@ -1065,21 +1273,31 @@ const firebaseConfig = {
         }
 
         window.editCharity = (id) => {
+            if (id === PINNED_CHARITY_ID) {
+                alert('Stały kafelek wpłat edytuj w głównym panelu admina → Pomoc → „Edytuj kafelek wpłat”.');
+                return;
+            }
             const charity = charityActions.find(c => c.id === id);
             if(charity) {
                 document.getElementById('charity-edit-id').value = charity.id;
                 document.getElementById('charity-title').value = charity.title;
                 document.getElementById('charity-date').value = charity.date ? formatDateTimeForInput(charity.date) : '';
-                document.getElementById('charity-description').value = charity.description;
                 document.getElementById('charity-button-link').value = charity.buttonLink || '';
                 document.getElementById('charity-active').checked = charity.active;
                 
                 charityImages = [...(charity.images || (charity.image ? [{url: charity.image, order: 0}] : []))];
                 renderCharityImagesAdmin();
+                requestAnimationFrame(() => {
+                    initCharityDescriptionQuillPomoc(charity.description || '');
+                });
             }
         };
 
         window.deleteCharity = async (id) => {
+            if (id === PINNED_CHARITY_ID) {
+                alert('Nie można usunąć stałego kafelka wpłat.');
+                return;
+            }
             if(confirm("Usuń akcję?")) {
                 await deleteDoc(doc(db, "charity", id));
                 fetchCharityActions();
