@@ -110,14 +110,18 @@ function generateSlug(title, wojewodztwo) {
 }
 
 module.exports = async (req, res) => {
-  setCors(res);
+  setCors(req, res, { methods: 'GET, POST, PUT, DELETE, OPTIONS' });
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
     initAdmin();
     const db = admin.firestore();
-    const url = new URL(req.url, `http://${req.headers.host}`);
-    const pathParts = url.pathname.replace(/^\/api\/bazar\/?/, '').split('/').filter(Boolean);
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    // Vercel: tylko /api/bazar trafia do tego pliku; podsciezki (np. /admin/all) przepisywane sa na ?__path=...
+    const pathFromQuery = url.searchParams.get('__path');
+    const pathParts = pathFromQuery
+      ? pathFromQuery.split('/').filter(Boolean)
+      : url.pathname.replace(/^\/api\/bazar\/?/, '').split('/').filter(Boolean);
     const action = pathParts[0] || '';
     const subAction = pathParts[1] || '';
 
