@@ -1,18 +1,29 @@
 const { initAdmin, admin, setCors } = require('./_sso-utils');
 
+function expiresAtToMillis(exp) {
+  if (exp == null) return null;
+  if (typeof exp.toMillis === 'function') return exp.toMillis();
+  if (typeof exp._seconds === 'number') return exp._seconds * 1000;
+  if (typeof exp.seconds === 'number') return exp.seconds * 1000;
+  return null;
+}
+
 /**
  * Wygaszanie ofert bazaru (ACTIVE → EXPIRED po expires_at).
  * Produkcja Vercel: GET/POST /api/bazar-cron-expire (plik api/bazar-cron-expire.js).
- * Opcjonalnie: pelna sciezka przez api/bazar.js → cron/expire.
+ *
+ * Zapytanie: tylko where('status','==','ACTIVE') — bez drugiego filtra w Firestore,
+ * zeby nie wymagac indeksu zlozonego (unika 500 / FAILED_PRECONDITION na swiezym projekcie).
+ * Filtrowanie expires_at odbywa sie w pamieci (do limitu odczytu).
  */
 async function handleBazarExpireCron(req, res) {
-  setCors(res);
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET' && req.method !== 'POST') {
-    return res.status(405).json({ success: false, error: 'Method not allowed' });
-  }
-
   try {
+    setCors(res);
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method !== 'GET' && req.method !== 'POST') {
+      return res.status(405).json({ success: false, error: 'Method not allowed' });
+    }
+
     initAdmin();
     const expected = process.env.BAZAR_CRON_SECRET || process.env.CRON_SECRET || '';
     const got =
@@ -23,34 +34,41 @@ async function handleBazarExpireCron(req, res) {
     }
 
     const db = admin.firestore();
-    const now = admin.firestore.Timestamp.now();
-    const snap = await db
-      .collection('bazarOffers')
-      .where('status', '==', 'ACTIVE')
-      .where('expires_at', '<=', now)
-      .limit(300)
-      .get();
+    const nowMs = Date.now();
 
-    let expired = 0;
-    const batch = db.batch();
+    const snap = await db.collection('bazarOffers').where('status', '==', 'ACTIVE').limit(500).get();
+
+    const refsToExpire = [];
     snap.forEach((d) => {
-      batch.update(d.ref, { status: 'EXPIRED' });
-      expired++;
+      const ms = expiresAtToMillis(d.data().expires_at);
+      if (ms != null && ms <= nowMs) refsToExpire.push(d.ref);
     });
-    if (expired) await batch.commit();
-    return res.json({ success: true, expired });
+
+    const CHUNK = 400;
+    let expired = 0;
+    for (let i = 0; i < refsToExpire.length; i += CHUNK) {
+      const slice = refsToExpire.slice(i, i + CHUNK);
+      const batch = db.batch();
+      slice.forEach((ref) => batch.update(ref, { status: 'EXPIRED' }));
+      await batch.commit();
+      expired += slice.length;
+    }
+
+    return res.status(200).json({ success: true, expired, scanned: snap.size });
   } catch (e) {
     console.error('Bazar expire cron:', e);
     const msg = e?.message || String(e);
-    return res.status(500).json({
-      success: false,
-      error: 'Blad serwera',
-      detail: msg,
-      hint:
-        msg.includes('index') || msg.includes('INDEX')
-          ? 'Wdroz indeksy Firestore: firebase deploy --only firestore:indexes'
-          : undefined,
-    });
+    if (!res.headersSent) {
+      return res.status(500).json({
+        success: false,
+        error: 'Blad serwera',
+        detail: msg,
+        hint:
+          /credential|Could not load|default credentials/i.test(msg)
+            ? 'Ustaw FIREBASE_SERVICE_ACCOUNT_KEY (JSON) w Vercel Environment Variables'
+            : undefined,
+      });
+    }
   }
 }
 

@@ -46,6 +46,8 @@ Upewnij się, że wszystkie poniższe zmienne są ustawione zarówno w środowis
 
 **Metoda HTTP:** endpoint akceptuje **GET i POST** (Vercel Cron zwykle używa **GET**).
 
+**Adres URL:** działa **`https://strzelca.pl/api/bazar-cron-expire`**. Stary skrót **`/api/bazar/cron/expire`** po wdrożeniu jest przekierowywany rewrite’em w `vercel.json` na nową ścieżkę.
+
 **Test z terminala:** jeśli `CRON_SECRET` zawiera znaki specjalne (`>`, `;`, `*`, `(` itd.), owij cały nagłówek w **pojedyncze cudzysłowy**, inaczej powłoka zepsuje token:
 
 ```bash
