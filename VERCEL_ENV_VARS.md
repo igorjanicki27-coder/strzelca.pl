@@ -30,7 +30,7 @@ Upewnij się, że wszystkie poniższe zmienne są ustawione zarówno w środowis
 - **SSO_COOKIE_DAYS** - Liczba dni ważności ciasteczka (domyślnie: `14`)
 
 ### Bazar (cron wygaszania ogłoszeń) — opcjonalne
-- **BAZAR_CRON_SECRET** (lub **CRON_SECRET**) — wspólny sekret dla **`GET`/`POST` `/api/bazar-cron-expire`** (nagłówek `x-bazar-cron-secret` albo `Authorization: Bearer …`). Użyj w Vercel Cron lub zewnętrznym harmonogramie, aby ustawiać status `EXPIRED` po `expires_at`.
+- **STRZELCA_BAZAR_EXPIRE_SECRET** (zalecana unikalna nazwa) **albo** **BAZAR_CRON_SECRET** **albo** **CRON_SECRET** — wspólny sekret dla **`GET`/`POST` `/api/bazar-cron-expire`** (nagłówek `x-bazar-cron-secret` albo `Authorization: Bearer …`). Kolejność odczytu: `STRZELCA_BAZAR_EXPIRE_SECRET` → `BAZAR_CRON_SECRET` → `CRON_SECRET`. Użyj w Vercel Cron lub zewnętrznym harmonogramie, aby ustawiać status `EXPIRED` po `expires_at`.
 
 #### Co to jest „cron na Vercel” i jak go ustawić (krótko)
 
@@ -56,17 +56,17 @@ curl -sS -H 'Authorization: Bearer TU_WPISZ_CALY_SEKRET' 'https://strzelca.pl/ap
 
 Odpowiedź `401` = zły lub obcięty sekret; `500` + pole `detail` w JSON = zwykle brak indeksu Firestore (`firebase deploy --only firestore:indexes`) albo brak `FIREBASE_SERVICE_ACCOUNT_KEY` w Vercel.
 
-#### `503` + `"Cron nie skonfigurowany"` mimo ustawionego `CRON_SECRET`
+#### `503` + `"Cron nie skonfigurowany"` mimo ustawionego sekretu w panelu
 
-To znaczy, że **w runtime produkcyjnej funkcji** zmienne `CRON_SECRET` / `BAZAR_CRON_SECRET` są **niedostępne albo puste** (nie to samo co „wpisałem w panelu” — ważne jest, dla **którego środowiska** i **który deployment**).
+To znaczy, że **w runtime tej funkcji** żadna z nazw sekretu nie ma niepustej wartości w `process.env` (to nie jest „złe hasło w curl”, tylko **serwer w ogóle nie widzi zmiennej**).
 
-1. **Zakres środowiska** — przy edycji zmiennej w Vercel zaznacz **Production** (nie tylko Preview / Development). Domena `strzelca.pl` korzysta z deploymentu **Production**.
-2. **Redeploy** — po dodaniu lub zmianie zmiennej wejdź w **Deployments** → ostatni deploy produkcji → **⋯** → **Redeploy** (bez zmian w kodzie). Bez tego stary deployment często nadal widzi pusty sekret.
-3. **Właściwy projekt i zespół** — upewnij się, że zmienna jest w **tym samym** projekcie Vercel, który obsługuje `strzelca.pl` (Dashboard → ten projekt → Environment Variables).
-4. **Pusta wartość** — jeśli w polu Value jest tylko spacja albo pustka, po `.trim()` sekret jest pusty.
-5. **Pole `diag` w JSON** (po wdrożeniu nowszej wersji API) — `cronSecretKeyPresent` / `cronSecretTrimmedLength` pokazują, czy klucz w ogóle trafił do funkcji i czy po obcięciu spacji ma niezerową długość.
+1. **Najczęstsza przyczyna: inny projekt Vercel** — w repozytorium może być kilka projektów (np. główna strona vs subdomena). Zmienne z **projektu A** nie trafiają do deploymentu **projektu B**. Po wdrożeniu nowszej wersji API w odpowiedzi `diag` jest **`vercelProjectId`** — otwórz w Vercel ten sam projekt, którego ID widzisz w URL (np. `.../prj_xxxx/...`), i **Environment Variables** muszą być **właśnie tam**.
+2. **Zakres środowiska** — zaznacz **Production** dla zmiennej. Domena produkcyjna używa deploymentu **Production**.
+3. **Redeploy** — **Deployments** → ostatni **Production** → **⋯** → **Redeploy**.
+4. **Pusta wartość** — same spacje → po `trim` sekret jest pusty.
+5. **`diag` w JSON** — `*KeyPresent: false` przy wszystkich nazwach = żadna zmienna nie dotarła do funkcji (typowo zły projekt lub brak Production + redeploy).
 
-**Alternatywa:** dodaj **`BAZAR_CRON_SECRET`** z tą samą wartością co planujesz w `curl` — kod czyta najpierw `BAZAR_CRON_SECRET`, potem `CRON_SECRET` (pomaga przy konfliktach nazw lub pomyłkach w zakresie env).
+**Zalecana nazwa zmiennej:** **`STRZELCA_BAZAR_EXPIRE_SECRET`** (unikalna, mniej myląca niż ogólne `CRON_SECRET` przy wielu projektach). Nagłówek nadal: `Authorization: Bearer <wartość>` lub `x-bazar-cron-secret`.
 
 
 ### Development - Opcjonalne

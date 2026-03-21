@@ -107,6 +107,17 @@
             flex-wrap: wrap;
             text-align: center;
         }
+        /* Blok 3-liniowy (akcje) — uppercase na rodzicu psuje ikony FA → normal-case + ochrona ikon */
+        .charity-card-meta-block {
+            min-height: 4.5rem;
+            justify-content: center;
+        }
+        .charity-card-meta-block i.fa-solid {
+            text-transform: none;
+            font-style: normal;
+            font-variant: normal;
+            line-height: 1;
+        }
         .charity-wesprzyj-btn {
             background: var(--coyote);
             color: #fff;
@@ -700,9 +711,11 @@ const firebaseConfig = {
                             ${coverImage ? `<div class="charity-image-wrap h-48 md:h-56 shrink-0"><img src="${coverImage}" alt="" class="w-full h-full object-cover"></div>` : '<div class="charity-image-wrap h-48 md:h-56 shrink-0 bg-zinc-800 flex items-center justify-center"><i class="fa-solid fa-seedling text-4xl coyote-text opacity-90"></i></div>'}
                             <div class="p-4 md:p-6 pb-2 text-center flex flex-col flex-1">
                                 <h3 class="text-lg md:text-xl font-bold uppercase font-[Orbitron] coyote-text leading-tight mb-2">${title}</h3>
-                                <div class="text-xs text-zinc-400 uppercase font-medium flex charity-card-meta-row gap-1 px-1">
-                                    <i class="fa-solid fa-calendar-check coyote-text shrink-0 mt-0.5" aria-hidden="true"></i>
-                                    <span class="leading-snug">Zawsze dostępne · dobrowolna wpłata</span>
+                                <div class="charity-card-meta-block charity-card-meta-row text-xs text-zinc-400 font-medium flex flex-col justify-center gap-2 px-1 py-0.5">
+                                    <div class="flex items-center justify-center gap-2 uppercase tracking-wide leading-tight">
+                                        <i class="fa-solid fa-calendar-check coyote-text text-sm shrink-0" aria-hidden="true"></i>
+                                        <span class="leading-snug">Zawsze dostępne · dobrowolna wpłata</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -737,16 +750,36 @@ const firebaseConfig = {
             const eventDate = item.date ? new Date(item.date) : null;
             const hasValidDate = eventDate && !isNaN(eventDate.getTime());
             
-            let dateLabel = 'Brak daty zakończenia';
-            if (hasValidDate) {
+            let dateMetaHtml = '';
+            if (!hasValidDate) {
+                dateMetaHtml = `
+                    <div class="charity-card-meta-block charity-card-meta-row text-xs text-zinc-400 font-medium flex flex-col gap-1 items-center px-1">
+                        <div class="uppercase tracking-wide leading-tight">Brak daty zakończenia</div>
+                    </div>`;
+            } else {
                 const dateStr = eventDate.toLocaleDateString('pl-PL');
                 const isTimeProvided = item.date.includes('T') && item.date.length > 10;
-                if (isTimeProvided) {
-                    const timeStr = eventDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
-                    dateLabel = `Akcja kończy się ${dateStr} <i class="fa-solid fa-clock coyote-text mx-1 inline-block align-middle" aria-hidden="true"></i> ${timeStr}`;
-                } else {
-                    dateLabel = `Akcja kończy się ${dateStr}`;
-                }
+                const timeStr = isTimeProvided
+                    ? eventDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })
+                    : null;
+                const timeLine = timeStr
+                    ? `<div class="flex items-center justify-center gap-2 normal-case text-zinc-300 leading-tight text-[11px] sm:text-xs">
+                            <i class="fa-solid fa-clock coyote-text text-sm" aria-hidden="true"></i>
+                            <span>${timeStr}</span>
+                       </div>`
+                    : `<div class="flex items-center justify-center gap-2 normal-case text-zinc-400 leading-tight text-[11px] sm:text-xs">
+                            <i class="fa-solid fa-clock coyote-text text-sm opacity-80" aria-hidden="true"></i>
+                            <span>Cały dzień</span>
+                       </div>`;
+                dateMetaHtml = `
+                    <div class="charity-card-meta-block charity-card-meta-row flex flex-col gap-1 items-stretch px-1 py-0.5">
+                        <div class="text-zinc-400 uppercase tracking-wide leading-tight text-[10px] sm:text-[11px] font-semibold text-center">Akcja trwa do</div>
+                        <div class="flex items-center justify-center gap-2 normal-case text-zinc-300 leading-tight text-[11px] sm:text-xs">
+                            <i class="fa-solid fa-calendar-day coyote-text text-sm" aria-hidden="true"></i>
+                            <span>${dateStr}</span>
+                        </div>
+                        ${timeLine}
+                    </div>`;
             }
 
             return `
@@ -756,9 +789,7 @@ const firebaseConfig = {
                             ${coverImage ? `<div class="charity-image-wrap h-48 md:h-56 shrink-0"><img src="${coverImage}" alt="${title}" class="w-full h-full object-cover"></div>` : '<div class="charity-image-wrap h-48 md:h-56 shrink-0 bg-zinc-800 flex items-center justify-center"><i class="fa-solid fa-hand-holding-heart text-4xl text-zinc-600"></i></div>'}
                             <div class="p-4 md:p-6 pb-2 text-center flex flex-col flex-1">
                                 <h3 class="text-lg md:text-xl font-bold uppercase font-[Orbitron] coyote-text leading-tight mb-2">${title}</h3>
-                                <div class="text-xs text-zinc-400 uppercase font-medium charity-card-meta-row px-1">
-                                    <span class="leading-snug inline-flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5">${dateLabel}</span>
-                                </div>
+                                ${dateMetaHtml}
                             </div>
                         </div>
                         <div class="p-4 md:p-6 pt-2 mt-auto shrink-0">

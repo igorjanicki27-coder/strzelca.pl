@@ -12,6 +12,9 @@ function expiresAtToMillis(exp) {
  * Wygaszanie ofert bazaru (ACTIVE → EXPIRED po expires_at).
  * Produkcja Vercel: GET/POST /api/bazar-cron-expire (plik api/bazar-cron-expire.js).
  *
+ * Sekret (pierwsza niepusta wartość): STRZELCA_BAZAR_EXPIRE_SECRET → BAZAR_CRON_SECRET → CRON_SECRET.
+ * Unikalna nazwa STRZELCA_* pomaga uniknac pomyłki (inne projekty Vercel / zarezerwowane nazwy).
+ *
  * Zapytanie: tylko where('status','==','ACTIVE') — bez drugiego filtra w Firestore,
  * zeby nie wymagac indeksu zlozonego (unika 500 / FAILED_PRECONDITION na swiezym projekcie).
  * Filtrowanie expires_at odbywa sie w pamieci (do limitu odczytu).
@@ -25,9 +28,10 @@ async function handleBazarExpireCron(req, res) {
     }
 
     initAdmin();
+    const rawStrzelca = process.env.STRZELCA_BAZAR_EXPIRE_SECRET;
     const rawBazar = process.env.BAZAR_CRON_SECRET;
     const rawCron = process.env.CRON_SECRET;
-    const expected = String(rawBazar || rawCron || '').trim();
+    const expected = String(rawStrzelca || rawBazar || rawCron || '').trim();
     const h = req.headers || {};
     const bearer = String(h.authorization || h.Authorization || '').replace(/^Bearer\s+/i, '').trim();
     const got = String(h['x-bazar-cron-secret'] || '').trim() || bearer;
@@ -35,17 +39,25 @@ async function handleBazarExpireCron(req, res) {
     if (!expected) {
       const diag = {
         vercelEnv: process.env.VERCEL_ENV || null,
+        vercelProjectId: process.env.VERCEL_PROJECT_ID || null,
+        vercelProjectProductionUrl: process.env.VERCEL_PROJECT_PRODUCTION_URL || null,
+        strzelcaBazarExpireSecretKeyPresent: rawStrzelca !== undefined,
+        strzelcaBazarExpireSecretTrimmedLength:
+          rawStrzelca != null ? String(rawStrzelca).trim().length : 0,
         bazarCronSecretKeyPresent: rawBazar !== undefined,
         bazarCronSecretTrimmedLength: rawBazar != null ? String(rawBazar).trim().length : 0,
         cronSecretKeyPresent: rawCron !== undefined,
         cronSecretTrimmedLength: rawCron != null ? String(rawCron).trim().length : 0,
       };
-      console.error('[bazar-cron-expire] Brak sekretu crona (BAZAR_CRON_SECRET / CRON_SECRET)', diag);
+      console.error(
+        '[bazar-cron-expire] Brak sekretu crona (STRZELCA_BAZAR_EXPIRE_SECRET / BAZAR_CRON_SECRET / CRON_SECRET)',
+        diag
+      );
       return res.status(503).json({
         success: false,
         error: 'Cron nie skonfigurowany',
         detail:
-          'W tej funkcji serwerowej nie ma niepustej wartości BAZAR_CRON_SECRET ani CRON_SECRET. W Vercel: Settings → Environment Variables — zmienna musi być zaznaczona dla środowiska Production, potem wykonaj Redeploy produkcji. Opcjonalnie dodaj drugą nazwę: BAZAR_CRON_SECRET (ta sama wartość).',
+          'W tej funkcji nie ma żadnej niepustej wartości STRZELCA_BAZAR_EXPIRE_SECRET, BAZAR_CRON_SECRET ani CRON_SECRET. Najczęstsza przyczyna: zmienne dodane w innym projekcie Vercel niż ten, który obsługuje domenę — porównaj pole diag.vercelProjectId z ID projektu w URL panelu Vercel. Ustaw sekret w tym projekcie, zaznacz Production, Redeploy.',
         diag,
       });
     }
@@ -53,7 +65,7 @@ async function handleBazarExpireCron(req, res) {
       return res.status(401).json({
         success: false,
         error: 'Brak autoryzacji crona',
-        hint: 'Wartość Bearer musi być identyczna z BAZAR_CRON_SECRET lub CRON_SECRET (bez dodatkowych spacji na końcu wiersza w panelu Vercel).',
+        hint: 'Bearer / x-bazar-cron-secret musi być identyczny z aktywnym sekretem: STRZELCA_BAZAR_EXPIRE_SECRET (pierwszeństwo), potem BAZAR_CRON_SECRET, potem CRON_SECRET.',
       });
     }
 

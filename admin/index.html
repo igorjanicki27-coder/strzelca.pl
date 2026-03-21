@@ -2154,6 +2154,7 @@
                   <select id="document-kind" class="w-full" onchange="onDocumentKindChange()">
                     <option value="file">Plik do pobrania (katalog pdf/)</option>
                     <option value="modal">Tekst na stronie (regulamin — okno modalne)</option>
+                    <option value="form">Formularz interaktywny (np. zwrot/reklamacja)</option>
                   </select>
                 </div>
 
@@ -2188,8 +2189,19 @@
                     <option value="polityka-prywatnosci-platformy" data-default-title="Polityka Prywatności Platformy" data-default-icon="fa-user-shield">Polityka prywatności platformy</option>
                     <option value="polityka-prywatnosci" data-default-title="Polityka Prywatności Sklepu" data-default-icon="fa-shield-alt">Polityka prywatności sklepu</option>
                     <option value="regulamin-szkolen" data-default-title="Regulamin Szkoleń" data-default-icon="fa-graduation-cap">Regulamin Szkoleń</option>
+                    <option value="procedura-monitorowania" data-default-title="Procedura monitorowania po wprowadzeniu do obrotu" data-default-icon="fa-chart-line">Procedura monitorowania po wprowadzeniu do obrotu</option>
+                    <option value="klauzula-donacji" data-default-title="Klauzula Donacji" data-default-icon="fa-heart">Klauzula Donacji</option>
                   </select>
                   <p class="text-xs text-zinc-500 mt-1">Pełna treść jest w pliku HTML strony dokumentów — tu tylko powiązanie.</p>
+                </div>
+
+                <div id="document-form-field-wrap" class="hidden">
+                  <label class="block text-sm font-medium mb-2">Identyfikator formularza *</label>
+                  <select id="document-form-id" class="w-full" onchange="onDocumentFormPresetChange()">
+                    <option value="">— wybierz —</option>
+                    <option value="zwrot-reklamacja" data-default-title="Formularz odstąpienia od umowy zwrotu/reklamacji" data-default-icon="fa-file-signature">Zwrot / reklamacja (PDF z danymi)</option>
+                  </select>
+                  <p class="text-xs text-zinc-500 mt-1">Logika formularza jest w kodzie strony dokumentów — tu tylko wpis w katalogu.</p>
                 </div>
 
                 <div id="document-url-field-wrap">
@@ -13526,15 +13538,22 @@
         { kind: "modal", title: "Polityka Prywatności Platformy", modalTarget: "polityka-prywatnosci-platformy", icon: "fa-user-shield" },
         { kind: "modal", title: "Polityka Prywatności Sklepu", modalTarget: "polityka-prywatnosci", icon: "fa-shield-alt" },
         { kind: "modal", title: "Regulamin Szkoleń", modalTarget: "regulamin-szkolen", icon: "fa-graduation-cap" },
+        { kind: "modal", title: "Procedura monitorowania po wprowadzeniu do obrotu", modalTarget: "procedura-monitorowania", icon: "fa-chart-line" },
+        { kind: "modal", title: "Klauzula Donacji", modalTarget: "klauzula-donacji", icon: "fa-heart" },
+      ];
+
+      const DEFAULT_SITE_FORM_DOCUMENTS = [
+        {
+          kind: "form",
+          title: "Formularz odstąpienia od umowy zwrotu/reklamacji",
+          formId: "zwrot-reklamacja",
+          icon: "fa-file-signature",
+        },
       ];
 
       const DEFAULT_SITE_FILE_DOCUMENTS = [
-        { kind: "file", title: "Formularz odstąpienia od umowy (zwrotu)", url: "https://dokumenty.strzelca.pl/pdf/formularz-odstapienia.html", icon: "fa-undo" },
-        { kind: "file", title: "Formularz zgłoszenia reklamacyjnego", url: "https://dokumenty.strzelca.pl/pdf/formularz-reklamacyjny.html", icon: "fa-exclamation-triangle" },
         { kind: "file", title: "Instrukcja Bezpieczeństwa Zestawu", url: "https://dokumenty.strzelca.pl/pdf/instrukcja-bezpieczenstwa.html", icon: "fa-shield-alt" },
-        { kind: "file", title: "Klauzula Donacji", url: "https://dokumenty.strzelca.pl/pdf/klauzula-donacji.html", icon: "fa-heart" },
         { kind: "file", title: "Oświadczenie o zgodności zestawu", url: "https://dokumenty.strzelca.pl/pdf/oswiadczenie-zgodnosci.html", icon: "fa-check-circle" },
-        { kind: "file", title: "Procedura monitorowania po wprowadzeniu do obrotu", url: "https://dokumenty.strzelca.pl/pdf/procedura-monitorowania.html", icon: "fa-chart-line" },
       ];
 
       function escapeAdminDocText(s) {
@@ -13558,7 +13577,7 @@
         }
       }
 
-      /** Dopisuje do Firestore brakujące regulaminy (modal) i pliki ze szablonu — bez duplikatów po ID modala / ścieżce pliku. */
+      /** Dopisuje do Firestore brakujące wpisy ze szablonu (modal / formularz / plik) — bez duplikatów. */
       async function syncMissingDefaultSiteDocuments() {
         const q = query(collection(db, "documents"), orderBy("order", "asc"));
         const snapshot = await getDocs(q);
@@ -13566,6 +13585,10 @@
         const modalTargets = new Set();
         list.forEach((d) => {
           if (d.kind === "modal" && d.modalTarget) modalTargets.add(String(d.modalTarget).trim());
+        });
+        const formIds = new Set();
+        list.forEach((d) => {
+          if (d.kind === "form" && d.formId) formIds.add(String(d.formId).trim());
         });
         const filePaths = new Set();
         list.forEach((d) => {
@@ -13587,6 +13610,22 @@
             ...(row.icon ? { icon: row.icon } : {}),
           });
           modalTargets.add(mt);
+          nextOrder += 1;
+          added += 1;
+        }
+        for (const row of DEFAULT_SITE_FORM_DOCUMENTS) {
+          const fid = (row.formId || "").trim();
+          if (!fid || formIds.has(fid)) continue;
+          await addDoc(collection(db, "documents"), {
+            kind: "form",
+            title: row.title,
+            description: "",
+            formId: fid,
+            order: nextOrder,
+            date: Date.now(),
+            ...(row.icon ? { icon: row.icon } : {}),
+          });
+          formIds.add(fid);
           nextOrder += 1;
           added += 1;
         }
@@ -13613,15 +13652,17 @@
         const dom = window.document;
         const kind = dom.getElementById("document-kind")?.value || "file";
         const modalWrap = dom.getElementById("document-modal-field-wrap");
+        const formWrap = dom.getElementById("document-form-field-wrap");
         const urlWrap = dom.getElementById("document-url-field-wrap");
         const urlInput = dom.getElementById("document-url");
         if (modalWrap) modalWrap.classList.toggle("hidden", kind !== "modal");
-        if (urlWrap) urlWrap.classList.toggle("hidden", kind === "modal");
+        if (formWrap) formWrap.classList.toggle("hidden", kind !== "form");
+        if (urlWrap) urlWrap.classList.toggle("hidden", kind === "modal" || kind === "form");
         if (urlInput) {
-          if (kind === "modal") {
-            urlInput.removeAttribute("required");
-          } else {
+          if (kind === "file") {
             urlInput.setAttribute("required", "required");
+          } else {
+            urlInput.removeAttribute("required");
           }
         }
       };
@@ -13629,6 +13670,19 @@
       window.onDocumentModalPresetChange = () => {
         const dom = window.document;
         const sel = dom.getElementById("document-modal-target");
+        const idField = dom.getElementById("document-id");
+        if (!sel || !idField || idField.value) return;
+        const opt = sel.options[sel.selectedIndex];
+        if (!opt || !opt.value) return;
+        const dt = opt.getAttribute("data-default-title");
+        const di = opt.getAttribute("data-default-icon");
+        if (dt) dom.getElementById("document-title").value = dt;
+        if (di) dom.getElementById("document-icon").value = di;
+      };
+
+      window.onDocumentFormPresetChange = () => {
+        const dom = window.document;
+        const sel = dom.getElementById("document-form-id");
         const idField = dom.getElementById("document-id");
         if (!sel || !idField || idField.value) return;
         const opt = sel.options[sel.selectedIndex];
@@ -13710,16 +13764,30 @@
 
         const n = documentsList.length;
         const documentsHtml = documentsList.map((docRow, index) => {
-          const kind = docRow.kind === "modal" ? "modal" : "file";
+          const kind =
+            docRow.kind === "modal"
+              ? "modal"
+              : docRow.kind === "form"
+                ? "form"
+                : "file";
           const badge =
             kind === "modal"
               ? `<span class="text-[10px] uppercase tracking-wider text-amber-500 border border-amber-600/50 px-2 py-0.5 rounded">Tekst</span>`
-              : `<span class="text-[10px] uppercase tracking-wider text-coyote border border-coyote/50 px-2 py-0.5 rounded">Plik</span>`;
+              : kind === "form"
+                ? `<span class="text-[10px] uppercase tracking-wider text-green-400 border border-green-500/50 px-2 py-0.5 rounded">Formularz</span>`
+                : `<span class="text-[10px] uppercase tracking-wider text-coyote border border-coyote/50 px-2 py-0.5 rounded">Plik</span>`;
           const sub =
             kind === "modal"
               ? `<code class="text-xs text-zinc-500">${escapeAdminDocText(docRow.modalTarget || "")}</code>`
-              : `<span class="text-xs text-zinc-500 break-all">${escapeAdminDocText((docRow.url || "").slice(0, 72))}${(docRow.url || "").length > 72 ? "…" : ""}</span>`;
-          const border = kind === "modal" ? "border-l-4 border-l-amber-600" : "border-l-4 border-l-[#c19a6b]";
+              : kind === "form"
+                ? `<code class="text-xs text-zinc-500">${escapeAdminDocText(docRow.formId || "")}</code>`
+                : `<span class="text-xs text-zinc-500 break-all">${escapeAdminDocText((docRow.url || "").slice(0, 72))}${(docRow.url || "").length > 72 ? "…" : ""}</span>`;
+          const border =
+            kind === "modal"
+              ? "border-l-4 border-l-amber-600"
+              : kind === "form"
+                ? "border-l-4 border-l-green-500"
+                : "border-l-4 border-l-[#c19a6b]";
           const rowId = String(docRow.id || "").replace(/'/g, "\\'");
           return `
             <div class="flex flex-wrap justify-between items-start gap-4 p-4 bg-zinc-800 rounded-lg border border-zinc-700 hover:border-coyote/60 transition ${border}">
@@ -13779,15 +13847,21 @@
         dom.getElementById("document-url").value = rec.url || "";
         dom.getElementById("document-icon").value = rec.icon || "";
 
-        let kind = rec.kind === "modal" ? "modal" : "file";
-        if (!rec.kind && rec.modalTarget) kind = "modal";
-        if (!rec.kind && rec.url) kind = "file";
+        let kind = "file";
+        if (rec.kind === "modal" || (!rec.kind && rec.modalTarget)) kind = "modal";
+        else if (rec.kind === "form" || rec.formId) kind = "form";
+        else if (rec.kind === "file" || rec.url) kind = "file";
         dom.getElementById("document-kind").value = kind;
         onDocumentKindChange();
         const mt = rec.modalTarget || "";
         const mtSel = dom.getElementById("document-modal-target");
         if (mtSel) {
           mtSel.value = [...mtSel.options].some((o) => o.value === mt) ? mt : "";
+        }
+        const fid = rec.formId || "";
+        const fidSel = dom.getElementById("document-form-id");
+        if (fidSel) {
+          fidSel.value = [...fidSel.options].some((o) => o.value === fid) ? fid : "";
         }
         
         const formSection = dom.getElementById("document-form-section");
@@ -13874,9 +13948,11 @@
           const docId = dom.getElementById("document-id").value;
           const title = dom.getElementById("document-title").value.trim();
           const description = dom.getElementById("document-description").value.trim();
-          const kind = dom.getElementById("document-kind").value === "modal" ? "modal" : "file";
+          const kindRaw = dom.getElementById("document-kind").value;
+          const kind = kindRaw === "modal" ? "modal" : kindRaw === "form" ? "form" : "file";
           const url = dom.getElementById("document-url").value.trim();
           const modalTarget = dom.getElementById("document-modal-target").value.trim();
+          const formId = dom.getElementById("document-form-id").value.trim();
           const iconRaw = dom.getElementById("document-icon").value.trim();
           const icon = /^fa-[a-z0-9-]+$/i.test(iconRaw) ? iconRaw : "";
 
@@ -13892,6 +13968,10 @@
             showNotification("Wybierz szablon treści (ID bloku).", "error");
             return;
           }
+          if (kind === "form" && !formId) {
+            showNotification("Wybierz identyfikator formularza.", "error");
+            return;
+          }
 
           const nextOrder = documentsList.length;
           const baseData = {
@@ -13902,13 +13982,18 @@
             ...(icon ? { icon } : {}),
           };
 
+          const fieldsForKind =
+            kind === "modal"
+              ? { modalTarget, url: deleteField(), formId: deleteField() }
+              : kind === "form"
+                ? { formId, url: deleteField(), modalTarget: deleteField() }
+                : { url, modalTarget: deleteField(), formId: deleteField() };
+
           try {
             if (docId) {
               const patch = {
                 ...baseData,
-                ...(kind === "modal"
-                  ? { modalTarget, url: deleteField() }
-                  : { url, modalTarget: deleteField() }),
+                ...fieldsForKind,
               };
               await updateDoc(doc(db, "documents", docId), patch);
               showNotification("Zapisano.", "success");
@@ -13922,7 +14007,7 @@
               const docData = {
                 ...baseData,
                 order: nextOrder,
-                ...(kind === "modal" ? { modalTarget } : { url }),
+                ...(kind === "modal" ? { modalTarget } : kind === "form" ? { formId } : { url }),
               };
               const newRef = await addDoc(collection(db, "documents"), docData);
               showNotification("Dodano pozycję.", "success");
