@@ -18,7 +18,7 @@ function expiresAtToMillis(exp) {
  */
 async function handleBazarExpireCron(req, res) {
   try {
-    setCors(res);
+    setCors(req, res);
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'GET' && req.method !== 'POST') {
       return res.status(405).json({ success: false, error: 'Method not allowed' });

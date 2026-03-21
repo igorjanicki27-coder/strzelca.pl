@@ -108,9 +108,36 @@
         .charity-wesprzyj-btn:hover .charity-wesprzyj-label {
             color: #ef4444;
         }
-        .charity-wesprzyj-btn .charity-heart {
+        .charity-wesprzyj-btn .charity-heart-icon {
             color: #ef4444;
+            font-size: 0.95rem;
         }
+        /* Wyrównanie i wcięcia z Quill (jak w panelu admina) */
+        /* !important — nadpisuje style typography (.prose), żeby zgadzało się z podglądem Quill */
+        .charity-html-content .ql-align-center {
+            text-align: center !important;
+        }
+        .charity-html-content .ql-align-right {
+            text-align: right !important;
+        }
+        .charity-html-content .ql-align-justify {
+            text-align: justify !important;
+        }
+        .charity-html-content .ql-indent-1 { padding-left: 3em; }
+        .charity-html-content .ql-indent-2 { padding-left: 6em; }
+        .charity-html-content .ql-indent-3 { padding-left: 9em; }
+        .charity-html-content .ql-indent-4 { padding-left: 12em; }
+        .charity-html-content .ql-indent-5 { padding-left: 15em; }
+        .charity-html-content .ql-indent-6 { padding-left: 18em; }
+        .charity-html-content .ql-indent-7 { padding-left: 21em; }
+        .charity-html-content .ql-indent-8 { padding-left: 24em; }
+        .charity-html-content .ql-direction-rtl {
+            direction: rtl;
+            text-align: inherit;
+        }
+        .charity-html-content .ql-size-small { font-size: 0.875em; }
+        .charity-html-content .ql-size-large { font-size: 1.5em; }
+        .charity-html-content .ql-size-huge { font-size: 2em; }
         .charity-modal-carousel {
             position: relative;
         }
@@ -339,7 +366,7 @@
                         <input id="charity-date" type="datetime-local" placeholder="Data i czas zakończenia">
                         <label class="block text-xs text-zinc-500 uppercase tracking-wider mb-1">Opis akcji (edytor jak w sklepie)</label>
                         <div id="charity-description-editor-pomoc" class="rounded-lg overflow-hidden border border-zinc-700"></div>
-                        <input id="charity-button-link" type="url" placeholder="Link do przycisku &lt;3 WESPRZYJ &lt;3 (np. Stripe)">
+                        <input id="charity-button-link" type="url" placeholder="Link do przycisku WESPRZYJ (np. Stripe)">
                         
                         <div>
                             <label class="cursor-pointer bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm text-center block transition mb-2">
@@ -662,10 +689,8 @@ const firebaseConfig = {
                             </div>
                         </div>
                         <div class="p-4 md:p-6 pt-2 mt-auto">
-                            <button type="button" onclick="event.stopPropagation(); window.openPinnedDonationsDetails()" class="charity-wesprzyj-btn w-full font-bold text-sm tracking-widest py-3 px-4 rounded-lg uppercase flex items-center justify-center gap-2 transition-all duration-300">
-                                <span class="charity-heart font-black text-lg leading-none">&lt;3</span>
+                            <button type="button" onclick="event.stopPropagation(); window.openPinnedDonationsDetails()" class="charity-wesprzyj-btn w-full font-bold text-sm tracking-widest py-3 px-4 rounded-lg uppercase flex items-center justify-center transition-all duration-300">
                                 <span class="charity-wesprzyj-label transition-colors">Na nową 🔫</span>
-                                <span class="charity-heart font-black text-lg leading-none">&lt;3</span>
                             </button>
                         </div>
                     </div>
@@ -718,9 +743,9 @@ const firebaseConfig = {
                         </div>
                         <div class="p-4 md:p-6 pt-2 mt-auto">
                             <button onclick="window.handleCharityActionClick(event, '${escapeHtml(item.buttonLink || '')}')" class="charity-wesprzyj-btn w-full font-bold text-sm tracking-widest py-3 px-4 rounded-lg uppercase flex items-center justify-center gap-2 transition-all duration-300">
-                                <span class="charity-heart font-black text-lg leading-none">&lt;3</span>
+                                <i class="fa-solid fa-heart charity-heart-icon" aria-hidden="true"></i>
                                 <span class="charity-wesprzyj-label transition-colors">WESPRZYJ</span>
-                                <span class="charity-heart font-black text-lg leading-none">&lt;3</span>
+                                <i class="fa-solid fa-heart charity-heart-icon" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
@@ -808,14 +833,14 @@ const firebaseConfig = {
                 ${imagesHtml}
                 <div class="p-6 md:p-8">
                     <h2 class="text-2xl md:text-3xl font-bold uppercase font-[Orbitron] coyote-text mb-4 text-center">${title}</h2>
-                    <div class="prose prose-invert prose-stone max-w-none text-zinc-300 tracking-wide leading-relaxed text-sm md:text-base">
+                    <div class="prose prose-invert prose-stone charity-html-content max-w-none text-zinc-300 tracking-wide leading-relaxed text-sm md:text-base">
                         ${description || 'Brak dodatkowego opisu.'}
                     </div>
                     <div class="mt-8 pt-6 border-t border-zinc-800 flex justify-center">
                         <button type="button" onclick="window.handleCharityActionClick(event, '${escapeHtml(item.buttonLink || '')}')" class="charity-wesprzyj-btn font-bold text-sm tracking-widest py-4 px-8 rounded-lg uppercase inline-flex items-center justify-center gap-2 transition-all duration-300">
-                            <span class="charity-heart font-black text-lg leading-none">&lt;3</span>
+                            <i class="fa-solid fa-heart charity-heart-icon" aria-hidden="true"></i>
                             <span class="charity-wesprzyj-label transition-colors">WESPRZYJ AKCJE</span>
-                            <span class="charity-heart font-black text-lg leading-none">&lt;3</span>
+                            <i class="fa-solid fa-heart charity-heart-icon" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
@@ -848,11 +873,10 @@ const firebaseConfig = {
                 ${imagesHtml}
                 <div class="p-6 md:p-8">
                     <h2 class="text-2xl md:text-3xl font-bold uppercase font-[Orbitron] coyote-text mb-4 text-center">${title}</h2>
-                    <div class="prose prose-invert prose-stone max-w-none text-zinc-300 tracking-wide leading-relaxed text-sm md:text-base">
+                    <div class="prose prose-invert prose-stone charity-html-content max-w-none text-zinc-300 tracking-wide leading-relaxed text-sm md:text-base">
                         ${description || '<p>Brak opisu — uzupełnij treść w panelu admina (Pomoc → Edytuj kafelek wpłat).</p>'}
                     </div>
                     <div class="mt-8 flex flex-col items-center gap-5 pt-6 border-t border-zinc-800">
-                        <p class="text-xs text-zinc-500 uppercase tracking-[0.2em] font-bold text-center">Na nową 🔫</p>
                         <stripe-buy-button
                           buy-button-id="${buyId}"
                           publishable-key="${pk}"

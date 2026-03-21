@@ -109,6 +109,45 @@
             transform: scale(1.05);
         }
 
+        .doc-catalog-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            background: #27272a;
+            border-radius: 0.5rem;
+            border: 1px solid #3f3f46;
+        }
+        .doc-catalog-row--modal {
+            border-left: 4px solid #d97706;
+        }
+        .doc-catalog-row--file {
+            border-left: 4px solid var(--coyote);
+        }
+        .doc-catalog-btn {
+            background: var(--coyote);
+            color: #000;
+            padding: 0.65rem 1.1rem;
+            border-radius: 0.5rem;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            transition: transform 0.2s;
+            white-space: nowrap;
+        }
+        .doc-catalog-btn:hover {
+            transform: scale(1.03);
+        }
+        .doc-catalog-btn--ghost {
+            background: #3f3f46;
+            color: #e4e4e7;
+        }
+
         /* Modal: usuń domyślne niebieskie obramowanie focus na przyciskach (np. X) */
         #doc-modal button:focus {
             outline: none;
@@ -190,8 +229,16 @@
     <section class="py-20 container mx-auto px-6 max-w-4xl">
         <div class="space-y-6">
 
+            <div id="documents-catalog" class="space-y-4 mb-2">
+                <p id="documents-catalog-loading" class="text-zinc-500 text-sm">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>Ładowanie listy dokumentów…
+                </p>
+                <p id="documents-catalog-note" class="text-zinc-600 text-xs hidden"></p>
+                <div id="documents-catalog-grid" class="space-y-3"></div>
+            </div>
+
             <!-- Regulamin Platformy -->
-            <div class="accordion-item">
+            <div class="accordion-item hidden" aria-hidden="true">
                 <div class="accordion-header" onclick="openDocModal('regulamin-platformy')">
                     <div class="flex items-center gap-3">
                         <i class="fas fa-users text-coyote text-xl"></i>
@@ -351,7 +398,7 @@
             </div>
 
             <!-- Regulamin Sklepu i Serwisu -->
-            <div class="accordion-item">
+            <div class="accordion-item hidden" aria-hidden="true">
                 <div class="accordion-header" onclick="openDocModal('regulamin-sklepu')">
                     <div class="flex items-center gap-3">
                         <i class="fas fa-store text-coyote text-xl"></i>
@@ -426,7 +473,7 @@
             </div>
 
             <!-- Regulamin bazaru (Bazar.Strzelca.pl) -->
-            <div class="accordion-item">
+            <div class="accordion-item hidden" aria-hidden="true">
                 <div class="accordion-header" onclick="openDocModal('regulamin-bazar')">
                     <div class="flex items-center gap-3">
                         <i class="fas fa-handshake text-coyote text-xl"></i>
@@ -549,7 +596,7 @@
             </div>
 
             <!-- Polityka Prywatności Platformy -->
-            <div class="accordion-item">
+            <div class="accordion-item hidden" aria-hidden="true">
                 <div class="accordion-header" onclick="openDocModal('polityka-prywatnosci-platformy')">
                     <div class="flex items-center gap-3">
                         <i class="fas fa-user-shield text-coyote text-xl"></i>
@@ -740,7 +787,7 @@
             </div>
 
             <!-- Polityka Prywatności i Cookies (Sklep) -->
-            <div class="accordion-item">
+            <div class="accordion-item hidden" aria-hidden="true">
                 <div class="accordion-header" onclick="openDocModal('polityka-prywatnosci')">
                     <div class="flex items-center gap-3">
                         <i class="fas fa-shield-alt text-coyote text-xl"></i>
@@ -790,12 +837,12 @@
                 </div>
             </div>
 
-            <!-- Regulamin Szkoleń Strzeleckich -->
-            <div class="accordion-item">
+            <!-- Regulamin Szkoleń -->
+            <div class="accordion-item hidden" aria-hidden="true">
                 <div class="accordion-header" onclick="openDocModal('regulamin-szkolen')">
                     <div class="flex items-center gap-3">
                         <i class="fas fa-graduation-cap text-coyote text-xl"></i>
-                        <span class="font-bold text-lg">Regulamin Szkoleń Strzeleckich</span>
+                        <span class="font-bold text-lg">Regulamin Szkoleń</span>
                     </div>
                     <i class="fas fa-up-right-from-square text-zinc-400"></i>
                 </div>
@@ -805,20 +852,20 @@
 
                         <div id="regulamin-szkolen-content">
                             <div class="space-y-6">
-                                <h3 class="text-xl font-bold coyote-text mb-6 uppercase">Regulamin korzystania ze szkoleń strzeleckich strzelca.pl</h3>
+                                <h3 class="text-xl font-bold coyote-text mb-6 uppercase">Regulamin korzystania ze szkoleń strzelca.pl</h3>
 
                                 <div class="space-y-6">
                                     <div>
                                         <h4 class="text-lg font-bold text-zinc-200 mb-3">§1. Postanowienia ogólne</h4>
                                         <p class="text-zinc-300 mb-4">
-                                            Niniejszy regulamin określa zasady korzystania ze szkoleń strzeleckich organizowanych przez platformę strzelca.pl.
+                                            Niniejszy regulamin określa zasady korzystania ze szkoleń organizowanych przez platformę strzelca.pl.
                                             Szkolenia są własnością intelektualną administratora platformy i podlegają ochronie prawnej.
                                         </p>
                                         <p class="text-zinc-300 mb-4">
                                             Uczestnictwo w szkoleniach jest dobrowolne i wymaga wcześniejszej rejestracji oraz akceptacji niniejszego regulaminu.
                                         </p>
                                         <p class="text-zinc-300">
-                                            W przypadku zapisu na szkolenie odpłatne lub składania oferty nabycia dostępu, akceptacja regulaminu — w tym postanowień o karach umownych za rozpowszechnianie materiałów — następuje przez zaznaczenie dedykowanego pola wyboru w interfejsie serwisu przed wysłaniem zapytania lub zawarciem umowy.
+                                            W przypadku rozpoczęcia korzystania z materiałów kursu online akceptacja regulaminu — w tym postanowień o karach umownych za rozpowszechnianie materiałów — następuje przez potwierdzenie w oknie dialogowym serwisu przed dostępem do treści. W przypadku zapisu na szkolenie odpłatne lub składania oferty nabycia dostępu użytkownik jest informowany o treści regulaminu komunikatem w interfejsie serwisu przed podjęciem dalszych czynności.
                                         </p>
                                     </div>
 
@@ -826,7 +873,7 @@
                                         <h4 class="text-lg font-bold text-zinc-200 mb-3">§2. Własność intelektualna i prawa autorskie</h4>
                                         <p class="text-zinc-300 mb-4">
                                             Wszystkie materiały szkoleniowe, treści, programy nauczania, ćwiczenia, prezentacje, nagrania wideo, 
-                                            materiały audio, grafiki, teksty, schematy oraz inne elementy stanowiące część szkoleń strzeleckich 
+                                            materiały audio, grafiki, teksty, schematy oraz inne elementy stanowiące część szkoleń 
                                             są wyłączną własnością intelektualną administratora platformy strzelca.pl i podlegają ochronie 
                                             prawnej zgodnie z ustawą z dnia 4 lutego 1994 r. o prawie autorskim i prawach pokrewnych (Dz. U. 2021.1062).
                                         </p>
@@ -975,8 +1022,8 @@
                 </div>
             </div>
 
-            <!-- Wzory dokumentów (PDF) -->
-            <div class="accordion-item">
+            <!-- Kotwica #wzory-dokumentow — treść listy jest w #documents-catalog powyżej -->
+            <div class="accordion-item hidden" aria-hidden="true">
                 <div class="accordion-header" onclick="toggleAccordion('wzory-dokumentow')">
                     <div class="flex items-center gap-3">
                         <i class="fas fa-file-pdf text-coyote text-xl"></i>
@@ -986,13 +1033,7 @@
                 </div>
                 <div id="wzory-dokumentow" class="accordion-content">
                     <div class="accordion-body">
-                        <p class="text-zinc-400 mb-6">Dokumenty do pobrania w formacie PDF.</p>
-
-                        <p id="pdf-documents-loading" class="text-zinc-500 text-sm mb-4">
-                            <i class="fas fa-spinner fa-spin mr-2"></i>Ładowanie listy dokumentów…
-                        </p>
-                        <p id="pdf-documents-firestore-note" class="text-zinc-600 text-xs mb-4 hidden"></p>
-                        <div id="pdf-documents-grid" class="grid gap-4"></div>
+                        <p class="text-zinc-500 text-sm">Wpisy z tej grupy są w głównej liście dokumentów u góry strony.</p>
                     </div>
                 </div>
             </div>
@@ -1039,10 +1080,28 @@
             "regulamin-bazar": "Regulamin bazaru",
             "polityka-prywatnosci-platformy": "Polityka Prywatności Platformy",
             "polityka-prywatnosci": "Polityka Prywatności Sklepu",
-            "regulamin-szkolen": "Regulamin Szkoleń Strzeleckich",
+            "regulamin-szkolen": "Regulamin Szkoleń",
         };
 
         const PDF_ACCORDION_ID = "wzory-dokumentow";
+
+        function scrollDocumentsCatalogIntoView() {
+            const el = document.getElementById("documents-catalog");
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        function flashCatalogRow(matchFn) {
+            const rows = document.querySelectorAll("#documents-catalog-grid .doc-catalog-row");
+            rows.forEach((row) => {
+                if (matchFn(row)) {
+                    row.style.backgroundColor = "rgba(193, 154, 107, 0.18)";
+                    row.style.transition = "background-color 0.35s ease";
+                    setTimeout(() => {
+                        row.style.backgroundColor = "";
+                    }, 2800);
+                }
+            });
+        }
 
         let docModalState = null; // { bodyEl, originalParent, nextSibling }
 
@@ -1172,58 +1231,22 @@
             const shouldExpandDonation = sessionStorage.getItem('expandDonationClause');
 
             if (urlHash === '#wzory-dokumentow') {
-                // Rozwiń sekcję z wzorami dokumentów
                 setTimeout(() => {
-                    toggleAccordion('wzory-dokumentow');
-
-                    // Przewiń do sekcji z dokumentami PDF
-                    const wzorySection = document.getElementById('wzory-dokumentow');
-                    if (wzorySection) {
-                        wzorySection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-                        // Podświetl wiersz z formularzem reklamacyjnym na chwilę
-                        const pdfRows = wzorySection.querySelectorAll('.accordion-body .grid .flex');
-                        pdfRows.forEach(row => {
-                            const textElement = row.querySelector('span');
-                            if (textElement && textElement.textContent.includes('Formularz zgłoszenia reklamacyjnego')) {
-                                row.style.backgroundColor = 'rgba(193, 154, 107, 0.2)';
-                                row.style.borderRadius = '8px';
-                                setTimeout(() => {
-                                    row.style.backgroundColor = '';
-                                    row.style.borderRadius = '';
-                                }, 3000);
-                            }
-                        });
-                    }
-                }, 500);
+                    scrollDocumentsCatalogIntoView();
+                    flashCatalogRow((row) => {
+                        const t = (row.getAttribute("data-doc-title") || "").toLowerCase();
+                        return t.includes("reklamac");
+                    });
+                }, 400);
             } else if (urlHash === '#donation-clause' || shouldExpandDonation === 'true') {
-                // Wyczyść sessionStorage
                 sessionStorage.removeItem('expandDonationClause');
-
-                // Rozwiń sekcję z wzorami dokumentów
                 setTimeout(() => {
-                    toggleAccordion('wzory-dokumentow');
-
-                    // Przewiń do sekcji z klauzulą donacji
-                    const wzorySection = document.getElementById('wzory-dokumentow');
-                    if (wzorySection) {
-                        wzorySection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-                        // Podświetl wiersz z klauzulą donacji na chwilę
-                        const donationRows = wzorySection.querySelectorAll('.accordion-body .grid .flex');
-                        donationRows.forEach(row => {
-                            const textElement = row.querySelector('span');
-                            if (textElement && textElement.textContent.includes('Klauzula Donacji')) {
-                                row.style.backgroundColor = 'rgba(193, 154, 107, 0.2)';
-                                row.style.borderRadius = '8px';
-                                setTimeout(() => {
-                                    row.style.backgroundColor = '';
-                                    row.style.borderRadius = '';
-                                }, 3000);
-                            }
-                        });
-                    }
-                }, 500);
+                    scrollDocumentsCatalogIntoView();
+                    flashCatalogRow((row) => {
+                        const t = (row.getAttribute("data-doc-title") || "").toLowerCase();
+                        return t.includes("donac");
+                    });
+                }, 400);
             } else if (urlHash && urlHash.length > 1) {
                 // Uniwersalna obsługa hash'a:
                 // - jeśli hash wskazuje na element w środku dokumentu, otwórz modal i przewiń do elementu (np. #cookies-platformy)
@@ -1234,13 +1257,10 @@
 
                 const accordionContent = targetEl.closest ? targetEl.closest('.accordion-content') : null;
                 if (accordionContent && accordionContent.id) {
-                    // PDF-y (akordeon) zostają jak były
                     if (accordionContent.id === PDF_ACCORDION_ID) {
                         setTimeout(() => {
-                            toggleAccordion(PDF_ACCORDION_ID);
-                            setTimeout(() => {
-                                targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }, 150);
+                            scrollDocumentsCatalogIntoView();
+                            setTimeout(() => targetEl.scrollIntoView({ behavior: "smooth", block: "nearest" }), 200);
                         }, 200);
                         return;
                     }
@@ -1330,15 +1350,36 @@ const firebaseConfig = {
         });
         const auth = getAuth(app);
 
-        /** Wzorce PDF — ta sama lista co przycisk importu w panelu admina (fallback gdy Firestore pusty). */
-        const FALLBACK_PDF_DOCUMENTS = [
-            { title: "Formularz odstąpienia od umowy (zwrotu)", url: "pdf/formularz-odstapienia.html", icon: "fa-undo" },
-            { title: "Formularz zgłoszenia reklamacyjnego", url: "pdf/formularz-reklamacyjny.html", icon: "fa-exclamation-triangle" },
-            { title: "Instrukcja Bezpieczeństwa Zestawu", url: "pdf/instrukcja-bezpieczenstwa.html", icon: "fa-shield-alt" },
-            { title: "Klauzula Donacji", url: "pdf/klauzula-donacji.html", icon: "fa-heart" },
-            { title: "Oświadczenie o zgodności zestawu", url: "pdf/oswiadczenie-zgodnosci.html", icon: "fa-check-circle" },
-            { title: "Procedura monitorowania po wprowadzeniu do obrotu", url: "pdf/procedura-monitorowania.html", icon: "fa-chart-line" },
+        /** Fallback gdy Firestore pusty — zgodny z domyślnym importem w panelu admina. */
+        const FALLBACK_SITE_DOCUMENTS = [
+            { kind: "modal", modalTarget: "regulamin-platformy", title: "Regulamin Platformy", icon: "fa-users", order: 0 },
+            { kind: "modal", modalTarget: "regulamin-sklepu", title: "Regulamin Sklepu i Serwisu", icon: "fa-store", order: 1 },
+            { kind: "modal", modalTarget: "regulamin-bazar", title: "Regulamin bazaru", icon: "fa-handshake", order: 2 },
+            { kind: "modal", modalTarget: "polityka-prywatnosci-platformy", title: "Polityka Prywatności Platformy", icon: "fa-user-shield", order: 3 },
+            { kind: "modal", modalTarget: "polityka-prywatnosci", title: "Polityka Prywatności Sklepu", icon: "fa-shield-alt", order: 4 },
+            { kind: "modal", modalTarget: "regulamin-szkolen", title: "Regulamin Szkoleń", icon: "fa-graduation-cap", order: 5 },
+            { kind: "file", url: "pdf/formularz-odstapienia.html", title: "Formularz odstąpienia od umowy (zwrotu)", icon: "fa-undo", order: 6 },
+            { kind: "file", url: "pdf/formularz-reklamacyjny.html", title: "Formularz zgłoszenia reklamacyjnego", icon: "fa-exclamation-triangle", order: 7 },
+            { kind: "file", url: "pdf/instrukcja-bezpieczenstwa.html", title: "Instrukcja Bezpieczeństwa Zestawu", icon: "fa-shield-alt", order: 8 },
+            { kind: "file", url: "pdf/klauzula-donacji.html", title: "Klauzula Donacji", icon: "fa-heart", order: 9 },
+            { kind: "file", url: "pdf/oswiadczenie-zgodnosci.html", title: "Oświadczenie o zgodności zestawu", icon: "fa-check-circle", order: 10 },
+            { kind: "file", url: "pdf/procedura-monitorowania.html", title: "Procedura monitorowania po wprowadzeniu do obrotu", icon: "fa-chart-line", order: 11 },
         ];
+
+        function escapeHtml(s) {
+            return String(s || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
+        function escapeAttr(s) {
+            return String(s || "")
+                .replace(/&/g, "&amp;")
+                .replace(/"/g, "&quot;")
+                .replace(/</g, "&lt;");
+        }
 
         function resolveDocumentHref(url) {
             if (!url || typeof url !== "string") return "#";
@@ -1369,27 +1410,75 @@ const firebaseConfig = {
             return /^fa-[a-z0-9-]+$/i.test(s) ? s : "fa-file-pdf";
         }
 
-        function renderPdfDocumentRow(title, href, iconClass) {
-            const safeTitle = String(title || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-            const ic = sanitizeFaIcon(iconClass);
-            const safeHref = safePdfLinkHref(href).replace(/"/g, "&quot;");
-            return `
-                <div class="flex items-center justify-between p-4 bg-zinc-800 rounded-lg">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <i class="fas ${ic} text-coyote shrink-0"></i>
-                        <span class="min-w-0">${safeTitle}</span>
+        function normalizeFirestoreDocument(data) {
+            const kind = data.kind === "modal" ? "modal" : "file";
+            const order = typeof data.order === "number" ? data.order : 0;
+            if (kind === "modal") {
+                const modalTarget = String(data.modalTarget || "").trim();
+                if (!modalTarget || !/^[a-z0-9-]+$/i.test(modalTarget) || !data.title) return null;
+                return {
+                    kind: "modal",
+                    modalTarget,
+                    title: data.title,
+                    description: data.description || "",
+                    icon: data.icon || "fa-file-lines",
+                    order,
+                };
+            }
+            if (!data.title || !data.url) return null;
+            return {
+                kind: "file",
+                url: data.url,
+                title: data.title,
+                description: data.description || "",
+                icon: data.icon || "fa-file-pdf",
+                order,
+            };
+        }
+
+        function renderCatalogRow(item) {
+            const title = escapeHtml(item.title);
+            const desc = item.description ? `<div class="text-sm text-zinc-500 mt-0.5">${escapeHtml(item.description)}</div>` : "";
+            const attrTitle = escapeAttr(item.title);
+            const ic = sanitizeFaIcon(item.icon);
+            if (item.kind === "modal" && item.modalTarget && /^[a-z0-9-]+$/i.test(item.modalTarget)) {
+                return `
+                <div class="doc-catalog-row doc-catalog-row--modal" data-doc-title="${attrTitle}">
+                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                        <span class="text-[10px] uppercase tracking-wider text-amber-500/90 border border-amber-600/50 px-2 py-0.5 rounded shrink-0">Tekst</span>
+                        <i class="fas ${ic} text-amber-500/90 shrink-0 text-lg"></i>
+                        <div class="min-w-0">
+                            <div class="font-bold text-zinc-100 leading-snug">${title}</div>
+                            ${desc}
+                        </div>
                     </div>
-                    <a href="${safeHref}" class="pdf-button shrink-0 ml-3" target="_blank" rel="noopener noreferrer">
-                        <i class="fas fa-download"></i>
-                        Pobierz PDF
+                    <button type="button" class="doc-catalog-btn doc-catalog-btn--ghost shrink-0" onclick="openDocModal('${item.modalTarget}')">
+                        <i class="fas fa-up-right-from-square"></i> Czytaj
+                    </button>
+                </div>`;
+            }
+            const safeHref = safePdfLinkHref(item.url).replace(/"/g, "&quot;");
+            return `
+                <div class="doc-catalog-row doc-catalog-row--file" data-doc-title="${attrTitle}">
+                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                        <span class="text-[10px] uppercase tracking-wider text-coyote border border-coyote/50 px-2 py-0.5 rounded shrink-0">Plik</span>
+                        <i class="fas ${ic} text-coyote shrink-0 text-lg"></i>
+                        <div class="min-w-0">
+                            <div class="font-bold text-zinc-100 leading-snug">${title}</div>
+                            <div class="text-xs text-zinc-500 mt-0.5">Pliki w katalogu <code class="text-zinc-400">pdf/</code> na serwerze</div>
+                            ${desc}
+                        </div>
+                    </div>
+                    <a href="${safeHref}" class="doc-catalog-btn shrink-0" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-download"></i> Pobierz
                     </a>
                 </div>`;
         }
 
-        async function loadPdfDocumentsFromFirestore() {
-            const grid = document.getElementById("pdf-documents-grid");
-            const loadingEl = document.getElementById("pdf-documents-loading");
-            const noteEl = document.getElementById("pdf-documents-firestore-note");
+        async function loadDocumentsCatalogFromFirestore() {
+            const grid = document.getElementById("documents-catalog-grid");
+            const loadingEl = document.getElementById("documents-catalog-loading");
+            const noteEl = document.getElementById("documents-catalog-note");
             if (!grid) return;
 
             let items = [];
@@ -1397,42 +1486,33 @@ const firebaseConfig = {
                 const q = query(collection(db, "documents"), orderBy("order", "asc"));
                 const snapshot = await getDocs(q);
                 items = snapshot.docs
-                    .map((d) => {
-                        const data = d.data();
-                        return {
-                            title: data.title,
-                            url: data.url,
-                            icon: data.icon || "fa-file-pdf",
-                            order: typeof data.order === "number" ? data.order : 0,
-                        };
-                    })
-                    .filter((x) => x.title && x.url);
+                    .map((d) => normalizeFirestoreDocument(d.data()))
+                    .filter(Boolean);
                 if (items.length) {
-                    items.sort((a, b) => (a.order !== b.order ? a.order - b.order : String(a.title).localeCompare(String(b.title))));
+                    items.sort((a, b) =>
+                        a.order !== b.order ? a.order - b.order : String(a.title).localeCompare(String(b.title)),
+                    );
                 }
             } catch (e) {
-                console.warn("Nie udało się wczytać dokumentów z Firestore, używam listy domyślnej:", e?.message || e);
+                console.warn("Nie udało się wczytać dokumentów z Firestore — lista domyślna:", e?.message || e);
             }
 
             if (!items.length) {
-                items = FALLBACK_PDF_DOCUMENTS.map((x, i) => ({ ...x, order: i }));
+                items = FALLBACK_SITE_DOCUMENTS.slice();
                 if (noteEl) {
                     noteEl.textContent =
-                        "Lista domyślna (brak wpisów w bazie). Po imporcie dokumentów w panelu admina pojawi się tu wersja z bazy.";
+                        "Lista domyślna (brak wpisów w bazie). W panelu admina użyj „Importuj domyślną listę strony”, potem ustaw kolejność strzałkami.";
                     noteEl.classList.remove("hidden");
                 }
             } else if (noteEl) {
                 noteEl.classList.add("hidden");
             }
 
-            grid.innerHTML = items
-                .map((row) => renderPdfDocumentRow(row.title, row.url, row.icon))
-                .join("");
-
+            grid.innerHTML = items.map((row) => renderCatalogRow(row)).join("");
             if (loadingEl) loadingEl.classList.add("hidden");
         }
 
-        loadPdfDocumentsFromFirestore();
+        loadDocumentsCatalogFromFirestore();
 
         // Ustaw trwałość sesji na browserLocalPersistence dla wszystkich subdomen
         await setPersistence(auth, browserLocalPersistence);

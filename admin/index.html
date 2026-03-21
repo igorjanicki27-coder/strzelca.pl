@@ -1562,21 +1562,6 @@
               </button>
             </div>
 
-            <div class="admin-card mb-8 border border-amber-900/40 bg-amber-950/10">
-              <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 p-5">
-                <div>
-                  <h3 class="text-lg font-bold coyote-text">Stały kafelek: dobrowolne wpłaty</h3>
-                  <p class="text-sm text-zinc-400 mt-1">
-                    Widoczny na pomoc.strzelca.pl — zdjęcia, opis (edytor jak w sklepie), przycisk Stripe „Na nową 🔫”.
-                  </p>
-                </div>
-                <button type="button" onclick="openPinnedDonationsEditor()" class="btn-admin shrink-0">
-                  <i class="fa-solid fa-pen-to-square mr-2"></i>
-                  Edytuj kafelek wpłat
-                </button>
-              </div>
-            </div>
-
             <!-- Lista akcji charytatywnych -->
           <div class="admin-card">
               <div id="charity-actions-list" class="space-y-4">
@@ -1596,6 +1581,21 @@
                 <p>Brak akcji charytatywnych</p>
           </div>
         </div>
+
+            <div class="admin-card mt-8 border border-amber-900/40 bg-amber-950/10">
+              <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 p-5">
+                <div>
+                  <h3 class="text-lg font-bold coyote-text">Stały kafelek: dobrowolne wpłaty</h3>
+                  <p class="text-sm text-zinc-400 mt-1">
+                    Widoczny na pomoc.strzelca.pl — zdjęcia, opis (edytor jak w sklepie), przycisk Stripe „Na nową 🔫”.
+                  </p>
+                </div>
+                <button type="button" onclick="openPinnedDonationsEditor()" class="btn-admin shrink-0">
+                  <i class="fa-solid fa-pen-to-square mr-2"></i>
+                  Edytuj kafelek wpłat
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Newsletter -->
@@ -2081,15 +2081,15 @@
 
             <div class="flex flex-wrap gap-4 justify-between items-center mb-8">
               <p class="text-zinc-400 max-w-2xl">
-                <strong class="text-zinc-300">Dwie warstwy:</strong> regulaminy i polityki są <strong class="text-zinc-300">w kodzie</strong>
-                (<code class="text-zinc-500">dokumenty.strzelca.pl/index.html</code>) — lista poniżej je tylko linkuje.
-                Sekcja „Wzory PDF” na stronie bierze wpisy z Firestore <code class="text-zinc-500">documents</code>; gdy baza jest pusta,
-                strona pokazuje listę zapasową z kodu — wtedy użyj importu.
+                Jedna lista na <code class="text-zinc-500">dokumenty.strzelca.pl</code>: pozycja <strong class="text-zinc-300">Tekst</strong>
+                otwiera treść z HTML strony (regulaminy), pozycja <strong class="text-zinc-300">Plik</strong> — link do katalogu
+                <code class="text-zinc-500">pdf/</code>. Kolejność: strzałki (↑↓) jak w sklepie. Treść regulaminów edytujesz w repozytorium
+                (<code class="text-zinc-500">dokumenty.strzelca.pl/index.html</code>).
               </p>
               <div class="flex flex-wrap gap-2">
-                <button type="button" onclick="importDefaultSitePdfDocuments()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
+                <button type="button" onclick="importDefaultSiteDocuments()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
                   <i class="fa-solid fa-cloud-arrow-down mr-2"></i>
-                  Importuj wzory PDF ze strony
+                  Importuj domyślną listę strony
                 </button>
                 <button type="button" onclick="addNewDocument()" class="btn-admin">
                   <i class="fa-solid fa-plus mr-2"></i>
@@ -2100,12 +2100,20 @@
 
             <!-- Formularz dodawania/edycji dokumentu -->
             <div id="document-form-section" class="admin-card mb-8 hidden">
-              <h3 class="text-xl font-bold mb-4" id="document-form-title">Dodaj/Edytuj Dokument</h3>
+              <h3 class="text-xl font-bold mb-4" id="document-form-title">Dodaj / edytuj pozycję</h3>
               <form id="document-form" class="space-y-4">
                 <input type="hidden" id="document-id" />
                 
                 <div>
-                  <label class="block text-sm font-medium mb-2">Tytuł dokumentu *</label>
+                  <label class="block text-sm font-medium mb-2">Rodzaj *</label>
+                  <select id="document-kind" class="w-full" onchange="onDocumentKindChange()">
+                    <option value="file">Plik do pobrania (katalog pdf/)</option>
+                    <option value="modal">Tekst na stronie (regulamin — okno modalne)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">Tytuł *</label>
                   <input
                     type="text"
                     id="document-title"
@@ -2116,52 +2124,49 @@
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium mb-2">Opis</label>
+                  <label class="block text-sm font-medium mb-2">Krótki opis (opcjonalnie)</label>
                   <textarea
                     id="document-description"
-                    placeholder="Krótki opis dokumentu"
+                    placeholder="Opcjonalny podtytuł pod tytułem na stronie"
                     class="w-full"
-                    rows="3"
+                    rows="2"
                   ></textarea>
                 </div>
 
-                <div>
-                  <label class="block text-sm font-medium mb-2">Adres pliku (URL lub ścieżka) *</label>
+                <div id="document-modal-field-wrap" class="hidden">
+                  <label class="block text-sm font-medium mb-2">Szablon treści (ID bloku HTML) *</label>
+                  <select id="document-modal-target" class="w-full" onchange="onDocumentModalPresetChange()">
+                    <option value="">— wybierz —</option>
+                    <option value="regulamin-platformy" data-default-title="Regulamin Platformy" data-default-icon="fa-users">Regulamin Platformy</option>
+                    <option value="regulamin-sklepu" data-default-title="Regulamin Sklepu i Serwisu" data-default-icon="fa-store">Regulamin Sklepu i Serwisu</option>
+                    <option value="regulamin-bazar" data-default-title="Regulamin bazaru" data-default-icon="fa-handshake">Regulamin bazaru</option>
+                    <option value="polityka-prywatnosci-platformy" data-default-title="Polityka Prywatności Platformy" data-default-icon="fa-user-shield">Polityka prywatności platformy</option>
+                    <option value="polityka-prywatnosci" data-default-title="Polityka Prywatności Sklepu" data-default-icon="fa-shield-alt">Polityka prywatności sklepu</option>
+                    <option value="regulamin-szkolen" data-default-title="Regulamin Szkoleń" data-default-icon="fa-graduation-cap">Regulamin Szkoleń</option>
+                  </select>
+                  <p class="text-xs text-zinc-500 mt-1">Pełna treść jest w pliku HTML strony dokumentów — tu tylko powiązanie.</p>
+                </div>
+
+                <div id="document-url-field-wrap">
+                  <label class="block text-sm font-medium mb-2">Ścieżka pliku lub pełny URL *</label>
                   <input
                     type="text"
                     id="document-url"
-                    placeholder="https://dokumenty.strzelca.pl/pdf/… lub pdf/nazwa.html"
+                    placeholder="pdf/nazwa.html lub https://dokumenty.strzelca.pl/pdf/…"
                     class="w-full"
-                    required
                   />
-                  <p class="text-xs text-zinc-500 mt-1">Pełny https lub ścieżka względna do pliku na dokumenty.strzelca.pl.</p>
+                  <p class="text-xs text-zinc-500 mt-1">Pliki trzymasz w <code class="text-zinc-400">dokumenty.strzelca.pl/pdf/</code> — wpisz ścieżkę względną lub URL.</p>
                 </div>
 
-                <div>
-                  <label class="block text-sm font-medium mb-2">Kategoria</label>
-                  <input
-                    type="text"
-                    id="document-category"
-                    placeholder="Np. Regulaminy, Polityki, Dokumenty"
-                    class="w-full"
-                  />
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium mb-2">Kolejność wyświetlania</label>
-                  <input
-                    type="number"
-                    id="document-order"
-                    placeholder="0"
-                    class="w-full"
-                    min="0"
-                  />
+                <div id="document-icon-wrap">
+                  <label class="block text-sm font-medium mb-2">Ikona Font Awesome (opcjonalnie, np. fa-file-pdf)</label>
+                  <input type="text" id="document-icon" class="w-full" placeholder="fa-file-pdf" />
                 </div>
 
                 <div class="flex space-x-4">
                   <button type="submit" class="btn-admin">
                     <i class="fa-solid fa-save mr-2"></i>
-                    Zapisz dokument
+                    Zapisz
                   </button>
                   <button type="button" onclick="clearDocumentForm()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
                     <i class="fa-solid fa-times mr-2"></i>
@@ -2173,25 +2178,9 @@
 
             <!-- Lista dokumentów -->
             <div class="admin-card">
-              <div class="mb-8 pb-8 border-b border-zinc-700">
-                <h3 class="text-lg font-bold text-zinc-200 mb-1">
-                  <i class="fa-solid fa-file-contract text-coyote mr-2"></i>
-                  Regulaminy i polityki (treść w HTML)
-                </h3>
-                <p class="text-sm text-zinc-500 mb-4">
-                  Edycja w repozytorium: <code class="text-zinc-400">dokumenty.strzelca.pl/index.html</code>. Tu: skrót i link do podglądu na żywo.
-                </p>
-                <div id="static-legal-documents-list" class="space-y-2">
-                  <!-- Wypełnia JS -->
-                </div>
-              </div>
-
-              <h3 class="text-lg font-bold text-zinc-200 mb-1">
-                <i class="fa-solid fa-file-pdf text-coyote mr-2"></i>
-                Wzory plików — kolekcja Firestore <code class="text-zinc-500 text-sm font-normal">documents</code>
-              </h3>
+              <h3 class="text-xl font-bold mb-4">Kolejność na stronie dokumentów</h3>
               <p class="text-sm text-zinc-500 mb-4">
-                To jest lista w sekcji „Wzory dokumentów (PDF)” na dokumenty.strzelca.pl (zastępuje domyślną z kodu, gdy są wpisy).
+                Kolekcja Firestore <code class="text-zinc-400">documents</code>. ↑ ↓ zamieniają pole <code class="text-zinc-400">order</code> z sąsiadem (jak produkty w sklepie).
               </p>
 
               <div id="documents-list" class="space-y-4">
@@ -2207,11 +2196,11 @@
                 id="documents-empty"
                 class="text-center py-8 text-zinc-400 hidden"
               >
-                <i class="fa-solid fa-file-pdf text-4xl mb-4 text-zinc-600"></i>
-                <p class="mb-4">Brak dokumentów w bazie — publiczna strona pokazuje wtedy listę zapasową z kodu.</p>
-                <button type="button" onclick="importDefaultSitePdfDocuments()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
+                <i class="fa-solid fa-folder-open text-4xl mb-4 text-zinc-600"></i>
+                <p class="mb-4">Brak wpisów w bazie — na stronie widać listę domyślną z kodu.</p>
+                <button type="button" onclick="importDefaultSiteDocuments()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
                   <i class="fa-solid fa-cloud-arrow-down mr-2"></i>
-                  Importuj wzory PDF ze strony
+                  Importuj domyślną listę strony
                 </button>
               </div>
             </div>
@@ -3160,6 +3149,7 @@
         writeBatch,
         serverTimestamp,
         Timestamp,
+        deleteField,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
       import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-02-06-3";
 
@@ -9001,7 +8991,7 @@
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium mb-2">Link do zbiórki / przycisku (&lt;3 WESPRZYJ &lt;3) (opcjonalnie)</label>
+                  <label class="block text-sm font-medium mb-2">Link do zbiórki / przycisku WESPRZYJ (opcjonalnie)</label>
                   <input
                     type="url"
                     id="charity-button-link"
@@ -13294,59 +13284,62 @@
 
       // ==================== FUNKCJE ZARZĄDZANIA DOKUMENTAMI ====================
 
-      /** Zgodne z listą na dokumenty.strzelca.pl (sekcja Wzory PDF) — import dodaje tylko brakujące tytuły. */
-      const DEFAULT_SITE_PDF_DOCUMENTS = [
-        { title: "Formularz odstąpienia od umowy (zwrotu)", url: "https://dokumenty.strzelca.pl/pdf/formularz-odstapienia.html", category: "Wzory PDF", icon: "fa-undo" },
-        { title: "Formularz zgłoszenia reklamacyjnego", url: "https://dokumenty.strzelca.pl/pdf/formularz-reklamacyjny.html", category: "Wzory PDF", icon: "fa-exclamation-triangle" },
-        { title: "Instrukcja Bezpieczeństwa Zestawu", url: "https://dokumenty.strzelca.pl/pdf/instrukcja-bezpieczenstwa.html", category: "Wzory PDF", icon: "fa-shield-alt" },
-        { title: "Klauzula Donacji", url: "https://dokumenty.strzelca.pl/pdf/klauzula-donacji.html", category: "Wzory PDF", icon: "fa-heart" },
-        { title: "Oświadczenie o zgodności zestawu", url: "https://dokumenty.strzelca.pl/pdf/oswiadczenie-zgodnosci.html", category: "Wzory PDF", icon: "fa-check-circle" },
-        { title: "Procedura monitorowania po wprowadzeniu do obrotu", url: "https://dokumenty.strzelca.pl/pdf/procedura-monitorowania.html", category: "Wzory PDF", icon: "fa-chart-line" },
+      const DEFAULT_SITE_MODAL_DOCUMENTS = [
+        { kind: "modal", title: "Regulamin Platformy", modalTarget: "regulamin-platformy", icon: "fa-users" },
+        { kind: "modal", title: "Regulamin Sklepu i Serwisu", modalTarget: "regulamin-sklepu", icon: "fa-store" },
+        { kind: "modal", title: "Regulamin bazaru", modalTarget: "regulamin-bazar", icon: "fa-handshake" },
+        { kind: "modal", title: "Polityka Prywatności Platformy", modalTarget: "polityka-prywatnosci-platformy", icon: "fa-user-shield" },
+        { kind: "modal", title: "Polityka Prywatności Sklepu", modalTarget: "polityka-prywatnosci", icon: "fa-shield-alt" },
+        { kind: "modal", title: "Regulamin Szkoleń", modalTarget: "regulamin-szkolen", icon: "fa-graduation-cap" },
       ];
 
-      /** Te pozycje są w HTML dokumenty.strzelca.pl (akordeon + modal), nie w Firestore. */
-      const STATIC_SITE_LEGAL_DOCUMENTS = [
-        { title: "Regulamin Platformy", hash: "regulamin-platformy", icon: "fa-users" },
-        { title: "Regulamin Sklepu i Serwisu", hash: "regulamin-sklepu", icon: "fa-store" },
-        { title: "Regulamin bazaru", hash: "regulamin-bazar", icon: "fa-handshake" },
-        { title: "Polityka prywatności platformy", hash: "polityka-prywatnosci-platformy", icon: "fa-user-shield" },
-        { title: "Polityka prywatności sklepu", hash: "polityka-prywatnosci", icon: "fa-shield-alt" },
-        { title: "Regulamin szkoleń strzeleckich", hash: "regulamin-szkolen", icon: "fa-graduation-cap" },
-        {
-          title: "Wzory dokumentów (PDF) — sekcja na stronie",
-          hash: "wzory-dokumentow",
-          icon: "fa-file-pdf",
-          note: "Lista linków: z Firestore lub domyślna z kodu strony",
-        },
+      const DEFAULT_SITE_FILE_DOCUMENTS = [
+        { kind: "file", title: "Formularz odstąpienia od umowy (zwrotu)", url: "https://dokumenty.strzelca.pl/pdf/formularz-odstapienia.html", icon: "fa-undo" },
+        { kind: "file", title: "Formularz zgłoszenia reklamacyjnego", url: "https://dokumenty.strzelca.pl/pdf/formularz-reklamacyjny.html", icon: "fa-exclamation-triangle" },
+        { kind: "file", title: "Instrukcja Bezpieczeństwa Zestawu", url: "https://dokumenty.strzelca.pl/pdf/instrukcja-bezpieczenstwa.html", icon: "fa-shield-alt" },
+        { kind: "file", title: "Klauzula Donacji", url: "https://dokumenty.strzelca.pl/pdf/klauzula-donacji.html", icon: "fa-heart" },
+        { kind: "file", title: "Oświadczenie o zgodności zestawu", url: "https://dokumenty.strzelca.pl/pdf/oswiadczenie-zgodnosci.html", icon: "fa-check-circle" },
+        { kind: "file", title: "Procedura monitorowania po wprowadzeniu do obrotu", url: "https://dokumenty.strzelca.pl/pdf/procedura-monitorowania.html", icon: "fa-chart-line" },
       ];
 
-      function renderStaticLegalDocumentsList() {
-        const el = document.getElementById("static-legal-documents-list");
-        if (!el) return;
-        const base = "https://dokumenty.strzelca.pl";
-        el.innerHTML = STATIC_SITE_LEGAL_DOCUMENTS.map(
-          (row) => `
-            <div class="flex flex-wrap items-center justify-between gap-3 p-3 bg-zinc-800/80 rounded-lg border border-zinc-700">
-              <div class="flex items-center gap-3 min-w-0">
-                <i class="fa-solid ${row.icon || "fa-file-lines"} text-coyote shrink-0"></i>
-                <div class="min-w-0">
-                  <div class="font-medium text-white">${row.title}</div>
-                  ${row.note ? `<div class="text-xs text-zinc-500">${row.note}</div>` : ""}
-                </div>
-              </div>
-              <div class="flex items-center gap-2 shrink-0">
-                <span class="text-[10px] uppercase tracking-wider text-amber-500/90 border border-amber-500/40 px-2 py-0.5 rounded">HTML</span>
-                <a href="${base}#${row.hash}" target="_blank" rel="noopener noreferrer" class="text-coyote hover:text-white text-sm px-3 py-1 border border-coyote/50 rounded transition">
-                  <i class="fa-solid fa-up-right-from-square mr-1"></i>Otwórz
-                </a>
-              </div>
-            </div>
-          `,
-        ).join("");
+      function escapeAdminDocText(s) {
+        return String(s || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
       }
 
-      window.importDefaultSitePdfDocuments = async () => {
+      window.onDocumentKindChange = () => {
+        const kind = document.getElementById("document-kind")?.value || "file";
+        const modalWrap = document.getElementById("document-modal-field-wrap");
+        const urlWrap = document.getElementById("document-url-field-wrap");
+        const urlInput = document.getElementById("document-url");
+        if (modalWrap) modalWrap.classList.toggle("hidden", kind !== "modal");
+        if (urlWrap) urlWrap.classList.toggle("hidden", kind === "modal");
+        if (urlInput) {
+          if (kind === "modal") {
+            urlInput.removeAttribute("required");
+          } else {
+            urlInput.setAttribute("required", "required");
+          }
+        }
+      };
+
+      window.onDocumentModalPresetChange = () => {
+        const sel = document.getElementById("document-modal-target");
+        const idField = document.getElementById("document-id");
+        if (!sel || !idField || idField.value) return;
+        const opt = sel.options[sel.selectedIndex];
+        if (!opt || !opt.value) return;
+        const dt = opt.getAttribute("data-default-title");
+        const di = opt.getAttribute("data-default-icon");
+        if (dt) document.getElementById("document-title").value = dt;
+        if (di) document.getElementById("document-icon").value = di;
+      };
+
+      window.importDefaultSiteDocuments = async () => {
         let existingTitles = new Set();
+        const existingModalTargets = new Set();
         let nextOrder = 0;
         try {
           const q = query(collection(db, "documents"), orderBy("order", "asc"));
@@ -13354,20 +13347,41 @@
           const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
           nextOrder = list.length;
           existingTitles = new Set(list.map((d) => (d.title || "").trim().toLowerCase()));
+          list.forEach((d) => {
+            if (d.kind === "modal" && d.modalTarget) existingModalTargets.add(String(d.modalTarget).trim());
+          });
         } catch (e) {
-          console.error("importDefaultSitePdfDocuments read error:", e);
+          console.error("importDefaultSiteDocuments read error:", e);
           showNotification("Nie udało się odczytać listy dokumentów z bazy.", "error");
           return;
         }
         let added = 0;
-        for (const row of DEFAULT_SITE_PDF_DOCUMENTS) {
+        for (const row of DEFAULT_SITE_MODAL_DOCUMENTS) {
+          const t = (row.title || "").trim();
+          const mt = (row.modalTarget || "").trim();
+          if (!t || !mt || existingModalTargets.has(mt) || existingTitles.has(t.toLowerCase())) continue;
+          await addDoc(collection(db, "documents"), {
+            kind: "modal",
+            title: row.title,
+            description: "",
+            modalTarget: mt,
+            order: nextOrder,
+            date: Date.now(),
+            ...(row.icon ? { icon: row.icon } : {}),
+          });
+          existingModalTargets.add(mt);
+          existingTitles.add(t.toLowerCase());
+          nextOrder += 1;
+          added += 1;
+        }
+        for (const row of DEFAULT_SITE_FILE_DOCUMENTS) {
           const t = (row.title || "").trim();
           if (!t || existingTitles.has(t.toLowerCase())) continue;
           await addDoc(collection(db, "documents"), {
+            kind: "file",
             title: row.title,
             description: "",
             url: row.url,
-            category: row.category || "Wzory PDF",
             order: nextOrder,
             date: Date.now(),
             ...(row.icon ? { icon: row.icon } : {}),
@@ -13377,9 +13391,9 @@
           added += 1;
         }
         if (added === 0) {
-          showNotification("Wszystkie domyślne wzory są już w bazie (po tytule).", "info");
+          showNotification("Wszystkie domyślne pozycje są już w bazie (po tytule lub ID modala).", "info");
         } else {
-          showNotification(`Dodano ${added} dokument(ów) z listy strony.`, "success");
+          showNotification(`Dodano ${added} pozycji z listy strony.`, "success");
           if (currentUser) {
             await logActivity(currentUser.uid, "DOCUMENT_CREATED", {
               documentTitle: `Import zbiorczy (${added} pozycji)`,
@@ -13392,8 +13406,6 @@
       let currentDocumentId = null;
 
       async function loadDocuments() {
-        renderStaticLegalDocumentsList();
-
         const loadingEl = document.getElementById("documents-loading");
         const emptyEl = document.getElementById("documents-empty");
         const listEl = document.getElementById("documents-list");
@@ -13435,22 +13447,35 @@
           return;
         }
 
-        const documentsHtml = documentsList.map((document) => {
+        const n = documentsList.length;
+        const documentsHtml = documentsList.map((document, index) => {
+          const kind = document.kind === "modal" ? "modal" : "file";
+          const badge =
+            kind === "modal"
+              ? `<span class="text-[10px] uppercase tracking-wider text-amber-500 border border-amber-600/50 px-2 py-0.5 rounded">Tekst</span>`
+              : `<span class="text-[10px] uppercase tracking-wider text-coyote border border-coyote/50 px-2 py-0.5 rounded">Plik</span>`;
+          const sub =
+            kind === "modal"
+              ? `<code class="text-xs text-zinc-500">${escapeAdminDocText(document.modalTarget || "")}</code>`
+              : `<span class="text-xs text-zinc-500 break-all">${escapeAdminDocText((document.url || "").slice(0, 72))}${(document.url || "").length > 72 ? "…" : ""}</span>`;
+          const border = kind === "modal" ? "border-l-4 border-l-amber-600" : "border-l-4 border-l-[#c19a6b]";
           return `
-            <div class="flex justify-between items-center p-4 bg-zinc-800 rounded-lg border border-zinc-700 hover:border-coyote transition">
-              <div class="flex-1">
-                <div class="font-semibold text-white text-lg mb-1">${document.title || "Bez tytułu"}</div>
-                ${document.description ? `<p class="text-sm text-zinc-400 mb-2">${document.description}</p>` : ""}
-                <div class="flex items-center gap-4 text-xs text-zinc-500">
-                  ${document.category ? `<span><i class="fa-solid fa-folder mr-1"></i>${document.category}</span>` : ""}
-                  ${document.url ? `<a href="${document.url}" target="_blank" class="text-coyote hover:text-coyote/80"><i class="fa-solid fa-external-link mr-1"></i>Otwórz PDF</a>` : ""}
+            <div class="flex flex-wrap justify-between items-start gap-4 p-4 bg-zinc-800 rounded-lg border border-zinc-700 hover:border-coyote/60 transition ${border}">
+              <div class="flex-1 min-w-[200px]">
+                <div class="flex flex-wrap items-center gap-2 mb-2">
+                  ${badge}
+                  <div class="font-semibold text-white text-lg">${escapeAdminDocText(document.title || "Bez tytułu")}</div>
                 </div>
+                ${document.description ? `<p class="text-sm text-zinc-400 mb-2">${escapeAdminDocText(document.description)}</p>` : ""}
+                <div class="text-xs text-zinc-500 space-y-1">${sub}</div>
               </div>
-              <div class="flex space-x-2 ml-4">
-                <button onclick="editDocument('${document.id}')" class="text-blue-400 hover:text-blue-300 px-3 py-1 border border-blue-400 rounded text-sm transition">
+              <div class="flex flex-wrap items-center gap-2 shrink-0">
+                <button type="button" onclick="moveDocumentUp('${document.id}')" class="text-zinc-400 hover:text-zinc-200 px-2 py-1 border border-zinc-500 rounded text-xs disabled:opacity-30" ${index === 0 ? "disabled" : ""} title="Wyżej">↑</button>
+                <button type="button" onclick="moveDocumentDown('${document.id}')" class="text-zinc-400 hover:text-zinc-200 px-2 py-1 border border-zinc-500 rounded text-xs disabled:opacity-30" ${index === n - 1 ? "disabled" : ""} title="Niżej">↓</button>
+                <button type="button" onclick="editDocument('${document.id}')" class="text-blue-400 hover:text-blue-300 px-3 py-1 border border-blue-400 rounded text-sm transition">
                   <i class="fa-solid fa-edit mr-1"></i>Edytuj
                 </button>
-                <button onclick="deleteDocument('${document.id}')" class="text-red-400 hover:text-red-300 px-3 py-1 border border-red-400 rounded text-sm transition">
+                <button type="button" onclick="deleteDocument('${document.id}')" class="text-red-400 hover:text-red-300 px-3 py-1 border border-red-400 rounded text-sm transition">
                   <i class="fa-solid fa-trash mr-1"></i>Usuń
                 </button>
               </div>
@@ -13467,10 +13492,11 @@
         document.getElementById("document-title").value = "";
         document.getElementById("document-description").value = "";
         document.getElementById("document-url").value = "";
-        document.getElementById("document-category").value = "";
-        document.getElementById("document-order").value = documentsList.length;
+        document.getElementById("document-icon").value = "";
+        document.getElementById("document-kind").value = "file";
+        document.getElementById("document-modal-target").value = "";
+        onDocumentKindChange();
         
-        // Pokaż formularz
         const formSection = document.getElementById("document-form-section");
         if (formSection) {
           formSection.classList.remove("hidden");
@@ -13479,22 +13505,65 @@
       };
 
       window.editDocument = (documentId) => {
-        const document = documentsList.find((d) => d.id === documentId);
-        if (!document) return;
+        const rec = documentsList.find((d) => d.id === documentId);
+        if (!rec) return;
 
         currentDocumentId = documentId;
-        document.getElementById("document-id").value = document.id;
-        document.getElementById("document-title").value = document.title || "";
-        document.getElementById("document-description").value = document.description || "";
-        document.getElementById("document-url").value = document.url || "";
-        document.getElementById("document-category").value = document.category || "";
-        document.getElementById("document-order").value = document.order !== undefined ? document.order : documentsList.length;
+        document.getElementById("document-id").value = rec.id;
+        document.getElementById("document-title").value = rec.title || "";
+        document.getElementById("document-description").value = rec.description || "";
+        document.getElementById("document-url").value = rec.url || "";
+        document.getElementById("document-icon").value = rec.icon || "";
+
+        let kind = rec.kind === "modal" ? "modal" : "file";
+        if (!rec.kind && rec.modalTarget) kind = "modal";
+        if (!rec.kind && rec.url) kind = "file";
+        document.getElementById("document-kind").value = kind;
+        onDocumentKindChange();
+        const mt = rec.modalTarget || "";
+        const mtSel = document.getElementById("document-modal-target");
+        if (mtSel) {
+          mtSel.value = [...mtSel.options].some((o) => o.value === mt) ? mt : "";
+        }
         
-        // Pokaż formularz
         const formSection = document.getElementById("document-form-section");
         if (formSection) {
           formSection.classList.remove("hidden");
           formSection.scrollIntoView({ behavior: "smooth" });
+        }
+      };
+
+      window.moveDocumentUp = async (documentId) => {
+        const index = documentsList.findIndex((d) => d.id === documentId);
+        if (index <= 0) return;
+        const cur = documentsList[index];
+        const prev = documentsList[index - 1];
+        const co = typeof cur.order === "number" ? cur.order : index;
+        const po = typeof prev.order === "number" ? prev.order : index - 1;
+        try {
+          await updateDoc(doc(db, "documents", cur.id), { order: po });
+          await updateDoc(doc(db, "documents", prev.id), { order: co });
+          await loadDocuments();
+        } catch (error) {
+          console.error("moveDocumentUp:", error);
+          showNotification("Błąd zmiany kolejności.", "error");
+        }
+      };
+
+      window.moveDocumentDown = async (documentId) => {
+        const index = documentsList.findIndex((d) => d.id === documentId);
+        if (index < 0 || index >= documentsList.length - 1) return;
+        const cur = documentsList[index];
+        const next = documentsList[index + 1];
+        const co = typeof cur.order === "number" ? cur.order : index;
+        const no = typeof next.order === "number" ? next.order : index + 1;
+        try {
+          await updateDoc(doc(db, "documents", cur.id), { order: no });
+          await updateDoc(doc(db, "documents", next.id), { order: co });
+          await loadDocuments();
+        } catch (error) {
+          console.error("moveDocumentDown:", error);
+          showNotification("Błąd zmiany kolejności.", "error");
         }
       };
 
@@ -13527,6 +13596,7 @@
       // Obsługa formularza dokumentów
       window.clearDocumentForm = () => {
         document.getElementById("document-form").reset();
+        onDocumentKindChange();
         const formSection = document.getElementById("document-form-section");
         if (formSection) formSection.classList.add("hidden");
       };
@@ -13538,41 +13608,62 @@
           const docId = document.getElementById("document-id").value;
           const title = document.getElementById("document-title").value.trim();
           const description = document.getElementById("document-description").value.trim();
+          const kind = document.getElementById("document-kind").value === "modal" ? "modal" : "file";
           const url = document.getElementById("document-url").value.trim();
-          const category = document.getElementById("document-category").value.trim();
-          const orderVal = document.getElementById("document-order").value;
+          const modalTarget = document.getElementById("document-modal-target").value.trim();
+          const iconRaw = document.getElementById("document-icon").value.trim();
+          const icon = /^fa-[a-z0-9-]+$/i.test(iconRaw) ? iconRaw : "";
 
-          if (!title || !url) {
-            showNotification("Wypełnij wymagane pola (Tytuł i URL).", "error");
+          if (!title) {
+            showNotification("Podaj tytuł.", "error");
+            return;
+          }
+          if (kind === "file" && !url) {
+            showNotification("Dla pliku podaj ścieżkę lub URL.", "error");
+            return;
+          }
+          if (kind === "modal" && !modalTarget) {
+            showNotification("Wybierz szablon treści (ID bloku).", "error");
             return;
           }
 
-          const docData = {
+          const nextOrder = documentsList.length;
+          const baseData = {
             title,
             description,
-            url,
-            category,
-            order: orderVal ? parseInt(orderVal) : documentsList.length,
-            date: Date.now()
+            kind,
+            date: Date.now(),
+            ...(icon ? { icon } : {}),
           };
 
           try {
             if (docId) {
-              await updateDoc(doc(db, "documents", docId), docData);
-              showNotification("Dokument zaktualizowany.", "success");
+              const patch = {
+                ...baseData,
+                ...(kind === "modal"
+                  ? { modalTarget, url: deleteField() }
+                  : { url, modalTarget: deleteField() }),
+              };
+              await updateDoc(doc(db, "documents", docId), patch);
+              showNotification("Zapisano.", "success");
               if (currentUser) {
                 await logActivity(currentUser.uid, "DOCUMENT_UPDATED", {
                   documentTitle: title,
-                  documentId: docId
+                  documentId: docId,
                 });
               }
             } else {
+              const docData = {
+                ...baseData,
+                order: nextOrder,
+                ...(kind === "modal" ? { modalTarget } : { url }),
+              };
               const newRef = await addDoc(collection(db, "documents"), docData);
-              showNotification("Dokument dodany.", "success");
+              showNotification("Dodano pozycję.", "success");
               if (currentUser) {
                 await logActivity(currentUser.uid, "DOCUMENT_CREATED", {
                   documentTitle: title,
-                  documentId: newRef.id
+                  documentId: newRef.id,
                 });
               }
             }
@@ -13580,7 +13671,7 @@
             await loadDocuments();
           } catch (error) {
             console.error("Error saving document:", error);
-            showNotification("Błąd zapisywania dokumentu.", "error");
+            showNotification("Błąd zapisywania.", "error");
           }
         });
       }
