@@ -583,6 +583,12 @@ const firebaseConfig = {
 
             // Funkcja do obsługi zapytania o ofertę
             window.handleOfferInquiry = async (trainingName) => {
+                const regulaminCb = document.getElementById("training-regulamin-accept");
+                if (regulaminCb && !regulaminCb.checked) {
+                    alert("Zaznacz pole potwierdzające zapoznanie się z Regulaminem Szkoleń i akceptację kar umownych za rozpowszechnianie materiałów — wtedy możesz wysłać zapytanie.");
+                    return;
+                }
+
                 // Jeśli zapytanie jest wywołane z modala szczegółów, schowaj modal,
                 // aby nie zasłaniał otwieranego widgetu wiadomości.
                 const detailsModal = document.getElementById("details-modal");
@@ -941,11 +947,20 @@ const firebaseConfig = {
                         Rozpocznij kurs
                     </button>`;
                 } else {
-                    buttonHtml = `<button onclick="window.handleOfferInquiry(decodeURIComponent('${encodedTitle}'))" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition flex items-center justify-center gap-2">
+                    buttonHtml = `<button type="button" id="training-inquiry-btn" disabled onclick="window.handleOfferInquiry(decodeURIComponent('${encodedTitle}'))" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#C19A6B]">
                         <i class="fas fa-envelope"></i>
                         Zapytaj o ofertę
                     </button>`;
                 }
+
+                const regulaminBlock = !hasAccess
+                    ? `<div class="mb-5 text-left border-t border-zinc-800 pt-5">
+                        <label class="flex gap-3 items-start text-xs text-zinc-400 cursor-pointer select-none">
+                            <input type="checkbox" id="training-regulamin-accept" class="mt-1 shrink-0 rounded border-zinc-600 bg-zinc-900 accent-[#C19A6B]" onchange="var b=document.getElementById('training-inquiry-btn');if(b)b.disabled=!this.checked;">
+                            <span>Zapoznałem/am się z <a href="https://dokumenty.strzelca.pl#regulamin-szkolen" target="_blank" rel="noopener noreferrer" class="text-[#C19A6B] hover:underline">Regulaminem Szkoleń Strzeleckich</a> i akceptuję jego postanowienia, w tym kary umowne za naruszenie zakazu rozpowszechniania materiałów szkoleniowych.</span>
+                        </label>
+                    </div>`
+                    : "";
 
                 // Pobierz zdjęcia szkolenia
                 let images = [];
@@ -1022,6 +1037,7 @@ const firebaseConfig = {
                 <div class="text-zinc-400 text-sm mb-8 custom-render details-scroll-area leading-relaxed">
                     ${descriptionHTML}
                 </div>
+                ${regulaminBlock}
                 <div class="flex justify-between items-center border-t border-zinc-800 pt-6">
                     <p class="text-2xl font-bold coyote-text">${t.price} PLN</p>
                     ${buttonHtml}

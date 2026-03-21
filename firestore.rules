@@ -244,6 +244,33 @@ service cloud.firestore {
     }
 
     // =============================================================================
+    // BAZAR OFFERS (ogłoszenia C2C)
+    // =============================================================================
+    match /bazarOffers/{offerId} {
+      allow read: if true;
+
+      allow create: if isAuthenticated() &&
+        request.resource.data.seller_id == request.auth.uid &&
+        request.resource.data.status == 'PENDING';
+
+      allow update: if isAuthenticated() && (
+        isAdminOrSuperAdmin() ||
+        (resource.data.seller_id == request.auth.uid &&
+         request.resource.data.seller_id == resource.data.seller_id &&
+         request.resource.data.status == resource.data.status &&
+         request.resource.data.is_pinned == resource.data.is_pinned &&
+         request.resource.data.approved_at == resource.data.approved_at &&
+         request.resource.data.expires_at == resource.data.expires_at &&
+         request.resource.data.last_refreshed_at == resource.data.last_refreshed_at)
+      );
+
+      allow delete: if isAuthenticated() && (
+        isAdminOrSuperAdmin() ||
+        resource.data.seller_id == request.auth.uid
+      );
+    }
+
+    // =============================================================================
     // CONTENT: PRODUCTS, TRAININGS, EVENTS, CHARITY
     // =============================================================================
     match /products/{productId} {

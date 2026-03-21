@@ -3,33 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Cookies/zgody + warunkowe ładowanie analityki -->
     <script src="https://strzelca.pl/consent.js?v=2026-02-06-1"></script>
-    <meta name="description" content="Bazar strzelca.pl - portal aukcyjny dla strzelców. Kupuj i sprzedawaj broń, amunicję i akcesoria strzeleckie.">
-    <meta name="keywords" content="bazar strzelca.pl, aukcje strzeleckie, broń, amunicja, akcesoria, sprzedaż, kupno">
+    <meta name="description" content="Bazar strzelca.pl - portal ogłoszeniowy dla strzelców. Kupuj i sprzedawaj broń, amunicję i akcesoria strzeleckie.">
+    <meta name="keywords" content="bazar strzelca.pl, ogłoszenia strzeleckie, broń, amunicja, akcesoria, sprzedaż, kupno">
     <meta name="author" content="Strzelca.pl">
     <meta name="robots" content="index, follow">
-
-    <!-- Open Graph dla Facebook -->
     <meta property="og:title" content="Bazar STRZELCA.PL">
-    <meta property="og:description" content="Bazar strzelca.pl - kupuj i sprzedawaj broń, amunicję i akcesoria. Najlepsze oferty dla strzelców.">
+    <meta property="og:description" content="Bazar strzelca.pl - kupuj i sprzedawaj broń, amunicję i akcesoria w zaufanym środowisku.">
     <meta property="og:image" content="https://strzelca.pl/tlo:logo/logo.czarne.png">
     <meta property="og:url" content="https://bazar.strzelca.pl">
     <meta property="og:type" content="website">
-
-    <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="https://strzelca.pl/ikona.svg">
     <link rel="apple-touch-icon" href="https://strzelca.pl/ikona.svg">
-
     <title>Bazar STRZELCA.PL</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        :root { --coyote: #C19A6B; }
+        :root {
+            --coyote: #C19A6B;
+            --olive: #6B7B3C;
+            --brown: #8B6914;
+            --dark-bg: #0a0a0a;
+        }
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: #0a0a0a;
+            background-color: var(--dark-bg);
             color: #e5e5e5;
             margin: 0;
             overflow-x: hidden;
@@ -37,358 +36,1230 @@
         .main-wrapper {
             min-height: 100vh;
             width: 100%;
-            background: linear-gradient(rgba(10,10,10,0.1) 0%, rgba(10,10,10,0.4) 50%, #0a0a0a 100%), url('https://strzelca.pl/tlo.png');
+            background: linear-gradient(rgba(10,10,10,0.55) 0%, #0a0a0a 40%), url('https://strzelca.pl/tlo.png');
             background-size: cover;
             background-position: top center;
+            background-attachment: fixed;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
         }
-        .coyote-text { color: var(--coyote); font-family: 'Orbitron', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
-        .auction-card {
-            background: rgba(20, 20, 20, 0.9);
-            border: 1px solid #333;
-            transition: 0.3s;
+        .coyote-text { color: var(--coyote); font-family: 'Orbitron', sans-serif; }
+
+        .cat-btn { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; white-space: nowrap; }
+        .cat-btn:hover { transform: translateY(-1px); }
+        .cat-btn.active { border-color: currentColor; box-shadow: 0 0 12px currentColor; }
+        .cat-pistolety { background: rgba(193,154,107,0.15); color: #C19A6B; }
+        .cat-pistolety.active, .cat-pistolety:hover { background: rgba(193,154,107,0.3); }
+        .cat-rewolwery { background: rgba(139,105,20,0.15); color: #D4A744; }
+        .cat-rewolwery.active, .cat-rewolwery:hover { background: rgba(139,105,20,0.3); }
+        .cat-karabiny { background: rgba(107,123,60,0.15); color: #8FA04E; }
+        .cat-karabiny.active, .cat-karabiny:hover { background: rgba(107,123,60,0.3); }
+        .cat-gladkolufowa { background: rgba(160,120,80,0.15); color: #C8955A; }
+        .cat-gladkolufowa.active, .cat-gladkolufowa:hover { background: rgba(160,120,80,0.3); }
+        .cat-czarnoprochowa { background: rgba(120,100,80,0.15); color: #B8A068; }
+        .cat-czarnoprochowa.active, .cat-czarnoprochowa:hover { background: rgba(120,100,80,0.3); }
+        .cat-amunicja { background: rgba(180,140,60,0.15); color: #D4B03C; }
+        .cat-amunicja.active, .cat-amunicja:hover { background: rgba(180,140,60,0.3); }
+        .cat-akcesoria { background: rgba(100,140,100,0.15); color: #7AA87A; }
+        .cat-akcesoria.active, .cat-akcesoria:hover { background: rgba(100,140,100,0.3); }
+        .cat-inne { background: rgba(140,140,140,0.15); color: #A0A0A0; }
+        .cat-inne.active, .cat-inne:hover { background: rgba(140,140,140,0.3); }
+
+        .offer-card {
+            background: rgba(17, 17, 17, 0.85);
+            backdrop-filter: blur(6px);
+            border: 1px solid #1f1f1f;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.25s ease;
+            cursor: pointer;
+            flex: 0 0 calc((100% - 60px) / 4);
+            min-width: 0;
         }
-        .auction-card:hover {
-            border-color: var(--coyote);
-            transform: translateY(-2px);
+        .offer-card:hover { border-color: rgba(193,154,107,0.5); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+        .offer-card-img { height: 180px; overflow: hidden; background: #080808; }
+        .offer-card-img img { width: 100%; height: 100%; object-fit: cover; }
+
+        .section-carousel { position: relative; }
+        .carousel-track { display: flex; gap: 20px; transition: transform 0.3s ease; overflow: hidden; }
+        .carousel-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; background: rgba(10,10,10,0.9); border: 1px solid #2b2b2b; color: #f4f4f5; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; transition: all 0.2s; }
+        .carousel-nav-btn:hover { background: rgba(193,154,107,0.95); color: #050505; border-color: var(--coyote); }
+        .carousel-nav-btn.prev { left: -16px; }
+        .carousel-nav-btn.next { right: -16px; }
+
+        .show-all-card { background: rgba(193,154,107,0.08); border: 2px dashed rgba(193,154,107,0.3); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 260px; cursor: pointer; transition: all 0.25s; flex: 0 0 calc((100% - 60px) / 4); }
+        .show-all-card:hover { background: rgba(193,154,107,0.15); border-color: var(--coyote); }
+
+        .badge-pinned { background: var(--coyote); color: #000; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; position: absolute; top: 8px; left: 8px; z-index: 5; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-condition { position: absolute; top: 8px; right: 8px; z-index: 5; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+        .badge-nowy { background: rgba(34,197,94,0.9); color: #fff; }
+        .badge-uzywany { background: rgba(234,179,8,0.9); color: #000; }
+
+        .gallery-main { position: relative; width: 100%; height: 400px; background: #080808; border-radius: 12px; overflow: hidden; }
+        .gallery-main img { width: 100%; height: 100%; object-fit: contain; }
+        .gallery-thumb { width: 64px; height: 64px; border-radius: 8px; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: border-color 0.2s; }
+        .gallery-thumb.active { border-color: var(--coyote); }
+        .gallery-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .gallery-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.7); color: white; border: none; padding: 12px 16px; cursor: pointer; font-size: 18px; z-index: 10; transition: background 0.3s; }
+        .gallery-nav:hover { background: rgba(193,154,107,0.9); }
+        .gallery-nav.prev { left: 10px; border-radius: 0 8px 8px 0; }
+        .gallery-nav.next { right: 10px; border-radius: 8px 0 0 8px; }
+
+        .filter-bar { background: rgba(15,15,15,0.9); backdrop-filter: blur(10px); border: 1px solid #1f1f1f; border-radius: 16px; }
+        .filter-input { background: #111 !important; border: 1px solid #222 !important; color: white !important; padding: 10px 14px !important; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s; }
+        .filter-input:focus { border-color: var(--coyote) !important; }
+        .filter-select { background: #111; border: 1px solid #222; color: white; padding: 10px 14px; border-radius: 8px; font-size: 14px; cursor: pointer; outline: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23999' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 20px; padding-right: 36px; }
+        .filter-select:focus { border-color: var(--coyote); }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(8px); z-index: 200; display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 2rem 1rem; }
+        .modal-panel { background: #111; border: 1px solid #222; border-radius: 16px; max-width: 900px; width: 100%; position: relative; }
+
+        @media (max-width: 1024px) {
+            .offer-card, .show-all-card { flex: 0 0 calc((100% - 40px) / 3); }
         }
-        .coming-soon-section {
-            background: rgba(15, 15, 15, 0.95);
-            border: 2px solid var(--coyote);
-            border-radius: 20px;
+        @media (max-width: 768px) {
+            .offer-card, .show-all-card { flex: 0 0 calc((100% - 20px) / 2); }
+            .gallery-main { height: 280px; }
+        }
+        @media (max-width: 480px) {
+            .offer-card, .show-all-card { flex: 0 0 100%; }
+            .gallery-main { height: 220px; }
         }
     </style>
-    <!-- Wspólne poprawki responsywności -->
     <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-02-06-1" />
 </head>
 <body>
     <div class="main-wrapper">
-        <!-- Panel użytkownika -->
         <div id="user-panel" class="fixed top-4 right-4 z-50 hidden">
             <div class="relative">
-                <!-- Avatar - widoczny zawsze -->
-                <button
-                    id="user-avatar-button"
-                    class="w-12 h-12 rounded-full bg-coyote flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-80 transition shadow-lg overflow-hidden"
-                    onclick="toggleUserMenu()"
-                >
-                    <div id="user-avatar" class="w-full h-full flex items-center justify-center">
-                        <i class="fa-solid fa-user"></i>
-                    </div>
+                <button id="user-avatar-button" class="w-12 h-12 rounded-full bg-[#C19A6B] flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-80 transition shadow-lg overflow-hidden" onclick="toggleUserMenu()">
+                    <div id="user-avatar" class="w-full h-full flex items-center justify-center"><i class="fa-solid fa-user"></i></div>
                 </button>
-                
-                <!-- Menu rozwijane -->
-                <div
-                    id="user-menu"
-                    class="absolute top-14 right-0 bg-zinc-900/95 backdrop-blur-md border border-zinc-700 rounded-2xl p-4 shadow-2xl min-w-[200px] hidden"
-                >
+                <div id="user-menu" class="absolute top-14 right-0 bg-zinc-900/95 backdrop-blur-md border border-zinc-700 rounded-2xl p-4 shadow-2xl min-w-[220px] hidden">
                     <div class="space-y-2">
-                        <div
-                            id="user-display-name"
-                            class="text-white font-semibold text-sm mb-3 pb-3 border-b border-zinc-700"
-                        ></div>
-                        <a
-                            id="profile-link"
-                            href="https://konto.strzelca.pl/profil.html"
-                            class="block text-zinc-300 hover:text-coyote transition text-sm"
-                        >
-                            <i class="fa-solid fa-user mr-2"></i>Mój profil
-                        </a>
-                        <button onclick="logout()" class="block w-full text-left text-zinc-300 hover:text-red-400 transition text-sm">
-                            <i class="fa-solid fa-sign-out-alt mr-2"></i>Wyloguj się
-                        </button>
+                        <div id="user-display-name" class="text-white font-semibold text-sm mb-3 pb-3 border-b border-zinc-700"></div>
+                        <a href="#" onclick="event.preventDefault(); showMyOffers();" class="block text-zinc-300 hover:text-[#C19A6B] transition text-sm"><i class="fa-solid fa-tags mr-2"></i>Moje oferty</a>
+                        <a id="profile-link" href="https://konto.strzelca.pl/profil.html" class="block text-zinc-300 hover:text-[#C19A6B] transition text-sm"><i class="fa-solid fa-user mr-2"></i>Moj profil</a>
+                        <button onclick="logout()" class="block w-full text-left text-zinc-300 hover:text-red-400 transition text-sm"><i class="fa-solid fa-sign-out-alt mr-2"></i>Wyloguj sie</button>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- Przycisk logowania dla niezalogowanych -->
         <div id="login-button" class="fixed top-4 right-4 z-50">
-            <a href="https://konto.strzelca.pl/login.html" class="bg-coyote text-black w-10 h-10 rounded-full flex items-center justify-center hover:bg-white transition shadow-lg" title="Zaloguj się">
-                <i class="fa-solid fa-sign-in-alt text-lg"></i>
-            </a>
+            <a href="https://konto.strzelca.pl/login.html" class="bg-[#C19A6B] text-black w-10 h-10 rounded-full flex items-center justify-center hover:bg-white transition shadow-lg" title="Zaloguj sie"><i class="fa-solid fa-sign-in-alt text-lg"></i></a>
         </div>
 
-        <!-- Nawigacja -->
-        <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative" role="navigation" aria-label="Nawigacja główna">
-            <a href="https://strzelca.pl" aria-label="Powrót do centrum dowodzenia" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl z-[60]">
-                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-            </a>
+        <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative" role="navigation">
+            <a href="https://strzelca.pl" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl z-[60]"><i class="fa-solid fa-arrow-left"></i></a>
             <div class="container mx-auto px-6 flex justify-center items-center">
-                <div class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400">
+                <a href="https://bazar.strzelca.pl" class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400 hover:text-white transition no-underline">
                     BAZAR.<span class="coyote-text">STRZELCA</span>.PL
-                </div>
+                </a>
             </div>
+            <button id="btn-add-offer" onclick="openCreateOfferModal()" class="absolute right-16 md:right-20 bg-[#C19A6B] text-black px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-white transition hidden">
+                <i class="fa-solid fa-plus mr-1"></i><span class="hidden sm:inline">Dodaj oferte</span>
+            </button>
         </nav>
 
-        <header class="container mx-auto px-6 text-center pt-12 md:pt-20">
-            <h1 class="text-4xl md:text-6xl font-black uppercase italic font-[Orbitron] tracking-tighter">
-                Portal <span class="coyote-text">AUKCYJNY</span>
-            </h1>
-            <p class="text-xl text-zinc-400 mt-4 max-w-2xl mx-auto">
-                Kupuj i sprzedawaj broń, amunicję i akcesoria strzeleckie w bezpiecznym środowisku
-            </p>
-        </header>
-
-        <main class="container mx-auto px-6 py-12 flex-grow">
-            <!-- Sekcja Wkrótce Dostępne -->
-            <section class="coming-soon-section p-12 text-center">
-                <h2 class="text-3xl md:text-4xl font-black uppercase italic font-[Orbitron] mb-8 coyote-text">
-                    <i class="fa-solid fa-gavel mr-4"></i>
-                    Bazar wkrótce dostępny
-                </h2>
-
-                <p class="text-lg text-zinc-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-                    Portal aukcyjny dla strzelców jest w trakcie intensywnego rozwoju. Pracujemy nad stworzeniem
-                    bezpiecznej i intuicyjnej platformy, gdzie będziesz mógł kupować i sprzedawać broń, amunicję
-                    oraz akcesoria strzeleckie w zaufanym środowisku.
-                </p>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                    <div class="auction-card p-6 rounded-xl">
-                        <div class="text-4xl mb-4 text-coyote"><i class="fa-solid fa-shield-alt"></i></div>
-                        <h3 class="text-xl font-bold uppercase mb-2 font-[Orbitron]">Bezpieczne transakcje</h3>
-                        <p class="text-zinc-300 text-sm">Gwarantujemy bezpieczeństwo wszystkich transakcji i ochronę danych użytkowników.</p>
+        <div class="container mx-auto px-4 md:px-6 py-4">
+            <div class="filter-bar p-4 mb-6">
+                <div class="flex flex-wrap items-center gap-3 mb-3">
+                    <div class="flex-1 min-w-[200px]">
+                        <input type="text" id="search-input" class="filter-input w-full" placeholder="Szukaj ofert..." onkeydown="if(event.key==='Enter')applyFilters()">
                     </div>
-                    <div class="auction-card p-6 rounded-xl">
-                        <div class="text-4xl mb-4 text-coyote"><i class="fa-solid fa-users"></i></div>
-                        <h3 class="text-xl font-bold uppercase mb-2 font-[Orbitron]">Społeczność strzelców</h3>
-                        <p class="text-zinc-300 text-sm">Dołącz do największej społeczności strzelców w Polsce i Europie.</p>
+                    <select id="filter-sort" class="filter-select" onchange="applyFilters()">
+                        <option value="newest">Najnowsze</option>
+                        <option value="price_asc">Cena: rosnaco</option>
+                        <option value="price_desc">Cena: malejaco</option>
+                        <option value="oldest">Najstarsze</option>
+                    </select>
+                    <button onclick="toggleAdvancedFilters()" class="text-zinc-400 hover:text-[#C19A6B] transition text-sm px-3 py-2 border border-zinc-700 rounded-lg">
+                        <i class="fa-solid fa-sliders mr-1"></i>Filtry
+                    </button>
+                    <button onclick="applyFilters()" class="bg-[#C19A6B] text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-white transition">
+                        <i class="fa-solid fa-search mr-1"></i>Szukaj
+                    </button>
+                </div>
+                <div id="advanced-filters" class="hidden">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                        <div>
+                            <label class="text-xs text-zinc-500 mb-1 block">Cena od (PLN)</label>
+                            <input type="number" id="filter-price-min" class="filter-input w-full" placeholder="0" min="0">
+                        </div>
+                        <div>
+                            <label class="text-xs text-zinc-500 mb-1 block">Cena do (PLN)</label>
+                            <input type="number" id="filter-price-max" class="filter-input w-full" placeholder="99999" min="0">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="text-xs text-zinc-500 mb-1 block">Wojewodztwa (wielokrotny wybor)</label>
+                            <div id="woj-filter-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-36 overflow-y-auto pr-1 border border-zinc-800 rounded-lg p-2 bg-black/30"></div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-zinc-500 mb-1 block">Stan</label>
+                            <select id="filter-condition" class="filter-select w-full">
+                                <option value="">Wszystkie</option>
+                                <option value="NOWY">Nowy</option>
+                                <option value="UZYWANY">Uzywany</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="auction-card p-6 rounded-xl">
-                        <div class="text-4xl mb-4 text-coyote"><i class="fa-solid fa-trophy"></i></div>
-                        <h3 class="text-xl font-bold uppercase mb-2 font-[Orbitron]">Najlepsze oferty</h3>
-                        <p class="text-zinc-300 text-sm">Znajdź unikalne egzemplarze broni i akcesoria w atrakcyjnych cenach.</p>
+                    <div class="flex justify-end">
+                        <button onclick="clearFilters()" class="text-zinc-400 hover:text-white text-xs mr-3">Wyczysc filtry</button>
                     </div>
                 </div>
-
-                <div class="text-center">
-                    <p class="text-zinc-400 mb-6">
-                        Chcesz być pierwszy, kiedy uruchomimy platformę?
-                    </p>
-                    <a href="https://kontakt.strzelca.pl?topic=Zapisz mnie do newslettera bazaru" class="inline-block bg-coyote text-black px-8 py-4 uppercase text-sm font-black rounded-lg hover:bg-white transition shadow-lg">
-                        <i class="fa-solid fa-envelope mr-2"></i>Zapisz się do powiadomień
-                    </a>
+                <div class="flex flex-wrap gap-2" id="category-buttons">
+                    <button class="cat-btn cat-pistolety" data-cat="PISTOLET" onclick="toggleCategory(this)">Pistolety</button>
+                    <button class="cat-btn cat-rewolwery" data-cat="REWOLWER" onclick="toggleCategory(this)">Rewolwery</button>
+                    <button class="cat-btn cat-karabiny" data-cat="KARABIN" onclick="toggleCategory(this)">Karabiny</button>
+                    <button class="cat-btn cat-gladkolufowa" data-cat="BRON_GLADKOLUFOWA" onclick="toggleCategory(this)">Bron gladkolufowa</button>
+                    <button class="cat-btn cat-czarnoprochowa" data-cat="BRON_CZARNOPROCHOWA" onclick="toggleCategory(this)">Bron czarnoprochowa</button>
+                    <button class="cat-btn cat-amunicja" data-cat="AMUNICJA" onclick="toggleCategory(this)">Amunicja</button>
+                    <button class="cat-btn cat-akcesoria" data-cat="AKCESORIA" onclick="toggleCategory(this)">Akcesoria</button>
+                    <button class="cat-btn cat-inne" data-cat="INNE" onclick="toggleCategory(this)">Inne</button>
                 </div>
-            </section>
+            </div>
+        </div>
+
+        <main class="container mx-auto px-4 md:px-6 pb-12 flex-grow" id="main-content">
+            <div id="carousels-container"></div>
+            <div id="filtered-results" class="hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold"><span id="filtered-title">Wyniki wyszukiwania</span> <span class="text-zinc-500 text-sm" id="filtered-count"></span></h2>
+                    <button onclick="showCarousels()" class="text-zinc-400 hover:text-[#C19A6B] text-sm"><i class="fa-solid fa-arrow-left mr-1"></i>Powrot do kategorii</button>
+                </div>
+                <div id="filtered-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"></div>
+                <div id="filtered-empty" class="text-center py-16 text-zinc-500 hidden">
+                    <i class="fa-solid fa-search text-4xl mb-4"></i>
+                    <p>Brak ofert spelniajacych kryteria</p>
+                </div>
+            </div>
+            <div id="loading-main" class="text-center py-16 text-zinc-400">
+                <i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i>
+                <p class="text-sm uppercase tracking-widest">Ladowanie ofert...</p>
+            </div>
         </main>
 
         <footer class="w-full py-10 text-center text-zinc-800 text-[10px] uppercase font-bold tracking-[0.4em]">
             <a href="https://strzelca.pl" class="hover:text-zinc-500 transition">STRZELCA.PL</a> |
+            <a href="https://dokumenty.strzelca.pl#regulamin-bazar" class="hover:text-zinc-500 transition ml-4">Regulamin bazaru</a> |
             <a href="?cookies=1" class="hover:text-zinc-500 transition ml-4">Ustawienia cookies</a>
         </footer>
     </div>
 
+    <div id="offer-detail-modal" class="hidden"></div>
+    <div id="create-offer-modal" class="hidden"></div>
+    <div id="my-offers-modal" class="hidden"></div>
+
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { initializeFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { initializeFirestore, getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
 
-        
-      async function getFirebaseApiKey() {
-        const urls = ["/api/firebase-config"];
-
-        for (const url of urls) {
-          try {
-            const res = await fetch(url, { cache: "no-store" });
-            if (!res.ok) continue;
-            const data = await res.json().catch(() => null);
-            if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
-              return data.apiKey;
+        async function getFirebaseApiKey() {
+            const cachedKey = localStorage.getItem("firebase_web_api_key");
+            if (cachedKey) return cachedKey;
+            const urls = ["https://strzelca.pl/api/firebase-config", "/api/firebase-config"];
+            for (const url of urls) {
+                try {
+                    const res = await fetch(url, { cache: "force-cache" });
+                    if (!res.ok) continue;
+                    const data = await res.json().catch(() => null);
+                    if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
+                        localStorage.setItem("firebase_web_api_key", data.apiKey);
+                        return data.apiKey;
+                    }
+                } catch (_) {}
             }
-          } catch (_) {
-            // ignore and try next url
-          }
+            throw new Error("Nie udalo sie pobrac FIREBASE_WEB_API_KEY");
         }
 
-        throw new Error("Nie udało się pobrać FIREBASE_WEB_API_KEY z /api/firebase-config");
-      }
-const firebaseConfig = {
-            apiKey: await getFirebaseApiKey(),
+        const baseFirebaseConfig = {
             authDomain: "strzelca-pl.firebaseapp.com",
             projectId: "strzelca-pl",
             storageBucket: "strzelca-pl.appspot.com",
             messagingSenderId: "511362047688",
-            appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
-            measurementId: "G-9EJ2R3JPVD"
+            appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = initializeFirestore(app, {
-            experimentalAutoDetectLongPolling: true,
-            useFetchStreams: true,
-        });
+        let app;
+        const existingApps = getApps();
+        if (existingApps.length > 0) { app = getApp(); } else {
+            const apiKey = await getFirebaseApiKey();
+            app = initializeApp({ apiKey, ...baseFirebaseConfig });
+        }
+
+        let db;
+        try { db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true, useFetchStreams: true }); } catch (_) { db = getFirestore(app); }
         const auth = getAuth(app);
 
-        // Ustaw trwałość sesji na browserLocalPersistence dla wszystkich subdomen
-        await setPersistence(auth, browserLocalPersistence);
+        window.addEventListener('unhandledrejection', function(e) {
+            if (e.reason && e.reason.message && (e.reason.message.includes('CORS') || e.reason.message.includes('firestore.googleapis.com'))) { e.preventDefault(); }
+        });
 
-        // SSO między subdomenami: jeśli tu nie ma usera, spróbuj zalogować z cookie (.strzelca.pl)
-        try {
-            await ensureFirebaseSSO(auth);
-        } catch (e) {
-            console.warn("SSO ensure failed (ignored):", e?.message || e);
-        }
+        await setPersistence(auth, browserLocalPersistence);
+        try { await ensureFirebaseSSO(auth); } catch (_) {}
 
         let currentUser = null;
+        const API_BASE = 'https://strzelca.pl/api/bazar';
 
-        // Funkcja logowania aktywności
-        async function logActivity(type, userId, userName, details, timestamp = null) {
+        const CATEGORY_LABELS = {
+            PISTOLET: 'Pistolety', REWOLWER: 'Rewolwery', KARABIN: 'Karabiny',
+            BRON_GLADKOLUFOWA: 'Bron gladkolufowa', BRON_CZARNOPROCHOWA: 'Bron czarnoprochowa',
+            AMUNICJA: 'Amunicja', AKCESORIA: 'Akcesoria', INNE: 'Inne'
+        };
+        const CATEGORY_CSS = {
+            PISTOLET: 'cat-pistolety', REWOLWER: 'cat-rewolwery', KARABIN: 'cat-karabiny',
+            BRON_GLADKOLUFOWA: 'cat-gladkolufowa', BRON_CZARNOPROCHOWA: 'cat-czarnoprochowa',
+            AMUNICJA: 'cat-amunicja', AKCESORIA: 'cat-akcesoria', INNE: 'cat-inne'
+        };
+        const CATEGORIES_ORDER = ['PISTOLET','REWOLWER','KARABIN','BRON_GLADKOLUFOWA','BRON_CZARNOPROCHOWA','AMUNICJA','AKCESORIA','INNE'];
+        const WOJ_LABELS = {
+            'dolnoslaskie':'Dolnoslaskie','kujawsko-pomorskie':'Kujawsko-pomorskie','lubelskie':'Lubelskie',
+            'lubuskie':'Lubuskie','lodzkie':'Lodzkie','malopolskie':'Malopolskie','mazowieckie':'Mazowieckie',
+            'opolskie':'Opolskie','podkarpackie':'Podkarpackie','podlaskie':'Podlaskie','pomorskie':'Pomorskie',
+            'slaskie':'Slaskie','swietokrzyskie':'Swietokrzyskie','warminsko-mazurskie':'Warminsko-mazurskie',
+            'wielkopolskie':'Wielkopolskie','zachodniopomorskie':'Zachodniopomorskie'
+        };
+
+        async function getAuthHeaders() {
+            if (!auth.currentUser) return {};
             try {
-                const activityData = {
-                    type: type,
-                    userId: userId,
-                    userName: userName,
-                    details: details,
-                    timestamp: timestamp || new Date()
-                };
+                const token = await auth.currentUser.getIdToken();
+                return { 'Authorization': `Bearer ${token}` };
+            } catch (_) { return {}; }
+        }
 
-                const { addDoc, collection } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-                await addDoc(collection(db, "activityLogs"), activityData);
+        function buildOfferCardHTML(offer) {
+            const condLabel = offer.condition === 'NOWY' ? 'Nowy' : 'Uzywany';
+            const condClass = offer.condition === 'NOWY' ? 'badge-nowy' : 'badge-uzywany';
+            const imgSrc = offer.mainImage || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" fill="%23333" viewBox="0 0 24 24"%3E%3Cpath d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/%3E%3C/svg%3E';
+            const loc = [offer.miejscowosc, WOJ_LABELS[offer.wojewodztwo] || offer.wojewodztwo].filter(Boolean).join(', ');
 
-                console.log('Aktywność zalogowana:', activityData);
-            } catch (error) {
-                console.error('Błąd podczas logowania aktywności:', error);
+            return `<div class="offer-card" onclick="window.showOfferDetail('${offer.id}')">
+                <div class="offer-card-img relative">
+                    ${offer.is_pinned ? '<span class="badge-pinned"><i class="fa-solid fa-thumbtack mr-1"></i>Wyroznione</span>' : ''}
+                    <span class="badge-condition ${condClass}">${condLabel}</span>
+                    <img src="${imgSrc}" alt="${(offer.title||'').replace(/"/g,'&quot;')}" loading="lazy">
+                    ${offer.imageCount > 1 ? `<span class="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded"><i class="fa-solid fa-images mr-1"></i>${offer.imageCount}</span>` : ''}
+                </div>
+                <div class="p-3">
+                    <h3 class="text-sm font-bold text-white mb-1 line-clamp-2 leading-tight">${offer.title || 'Bez tytulu'}</h3>
+                    <p class="text-[#C19A6B] font-bold text-lg">${offer.price ? offer.price.toLocaleString('pl-PL') + ' PLN' : 'Cena do uzgodnienia'}</p>
+                    <p class="text-zinc-500 text-xs mt-1"><i class="fa-solid fa-location-dot mr-1"></i>${loc || 'Brak lokalizacji'}</p>
+                </div>
+            </div>`;
+        }
+
+        function buildSectionCarousel(title, offers, categoryKey) {
+            if (!offers || offers.length === 0) return '';
+            const catCss = CATEGORY_CSS[categoryKey] || '';
+            const trackId = `track-${categoryKey || 'pinned'}`;
+            const cardsHTML = offers.map(o => buildOfferCardHTML(o)).join('');
+            let showAllCard = '';
+            if (categoryKey === 'PINNED') {
+                showAllCard = `<div class="show-all-card" onclick="showPinnedList()">
+                <i class="fa-solid fa-thumbtack text-2xl text-[#C19A6B] mb-2"></i>
+                <span class="text-zinc-400 text-sm font-semibold">Pokaz wszystkie wyroznione</span>
+                <span class="text-zinc-500 text-xs">Tylko przypiete oferty</span>
+            </div>`;
+            } else if (categoryKey) {
+                showAllCard = `<div class="show-all-card" onclick="filterByCategory('${categoryKey}')">
+                <i class="fa-solid fa-arrow-right text-2xl text-[#C19A6B] mb-2"></i>
+                <span class="text-zinc-400 text-sm font-semibold">Pokaz wszystkie</span>
+                <span class="text-zinc-500 text-xs">${CATEGORY_LABELS[categoryKey] || categoryKey}</span>
+            </div>`;
             }
+
+            return `<div class="mb-10 section-carousel" data-track="${trackId}">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg md:text-xl font-bold uppercase tracking-wider font-[Orbitron] text-zinc-300">
+                        ${categoryKey === 'PINNED' ? '<i class="fa-solid fa-thumbtack mr-2 text-[#C19A6B]"></i>' : ''}${title}
+                    </h2>
+                </div>
+                <div class="relative">
+                    <button class="carousel-nav-btn prev" onclick="moveCarousel('${trackId}', -1)"><i class="fa-solid fa-chevron-left"></i></button>
+                    <div class="overflow-hidden">
+                        <div class="carousel-track" id="${trackId}">${cardsHTML}${showAllCard}</div>
+                    </div>
+                    <button class="carousel-nav-btn next" onclick="moveCarousel('${trackId}', 1)"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>`;
         }
 
-        // Funkcja pomocnicza do generowania domyślnego awatara
-        function getDefaultAvatar(gender) {
-            return '<i class="fa-solid fa-user text-white"></i>';
+        window.moveCarousel = (trackId, dir) => {
+            const track = document.getElementById(trackId);
+            if (!track) return;
+            const card = track.querySelector('.offer-card, .show-all-card');
+            if (!card) return;
+            const cardW = card.offsetWidth + 20;
+            const viewW = track.parentElement.offsetWidth;
+            const maxScroll = track.scrollWidth - viewW;
+            const current = parseInt(track.dataset.scroll || '0');
+            let next = current + (dir * cardW * 2);
+            next = Math.max(0, Math.min(next, maxScroll));
+            track.style.transform = `translateX(-${next}px)`;
+            track.dataset.scroll = next;
+        };
+
+        let allOffers = [];
+
+        async function loadAllOffers() {
+            try {
+                const res = await fetch(`${API_BASE}?limit=100`);
+                const data = await res.json();
+                if (data.success) allOffers = data.offers;
+            } catch (e) { console.error('Error loading offers:', e); }
         }
 
-        // Funkcja rozwijania/zwijania menu użytkownika
-        window.toggleUserMenu = () => {
-            const userMenu = document.getElementById("user-menu");
-            if (userMenu) {
-                userMenu.classList.toggle("hidden");
+        function renderCarousels() {
+            const container = document.getElementById('carousels-container');
+            const loading = document.getElementById('loading-main');
+            if (loading) loading.classList.add('hidden');
+
+            let html = '';
+
+            const pinned = allOffers.filter(o => o.is_pinned && o.status === 'ACTIVE');
+            if (pinned.length > 0) {
+                html += buildSectionCarousel('Wyroznione', pinned.slice(0, 10), 'PINNED');
+            }
+
+            for (const cat of CATEGORIES_ORDER) {
+                const catOffers = allOffers.filter(o => o.category === cat && o.status === 'ACTIVE');
+                if (catOffers.length > 0) {
+                    html += buildSectionCarousel(CATEGORY_LABELS[cat], catOffers.slice(0, 10), cat);
+                }
+            }
+
+            if (!html) {
+                html = `<div class="text-center py-20 text-zinc-500">
+                    <i class="fa-solid fa-store text-5xl mb-4"></i>
+                    <p class="text-lg">Brak aktywnych ofert</p>
+                    <p class="text-sm mt-2">Badz pierwszy - dodaj swoja oferte!</p>
+                </div>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function showCarousels() {
+            document.getElementById('carousels-container').classList.remove('hidden');
+            document.getElementById('filtered-results').classList.add('hidden');
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            window.currentCategoryFilter = null;
+        }
+
+        window.showCarousels = showCarousels;
+
+        window.currentCategoryFilter = null;
+
+        window.toggleCategory = (btn) => {
+            const cat = btn.dataset.cat;
+            if (window.currentCategoryFilter === cat) {
+                showCarousels();
+                return;
+            }
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            window.currentCategoryFilter = cat;
+            applyFilters();
+        };
+
+        window.filterByCategory = (cat) => {
+            const btn = document.querySelector(`.cat-btn[data-cat="${cat}"]`);
+            if (btn) {
+                document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            }
+            window.currentCategoryFilter = cat;
+            applyFilters();
+        };
+
+        window.toggleAdvancedFilters = () => {
+            document.getElementById('advanced-filters').classList.toggle('hidden');
+        };
+
+        const WOJEWO_FILTER_OPTS = [
+            ['dolnoslaskie','Dolnoslaskie'],['kujawsko-pomorskie','Kujawsko-pomorskie'],['lubelskie','Lubelskie'],
+            ['lubuskie','Lubuskie'],['lodzkie','Lodzkie'],['malopolskie','Malopolskie'],['mazowieckie','Mazowieckie'],
+            ['opolskie','Opolskie'],['podkarpackie','Podkarpackie'],['podlaskie','Podlaskie'],['pomorskie','Pomorskie'],
+            ['slaskie','Slaskie'],['swietokrzyskie','Swietokrzyskie'],['warminsko-mazurskie','Warminsko-mazurskie'],
+            ['wielkopolskie','Wielkopolskie'],['zachodniopomorskie','Zachodniopomorskie']
+        ];
+
+        function initWojFilterGrid() {
+            const grid = document.getElementById('woj-filter-grid');
+            if (!grid || grid.dataset.ready) return;
+            grid.dataset.ready = '1';
+            grid.innerHTML = WOJEWO_FILTER_OPTS.map(([v,l]) =>
+                `<label class="flex items-center gap-2 text-[11px] text-zinc-400 cursor-pointer hover:text-zinc-200"><input type="checkbox" class="woj-filter-cb accent-[#C19A6B]" value="${v}">${l}</label>`
+            ).join('');
+        }
+
+        function getSelectedWojewodztwa() {
+            return [...document.querySelectorAll('.woj-filter-cb:checked')].map(el => el.value);
+        }
+
+        window.clearFilters = () => {
+            document.getElementById('search-input').value = '';
+            document.getElementById('filter-price-min').value = '';
+            document.getElementById('filter-price-max').value = '';
+            document.querySelectorAll('.woj-filter-cb').forEach(c => { c.checked = false; });
+            document.getElementById('filter-condition').value = '';
+            document.getElementById('filter-sort').value = 'newest';
+            window.currentCategoryFilter = null;
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            showCarousels();
+        };
+
+        window.showPinnedList = async () => {
+            initWojFilterGrid();
+            document.getElementById('carousels-container').classList.add('hidden');
+            document.getElementById('filtered-results').classList.remove('hidden');
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            window.currentCategoryFilter = null;
+
+            const grid = document.getElementById('filtered-grid');
+            const empty = document.getElementById('filtered-empty');
+            const title = document.getElementById('filtered-title');
+            const count = document.getElementById('filtered-count');
+            title.textContent = 'Wyroznione (przypiete)';
+            count.textContent = '';
+            grid.innerHTML = '<div class="col-span-full text-center py-8 text-zinc-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>';
+            empty.classList.add('hidden');
+            try {
+                const res = await fetch(`${API_BASE}?pinned=true&limit=100&sort=newest`);
+                const data = await res.json();
+                let offers = data.offers || [];
+                const cond = document.getElementById('filter-condition')?.value || '';
+                if (cond) offers = offers.filter(o => o.condition === cond);
+                count.textContent = `(${offers.length})`;
+                if (offers.length === 0) {
+                    grid.innerHTML = '';
+                    empty.classList.remove('hidden');
+                } else {
+                    grid.innerHTML = offers.map(o => `<div>${buildOfferCardHTML(o)}</div>`).join('');
+                    empty.classList.add('hidden');
+                }
+            } catch (e) {
+                grid.innerHTML = '<div class="col-span-full text-center py-8 text-red-400">Blad ladowania</div>';
             }
         };
 
-        // Zamykanie menu po kliknięciu poza nim
-        document.addEventListener("click", (event) => {
-            const userPanel = document.getElementById("user-panel");
-            const userMenu = document.getElementById("user-menu");
-            
-            if (
-                userPanel &&
-                userMenu &&
-                !userPanel.contains(event.target) &&
-                !userMenu.classList.contains("hidden")
-            ) {
-                userMenu.classList.add("hidden");
+        window.applyFilters = async () => {
+            initWojFilterGrid();
+            const search = document.getElementById('search-input').value.trim();
+            const sort = document.getElementById('filter-sort').value;
+            const priceMin = document.getElementById('filter-price-min').value;
+            const priceMax = document.getElementById('filter-price-max').value;
+            const wojSel = getSelectedWojewodztwa();
+            const cond = document.getElementById('filter-condition')?.value || '';
+            const cat = window.currentCategoryFilter || '';
+
+            if (!search && !cat && !priceMin && !priceMax && wojSel.length === 0 && !cond && sort === 'newest') {
+                showCarousels();
+                return;
             }
+
+            document.getElementById('carousels-container').classList.add('hidden');
+            document.getElementById('filtered-results').classList.remove('hidden');
+
+            let params = new URLSearchParams({ limit: '100', sort });
+            if (cat) params.set('category', cat);
+            if (search) params.set('search', search);
+            if (wojSel.length === 1) params.set('wojewodztwo', wojSel[0]);
+            if (priceMin) params.set('price_min', priceMin);
+            if (priceMax) params.set('price_max', priceMax);
+
+            const grid = document.getElementById('filtered-grid');
+            const empty = document.getElementById('filtered-empty');
+            const title = document.getElementById('filtered-title');
+            const count = document.getElementById('filtered-count');
+
+            grid.innerHTML = '<div class="col-span-full text-center py-8 text-zinc-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>';
+            empty.classList.add('hidden');
+
+            try {
+                const res = await fetch(`${API_BASE}?${params.toString()}`);
+                const data = await res.json();
+
+                let offers = data.offers || [];
+                if (cond) offers = offers.filter(o => o.condition === cond);
+                if (wojSel.length > 1) offers = offers.filter(o => wojSel.includes(o.wojewodztwo));
+
+                title.textContent = cat ? CATEGORY_LABELS[cat] : (search ? `Wyniki: "${search}"` : 'Wszystkie oferty');
+                count.textContent = `(${offers.length})`;
+
+                if (offers.length === 0) {
+                    grid.innerHTML = '';
+                    empty.classList.remove('hidden');
+                } else {
+                    grid.innerHTML = offers.map(o => {
+                        const card = buildOfferCardHTML(o);
+                        return `<div>${card}</div>`;
+                    }).join('');
+                    empty.classList.add('hidden');
+                }
+            } catch (e) {
+                grid.innerHTML = '<div class="col-span-full text-center py-8 text-red-400">Blad ladowania ofert</div>';
+            }
+        };
+
+        window.showOfferDetail = async (offerId) => {
+            const modal = document.getElementById('offer-detail-modal');
+            modal.innerHTML = `<div class="modal-overlay" onclick="if(event.target===this)closeOfferDetail()">
+                <div class="modal-panel p-6 md:p-8"><div class="text-center py-12 text-zinc-400"><i class="fa-solid fa-spinner fa-spin text-3xl"></i></div></div></div>`;
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            try {
+                const headers = await getAuthHeaders();
+                const res = await fetch(`${API_BASE}/offer/${offerId}`, { headers });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+
+                const o = data.offer;
+                const images = o.images || [];
+                const condLabel = o.condition === 'NOWY' ? 'Nowy' : 'Uzywany';
+                const condClass = o.condition === 'NOWY' ? 'badge-nowy' : 'badge-uzywany';
+                const loc = [o.miejscowosc, WOJ_LABELS[o.wojewodztwo] || o.wojewodztwo].filter(Boolean).join(', ');
+
+                let galleryHTML = '';
+                if (images.length > 0) {
+                    galleryHTML = `<div class="gallery-main mb-3" id="detail-gallery">
+                        <img id="detail-gallery-img" src="${images[0]}" alt="${(o.title||'').replace(/"/g,'&quot;')}">
+                        ${images.length > 1 ? `
+                            <button class="gallery-nav prev" onclick="event.stopPropagation(); changeDetailImg(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+                            <button class="gallery-nav next" onclick="event.stopPropagation(); changeDetailImg(1)"><i class="fa-solid fa-chevron-right"></i></button>
+                            <span class="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/80 text-white px-3 py-1 rounded-full text-xs font-bold"><span id="detail-img-idx">1</span> / ${images.length}</span>
+                        ` : ''}
+                    </div>
+                    ${images.length > 1 ? `<div class="flex gap-2 mb-4 overflow-x-auto" id="detail-thumbs">${images.map((img,i) => `<div class="gallery-thumb ${i===0?'active':''}" onclick="event.stopPropagation(); setDetailImg(${i})"><img src="${img}" alt=""></div>`).join('')}</div>` : ''}`;
+
+                    window._detailImages = images;
+                    window._detailImgIdx = 0;
+                }
+
+                const sellerProfileUrl = `https://konto.strzelca.pl/profil.html?uid=${o.seller_id}`;
+                const sendMsgUrl = `https://konto.strzelca.pl/profil.html?uid=${o.seller_id}&action=message&subject=${encodeURIComponent('Oferta: ' + o.title)}`;
+
+                modal.innerHTML = `<div class="modal-overlay" onclick="if(event.target===this)closeOfferDetail()">
+                    <div class="modal-panel">
+                        <div class="flex items-center justify-between p-4 border-b border-zinc-800">
+                            <span class="text-xs text-zinc-500 uppercase tracking-widest">Szczegoly oferty</span>
+                            <button onclick="closeOfferDetail()" class="text-zinc-400 hover:text-white text-xl"><i class="fa-solid fa-times"></i></button>
+                        </div>
+                        <div class="p-4 md:p-6">
+                            ${galleryHTML}
+                            <div class="flex items-start justify-between flex-wrap gap-3 mb-4">
+                                <div>
+                                    <h2 class="text-2xl md:text-3xl font-bold text-white mb-1">${o.title}</h2>
+                                    <div class="flex items-center gap-3 text-sm text-zinc-400">
+                                        <span class="badge-condition ${condClass} !relative !top-0">${condLabel}</span>
+                                        <span><i class="fa-solid fa-location-dot mr-1"></i>${loc}</span>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-3xl font-bold text-[#C19A6B]">${o.price ? o.price.toLocaleString('pl-PL') + ' PLN' : 'Do uzgodnienia'}</p>
+                                </div>
+                            </div>
+                            <div class="bg-zinc-900 rounded-lg p-4 mb-4">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <div class="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center"><i class="fa-solid fa-user text-zinc-400"></i></div>
+                                    <div>
+                                        <a href="${sellerProfileUrl}" class="text-white font-semibold hover:text-[#C19A6B] transition">${o.seller_name || 'Uzytkownik'}</a>
+                                        <p class="text-xs text-zinc-500">Sprzedajacy</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <a href="${sendMsgUrl}" class="flex-1 bg-[#C19A6B] text-black px-4 py-2.5 rounded-lg text-sm font-bold text-center hover:bg-white transition">
+                                        <i class="fa-solid fa-envelope mr-1"></i>Wyslij wiadomosc
+                                    </a>
+                                    <a href="${sellerProfileUrl}" class="px-4 py-2.5 border border-zinc-700 rounded-lg text-sm text-zinc-300 hover:text-[#C19A6B] hover:border-[#C19A6B] transition text-center">
+                                        <i class="fa-solid fa-user mr-1"></i>Profil
+                                    </a>
+                                </div>
+                            </div>
+                            ${o.description ? `<div class="border-t border-zinc-800 pt-4"><h3 class="text-sm font-bold text-zinc-400 uppercase mb-2">Opis</h3><div class="text-zinc-300 text-sm leading-relaxed whitespace-pre-line">${o.description.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div></div>` : ''}
+                        </div>
+                    </div>
+                </div>`;
+            } catch (e) {
+                modal.innerHTML = `<div class="modal-overlay" onclick="if(event.target===this)closeOfferDetail()">
+                    <div class="modal-panel p-8 text-center"><p class="text-red-400 mb-4">${e.message || 'Blad ladowania oferty'}</p>
+                    <button onclick="closeOfferDetail()" class="text-zinc-400 hover:text-white">Zamknij</button></div></div>`;
+            }
+        };
+
+        window.changeDetailImg = (dir) => {
+            const imgs = window._detailImages;
+            if (!imgs) return;
+            let idx = window._detailImgIdx + dir;
+            if (idx < 0) idx = imgs.length - 1;
+            if (idx >= imgs.length) idx = 0;
+            setDetailImg(idx);
+        };
+
+        window.setDetailImg = (idx) => {
+            const imgs = window._detailImages;
+            if (!imgs) return;
+            window._detailImgIdx = idx;
+            const img = document.getElementById('detail-gallery-img');
+            const counter = document.getElementById('detail-img-idx');
+            if (img) img.src = imgs[idx];
+            if (counter) counter.textContent = idx + 1;
+            document.querySelectorAll('#detail-thumbs .gallery-thumb').forEach((t,i) => {
+                t.classList.toggle('active', i === idx);
+            });
+        };
+
+        window.closeOfferDetail = () => {
+            document.getElementById('offer-detail-modal').classList.add('hidden');
+            document.getElementById('offer-detail-modal').innerHTML = '';
+            document.body.style.overflow = '';
+        };
+
+        /** Ta sama idea co produkty w panelu admina: kompresja w przegladarce, zapis jako data URL w Firestore (bez Storage). */
+        const BAZAR_MAX_IMAGES_CLIENT = 5;
+        /** Laczny rozmiar stringow zdjec w UTF-8 (tak jak po stronie serwera) */
+        const BAZAR_IMAGES_MAX_TOTAL_BYTES = 1048576;
+
+        function bazarOfferImagesTotalUtf8Bytes(urls) {
+            if (!urls || !urls.length) return 0;
+            const enc = new TextEncoder();
+            let n = 0;
+            for (const s of urls) n += enc.encode(s).length;
+            return n;
+        }
+
+        function formatBazarDataSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1).replace('.', ',') + ' KB';
+            return (bytes / 1048576).toFixed(2).replace('.', ',') + ' MiB';
+        }
+
+        function updateBazarImageUsageUi() {
+            const el = document.getElementById('bazar-images-usage');
+            if (!el) return;
+            const urls = getBazarOfferImageUrls();
+            const used = bazarOfferImagesTotalUtf8Bytes(urls);
+            const maxB = BAZAR_IMAGES_MAX_TOTAL_BYTES;
+            const over = used > maxB;
+            const high = !over && used > maxB * 0.85;
+            el.textContent =
+                'Zajęte: ' +
+                formatBazarDataSize(used) +
+                ' / 1 MiB · ' +
+                urls.length +
+                '/' +
+                BAZAR_MAX_IMAGES_CLIENT +
+                ' zdjęć';
+            el.className =
+                'text-xs mt-2 font-medium ' +
+                (over ? 'text-red-400' : high ? 'text-amber-400' : 'text-zinc-500');
+
+            const submitBtn = document.getElementById('submit-offer-btn');
+            if (submitBtn && !submitBtn.innerHTML.includes('fa-spinner')) {
+                submitBtn.disabled = over;
+                submitBtn.classList.toggle('opacity-50', over);
+                submitBtn.classList.toggle('cursor-not-allowed', over);
+                submitBtn.title = over
+                    ? 'Łączny rozmiar zdjęć przekracza 1 MiB — usuń część zdjęć lub wgraj mniejsze pliki.'
+                    : '';
+            }
+        }
+
+        async function compressBazarImageToBase64(file, maxWidth = 1200, quality = 0.75) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > maxWidth) {
+                            height *= maxWidth / width;
+                            width = maxWidth;
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                        let base64 = canvas.toDataURL('image/jpeg', quality);
+                        let base64Size = (base64.length * 3) / 4;
+                        if (base64Size > 800000) {
+                            const smallerBase64 = canvas.toDataURL('image/jpeg', quality * 0.7);
+                            const smallerSize = (smallerBase64.length * 3) / 4;
+                            if (smallerSize > 800000) {
+                                reject(new Error('Obraz jest za duzy nawet po kompresji. Wybierz mniejsze zdjecie.'));
+                                return;
+                            }
+                            base64 = smallerBase64;
+                        }
+                        resolve(base64);
+                    };
+                    img.onerror = () => reject(new Error('Nie mozna wczytac obrazu'));
+                };
+                reader.onerror = () => reject(new Error('Blad odczytu pliku'));
+            });
+        }
+
+        function getBazarOfferImageUrls() {
+            if (!window._bazarOfferImageUrls) window._bazarOfferImageUrls = [];
+            return window._bazarOfferImageUrls;
+        }
+
+        function renderBazarImagePreviews() {
+            const box = document.getElementById('bazar-images-preview');
+            if (!box) return;
+            const urls = getBazarOfferImageUrls();
+            if (urls.length === 0) {
+                box.innerHTML =
+                    '<p class="text-xs text-zinc-600 text-center py-3">Brak zdjęć. Dodaj do ' +
+                    BAZAR_MAX_IMAGES_CLIENT +
+                    ' zdjęć; łącznie max 1 MiB (UTF-8). Kompresja jak w panelu admina.</p>';
+                updateBazarImageUsageUi();
+                return;
+            }
+            box.innerHTML = urls.map((u, i) => `<div class="flex items-center gap-2 p-2 bg-zinc-900 rounded-lg border border-zinc-800">
+                <div class="w-14 h-14 rounded overflow-hidden bg-black flex-shrink-0"><img src="${u}" alt="" class="w-full h-full object-cover"></div>
+                <span class="text-[10px] text-zinc-500 truncate flex-1">${i === 0 ? '<b class="text-[#C19A6B]">Glowne</b> · ' : ''}zdjecie ${i + 1}</span>
+                <button type="button" onclick="removeBazarUploadedImage(${i})" class="text-red-400 hover:text-red-300 px-2" title="Usun"><i class="fa-solid fa-times"></i></button>
+            </div>`).join('');
+            updateBazarImageUsageUi();
+        }
+
+        window.removeBazarUploadedImage = (index) => {
+            const urls = getBazarOfferImageUrls();
+            urls.splice(index, 1);
+            renderBazarImagePreviews();
+        };
+
+        window.handleBazarImagesSelected = async (event) => {
+            const input = event.target;
+            const files = input.files;
+            if (!files?.length) return;
+            const urls = getBazarOfferImageUrls();
+            const status = document.getElementById('bazar-upload-status');
+            const max = BAZAR_MAX_IMAGES_CLIENT;
+            if (urls.length >= max) {
+                alert('Maksymalnie ' + max + ' zdjec (limit rozmiaru dokumentu Firestore).');
+                input.value = '';
+                return;
+            }
+            const arr = Array.from(files).slice(0, max - urls.length);
+            if (status) { status.classList.remove('hidden'); status.textContent = 'Kompresja zdjęć...'; }
+            try {
+                for (const file of arr) {
+                    if (!file.type.startsWith('image/')) continue;
+                    const dataUrl = await compressBazarImageToBase64(file);
+                    const used = bazarOfferImagesTotalUtf8Bytes(urls);
+                    const addBytes = new TextEncoder().encode(dataUrl).length;
+                    if (used + addBytes > BAZAR_IMAGES_MAX_TOTAL_BYTES) {
+                        throw new Error(
+                            'Po dodaniu tego zdjęcia łączny rozmiar przekroczyłby 1 MiB. Usuń inne zdjęcie lub wybierz mniejszy plik.',
+                        );
+                    }
+                    urls.push(dataUrl);
+                    renderBazarImagePreviews();
+                }
+                if (status) status.textContent = 'Gotowe.';
+            } catch (e) {
+                alert(e.message || 'Błąd przetwarzania zdjęć');
+                if (status) status.textContent = '';
+            } finally {
+                input.value = '';
+                if (status) setTimeout(() => { status.classList.add('hidden'); }, 2000);
+            }
+        };
+
+        window.openCreateOfferModal = () => {
+            if (!currentUser) {
+                alert('Musisz byc zalogowany, aby dodac oferte.');
+                window.location.href = 'https://konto.strzelca.pl/login.html?redirect=' + encodeURIComponent(window.location.href);
+                return;
+            }
+            window._bazarOfferImageUrls = [];
+            const modal = document.getElementById('create-offer-modal');
+            modal.innerHTML = `<div class="modal-overlay" onclick="if(event.target===this)closeCreateOffer()">
+                <div class="modal-panel" onclick="event.stopPropagation()">
+                    <div class="flex items-center justify-between p-4 border-b border-zinc-800">
+                        <span class="text-sm font-bold text-[#C19A6B] uppercase tracking-widest">Nowa oferta</span>
+                        <button onclick="closeCreateOffer()" class="text-zinc-400 hover:text-white text-xl"><i class="fa-solid fa-times"></i></button>
+                    </div>
+                    <form id="create-offer-form" class="p-4 md:p-6 space-y-4" onsubmit="event.preventDefault(); submitNewOffer();">
+                        <div>
+                            <label class="block text-sm font-medium text-zinc-400 mb-1">Tytul oferty *</label>
+                            <input type="text" id="new-title" class="filter-input w-full" maxlength="200" required placeholder="np. Glock 17 Gen5">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-400 mb-1">Cena (PLN) *</label>
+                                <input type="number" id="new-price" class="filter-input w-full" min="0" step="0.01" required placeholder="0.00">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-400 mb-1">Kategoria *</label>
+                                <select id="new-category" class="filter-select w-full" required>
+                                    <option value="">Wybierz...</option>
+                                    <option value="PISTOLET">Pistolet</option>
+                                    <option value="REWOLWER">Rewolwer</option>
+                                    <option value="KARABIN">Karabin</option>
+                                    <option value="BRON_GLADKOLUFOWA">Bron gladkolufowa</option>
+                                    <option value="BRON_CZARNOPROCHOWA">Bron czarnoprochowa</option>
+                                    <option value="AMUNICJA">Amunicja</option>
+                                    <option value="AKCESORIA">Akcesoria</option>
+                                    <option value="INNE">Inne</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-400 mb-1">Stan *</label>
+                                <select id="new-condition" class="filter-select w-full" required>
+                                    <option value="NOWY">Nowy</option>
+                                    <option value="UZYWANY">Uzywany</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-400 mb-1">Wojewodztwo *</label>
+                                <select id="new-wojewodztwo" class="filter-select w-full" required>
+                                    <option value="">Wybierz...</option>
+                                    <option value="dolnoslaskie">Dolnoslaskie</option>
+                                    <option value="kujawsko-pomorskie">Kujawsko-pomorskie</option>
+                                    <option value="lubelskie">Lubelskie</option>
+                                    <option value="lubuskie">Lubuskie</option>
+                                    <option value="lodzkie">Lodzkie</option>
+                                    <option value="malopolskie">Malopolskie</option>
+                                    <option value="mazowieckie">Mazowieckie</option>
+                                    <option value="opolskie">Opolskie</option>
+                                    <option value="podkarpackie">Podkarpackie</option>
+                                    <option value="podlaskie">Podlaskie</option>
+                                    <option value="pomorskie">Pomorskie</option>
+                                    <option value="slaskie">Slaskie</option>
+                                    <option value="swietokrzyskie">Swietokrzyskie</option>
+                                    <option value="warminsko-mazurskie">Warminsko-mazurskie</option>
+                                    <option value="wielkopolskie">Wielkopolskie</option>
+                                    <option value="zachodniopomorskie">Zachodniopomorskie</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-zinc-400 mb-1">Miejscowosc *</label>
+                            <input type="text" id="new-miejscowosc" class="filter-input w-full" maxlength="100" required placeholder="np. Warszawa">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-zinc-400 mb-1">Opis</label>
+                            <textarea id="new-description" class="filter-input w-full" rows="5" maxlength="5000" placeholder="Opisz przedmiot..."></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-zinc-400 mb-2">Zdjecia</label>
+                            <p class="text-xs text-zinc-500 leading-relaxed mb-2">
+                                Możesz dodać <strong class="text-zinc-300">do 5 zdjęć</strong>.
+                                <strong class="text-zinc-300">Łączny rozmiar</strong> zapisanych zdjęć (jako tekst w bazie, UTF-8)
+                                <strong class="text-zinc-300">nie może przekroczyć 1 MiB</strong>.
+                                Przed wysłaniem oferty sprawdzamy ten limit; przycisk „Wyślij” zostanie zablokowany, jeśli przekroczysz 1 MiB.
+                            </p>
+                            <label class="flex flex-col items-center justify-center border-2 border-dashed border-zinc-700 rounded-xl py-6 px-4 cursor-pointer hover:border-[#C19A6B]/50 transition bg-black/20">
+                                <i class="fa-solid fa-images text-2xl text-[#C19A6B] mb-2"></i>
+                                <span class="text-sm text-zinc-300">Wybierz zdjęcia z dysku</span>
+                                <span class="text-[11px] text-zinc-500 mt-1">Kompresja w przeglądarce, zapis w Firestore (bez Firebase Storage)</span>
+                                <input type="file" accept="image/jpeg,image/png,image/webp" multiple class="hidden" id="bazar-image-input" onchange="handleBazarImagesSelected(event)">
+                            </label>
+                            <p id="bazar-images-usage" class="text-xs mt-2 text-zinc-500 font-medium" aria-live="polite"></p>
+                            <p id="bazar-upload-status" class="hidden text-xs text-[#C19A6B] mt-2 text-center"></p>
+                            <div id="bazar-images-preview" class="mt-3 space-y-2 max-h-48 overflow-y-auto"></div>
+                        </div>
+                        <div class="bg-zinc-900 rounded-lg p-4 border border-zinc-800">
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input type="checkbox" id="accept-regulations" required class="mt-1 accent-[#C19A6B]">
+                                <span class="text-xs text-zinc-400 leading-relaxed">
+                                    Oswiadczam, ze zapoznalem/am sie z
+                                    <a href="#" onclick="event.preventDefault(); event.stopPropagation(); openRegulationModal('regulamin-platformy')" class="text-[#C19A6B] hover:underline">Regulaminem ogolnym</a>
+                                    oraz
+                                    <a href="#" onclick="event.preventDefault(); event.stopPropagation(); openRegulationModal('regulamin-bazar')" class="text-[#C19A6B] hover:underline">Regulaminem bazaru</a>
+                                    i akceptuje ich postanowienia. Potwierdzam, ze posiadam wymagane prawem uprawnienia do posiadania i zbywania wystawianych przedmiotow.
+                                </span>
+                            </label>
+                        </div>
+                        <div class="flex justify-end gap-3 pt-2">
+                            <button type="button" onclick="closeCreateOffer()" class="px-5 py-2.5 border border-zinc-700 rounded-lg text-sm text-zinc-300 hover:bg-zinc-800 transition">Anuluj</button>
+                            <button type="submit" id="submit-offer-btn" class="px-5 py-2.5 bg-[#C19A6B] text-black rounded-lg text-sm font-bold hover:bg-white transition">
+                                <i class="fa-solid fa-paper-plane mr-1"></i>Wyslij do akceptacji
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>`;
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => {
+                renderBazarImagePreviews();
+                updateBazarImageUsageUi();
+            }, 0);
+        };
+
+        window.closeCreateOffer = () => {
+            window._bazarOfferImageUrls = [];
+            document.getElementById('create-offer-modal').classList.add('hidden');
+            document.getElementById('create-offer-modal').innerHTML = '';
+            document.body.style.overflow = '';
+        };
+
+        window.submitNewOffer = async () => {
+            const images = [...getBazarOfferImageUrls()];
+            const totalBytes = bazarOfferImagesTotalUtf8Bytes(images);
+            if (totalBytes > BAZAR_IMAGES_MAX_TOTAL_BYTES) {
+                alert(
+                    'Łączny rozmiar zdjęć (' +
+                        formatBazarDataSize(totalBytes) +
+                        ') przekracza 1 MiB. Usuń część zdjęć lub wgraj mniejsze pliki, potem spróbuj ponownie.',
+                );
+                return;
+            }
+
+            const btn = document.getElementById('submit-offer-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Wysylanie...';
+
+            const body = {
+                title: document.getElementById('new-title').value.trim(),
+                price: parseFloat(document.getElementById('new-price').value),
+                category: document.getElementById('new-category').value,
+                condition: document.getElementById('new-condition').value,
+                wojewodztwo: document.getElementById('new-wojewodztwo').value,
+                miejscowosc: document.getElementById('new-miejscowosc').value.trim(),
+                description: document.getElementById('new-description').value.trim(),
+                images,
+            };
+
+            try {
+                const headers = await getAuthHeaders();
+                headers['Content-Type'] = 'application/json';
+                const res = await fetch(`${API_BASE}/create`, { method: 'POST', headers, body: JSON.stringify(body) });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+
+                closeCreateOffer();
+                alert('Oferta zostala wyslana do akceptacji przez administratora. Otrzymasz powiadomienie po zatwierdzeniu.');
+            } catch (e) {
+                alert('Blad: ' + (e.message || 'Nie udalo sie wyslac oferty'));
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-1"></i>Wyslij do akceptacji';
+                updateBazarImageUsageUi();
+            }
+        };
+
+        window.showMyOffers = async () => {
+            if (!currentUser) return;
+            const modal = document.getElementById('my-offers-modal');
+            modal.innerHTML = `<div class="modal-overlay" onclick="if(event.target===this)closeMyOffers()">
+                <div class="modal-panel"><div class="flex items-center justify-between p-4 border-b border-zinc-800">
+                    <span class="text-sm font-bold text-[#C19A6B] uppercase tracking-widest">Moje oferty</span>
+                    <button onclick="closeMyOffers()" class="text-zinc-400 hover:text-white text-xl"><i class="fa-solid fa-times"></i></button>
+                </div><div class="p-4" id="my-offers-content"><div class="text-center py-8"><i class="fa-solid fa-spinner fa-spin text-2xl text-zinc-400"></i></div></div></div></div>`;
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            try {
+                const headers = await getAuthHeaders();
+                const res = await fetch(`${API_BASE}/my`, { headers });
+                const data = await res.json();
+
+                const container = document.getElementById('my-offers-content');
+                if (!data.success || !data.offers || data.offers.length === 0) {
+                    container.innerHTML = '<div class="text-center py-8 text-zinc-500"><i class="fa-solid fa-box-open text-3xl mb-3"></i><p>Nie masz jeszcze zadnych ofert</p></div>';
+                    return;
+                }
+
+                const statusLabels = { PENDING: 'Oczekujaca', ACTIVE: 'Aktywna', REJECTED: 'Odrzucona', EXPIRED: 'Wygasla', SOLD: 'Sprzedana' };
+                const statusColors = { PENDING: 'text-yellow-400', ACTIVE: 'text-green-400', REJECTED: 'text-red-400', EXPIRED: 'text-zinc-500', SOLD: 'text-blue-400' };
+
+                container.innerHTML = data.offers.map(o => {
+                    const lastRefresh = o.last_refreshed_at?._seconds ? new Date(o.last_refreshed_at._seconds * 1000) : new Date(o.last_refreshed_at);
+                    const daysSince = (Date.now() - lastRefresh.getTime()) / (1000*60*60*24);
+                    const canRefresh = daysSince >= 25 && (o.status === 'ACTIVE' || o.status === 'EXPIRED');
+
+                    return `<div class="flex items-center gap-4 p-3 bg-zinc-900 rounded-lg mb-3 border border-zinc-800">
+                        <div class="w-16 h-16 rounded-lg overflow-hidden bg-zinc-800 flex-shrink-0">
+                            ${o.mainImage ? `<img src="${o.mainImage}" class="w-full h-full object-cover">` : '<div class="w-full h-full flex items-center justify-center text-zinc-600"><i class="fa-solid fa-image"></i></div>'}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-sm font-bold text-white truncate">${o.title}</h4>
+                            <p class="text-[#C19A6B] font-bold">${o.price ? o.price.toLocaleString('pl-PL') + ' PLN' : ''}</p>
+                            <span class="text-xs ${statusColors[o.status] || 'text-zinc-400'}">${statusLabels[o.status] || o.status}</span>
+                            ${o.rejection_reason ? `<p class="text-xs text-red-400 mt-1">Powod: ${o.rejection_reason}</p>` : ''}
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            ${canRefresh ? `<button onclick="refreshOffer('${o.id}')" class="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-500 transition">Odswiez za darmo</button>` : ''}
+                            <button type="button" disabled class="text-xs border border-zinc-600 text-zinc-500 px-3 py-1 rounded cursor-not-allowed opacity-70" title="Funkcja platna — w przygotowaniu">Odswiez teraz (Premium)</button>
+                            ${o.status === 'ACTIVE' ? `<button onclick="markSold('${o.id}')" class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-500 transition">Sprzedane</button>` : ''}
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                document.getElementById('my-offers-content').innerHTML = '<p class="text-red-400 text-center py-4">Blad ladowania ofert</p>';
+            }
+        };
+
+        window.closeMyOffers = () => {
+            document.getElementById('my-offers-modal').classList.add('hidden');
+            document.getElementById('my-offers-modal').innerHTML = '';
+            document.body.style.overflow = '';
+        };
+
+        window.refreshOffer = async (id) => {
+            if (!confirm('Odswiez oferte za darmo?')) return;
+            try {
+                const headers = await getAuthHeaders();
+                headers['Content-Type'] = 'application/json';
+                const res = await fetch(`${API_BASE}/refresh/${id}`, { method: 'POST', headers });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                alert('Oferta zostala odswiezona!');
+                showMyOffers();
+            } catch (e) { alert('Blad: ' + (e.message || 'Nie udalo sie odswiez oferty')); }
+        };
+
+        window.markSold = async (id) => {
+            if (!confirm('Oznacz oferte jako sprzedana?')) return;
+            try {
+                const headers = await getAuthHeaders();
+                headers['Content-Type'] = 'application/json';
+                const res = await fetch(`${API_BASE}/sold/${id}`, { method: 'POST', headers });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                alert('Oferta oznaczona jako sprzedana.');
+                showMyOffers();
+                loadAllOffers().then(renderCarousels);
+            } catch (e) { alert('Blad: ' + (e.message || 'Nie udalo sie zmienic statusu')); }
+        };
+
+        window.openRegulationModal = async (docId) => {
+            try {
+                const res = await fetch(`https://dokumenty.strzelca.pl/`);
+                const html = await res.text();
+                const parser = new DOMParser();
+                const docEl = parser.parseFromString(html, 'text/html');
+                const contentEl = docEl.getElementById(docId + '-content') || docEl.getElementById(docId);
+
+                let contentHTML = '';
+                if (contentEl) {
+                    const body = contentEl.querySelector('.accordion-body') || contentEl;
+                    contentHTML = body.innerHTML;
+                }
+
+                if (!contentHTML) {
+                    contentHTML = `<div class="p-6 text-center text-zinc-400"><p>Tresc regulaminu niedostepna.</p><a href="https://dokumenty.strzelca.pl#${docId}" target="_blank" class="text-[#C19A6B] hover:underline">Otworz na stronie dokumentow</a></div>`;
+                }
+
+                const overlay = document.createElement('div');
+                overlay.id = 'regulation-modal';
+                overlay.className = 'fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto p-4 bg-black/90 backdrop-blur-sm';
+                overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+                overlay.innerHTML = `<div class="bg-zinc-900 border border-zinc-700 rounded-2xl max-w-3xl w-full my-8 overflow-hidden">
+                    <div class="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+                        <span class="text-xs uppercase font-bold tracking-widest text-zinc-500">Dokument</span>
+                        <button onclick="document.getElementById('regulation-modal').remove()" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-times"></i></button>
+                    </div>
+                    <div class="p-5 max-h-[70vh] overflow-y-auto">${contentHTML}</div>
+                </div>`;
+                document.body.appendChild(overlay);
+            } catch (e) {
+                window.open(`https://dokumenty.strzelca.pl#${docId}`, '_blank');
+            }
+        };
+
+        function getDefaultAvatar() { return '<i class="fa-solid fa-user text-white"></i>'; }
+
+        window.toggleUserMenu = () => {
+            const m = document.getElementById("user-menu");
+            if (m) m.classList.toggle("hidden");
+        };
+
+        document.addEventListener("click", (e) => {
+            const panel = document.getElementById("user-panel");
+            const menu = document.getElementById("user-menu");
+            if (panel && menu && !panel.contains(e.target) && !menu.classList.contains("hidden")) menu.classList.add("hidden");
         });
 
-        // Funkcja panelu użytkownika
-        async function updateUserPanel() {
-            const loginBtn = document.getElementById('login-button');
-            const userPanel = document.getElementById('user-panel');
-            const userDisplayName = document.getElementById('user-display-name');
-            const userAvatar = document.getElementById('user-avatar');
-            const profileLink = document.getElementById('profile-link');
+        async function updateUserInterface(user) {
+            const loginBtn = document.getElementById("login-button");
+            const userPanel = document.getElementById("user-panel");
+            const addOfferBtn = document.getElementById("btn-add-offer");
+            const userDisplayName = document.getElementById("user-display-name");
+            const userAvatar = document.getElementById("user-avatar");
 
-            if (currentUser) {
-                loginBtn.classList.add('hidden');
-                userPanel.classList.remove('hidden');
+            if (user) {
+                loginBtn.classList.add("hidden");
+                userPanel.classList.remove("hidden");
+                if (addOfferBtn) addOfferBtn.classList.remove("hidden");
+                const displayName = user.displayName || user.email.split("@")[0];
+                if (userDisplayName) userDisplayName.textContent = displayName;
 
-                // Wyświetl nazwę użytkownika
-                const displayName = currentUser.displayName || currentUser.email.split("@")[0];
-                userDisplayName.textContent = displayName;
-
-                // Profil zawsze prowadzi do profilu (weryfikacja emaila jest sprawdzana wyłącznie przy logowaniu)
-                if (profileLink) {
-                    profileLink.href = "https://konto.strzelca.pl/profil.html";
-                }
-
-                // Pobierz awatar z profilu użytkownika
                 try {
-                    const profileDoc = await getDoc(doc(db, "userProfiles", currentUser.uid));
+                    const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
                     if (profileDoc.exists()) {
-                        const profile = profileDoc.data();
-                        if (profile.displayName) {
-                            userDisplayName.textContent = profile.displayName;
+                        const p = profileDoc.data();
+                        if (p.displayName && userDisplayName) userDisplayName.textContent = p.displayName;
+                        if (userAvatar) {
+                            userAvatar.innerHTML = p.avatar ? `<img src="${p.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">` : getDefaultAvatar();
                         }
-                        if (profile.avatar) {
-                            // Jeśli użytkownik ma awatar, wyświetl go
-                            userAvatar.innerHTML = `<img src="${profile.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
-                        } else {
-                            // Użyj domyślnego awatara
-                            userAvatar.innerHTML = getDefaultAvatar(profile.gender);
-                        }
-                    } else {
-                        // Jeśli profil nie istnieje, użyj domyślnego awatara
-                        userAvatar.innerHTML = getDefaultAvatar();
                     }
-                } catch (error) {
-                    console.error('Error loading user profile:', error);
-                    userAvatar.innerHTML = getDefaultAvatar();
-                }
+                } catch (_) {}
             } else {
-                loginBtn.classList.remove('hidden');
-                userPanel.classList.add('hidden');
+                loginBtn.classList.remove("hidden");
+                userPanel.classList.add("hidden");
+                if (addOfferBtn) addOfferBtn.classList.add("hidden");
             }
         }
 
         window.logout = async () => {
             try {
-                // SSO: wyczyść cookie wspólnej sesji
-                try {
-                    await fetch("https://strzelca.pl/api/sso-session-logout", {
-                        method: "POST",
-                        credentials: "include",
-                    });
-                } catch (e) {
-                    console.warn("SSO logout failed (ignored):", e?.message || e);
-                }
-
+                try { await fetch("https://strzelca.pl/api/sso-session-logout", { method: "POST", credentials: "include" }); } catch (_) {}
                 const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
                 await signOut(auth);
-                // Zamknij menu po wylogowaniu
-                const userMenu = document.getElementById("user-menu");
-                if (userMenu) {
-                    userMenu.classList.add("hidden");
-                }
-            } catch (error) {
-                console.error('Logout error:', error);
-            }
+                document.getElementById("user-menu")?.classList.add("hidden");
+            } catch (_) {}
         };
 
-        // Inicjalizuj śledzenie aktywności
         try {
             const { initActivityTracker } = await import("https://strzelca.pl/activity-tracker.mjs?v=2026-02-06-1");
             await initActivityTracker(auth, db);
-            
-            // Monitorowanie statusu użytkownika (blokowanie)
             const { initUserStatusMonitor } = await import("https://strzelca.pl/user-status-monitor.mjs?v=2026-02-06-1");
             await initUserStatusMonitor(auth, db);
-        } catch (error) {
-            console.warn("Could not initialize activity tracker:", error);
-        }
-        
-        // Inicjalizuj śledzenie odwiedzin (działa dla wszystkich użytkowników, również niezalogowanych)
+        } catch (_) {}
+
         try {
-          const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-02-06-3");
-          await initVisitTracker(auth);
-        } catch (error) {
-          console.warn("Could not initialize visit tracker:", error);
-        }
+            const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-02-06-3");
+            await initVisitTracker(auth);
+        } catch (_) {}
 
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
-            updateUserPanel();
+            updateUserInterface(user);
         });
+
+        initWojFilterGrid();
+
+        async function openOfferFromSlugParam() {
+            const pathMatch = location.pathname.match(/\/oferta\/([^/]+)\/?$/);
+            const hashMatch = location.hash.match(/^#\/oferta\/([^/?#]+)/);
+            const slug = pathMatch ? decodeURIComponent(pathMatch[1]) : (hashMatch ? decodeURIComponent(hashMatch[1]) : '');
+            if (!slug) return;
+            try {
+                const res = await fetch(`${API_BASE}/slug/${encodeURIComponent(slug)}`);
+                const data = await res.json();
+                if (data.success && data.offer?.id) window.showOfferDetail(data.offer.id);
+            } catch (_) {}
+        }
+
+        await loadAllOffers();
+        renderCarousels();
+        await openOfferFromSlugParam();
     </script>
-    <script
-      type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-02-06-1"
-    ></script>
-    <script
-      type="module"
-      src="https://strzelca.pl/messages-widget.mjs?v=2026-02-05-14"
-    ></script>
-  </body>
+    <script type="module" src="https://strzelca.pl/auth-widget.mjs?v=2026-02-06-1"></script>
+    <script type="module" src="https://strzelca.pl/messages-widget.mjs?v=2026-02-05-14"></script>
+</body>
 </html>

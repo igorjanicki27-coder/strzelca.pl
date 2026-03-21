@@ -29,6 +29,23 @@ Upewnij się, że wszystkie poniższe zmienne są ustawione zarówno w środowis
 - **SSO_COOKIE_DOMAIN** - Domena ciasteczka SSO (domyślnie: `.strzelca.pl`)
 - **SSO_COOKIE_DAYS** - Liczba dni ważności ciasteczka (domyślnie: `14`)
 
+### Bazar (cron wygaszania ogłoszeń) — opcjonalne
+- **BAZAR_CRON_SECRET** (lub **CRON_SECRET**) — wspólny sekret dla `POST /api/bazar/cron/expire` (nagłówek `x-bazar-cron-secret` albo `Authorization: Bearer …`). Użyj w Vercel Cron lub zewnętrznym harmonogramie, aby ustawiać status `EXPIRED` po `expires_at`.
+
+#### Co to jest „cron na Vercel” i jak go ustawić (krótko)
+
+**Cron** to harmonogram: o ustalonej porze Vercel sam wywołuje podany adres URL Twojej aplikacji. Tu endpoint oznacza ogłoszenia z przekroczonym `expires_at` statusem `EXPIRED`.
+
+**Najprostsza konfiguracja (ten projekt):**
+1. W repozytorium jest już wpis w **`vercel.json`** → `crons` → ścieżka `/api/bazar/cron/expire` (domyślnie raz dziennie o **04:00 UTC** — możesz zmienić wyrażenie `schedule`).
+2. W Vercel: **Settings → Environment Variables** ustaw **`CRON_SECRET`** na długi losowy ciąg (np. 32+ znaków). Zgodnie z dokumentacją Vercel, przy wywołaniu cron joba do żądania zostanie dołączony nagłówek **`Authorization: Bearer <CRON_SECRET>`** — backend porównuje go z `process.env.CRON_SECRET` lub `BAZAR_CRON_SECRET`.
+3. Wdróż projekt na **Production**. Crony Vercel działają na produkcji, nie na każdym preview.
+
+**Alternatywa:** zamiast `CRON_SECRET` możesz ustawić **`BAZAR_CRON_SECRET`** i wywoływać endpoint z zewnętrznego harmonogramu (np. GitHub Actions, cron na VPS) z nagłówkiem `x-bazar-cron-secret` lub `Authorization: Bearer …` z tą samą wartością.
+
+**Metoda HTTP:** endpoint akceptuje **GET i POST** (Vercel Cron zwykle używa **GET**).
+
+
 ### Development - Opcjonalne
 - **ALLOW_LOCALHOST** - Czy pozwolić na localhost (domyślnie: `false`, ustaw na `true` tylko dla developmentu)
 

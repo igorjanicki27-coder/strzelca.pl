@@ -1857,20 +1857,25 @@
                   >
                   <select id="bazar-status-filter" class="w-full">
                   <option value="all">Wszystkie</option>
-                  <option value="pending">Oczekujące</option>
-                  <option value="approved">Zatwierdzone</option>
-                  <option value="rejected">Odrzucone</option>
+                  <option value="PENDING">Oczekujące</option>
+                  <option value="ACTIVE">Aktywne</option>
+                  <option value="REJECTED">Odrzucone</option>
+                  <option value="EXPIRED">Wygasłe</option>
+                  <option value="SOLD">Sprzedane</option>
                 </select>
                 </div>
                 <div>
                   <label class="block text-sm font-medium mb-2">Kategoria</label>
                   <select id="bazar-category-filter" class="w-full">
                     <option value="all">Wszystkie kategorie</option>
-                    <option value="elektronika">Elektronika</option>
-                    <option value="odziez">Odzież</option>
-                    <option value="motoryzacja">Motoryzacja</option>
-                    <option value="dom">Dom i ogród</option>
-                    <option value="inne">Inne</option>
+                    <option value="PISTOLET">Pistolety</option>
+                    <option value="REWOLWER">Rewolwery</option>
+                    <option value="KARABIN">Karabiny</option>
+                    <option value="BRON_GLADKOLUFOWA">Broń gładkolufowa</option>
+                    <option value="BRON_CZARNOPROCHOWA">Broń czarnoprochowa</option>
+                    <option value="AMUNICJA">Amunicja</option>
+                    <option value="AKCESORIA">Akcesoria</option>
+                    <option value="INNE">Inne</option>
                   </select>
                 </div>
                 <div>
@@ -1878,8 +1883,9 @@
                   <input
                     type="text"
                     id="bazar-search"
-                    placeholder="Tytuł oferty..."
+                    placeholder="Tytuł lub sprzedawca..."
                     class="w-full"
+                    onkeydown="if(event.key==='Enter')applyBazarFilters()"
                   />
                 </div>
                 <div class="flex items-end">
@@ -4014,7 +4020,7 @@
             loadCharity();
             break;
           case "bazar":
-            // Brak specjalnej funkcji ładowania dla tej zakładki
+            if (typeof loadBazar === "function") loadBazar();
             break;
           case "szkolenia":
             loadTrainings();
@@ -9426,6 +9432,301 @@
           }
         };
 
+        const BAZAR_API = "/api/bazar";
+        let bazarAdminList = [];
+
+        function bazarFmtTs(ts) {
+          if (!ts) return "—";
+          const sec = ts._seconds ?? ts.seconds;
+          if (sec != null) return new Date(sec * 1000).toLocaleString("pl-PL");
+          return "—";
+        }
+
+        window.loadBazar = async () => {
+          await applyBazarFilters();
+        };
+
+        window.applyBazarFilters = async () => {
+          const listEl = document.getElementById("bazar-offers-list");
+          const loadingEl = document.getElementById("bazar-loading");
+          const emptyEl = document.getElementById("bazar-empty");
+          if (!listEl || !loadingEl) return;
+
+          loadingEl.classList.remove("hidden");
+          emptyEl.classList.add("hidden");
+          listEl.innerHTML = "";
+
+          const st = document.getElementById("bazar-status-filter")?.value || "";
+          const cat = document.getElementById("bazar-category-filter")?.value || "";
+          const search = document.getElementById("bazar-search")?.value?.trim() || "";
+
+          const params = new URLSearchParams();
+          if (st && st !== "all") params.set("status", st);
+
+          try {
+            if (!auth?.currentUser) throw new Error("Zaloguj się ponownie.");
+            const token = await auth.currentUser.getIdToken();
+            const res = await fetch(`${BAZAR_API}/admin/all?${params.toString()}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || "Błąd API bazaru");
+
+            let items = data.offers || [];
+            if (cat && cat !== "all") items = items.filter((o) => o.category === cat);
+            if (search) {
+              const s = search.toLowerCase();
+              items = items.filter(
+                (o) =>
+                  (o.title || "").toLowerCase().includes(s) ||
+                  (o.seller_name || "").toLowerCase().includes(s),
+              );
+            }
+            bazarAdminList = items;
+            loadingEl.classList.add("hidden");
+            if (items.length === 0) {
+              emptyEl.classList.remove("hidden");
+              return;
+            }
+            emptyEl.classList.add("hidden");
+            listEl.innerHTML = items.map(renderBazarAdminCard).join("");
+          } catch (e) {
+            console.error(e);
+            loadingEl.classList.add("hidden");
+            listEl.innerHTML = `<div class="text-center text-red-400 py-6">${e.message || "Błąd ładowania bazaru"}</div>`;
+          }
+        };
+
+        const BAZAR_STATUS_LABEL = {
+          PENDING: "Oczekuje",
+          ACTIVE: "Aktywna",
+          REJECTED: "Odrzucona",
+          EXPIRED: "Wygasła",
+          SOLD: "Sprzedana",
+        };
+        const BAZAR_CAT_LABEL = {
+          PISTOLET: "Pistolety",
+          REWOLWER: "Rewolwery",
+          KARABIN: "Karabiny",
+          BRON_GLADKOLUFOWA: "Broń gładkolufowa",
+          BRON_CZARNOPROCHOWA: "Broń czarnoprochowa",
+          AMUNICJA: "Amunicja",
+          AKCESORIA: "Akcesoria",
+          INNE: "Inne",
+        };
+
+        function renderBazarAdminCard(o) {
+          const img = o.mainImage
+            ? `<img src="${o.mainImage}" alt="" class="w-full h-full object-cover">`
+            : `<div class="w-full h-full flex items-center justify-center text-zinc-600"><i class="fa-solid fa-image text-2xl"></i></div>`;
+          const pinBtn = o.is_pinned
+            ? `<button type="button" onclick="bazarTogglePin('${o.id}',false)" class="text-xs px-2 py-1 rounded border border-zinc-600 text-zinc-300 hover:bg-zinc-800">Odepnij</button>`
+            : `<button type="button" onclick="bazarTogglePin('${o.id}',true)" class="text-xs px-2 py-1 rounded border border-zinc-500 coyote-text hover:bg-zinc-800">Przypnij</button>`;
+          const pendingActions =
+            o.status === "PENDING"
+              ? `<button type="button" onclick="bazarApprove('${o.id}')" class="text-xs bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded">Akceptuj</button>
+                 <button type="button" onclick="bazarReject('${o.id}')" class="text-xs bg-red-800 hover:bg-red-700 text-white px-2 py-1 rounded">Odrzuć</button>`
+              : "";
+          const activeExtra =
+            o.status === "ACTIVE"
+              ? `<button type="button" onclick="bazarAdminMarkSold('${o.id}')" class="text-xs bg-blue-900 hover:bg-blue-800 text-white px-2 py-1 rounded">Sprzedane</button>`
+              : "";
+          return `<div class="flex flex-col md:flex-row gap-4 p-4 border border-zinc-700 rounded-lg bg-zinc-900/50">
+            <div class="w-full md:w-36 h-28 flex-shrink-0 rounded-lg overflow-hidden bg-zinc-800">${img}</div>
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap items-center gap-2 mb-1">
+                <h3 class="text-lg font-semibold text-white truncate">${(o.title || "").replace(/</g, "&lt;")}</h3>
+                <span class="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">${BAZAR_STATUS_LABEL[o.status] || o.status}</span>
+                ${o.is_pinned ? `<span class="text-xs px-2 py-0.5 rounded bg-coyote text-black font-bold">Przypięta</span>` : ""}
+              </div>
+              <p class="text-sm text-zinc-400">${BAZAR_CAT_LABEL[o.category] || o.category} · ${o.price != null ? Number(o.price).toLocaleString("pl-PL") + " PLN" : "—"}</p>
+              <p class="text-xs text-zinc-500 mt-1">Sprzedawca: ${(o.seller_name || "—").replace(/</g, "&lt;")} · ${bazarFmtTs(o.created_at)}</p>
+              ${o.rejection_reason ? `<p class="text-xs text-red-400 mt-2">Powód odrzucenia: ${String(o.rejection_reason).replace(/</g, "&lt;")}</p>` : ""}
+              <p class="text-xs text-zinc-600 mt-1">ID: ${o.id} · slug: ${(o.slug || "").replace(/</g, "&lt;")}</p>
+            </div>
+            <div class="flex flex-row md:flex-col flex-wrap gap-2 items-stretch md:items-end justify-end">
+              ${pendingActions}
+              <button type="button" onclick="bazarOpenEdit('${o.id}')" class="text-xs px-2 py-1 rounded border border-zinc-600 text-zinc-200 hover:bg-zinc-800">Edytuj</button>
+              ${pinBtn}
+              ${activeExtra}
+            </div>
+          </div>`;
+        }
+
+        async function bazarAuthHeadersJson() {
+          const token = await auth.currentUser.getIdToken();
+          return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+        }
+
+        window.bazarApprove = async (id) => {
+          try {
+            const h = await bazarAuthHeadersJson();
+            const res = await fetch(`${BAZAR_API}/admin/approve/${id}`, { method: "POST", headers: h, body: "{}" });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || "Błąd");
+            showNotification("Oferta zaakceptowana.", "success");
+            await loadBazar();
+          } catch (e) {
+            showNotification(e.message || "Błąd akceptacji", "error");
+          }
+        };
+
+        window.bazarReject = async (id) => {
+          const reason = window.prompt("Podaj powód odrzucenia (trafi do sprzedawcy w opisie oferty):", "");
+          if (reason === null) return;
+          if (!reason.trim()) {
+            showNotification("Powód jest wymagany.", "error");
+            return;
+          }
+          try {
+            const h = await bazarAuthHeadersJson();
+            const res = await fetch(`${BAZAR_API}/admin/reject/${id}`, {
+              method: "POST",
+              headers: h,
+              body: JSON.stringify({ reason: reason.trim() }),
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || "Błąd");
+            showNotification("Oferta odrzucona.", "success");
+            await loadBazar();
+          } catch (e) {
+            showNotification(e.message || "Błąd odrzucenia", "error");
+          }
+        };
+
+        window.bazarTogglePin = async (id, pinned) => {
+          try {
+            const h = await bazarAuthHeadersJson();
+            const res = await fetch(`${BAZAR_API}/admin/pin/${id}`, {
+              method: "POST",
+              headers: h,
+              body: JSON.stringify({ pinned }),
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || "Błąd");
+            showNotification(pinned ? "Oferta przypięta." : "Oferta odpięta.", "success");
+            await loadBazar();
+          } catch (e) {
+            showNotification(e.message || "Błąd przypięcia", "error");
+          }
+        };
+
+        window.bazarAdminMarkSold = async (id) => {
+          if (!confirm("Oznaczyć ofertę jako sprzedaną?")) return;
+          try {
+            const h = await bazarAuthHeadersJson();
+            const res = await fetch(`${BAZAR_API}/admin/sold/${id}`, { method: "POST", headers: h, body: "{}" });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || "Błąd");
+            showNotification("Status: sprzedana.", "success");
+            await loadBazar();
+          } catch (e) {
+            showNotification(e.message || "Błąd", "error");
+          }
+        };
+
+        window.bazarOpenEdit = (id) => {
+          const o = bazarAdminList.find((x) => x.id === id);
+          if (!o) return;
+          let modal = document.getElementById("bazar-edit-modal");
+          if (!modal) {
+            modal = document.createElement("div");
+            modal.id = "bazar-edit-modal";
+            document.body.appendChild(modal);
+          }
+          const imgs = (o.images && o.images.length ? o.images : o.mainImage ? [o.mainImage] : []).join("\n");
+          modal.className =
+            "fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto p-4 bg-black/90 backdrop-blur-sm";
+          modal.innerHTML = `<div class="admin-card max-w-2xl w-full my-8" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-xl font-bold coyote-text">Edycja oferty (admin)</h2>
+              <button type="button" onclick="document.getElementById('bazar-edit-modal').remove()" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            <div class="space-y-3 text-sm">
+              <input type="hidden" id="bazar-edit-id" value="${o.id}" />
+              <div><label class="block text-zinc-400 mb-1">Tytuł</label><input id="bazar-edit-title" class="w-full bg-zinc-800 border border-zinc-600 rounded px-3 py-2 text-white" value="${(o.title || "").replace(/"/g, "&quot;")}" /></div>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="block text-zinc-400 mb-1">Cena (PLN)</label><input id="bazar-edit-price" type="number" step="0.01" class="w-full bg-zinc-800 border border-zinc-600 rounded px-3 py-2 text-white" value="${o.price != null ? o.price : ""}" /></div>
+                <div><label class="block text-zinc-400 mb-1">Kategoria</label>
+                  <select id="bazar-edit-category" class="w-full bg-zinc-800 border border-zinc-600 rounded px-3 py-2 text-white">
+                    ${Object.entries(BAZAR_CAT_LABEL)
+                      .map(
+                        ([v, l]) =>
+                          `<option value="${v}" ${o.category === v ? "selected" : ""}>${l}</option>`,
+                      )
+                      .join("")}
+                  </select>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="block text-zinc-400 mb-1">Stan</label>
+                  <select id="bazar-edit-condition" class="w-full bg-zinc-800 border border-zinc-600 rounded px-3 py-2 text-white">
+                    <option value="NOWY" ${o.condition === "NOWY" ? "selected" : ""}>Nowy</option>
+                    <option value="UZYWANY" ${o.condition === "UZYWANY" ? "selected" : ""}>Używany</option>
+                  </select>
+                </div>
+                <div><label class="block text-zinc-400 mb-1">Województwo (slug)</label>
+                  <input id="bazar-edit-woj" class="w-full bg-zinc-800 border border-zinc-600 rounded px-3 py-2 text-white" value="${(o.wojewodztwo || "").replace(/"/g, "&quot;")}" placeholder="np. mazowieckie" />
+                </div>
+              </div>
+              <div><label class="block text-zinc-400 mb-1">Miejscowość</label><input id="bazar-edit-miejsc" class="w-full bg-zinc-800 border border-zinc-600 rounded px-3 py-2 text-white" value="${(o.miejscowosc || "").replace(/"/g, "&quot;")}" /></div>
+              <div><label class="block text-zinc-400 mb-1">Opis</label><textarea id="bazar-edit-desc" rows="5" class="w-full bg-zinc-800 border border-zinc-600 rounded px-3 py-2 text-white"></textarea></div>
+              <div><label class="block text-zinc-400 mb-1">Zdjęcia (max 5, jedno na linię — data URL jak w sklepie lub HTTPS)</label><textarea id="bazar-edit-imgs" rows="4" class="w-full bg-zinc-800 border border-zinc-600 rounded px-3 py-2 text-white font-mono text-xs"></textarea></div>
+              <div class="flex gap-2 pt-2">
+                <button type="button" onclick="bazarSaveEdit()" class="btn-admin flex-1"><i class="fa-solid fa-save mr-2"></i>Zapisz</button>
+                <button type="button" onclick="document.getElementById('bazar-edit-modal').remove()" class="btn-admin bg-zinc-700">Anuluj</button>
+              </div>
+            </div>
+          </div>`;
+          modal.onclick = () => modal.remove();
+          const d = modal.querySelector("#bazar-edit-desc");
+          const im = modal.querySelector("#bazar-edit-imgs");
+          if (d) d.value = o.description || "";
+          if (im) im.value = imgs;
+        };
+
+        window.bazarSaveEdit = async () => {
+          const id = document.getElementById("bazar-edit-id")?.value;
+          if (!id) return;
+          const title = document.getElementById("bazar-edit-title")?.value?.trim();
+          const price = parseFloat(document.getElementById("bazar-edit-price")?.value);
+          const category = document.getElementById("bazar-edit-category")?.value;
+          const condition = document.getElementById("bazar-edit-condition")?.value;
+          const wojewodztwo = document.getElementById("bazar-edit-woj")?.value?.trim();
+          const miejscowosc = document.getElementById("bazar-edit-miejsc")?.value?.trim();
+          const description = document.getElementById("bazar-edit-desc")?.value ?? "";
+          const imgRaw = document.getElementById("bazar-edit-imgs")?.value ?? "";
+          const images = imgRaw
+            .split("\n")
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .slice(0, 5);
+          try {
+            const h = await bazarAuthHeadersJson();
+            const res = await fetch(`${BAZAR_API}/offer/${id}`, {
+              method: "PUT",
+              headers: h,
+              body: JSON.stringify({
+                title,
+                price,
+                category,
+                condition,
+                wojewodztwo,
+                miejscowosc,
+                description,
+                images,
+              }),
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || "Błąd zapisu");
+            showNotification("Oferta zapisana.", "success");
+            document.getElementById("bazar-edit-modal")?.remove();
+            await loadBazar();
+          } catch (e) {
+            showNotification(e.message || "Błąd zapisu", "error");
+          }
+        };
+
         // Funkcje dashboard
         const SITES_TO_CHECK = [
         "strzelca.pl",
@@ -11413,12 +11714,14 @@
         
         if (productId) {
           title.textContent = "Edytuj produkt";
+          document.getElementById("product-legal-block")?.classList.add("hidden");
           setTimeout(() => {
             editProduct(productId);
           }, 200);
         } else {
           title.textContent = "Dodaj produkt";
           clearProductForm();
+          document.getElementById("product-legal-block")?.classList.remove("hidden");
         }
       };
 
@@ -11572,6 +11875,15 @@
             return;
           }
 
+          if (!productId) {
+            const ap = document.getElementById("product-accept-platform");
+            const ab = document.getElementById("product-accept-bazar");
+            if (!ap?.checked || !ab?.checked) {
+              showNotification("Zaznacz akceptację regulaminu ogólnego oraz regulaminu bazaru.", "error");
+              return;
+            }
+          }
+
           try {
             // Przygotuj tablicę zdjęć
             const images = productImages.map((img, idx) => ({
@@ -11634,6 +11946,47 @@
         document.getElementById("product-id").value = "";
         productImages = [];
         renderProductImages();
+        const ap = document.getElementById("product-accept-platform");
+        const ab = document.getElementById("product-accept-bazar");
+        if (ap) ap.checked = false;
+        if (ab) ab.checked = false;
+      };
+
+      window.openAdminRegModal = async (docId) => {
+        try {
+          const res = await fetch("https://dokumenty.strzelca.pl/");
+          const html = await res.text();
+          const parser = new DOMParser();
+          const docEl = parser.parseFromString(html, "text/html");
+          const contentEl = docEl.getElementById(docId + "-content") || docEl.getElementById(docId);
+          let contentHTML = "";
+          if (contentEl) {
+            const inner = contentEl.querySelector(".accordion-body") || contentEl;
+            contentHTML = inner.innerHTML;
+          }
+          if (!contentHTML) {
+            contentHTML = `<div class="p-6 text-center text-zinc-400"><p>Treść niedostępna.</p><a href="https://dokumenty.strzelca.pl#${docId}" target="_blank" class="coyote-text hover:underline">Otwórz dokumenty.strzelca.pl</a></div>`;
+          }
+          const old = document.getElementById("admin-regulation-modal");
+          if (old) old.remove();
+          const overlay = document.createElement("div");
+          overlay.id = "admin-regulation-modal";
+          overlay.className =
+            "fixed inset-0 z-[130] flex items-start justify-center overflow-y-auto p-4 bg-black/90 backdrop-blur-sm";
+          overlay.onclick = (e) => {
+            if (e.target === overlay) overlay.remove();
+          };
+          overlay.innerHTML = `<div class="admin-card max-w-3xl w-full my-8" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center px-5 py-4 border-b border-zinc-700">
+              <span class="text-xs uppercase font-bold tracking-widest text-zinc-500">Dokument</span>
+              <button type="button" onclick="document.getElementById('admin-regulation-modal').remove()" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            <div class="p-5 max-h-[75vh] overflow-y-auto text-zinc-300 text-sm leading-relaxed">${contentHTML}</div>
+          </div>`;
+          document.body.appendChild(overlay);
+        } catch (e) {
+          window.open(`https://dokumenty.strzelca.pl#${docId}`, "_blank");
+        }
       };
 
       // Funkcje zarządzania szkoleniami
@@ -17413,6 +17766,24 @@
           <div>
             <label class="block text-sm font-medium mb-2">Opis produktu</label>
             <div id="product-description-editor" style="min-height: 300px;" class="editor-content" contenteditable="true" placeholder="Opis produktu..."></div>
+          </div>
+
+          <div id="product-legal-block" class="bg-zinc-900/80 border border-zinc-700 rounded-lg p-4 space-y-3">
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              Przy <strong class="text-zinc-300">dodawaniu</strong> nowego produktu potwierdzasz zapoznanie się z dokumentami:
+            </p>
+            <label class="flex items-start gap-3 cursor-pointer text-sm text-zinc-300">
+              <input type="checkbox" id="product-accept-platform" class="mt-1 accent-[#c19a6b]" />
+              <span>Zapoznałem/am się z
+                <a href="#" class="coyote-text hover:underline" onclick="event.preventDefault(); openAdminRegModal('regulamin-platformy');">Regulaminem ogólnym (platformy)</a>
+                i akceptuję jego postanowienia.</span>
+            </label>
+            <label class="flex items-start gap-3 cursor-pointer text-sm text-zinc-300">
+              <input type="checkbox" id="product-accept-bazar" class="mt-1 accent-[#c19a6b]" />
+              <span>Zapoznałem/am się z
+                <a href="#" class="coyote-text hover:underline" onclick="event.preventDefault(); openAdminRegModal('regulamin-bazar');">Regulaminem bazaru</a>
+                i akceptuję jego postanowienia.</span>
+            </label>
           </div>
 
           <div class="flex gap-4 pt-4 border-t border-zinc-700">
