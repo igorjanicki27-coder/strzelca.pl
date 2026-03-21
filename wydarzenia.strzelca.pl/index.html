@@ -39,7 +39,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-2" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
     <style>
         :root { 
             --coyote: #C19A6B; 
@@ -53,9 +53,12 @@
         body { 
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
             background-color: #0a0a0a; 
-            background: linear-gradient(rgba(10,10,10,0.22) 0%, rgba(10,10,10,0.55) 55%, rgba(10,10,10,0.9) 100%), url('https://strzelca.pl/tlo.png');
-            background-size: cover;
-            background-position: top center;
+            background-image:
+                var(--strzelca-bg-vignette),
+                linear-gradient(rgba(10,10,10,0.22) 0%, rgba(10,10,10,0.55) 55%, rgba(10,10,10,0.9) 100%),
+                url('https://strzelca.pl/tlo.png');
+            background-size: cover, cover, cover;
+            background-position: center center, top center, top center;
             background-attachment: scroll;
             color: #e5e5e5; 
             margin: 0; 
@@ -1182,7 +1185,11 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { initializeFirestore, collection, query, orderBy, getDocs, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
+        import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-03-21-1";
+        import {
+          getHeaderProfileFromCache,
+          setHeaderProfileCache,
+        } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
         import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
         import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
 
@@ -1298,27 +1305,61 @@ const firebaseConfig = {
                     profileLink.href = "https://konto.strzelca.pl/profil.html";
                 }
 
-                // Pobierz awatar z profilu użytkownika
+                // Pobierz awatar z profilu (cache localStorage → mniej odczytów Firestore)
                 try {
-                    const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
-                    if (profileDoc.exists()) {
-                        const userProfile = profileDoc.data();
-                        if (userProfile.displayName && userDisplayName) {
-                            userDisplayName.textContent = userProfile.displayName;
+                    const cached = getHeaderProfileFromCache(user.uid);
+                    const fallbackName = user.displayName || user.email.split("@")[0];
+
+                    if (cached) {
+                        if (userDisplayName) {
+                            userDisplayName.textContent = cached.displayName || fallbackName;
                         }
                         if (userAvatar) {
-                            if (userProfile.avatar) {
-                                // Jeśli użytkownik ma awatar, wyświetl go
-                                userAvatar.innerHTML = `<img src="${userProfile.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
+                            if (cached.avatar) {
+                                userAvatar.innerHTML = `<img src="${cached.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
                             } else {
-                                // Użyj domyślnego awatara
-                                userAvatar.innerHTML = getDefaultAvatar(userProfile.gender);
+                                userAvatar.innerHTML = getDefaultAvatar(cached.gender);
                             }
                         }
                     } else {
-                        // Jeśli profil nie istnieje, użyj domyślnego awatara
+                        if (userDisplayName) {
+                            userDisplayName.textContent = fallbackName;
+                        }
                         if (userAvatar) {
                             userAvatar.innerHTML = getDefaultAvatar();
+                        }
+
+                        const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
+                        if (profileDoc.exists()) {
+                            const userProfile = profileDoc.data();
+                            setHeaderProfileCache(user.uid, {
+                                displayName: userProfile.displayName || "",
+                                avatar: userProfile.avatar || "",
+                                gender: userProfile.gender ?? null,
+                                role: userProfile.role || "user",
+                                profileExists: true,
+                            });
+                            if (userProfile.displayName && userDisplayName) {
+                                userDisplayName.textContent = userProfile.displayName;
+                            }
+                            if (userAvatar) {
+                                if (userProfile.avatar) {
+                                    userAvatar.innerHTML = `<img src="${userProfile.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
+                                } else {
+                                    userAvatar.innerHTML = getDefaultAvatar(userProfile.gender);
+                                }
+                            }
+                        } else {
+                            setHeaderProfileCache(user.uid, {
+                                displayName: fallbackName,
+                                avatar: "",
+                                gender: null,
+                                role: "user",
+                                profileExists: false,
+                            });
+                            if (userAvatar) {
+                                userAvatar.innerHTML = getDefaultAvatar();
+                            }
                         }
                     }
                 } catch (error) {
@@ -1588,6 +1629,33 @@ const firebaseConfig = {
             return date < now;
         }
 
+        /** Po cache IDB / starym formacie dateObj może być stringiem — zawsze zwracamy Date lub null. */
+        function resolveEventDateObj(ev) {
+            if (!ev || typeof ev !== 'object') return null;
+            const tryCoerce = (x) => {
+                if (x == null) return null;
+                if (x instanceof Date) return isNaN(x.getTime()) ? null : x;
+                if (typeof x.toDate === 'function') {
+                    try {
+                        const d = x.toDate();
+                        return d instanceof Date && !isNaN(d.getTime()) ? d : null;
+                    } catch (_) {
+                        return null;
+                    }
+                }
+                if (typeof x === 'string' || typeof x === 'number') {
+                    const d = new Date(x);
+                    return isNaN(d.getTime()) ? null : d;
+                }
+                if (typeof x === 'object' && typeof x.seconds === 'number') {
+                    const d = new Date(x.seconds * 1000 + (x.nanoseconds || 0) / 1e6);
+                    return isNaN(d.getTime()) ? null : d;
+                }
+                return null;
+            };
+            return tryCoerce(ev.dateObj) || tryCoerce(ev.date);
+        }
+
         function resolveFilterSource(sourceHint = 'auto') {
             if (sourceHint === 'mobile' || sourceHint === 'desktop') {
                 return sourceHint;
@@ -1743,7 +1811,21 @@ const firebaseConfig = {
                                 return built;
                             },
                         });
-                        allEvents = Array.isArray(payload) ? payload : [];
+                        const rawList = Array.isArray(payload) ? payload : [];
+                        allEvents = rawList
+                            .map((ev) => {
+                                const dateObj = resolveEventDateObj(ev);
+                                if (!dateObj) {
+                                    console.warn('Wydarzenie bez poprawnej daty, pomijam:', ev?.id);
+                                    return null;
+                                }
+                                return {
+                                    ...ev,
+                                    dateObj,
+                                    status: isEventCompleted({ dateObj }) ? 'completed' : 'active',
+                                };
+                            })
+                            .filter(Boolean);
                         allEvents.sort((a, b) => {
                             if (a.pinned && !b.pinned) return -1;
                             if (!a.pinned && b.pinned) return 1;
@@ -2345,7 +2427,7 @@ const firebaseConfig = {
     </script>
     <script
       type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-02-06-1"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-03-21-2"
     ></script>
     <script
       type="module"

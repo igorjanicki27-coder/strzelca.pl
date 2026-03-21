@@ -25,7 +25,7 @@
     <!-- Wspólne poprawki responsywności -->
     <link
       rel="stylesheet"
-      href="https://strzelca.pl/shared.css?v=2026-03-21-2"
+      href="https://strzelca.pl/shared.css?v=2026-03-21-3"
     />
     <style>
       :root {
@@ -957,7 +957,8 @@
         setPersistence,
         browserLocalPersistence,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-      import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
+      import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-03-21-1";
+      import { setHeaderProfileCache } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
 
       (async () => {
         try {
@@ -1594,6 +1595,16 @@
               // aktualizuj stan lokalny, jeśli był już wczytany
               if (userProfile) userProfile.avatar = url;
 
+              try {
+                setHeaderProfileCache(currentUser.uid, {
+                  displayName: String(userProfile?.displayName || "").trim(),
+                  avatar: url,
+                  gender: userProfile?.gender ?? null,
+                  role: String(userProfile?.role || selfPrivateProfile?.role || "user"),
+                  profileExists: true,
+                });
+              } catch {}
+
               window.closeAvatarPicker && window.closeAvatarPicker();
               alert("Avatar został ustawiony.");
             } catch (error) {
@@ -1648,6 +1659,15 @@
                 if (avatarDisplay) {
                   avatarDisplay.innerHTML = `<img src="${ADMIN_AVATAR_URL}" alt="Avatar" class="avatar">`;
                 }
+                try {
+                  setHeaderProfileCache(currentUser.uid, {
+                    displayName: String(userProfile?.displayName || "").trim(),
+                    avatar: ADMIN_AVATAR_URL,
+                    gender: userProfile?.gender ?? null,
+                    role: "admin",
+                    profileExists: true,
+                  });
+                } catch {}
                 window.closeAvatarPicker && window.closeAvatarPicker();
                 alert("Przywrócono domyślny avatar administratora.");
                 return;
@@ -1687,6 +1707,16 @@
               if (avatarDisplay) {
                 avatarDisplay.innerHTML = getDefaultAvatar(userProfile?.gender);
               }
+
+              try {
+                setHeaderProfileCache(currentUser.uid, {
+                  displayName: String(userProfile?.displayName || "").trim(),
+                  avatar: "",
+                  gender: userProfile?.gender ?? null,
+                  role: String(userProfile?.role || selfPrivateProfile?.role || "user"),
+                  profileExists: true,
+                });
+              } catch {}
 
               window.closeAvatarPicker && window.closeAvatarPicker();
               alert("Przywrócono domyślny avatar.");
@@ -1826,6 +1856,15 @@
                       avatarUpdatedAt: new Date(),
                     });
                     userProfile.avatar = ADMIN_AVATAR_URL;
+                    try {
+                      setHeaderProfileCache(currentUser.uid, {
+                        displayName: String(userProfile?.displayName || "").trim(),
+                        avatar: ADMIN_AVATAR_URL,
+                        gender: userProfile?.gender ?? null,
+                        role: "admin",
+                        profileExists: true,
+                      });
+                    } catch {}
                   } catch (e) {
                     console.warn(
                       "Admin avatar enforce (private) failed (ignored):",
@@ -2234,7 +2273,7 @@
               // Wyczyść cache SSO (ważne dla synchronizacji między subdomenami)
               try {
                 const { clearSSOCache } =
-                  await import("https://strzelca.pl/sso-client.mjs?v=2026-02-06-1");
+                  await import("https://strzelca.pl/sso-client.mjs?v=2026-03-21-1");
                 clearSSOCache();
               } catch (e) {
                 console.warn(
@@ -2940,7 +2979,7 @@
     </script>
     <script
       type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-02-06-1"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-03-21-2"
     ></script>
     <script
       type="module"

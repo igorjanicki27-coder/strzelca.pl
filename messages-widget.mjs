@@ -1025,7 +1025,7 @@ async function main() {
   if (!user) {
     // Jeśli nie mamy usera, spróbuj SSO (cookie -> custom token) dla tej instancji auth.
     try {
-      const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-06-1");
+      const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-03-21-1");
       await ensureFirebaseSSO(auth);
     } catch {}
     user = auth.currentUser || (await waitForAuth());

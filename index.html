@@ -49,15 +49,17 @@
         min-height: 100vh;
         min-height: 100dvh;
         width: 100%;
-        background:
+        background-color: #0a0a0a;
+        background-image:
+          var(--strzelca-bg-vignette),
           linear-gradient(
             rgba(10, 10, 10, 0.1) 0%,
             rgba(10, 10, 10, 0.4) 50%,
             #0a0a0a 100%
           ),
           url("./tlo.png");
-        background-size: cover;
-        background-position: top center;
+        background-size: cover, cover, cover;
+        background-position: center center, top center, top center;
         background-repeat: no-repeat;
         display: flex;
         flex-direction: column;
@@ -146,7 +148,7 @@
     </style>
 
     <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-2" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
 
     <!-- Cookies/zgody + warunkowe ładowanie analityki -->
     <script src="https://strzelca.pl/consent.js?v=2026-02-06-1"></script>
@@ -423,6 +425,10 @@
         signOut,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
       import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-03-21-1";
+      import {
+        getHeaderProfileFromCache,
+        setHeaderProfileCache,
+      } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
 
       
       async function getFirebaseApiKey() {
@@ -598,34 +604,56 @@
           loginBtn.classList.add("hidden");
           userPanel.classList.remove("hidden");
 
-          // Wyświetl nazwę użytkownika
-          const displayName = user.displayName || user.email.split("@")[0];
-          userDisplayName.textContent = displayName;
-
           // Sprawdź czy użytkownik ma zweryfikowany email (tryb ograniczony, bez wylogowania)
           const profileLink = document.getElementById("profile-link");
           if (profileLink) {
             profileLink.href = "https://konto.strzelca.pl/profil.html";
           }
 
-          // Pobierz awatar z profilu użytkownika
+          // Pobierz awatar z profilu (cache localStorage → mniej odczytów Firestore)
           try {
-            const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
-            if (profileDoc.exists()) {
-              const userProfile = profileDoc.data();
-              console.log("Profil użytkownika istnieje:", userProfile.displayName);
+            const cached = getHeaderProfileFromCache(user.uid);
+            const fallbackName = user.displayName || user.email.split("@")[0];
+            userDisplayName.textContent = cached
+              ? cached.displayName || fallbackName
+              : fallbackName;
 
-              if (userProfile.avatar) {
-                // Jeśli użytkownik ma awatar, wyświetl go
-                userAvatar.innerHTML = `<img src="${userProfile.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
+            if (cached) {
+              if (cached.avatar) {
+                userAvatar.innerHTML = `<img src="${cached.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
               } else {
-                // Użyj domyślnego awatara
-                userAvatar.innerHTML = getDefaultAvatar(userProfile.gender);
+                userAvatar.innerHTML = getDefaultAvatar(cached.gender);
               }
             } else {
-              // Jeśli profil nie istnieje, użyj domyślnego awatara i pokaż ostrzeżenie
-              console.warn("Profil użytkownika nie istnieje w Firestore, ale użytkownik jest zalogowany");
               userAvatar.innerHTML = getDefaultAvatar();
+
+              const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
+              if (profileDoc.exists()) {
+                const userProfile = profileDoc.data();
+                console.log("Profil użytkownika istnieje:", userProfile.displayName);
+                setHeaderProfileCache(user.uid, {
+                  displayName: userProfile.displayName || "",
+                  avatar: userProfile.avatar || "",
+                  gender: userProfile.gender ?? null,
+                  role: userProfile.role || "user",
+                  profileExists: true,
+                });
+                if (userProfile.avatar) {
+                  userAvatar.innerHTML = `<img src="${userProfile.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
+                } else {
+                  userAvatar.innerHTML = getDefaultAvatar(userProfile.gender);
+                }
+              } else {
+                console.warn("Profil użytkownika nie istnieje w Firestore, ale użytkownik jest zalogowany");
+                setHeaderProfileCache(user.uid, {
+                  displayName: fallbackName,
+                  avatar: "",
+                  gender: null,
+                  role: "user",
+                  profileExists: false,
+                });
+                userAvatar.innerHTML = getDefaultAvatar();
+              }
             }
           } catch (error) {
             // Ignoruj błędy CORS i problemy z połączeniem do Firestore
@@ -689,7 +717,7 @@
           
           // Wyczyść cache SSO (ważne dla synchronizacji między subdomenami)
           try {
-            const { clearSSOCache } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-06-1");
+            const { clearSSOCache } = await import("https://strzelca.pl/sso-client.mjs?v=2026-03-21-1");
             clearSSOCache();
           } catch (e) {
             console.warn("SSO cache clear failed (ignored):", e?.message || e);
@@ -708,7 +736,7 @@
     </script>
     <script
       type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-02-06-1"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-03-21-2"
     ></script>
     <script
       type="module"

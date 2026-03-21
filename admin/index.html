@@ -26,7 +26,7 @@
     <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.7/quill.js"></script>
     <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-2" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
     <style>
       :root {
         --coyote: #c19a6b;
@@ -36,10 +36,11 @@
       html {
         background-color: #0a0a0a;
         background-image:
+          var(--strzelca-bg-vignette),
           linear-gradient(rgba(10, 10, 10, 0.6), #0a0a0a),
           url("/tlo.png");
-        background-size: cover;
-        background-position: center top;
+        background-size: cover, cover, cover;
+        background-position: center center, center top, center top;
         background-attachment: fixed;
         background-repeat: no-repeat;
         min-height: 100vh; /* Minimalna wysokość zamiast stałej */
@@ -839,13 +840,17 @@
         const htmlElement = document.documentElement;
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
 
+        const vignette =
+          getComputedStyle(htmlElement).getPropertyValue('--strzelca-bg-vignette').trim() ||
+          'radial-gradient(ellipse 125% 100% at 50% 28%, rgba(10, 10, 10, 0) 0%, rgba(10, 10, 10, 0.2) 44%, rgba(10, 10, 10, 0.76) 79%, #0a0a0a 100%)';
+        const mid = 'linear-gradient(rgba(10, 10, 10, 0.6), #0a0a0a)';
         if (isLocalhost) {
-          // Dla lokalnego środowiska użyj względnej ścieżki
-          htmlElement.style.backgroundImage = 'linear-gradient(rgba(10, 10, 10, 0.6), #0a0a0a), url("../tlo.png")';
+          htmlElement.style.backgroundImage = `${vignette}, ${mid}, url("../tlo.png")`;
         } else {
-          // Dla domeny użyj zewnętrznego URL-a
-          htmlElement.style.backgroundImage = 'linear-gradient(rgba(10, 10, 10, 0.6), #0a0a0a), url("https://strzelca.pl/tlo.png")';
+          htmlElement.style.backgroundImage = `${vignette}, ${mid}, url("https://strzelca.pl/tlo.png")`;
         }
+        htmlElement.style.backgroundSize = 'cover, cover, cover';
+        htmlElement.style.backgroundPosition = 'center center, center top, center top';
       });
     </script>
 
@@ -4375,7 +4380,7 @@
 
           // Wyczyść cache SSO
           try {
-            const { clearSSOCache } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-06-1");
+            const { clearSSOCache } = await import("https://strzelca.pl/sso-client.mjs?v=2026-03-21-1");
             clearSSOCache();
           } catch (e) {
             // ignore
@@ -9355,6 +9360,14 @@
         return `<p>Twoja wpłata pomoże nam rozwijać działalność, wprowadzać nowe produkty i usługi, oraz wspierać społeczność strzelecką. Każda kwota ma znaczenie i przyczynia się do budowania lepszej przyszłości dla naszego środowiska.</p><p>Wszystkie wpłaty są dobrowolne i nie wiążą się z żadnymi zobowiązaniami. Za pośrednictwem bezpiecznej bramki płatniczej Stripe.</p><p><a href="https://dokumenty.strzelca.pl#donation-clause" rel="noopener noreferrer">Klauzula Donacji</a></p>`;
       }
 
+      function charityActionDateRawString(item) {
+        const raw = item?.date;
+        if (raw == null) return "";
+        if (typeof raw === "string") return raw;
+        if (typeof raw.toDate === "function") return raw.toDate().toISOString();
+        return String(raw);
+      }
+
       function charityActionEventDate(item) {
         const raw = item?.date;
         if (raw && typeof raw.toDate === "function") return raw.toDate();
@@ -9420,14 +9433,23 @@
           const eventDate = charityActionEventDate(item);
           const isPast = charityActionIsPast(item);
           const descPlain = (data.description || "Brak opisu").replace(/<[^>]+>/g, "").trim() || "Brak opisu";
-          const rawDateStr = data.date != null ? String(data.date) : "";
+          const hideDate = data.hideDate === true;
+          const hideTime = hideDate || data.hideTime === true;
+          const rawDateStr = charityActionDateRawString(data);
           const isTimeProvided =
-            (data.date && typeof data.date.toDate === "function") ||
-            (typeof data.date === "string" && rawDateStr.includes("T") && rawDateStr.length > 10);
+            !hideTime &&
+            ((data.date && typeof data.date.toDate === "function") ||
+              (typeof data.date === "string" && rawDateStr.includes("T") && rawDateStr.length > 10));
           const timeStr = isTimeProvided
             ? eventDate.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })
             : null;
-          const dateStr = eventDate.toLocaleDateString("pl-PL");
+          const dateStr = hideDate ? "Odwołania" : eventDate.toLocaleDateString("pl-PL");
+          const timeLineAdmin =
+            hideDate
+              ? ""
+              : timeStr
+                ? `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-clock text-coyote text-xs shrink-0" aria-hidden="true"></i>${timeStr}</span>`
+                : `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-clock text-coyote text-xs shrink-0 opacity-80" aria-hidden="true"></i>Cały dzień</span>`;
           const imgAlt = (data.title || "").replace(/"/g, "&quot;");
 
           return `
@@ -9448,7 +9470,7 @@
                     </div>
                     <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-zinc-300">
                       <span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-calendar-day text-coyote text-xs shrink-0" aria-hidden="true"></i>${dateStr}</span>
-                      ${timeStr ? `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-clock text-coyote text-xs shrink-0" aria-hidden="true"></i>${timeStr}</span>` : ""}
+                      ${timeLineAdmin}
                     </div>
                   </div>
                   ${data.image ? `<img src="${data.image}" alt="${imgAlt}" class="w-full h-48 object-cover rounded mb-3">` : ""}
@@ -9572,6 +9594,29 @@
                     required
                     class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
                   />
+                  <p class="text-xs text-zinc-500 mt-1.5">Używana do statusu „aktywna / zakończona” i kolejności — nawet gdy data nie jest pokazywana na stronie Pomoc.</p>
+                </div>
+
+                <div class="rounded-lg border border-zinc-700/80 bg-zinc-800/40 p-3 space-y-2">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      id="charity-hide-date"
+                      ${charity && charity.hideDate === true ? "checked" : ""}
+                      class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote shrink-0"
+                    />
+                    <span class="text-sm">Nie podawaj daty</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      id="charity-hide-time"
+                      ${charity && (charity.hideDate === true || charity.hideTime === true) ? "checked" : ""}
+                      ${charity && charity.hideDate === true ? "disabled" : ""}
+                      class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote shrink-0"
+                    />
+                    <span class="text-sm">Nie podawaj godziny</span>
+                  </label>
                 </div>
 
                 <div>
@@ -9642,6 +9687,20 @@
         if (form) {
           form.addEventListener("submit", handleCharityFormSubmit);
         }
+
+        const hideDateEl = document.getElementById("charity-hide-date");
+        const hideTimeEl = document.getElementById("charity-hide-time");
+        const syncCharityHideTimeFromDate = () => {
+          if (!hideTimeEl || !hideDateEl) return;
+          if (hideDateEl.checked) {
+            hideTimeEl.checked = true;
+            hideTimeEl.disabled = true;
+          } else {
+            hideTimeEl.disabled = false;
+          }
+        };
+        hideDateEl?.addEventListener("change", syncCharityHideTimeFromDate);
+        syncCharityHideTimeFromDate();
 
         renderCharityImages();
 
@@ -9780,6 +9839,9 @@
         const description = charityActionQuill ? charityActionQuill.root.innerHTML.trim() : "";
         const buttonLink = document.getElementById("charity-button-link").value.trim();
         const active = document.getElementById("charity-active").checked;
+        const hideDate = document.getElementById("charity-hide-date")?.checked === true;
+        let hideTime = document.getElementById("charity-hide-time")?.checked === true;
+        if (hideDate) hideTime = true;
 
         if (!title || !date) {
           showNotification("Wypełnij wszystkie wymagane pola.", "error");
@@ -9800,6 +9862,8 @@
             images: finalImages,
             buttonLink: buttonLink || "",
             active,
+            hideDate,
+            hideTime,
             order: charityId ? (charityActionsList.find(c => c.id === charityId)?.order || charityActionsList.length) : charityActionsList.length,
             updatedAt: new Date(),
           };

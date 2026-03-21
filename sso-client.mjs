@@ -14,6 +14,8 @@ const DEFAULT_MIN_SYNC_MINUTES = 30;
 const UNVERIFIED_LOCK_KEY = "__strzelca_sso_lock_unverified";
 const SSO_CACHE_KEY = "__strzelca_sso_cache";
 const SSO_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minut cache
+/** Pomiń kosztowny POST /sso-session-exchange przy kolejnych pełnych przeładowaniach (ta sama karta). Wylogowanie na innej subdomenie może być widoczne z opóźnieniem do tego czasu. */
+const EXCHANGE_SKIP_WHEN_FRESH_MS = 60 * 1000;
 
 async function apiFetch(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -71,32 +73,31 @@ export function clearSSOCache() {
 export async function ensureFirebaseSSO(auth) {
   if (!auth) throw new Error("ensureFirebaseSSO: missing auth");
 
-  // WAŻNE: Cookie jest źródłem prawdy - zawsze sprawdzamy cookie, nawet jeśli mamy cache
-  // Cache jest tylko dla optymalizacji, nie zastępuje sprawdzenia cookie
-  
   const currentUser = auth.currentUser;
   const cached = getCachedSSO();
-  
-  // OPTYMALIZACJA: Jeśli mamy świeży cache i użytkownik jest zalogowany z tym samym UID,
-  // możemy sprawdzić cookie tylko raz na 5 minut (zamiast przy każdym wywołaniu)
-  let shouldCheckCookie = true;
-  if (cached && currentUser && cached.uid === currentUser.uid) {
-    // Sprawdź wiek cache - jeśli jest świeższy niż 2 minuty, użyj cache
-    // Ale nadal sprawdzamy cookie co 2 minuty, żeby wykryć wylogowanie z innej subdomeny
+
+  // Szybka ścieżka: świeży wynik w sessionStorage + lokalny Firebase user z tym samym UID —
+  // oszczędza round-trip do /sso-session-exchange przy każdym przeładowaniu strony.
+  if (
+    currentUser &&
+    cached &&
+    cached.authenticated === true &&
+    cached.uid === currentUser.uid
+  ) {
     try {
-      const cachedData = sessionStorage.getItem(SSO_CACHE_KEY);
-      if (cachedData) {
-        const parsed = JSON.parse(cachedData);
-        const cacheAge = Date.now() - parsed.timestamp;
-        const CACHE_VALIDITY_MS = 2 * 60 * 1000; // 2 minuty (krócej niż TTL cache)
-        
-        if (cacheAge < CACHE_VALIDITY_MS) {
-          // Cache jest świeży - ale nadal musimy sprawdzić cookie, żeby wykryć wylogowanie
-          // Wykonujemy sprawdzenie cookie, ale cache pomaga zredukować częstotliwość
+      if (sessionStorage?.getItem?.(UNVERIFIED_LOCK_KEY) === "1") {
+        // musi przejść pełnym flow (wylogowanie / blokada)
+      } else {
+        const raw = sessionStorage.getItem(SSO_CACHE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Date.now() - parsed.timestamp < EXCHANGE_SKIP_WHEN_FRESH_MS) {
+            return { status: "signed-in-cached" };
+          }
         }
       }
     } catch {
-      // Jeśli nie można sprawdzić cache, kontynuuj normalnie
+      // kontynuuj pełne sprawdzenie
     }
   }
 
@@ -176,9 +177,10 @@ export async function ensureFirebaseSSO(auth) {
     await signInWithCustomToken(auth, cookieSession.customToken);
   }
 
-  // Po zalogowaniu w subdomenie odśwież cookie (żeby wydłużać sesję cross-subdomain)
+  // Po zalogowaniu w subdomenie odśwież cookie (żeby wydłużać sesję cross-subdomain).
+  // Domyślny throttle (localStorage) — unikamy POST + wymuszonego odświeżania ID tokena przy każdym wejściu.
   try {
-    await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 }); // natychmiast
+    await syncSessionCookieFromFirebaseUser(auth);
     // Odśwież cache po synchronizacji
     if (auth.currentUser) {
       setCachedSSO({
@@ -224,7 +226,7 @@ export async function syncSessionCookieFromFirebaseUser(auth, { minIntervalMinut
   }
 
   try {
-    const idToken = await auth.currentUser.getIdToken(true);
+    const idToken = await auth.currentUser.getIdToken();
     const data = await apiFetch("/sso-session-login", {
       method: "POST",
       body: JSON.stringify({ idToken }),

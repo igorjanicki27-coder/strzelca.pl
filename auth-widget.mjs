@@ -1,3 +1,8 @@
+import {
+  getHeaderProfileFromCache,
+  setHeaderProfileCache,
+} from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
+
 const API_URL = "https://strzelca.pl/api/me";
 const LOGIN_URL = "https://konto.strzelca.pl/logowanie.html";
 const PROFILE_URL = "https://konto.strzelca.pl/profil.html";
@@ -178,7 +183,7 @@ async function tryGetFirebaseSession() {
     } catch {}
 
     try {
-      const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-06-1");
+      const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-03-21-1");
       await ensureFirebaseSSO(auth);
     } catch {}
 
@@ -189,6 +194,19 @@ async function tryGetFirebaseSession() {
     const user = auth.currentUser;
     if (!user) {
       return { authenticated: false };
+    }
+
+    const cached = getHeaderProfileFromCache(user.uid);
+    if (cached) {
+      return {
+        authenticated: true,
+        user,
+        profile: {
+          displayName: cached.displayName || undefined,
+          avatar: cached.avatar || undefined,
+          role: cached.role || undefined,
+        },
+      };
     }
 
     let profile = null;
@@ -207,7 +225,25 @@ async function tryGetFirebaseSession() {
         }
       }
       const snap = await getDoc(doc(db, "userProfiles", user.uid));
-      if (snap.exists()) profile = snap.data();
+      if (snap.exists()) {
+        profile = snap.data();
+        setHeaderProfileCache(user.uid, {
+          displayName: profile.displayName || "",
+          avatar: profile.avatar || "",
+          gender: profile.gender ?? null,
+          role: profile.role || "user",
+          profileExists: true,
+        });
+      } else {
+        const fallbackName = user.displayName || user.email?.split("@")[0] || "";
+        setHeaderProfileCache(user.uid, {
+          displayName: fallbackName,
+          avatar: "",
+          gender: null,
+          role: "user",
+          profileExists: false,
+        });
+      }
     } catch {}
 
     return {

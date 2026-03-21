@@ -88,7 +88,7 @@ export async function initAuth(firebaseConfig, options = {}) {
   let ssoResult = null;
   if (options.skipSSO !== true) {
     try {
-      const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-02-06-1");
+      const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-03-21-1");
       ssoResult = await ensureFirebaseSSO(auth);
       if (options.logSSO !== false) {
         console.log("SSO ensure result:", ssoResult);

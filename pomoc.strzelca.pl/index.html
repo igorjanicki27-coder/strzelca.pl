@@ -33,9 +33,12 @@
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background-color: #0a0a0a;
-            background-image: linear-gradient(rgba(10, 10, 10, 0.22) 0%, rgba(10, 10, 10, 0.55) 55%, rgba(10, 10, 10, 0.9) 100%), url('https://strzelca.pl/tlo.png');
-            background-size: cover;
-            background-position: top center;
+            background-image:
+                var(--strzelca-bg-vignette),
+                linear-gradient(rgba(10, 10, 10, 0.22) 0%, rgba(10, 10, 10, 0.55) 55%, rgba(10, 10, 10, 0.9) 100%),
+                url('https://strzelca.pl/tlo.png');
+            background-size: cover, cover, cover;
+            background-position: center center, top center, top center;
             background-attachment: scroll;
             color: #e5e5e5;
             margin: 0;
@@ -276,7 +279,7 @@
         }
     </style>
     <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-2" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
 </head>
 <body>
     <div class="main-wrapper">
@@ -396,6 +399,17 @@
                         <input type="hidden" id="charity-edit-id">
                         <input id="charity-title" type="text" placeholder="Nazwa akcji">
                         <input id="charity-date" type="datetime-local" placeholder="Data i czas zakończenia">
+                        <p class="text-[10px] text-zinc-500 leading-relaxed">Data służy też do statusu aktywnej / zakończonej — nawet gdy nie jest widoczna na karcie.</p>
+                        <div class="rounded-lg border border-zinc-700/80 bg-zinc-900/60 p-3 space-y-2">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="charity-hide-date" class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded shrink-0" onchange="window.syncCharityHideTimeFieldsPomoc()" />
+                                <span class="text-sm">Nie podawaj daty</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="charity-hide-time" class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded shrink-0" />
+                                <span class="text-sm">Nie podawaj godziny</span>
+                            </label>
+                        </div>
                         <label class="block text-xs text-zinc-500 uppercase tracking-wider mb-1">Opis akcji (edytor jak w sklepie)</label>
                         <div id="charity-description-editor-pomoc" class="rounded-lg overflow-hidden border border-zinc-700"></div>
                         <input id="charity-button-link" type="url" placeholder="Link do przycisku WESPRZYJ (np. Stripe)">
@@ -488,7 +502,11 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { initializeFirestore, doc, setDoc, getDoc, getDocs, collection, deleteDoc, query, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
+        import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-03-21-1";
+        import {
+          getHeaderProfileFromCache,
+          setHeaderProfileCache,
+        } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
         import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
         import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
 
@@ -796,6 +814,18 @@ const firebaseConfig = {
             }
         };
 
+        function charityItemDateRawString(item) {
+            const d = item?.date;
+            if (d == null) return '';
+            if (typeof d === 'string') return d;
+            if (typeof d?.toDate === 'function') return d.toDate().toISOString();
+            return String(d);
+        }
+
+        function charityItemRawHasTimeComponent(raw) {
+            return typeof raw === 'string' && raw.includes('T') && raw.length > 10;
+        }
+
         function buildCharityCard(item) {
             const title = escapeHtml(item.title || '');
             let coverImage = '';
@@ -804,18 +834,31 @@ const firebaseConfig = {
             } else if (item.image) {
                 coverImage = escapeHtml(item.image);
             }
-            const eventDate = item.date ? new Date(item.date) : null;
+            const eventDate = item.date
+                ? (typeof item.date?.toDate === 'function' ? item.date.toDate() : new Date(item.date))
+                : null;
             const hasValidDate = eventDate && !isNaN(eventDate.getTime());
-            
+            const hideDate = item.hideDate === true;
+            const hideTime = hideDate || item.hideTime === true;
+            const rawDateStr = charityItemDateRawString(item);
+
             let dateMetaHtml = '';
             if (!hasValidDate) {
                 dateMetaHtml = `
                     <div class="charity-card-meta-block charity-card-meta-row text-xs text-zinc-400 font-medium flex flex-col gap-1 items-center px-1">
                         <div class="uppercase tracking-wide leading-tight">Brak daty zakończenia</div>
                     </div>`;
+            } else if (hideDate) {
+                dateMetaHtml = `
+                    <div class="charity-card-meta-block charity-card-meta-row flex flex-col gap-1 items-stretch px-1 py-0.5">
+                        <div class="flex items-center justify-center gap-2 normal-case text-zinc-300 leading-tight text-[11px] sm:text-xs">
+                            <i class="fa-solid fa-calendar-day charity-fa-coyote text-sm" aria-hidden="true"></i>
+                            <span>Odwołania</span>
+                        </div>
+                    </div>`;
             } else {
                 const dateStr = eventDate.toLocaleDateString('pl-PL');
-                const isTimeProvided = item.date.includes('T') && item.date.length > 10;
+                const isTimeProvided = !hideTime && charityItemRawHasTimeComponent(rawDateStr);
                 const timeStr = isTimeProvided
                     ? eventDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })
                     : null;
@@ -1190,27 +1233,61 @@ const firebaseConfig = {
                     profileLink.href = "https://konto.strzelca.pl/profil.html";
                 }
 
-                // Pobierz awatar z profilu użytkownika
+                // Pobierz awatar z profilu (cache localStorage → mniej odczytów Firestore)
                 try {
-                    const profileDoc = await getDoc(doc(db, "userProfiles", currentUser.uid));
-                    if (profileDoc.exists()) {
-                        const profile = profileDoc.data();
-                        if (profile.displayName && userDisplayName) {
-                            userDisplayName.textContent = profile.displayName;
+                    const cached = getHeaderProfileFromCache(currentUser.uid);
+                    const fallbackName = currentUser.displayName || currentUser.email.split("@")[0];
+
+                    if (cached) {
+                        if (userDisplayName) {
+                            userDisplayName.textContent = cached.displayName || fallbackName;
                         }
                         if (userAvatar) {
-                            if (profile.avatar) {
-                                // Jeśli użytkownik ma awatar, wyświetl go
-                                userAvatar.innerHTML = `<img src="${profile.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
+                            if (cached.avatar) {
+                                userAvatar.innerHTML = `<img src="${cached.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
                             } else {
-                                // Użyj domyślnego awatara
-                                userAvatar.innerHTML = getDefaultAvatar(profile.gender);
+                                userAvatar.innerHTML = getDefaultAvatar(cached.gender);
                             }
                         }
                     } else {
-                        // Jeśli profil nie istnieje, użyj domyślnego awatara
+                        if (userDisplayName) {
+                            userDisplayName.textContent = fallbackName;
+                        }
                         if (userAvatar) {
                             userAvatar.innerHTML = getDefaultAvatar();
+                        }
+
+                        const profileDoc = await getDoc(doc(db, "userProfiles", currentUser.uid));
+                        if (profileDoc.exists()) {
+                            const profile = profileDoc.data();
+                            setHeaderProfileCache(currentUser.uid, {
+                                displayName: profile.displayName || "",
+                                avatar: profile.avatar || "",
+                                gender: profile.gender ?? null,
+                                role: profile.role || "user",
+                                profileExists: true,
+                            });
+                            if (profile.displayName && userDisplayName) {
+                                userDisplayName.textContent = profile.displayName;
+                            }
+                            if (userAvatar) {
+                                if (profile.avatar) {
+                                    userAvatar.innerHTML = `<img src="${profile.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
+                                } else {
+                                    userAvatar.innerHTML = getDefaultAvatar(profile.gender);
+                                }
+                            }
+                        } else {
+                            setHeaderProfileCache(currentUser.uid, {
+                                displayName: fallbackName,
+                                avatar: "",
+                                gender: null,
+                                role: "user",
+                                profileExists: false,
+                            });
+                            if (userAvatar) {
+                                userAvatar.innerHTML = getDefaultAvatar();
+                            }
                         }
                     }
                 } catch (error) {
@@ -1335,6 +1412,18 @@ const firebaseConfig = {
             `).join("");
         }
 
+        window.syncCharityHideTimeFieldsPomoc = () => {
+            const hd = document.getElementById('charity-hide-date');
+            const ht = document.getElementById('charity-hide-time');
+            if (!hd || !ht) return;
+            if (hd.checked) {
+                ht.checked = true;
+                ht.disabled = true;
+            } else {
+                ht.disabled = false;
+            }
+        };
+
         // Funkcje zarządzania akcjami charytatywnymi
         window.saveCharity = async () => {
             const id = document.getElementById('charity-edit-id').value || Date.now().toString();
@@ -1348,6 +1437,9 @@ const firebaseConfig = {
                 let finalImages = [...charityImages];
                 let finalImage = finalImages.length > 0 ? finalImages[0].url : "";
                 const descHtml = charityDescriptionQuillPomoc ? charityDescriptionQuillPomoc.root.innerHTML.trim() : '';
+                const hideDate = document.getElementById('charity-hide-date')?.checked === true;
+                let hideTime = document.getElementById('charity-hide-time')?.checked === true;
+                if (hideDate) hideTime = true;
 
                 await setDoc(doc(db, "charity", id), {
                     title: document.getElementById('charity-title').value,
@@ -1357,6 +1449,8 @@ const firebaseConfig = {
                     image: finalImage,
                     images: finalImages,
                     active: document.getElementById('charity-active').checked,
+                    hideDate,
+                    hideTime,
                     order: document.getElementById('charity-edit-id').value ? (charityActions.find(c => c.id === id)?.order || charityActions.length) : charityActions.length,
                     created: Date.now()
                 });
@@ -1380,6 +1474,13 @@ const firebaseConfig = {
             document.getElementById('charity-button-link').value = '';
             document.getElementById('charity-image-file').value = '';
             document.getElementById('charity-active').checked = true;
+            const hdClear = document.getElementById('charity-hide-date');
+            const htClear = document.getElementById('charity-hide-time');
+            if (hdClear) hdClear.checked = false;
+            if (htClear) {
+                htClear.checked = false;
+                htClear.disabled = false;
+            }
             charityImages = [];
             renderCharityImagesAdmin();
         }
@@ -1475,7 +1576,12 @@ const firebaseConfig = {
                 document.getElementById('charity-date').value = charity.date ? formatDateTimeForInput(charity.date) : '';
                 document.getElementById('charity-button-link').value = charity.buttonLink || '';
                 document.getElementById('charity-active').checked = charity.active;
-                
+                const hdEd = document.getElementById('charity-hide-date');
+                const htEd = document.getElementById('charity-hide-time');
+                if (hdEd) hdEd.checked = charity.hideDate === true;
+                if (htEd) htEd.checked = charity.hideDate === true || charity.hideTime === true;
+                window.syncCharityHideTimeFieldsPomoc();
+
                 charityImages = [...(charity.images || (charity.image ? [{url: charity.image, order: 0}] : []))];
                 renderCharityImagesAdmin();
                 requestAnimationFrame(() => {
@@ -1500,7 +1606,7 @@ const firebaseConfig = {
     </script>
     <script
       type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-02-06-1"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-03-21-2"
     ></script>
     <script
       type="module"

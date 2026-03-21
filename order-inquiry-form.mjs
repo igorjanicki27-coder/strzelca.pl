@@ -24,13 +24,13 @@ const CONTEXT = {
       `Aby złożyć zamówienie produktu <strong>${escapeHtml(raw)}</strong>, musisz być zalogowany.`,
     contactTopic: "Zamówienie",
     formTitle: "Złóż zamówienie",
-    itemLabel: "Produkt *",
     submitIcon: "fa-shopping-cart",
     submitLabel: "Złóż zamówienie",
     regulaminSection: "regulamin-sklepu",
     regulaminDocTitle: "Regulamin Sklepu i Serwisu",
     regulaminLinkLabel: "regulamin zamówień",
     regulaminFallbackHash: "#regulamin-sklepu",
+    disclaimerWarning: "Zamówienie może nie zostać zaakceptowane.",
     disclaimerAcceptHtml: "Klikając przycisk „Złóż zamówienie” akceptujesz",
     showParcel: true,
     showAddress: true,
@@ -43,13 +43,13 @@ const CONTEXT = {
       `Aby wysłać zapytanie o szkolenie <strong>${escapeHtml(raw)}</strong>, musisz być zalogowany.`,
     contactTopic: "Pytanie o szkolenie",
     formTitle: "Zapytanie o ofertę",
-    itemLabel: "Szkolenie *",
     submitIcon: "fa-paper-plane",
     submitLabel: "Wyślij zapytanie",
     regulaminSection: "regulamin-szkolen",
     regulaminDocTitle: "Regulamin Szkoleń",
     regulaminLinkLabel: "regulamin szkoleń",
     regulaminFallbackHash: "#regulamin-szkolen",
+    disclaimerWarning: "Zapytanie może nie zostać rozpatrzone pozytywnie.",
     disclaimerAcceptHtml: "Klikając przycisk „Wyślij zapytanie” akceptujesz",
     showParcel: false,
     showAddress: false,
@@ -261,43 +261,40 @@ export async function openOrderInquiryFlow(deps) {
   };
 
   const orderFieldClass =
-    "w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-[#C19A6B] focus:ring-1 focus:ring-[#C19A6B]/40";
+    "w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-[#C19A6B] focus:ring-1 focus:ring-[#C19A6B]/40";
 
-  const parcelBlock = cfg.showParcel
-    ? `
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium mb-2">Paczkomat</label>
-                            <input type="text" id="order-parcelLocker"
-                                   value="${escapeHtml(userProfile?.parcelLocker ? b64DecodeUtf8(userProfile.parcelLocker) : "")}"
-                                   class="${orderFieldClass}" placeholder="Kod paczkomatu">
-                        </div>`
-    : "";
-
-  const addressBlock = cfg.showAddress
-    ? `
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium mb-2">Adres</label>
-                            <div class="grid grid-cols-2 gap-4">
-                                <input type="text" id="order-address-street"
-                                       value="${escapeHtml(decodedAddress.street)}"
-                                       class="${orderFieldClass}" placeholder="Ulica">
-                                <input type="text" id="order-address-building"
-                                       value="${escapeHtml(decodedAddress.buildingNumber)}"
-                                       class="${orderFieldClass}" placeholder="Nr budynku">
-                                <input type="text" id="order-address-postal"
-                                       value="${escapeHtml(decodedAddress.postalCode)}"
-                                       class="${orderFieldClass}" placeholder="Kod pocztowy">
-                                <input type="text" id="order-address-city"
-                                       value="${escapeHtml(decodedAddress.city)}"
-                                       class="${orderFieldClass}" placeholder="Miasto">
-                            </div>
-                        </div>`
-    : "";
-
-  const priceBlock =
+  const rawTitleSafe = escapeHtml(String(rawTitle || "").trim());
+  const priceLine =
     price > 0
-      ? `<p class="text-coyote font-bold text-lg mt-2">Cena: ${escapeHtml(String(price))} PLN</p>`
-      : "";
+      ? `<span class="text-[#C19A6B] font-bold tabular-nums shrink-0">${escapeHtml(String(price))} PLN</span>`
+      : `<span class="text-zinc-500 text-sm shrink-0">—</span>`;
+
+  const contactParcel = cfg.showParcel
+    ? `
+            <div class="mb-4">
+              <label class="block text-xs font-medium text-zinc-400 mb-1">Paczkomat</label>
+              <input type="text" id="order-parcelLocker" form="shop-order-form"
+                     value="${escapeHtml(userProfile?.parcelLocker ? b64DecodeUtf8(userProfile.parcelLocker) : "")}"
+                     class="${orderFieldClass}" placeholder="Kod paczkomatu" autocomplete="off">
+            </div>`
+    : "";
+
+  const contactAddress = cfg.showAddress
+    ? `
+            <div class="mb-4">
+              <label class="block text-xs font-medium text-zinc-400 mb-2">Adres</label>
+              <div class="grid grid-cols-2 gap-2">
+                <input type="text" id="order-address-street" form="shop-order-form"
+                       value="${escapeHtml(decodedAddress.street)}" class="${orderFieldClass}" placeholder="Ulica">
+                <input type="text" id="order-address-building" form="shop-order-form"
+                       value="${escapeHtml(decodedAddress.buildingNumber)}" class="${orderFieldClass}" placeholder="Nr">
+                <input type="text" id="order-address-postal" form="shop-order-form"
+                       value="${escapeHtml(decodedAddress.postalCode)}" class="${orderFieldClass}" placeholder="Kod">
+                <input type="text" id="order-address-city" form="shop-order-form"
+                       value="${escapeHtml(decodedAddress.city)}" class="${orderFieldClass}" placeholder="Miasto">
+              </div>
+            </div>`
+    : "";
 
   const modal = document.createElement("div");
   modal.id = "order-form-modal";
@@ -312,60 +309,80 @@ export async function openOrderInquiryFlow(deps) {
   };
 
   modal.innerHTML = `
-    <div class="bg-zinc-900 p-6 md:p-8 rounded-2xl max-w-2xl w-full border border-zinc-800 shadow-2xl my-8" onclick="event.stopPropagation()">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold coyote-text">${escapeHtml(cfg.formTitle)}</h2>
+    <div class="bg-zinc-900 p-4 md:p-5 rounded-xl max-w-lg w-full border border-zinc-800 shadow-2xl my-4 max-h-[min(92vh,720px)] flex flex-col" onclick="event.stopPropagation()">
+      <div class="flex justify-between items-start gap-2 mb-3 shrink-0">
+        <h2 class="text-lg font-bold text-[#C19A6B] font-[Orbitron] leading-tight">${escapeHtml(cfg.formTitle)}</h2>
         <button type="button" onclick="document.getElementById('order-form-modal').remove(); window.__strzelcaClearPendingOrder && window.__strzelcaClearPendingOrder();"
-                class="text-zinc-400 hover:text-white">
-          <i class="fa-solid fa-times text-xl"></i>
+                class="text-zinc-400 hover:text-white p-1 -mr-1" aria-label="Zamknij">
+          <i class="fa-solid fa-times text-lg"></i>
         </button>
       </div>
 
-      <form id="shop-order-form" onsubmit="window.submitStrzelcaOrderInquiry(event)">
-        <div class="mb-6">
-          <label class="block text-sm font-medium mb-2">${escapeHtml(cfg.itemLabel)}</label>
-          <input type="text" value="${escapeHtml(displayName)}" class="${orderFieldClass} cursor-not-allowed opacity-90" readonly>
-          ${priceBlock}
+      <form id="shop-order-form" class="flex flex-col min-h-0 flex-1 overflow-y-auto" onsubmit="window.submitStrzelcaOrderInquiry(event)">
+        <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-3 pb-3 border-b border-zinc-800">
+          <span class="font-[Orbitron] font-black uppercase text-white text-sm md:text-base tracking-tight min-w-0 flex-1 truncate" title="${rawTitleSafe}">${rawTitleSafe}</span>
+          ${priceLine}
         </div>
 
-        <div class="mb-6">
-          <label class="block text-sm font-medium mb-2">Email * <span class="text-zinc-500 font-normal">(z konta)</span></label>
+        <div class="mb-3">
+          <label class="block text-xs text-zinc-500 mb-1">Email (z konta)</label>
           <input type="email" id="order-email" value="${escapeHtml(userProfile?.email || user.email || "")}"
                  class="${orderFieldClass} cursor-not-allowed opacity-90" readonly required aria-readonly="true" title="E-mail z konta — edycja w profilu">
         </div>
 
-        <div class="mb-6">
-          <label class="block text-sm font-medium mb-2">Telefon</label>
-          <input type="text" id="order-phone"
-                 value="${escapeHtml(userProfile?.phone ? b64DecodeUtf8(userProfile.phone) : "")}"
-                 class="${orderFieldClass}">
+        <div class="mb-3">
+          <button type="button" onclick="window.openStrzelcaOrderContactDialog()"
+                  class="w-full py-2.5 px-3 rounded-lg border border-zinc-600 text-zinc-200 text-sm font-medium hover:bg-zinc-800 hover:border-zinc-500 transition text-left flex items-center justify-between gap-2">
+            <span>Dane kontaktowe</span>
+            <i class="fa-solid fa-chevron-right text-zinc-500 text-xs" aria-hidden="true"></i>
+          </button>
         </div>
 
-        ${parcelBlock}
-
-        ${addressBlock}
-
-        <div class="mb-6">
-          <label class="block text-sm font-medium mb-2">Uwagi</label>
-          <textarea id="order-notes" class="${orderFieldClass}" rows="3"
-                    placeholder="Dodatkowe uwagi…"></textarea>
+        <div class="mb-3">
+          <label class="block text-xs text-zinc-500 mb-1">Uwagi</label>
+          <textarea id="order-notes" class="${orderFieldClass}" rows="2" placeholder="Opcjonalnie…"></textarea>
         </div>
 
-        <div class="mb-6 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
-          <p class="text-xs text-zinc-400 leading-relaxed">
-            <strong>Uwaga:</strong> Zamówienie może nie zostać zaakceptowane.
-            ${cfg.disclaimerAcceptHtml}
-            <button type="button" class="text-[#C19A6B] hover:underline font-bold align-baseline bg-transparent border-0 p-0 cursor-pointer" onclick="window.openStrzelcaRegulaminModal(event)">${escapeHtml(cfg.regulaminLinkLabel)}</button>.
+        <div class="mb-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700">
+          <p class="text-[11px] text-zinc-400 leading-snug">
+            <strong>Uwaga:</strong> ${escapeHtml(cfg.disclaimerWarning)} ${cfg.disclaimerAcceptHtml}
+            <button type="button" class="text-white hover:text-[#C19A6B] hover:underline font-bold align-baseline bg-transparent border-0 p-0 cursor-pointer transition-colors" onclick="window.openStrzelcaRegulaminModal(event)">${escapeHtml(cfg.regulaminLinkLabel)}</button>.
           </p>
         </div>
 
-        <div class="flex justify-center">
-          <button type="submit" class="inline-flex items-center justify-center gap-2 bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition">
+        <div class="flex justify-center pt-1 pb-1">
+          <button type="submit" class="inline-flex items-center justify-center gap-2 bg-[#C19A6B] text-black px-6 py-3 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition">
             <i class="fa-solid ${escapeHtml(cfg.submitIcon)}" aria-hidden="true"></i>
             ${escapeHtml(cfg.submitLabel)}
           </button>
         </div>
       </form>
+
+      <div id="strzelca-order-contact-modal" class="hidden fixed inset-0 z-[220] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm"
+           role="dialog" aria-modal="true" aria-labelledby="strzelca-order-contact-title"
+           onclick="if (event.target.id === 'strzelca-order-contact-modal') window.strzelcaOrderContactDialogCancel()">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl max-w-md w-full p-4 max-h-[min(85vh,560px)] overflow-y-auto" onclick="event.stopPropagation()">
+          <h3 id="strzelca-order-contact-title" class="text-base font-bold text-[#C19A6B] font-[Orbitron] mb-4">Dane kontaktowe</h3>
+          <div class="mb-4">
+            <label class="block text-xs font-medium text-zinc-400 mb-1">Telefon</label>
+            <input type="text" id="order-phone" form="shop-order-form"
+                   value="${escapeHtml(userProfile?.phone ? b64DecodeUtf8(userProfile.phone) : "")}"
+                   class="${orderFieldClass}" placeholder="Numer telefonu" autocomplete="tel">
+          </div>
+          ${contactParcel}
+          ${contactAddress}
+          <div class="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end mt-5">
+            <button type="button" onclick="window.strzelcaOrderContactDialogCancel()"
+                    class="w-full sm:w-auto px-4 py-2.5 rounded-lg border border-zinc-600 text-zinc-300 text-sm hover:bg-zinc-800 transition">
+              Anuluj
+            </button>
+            <button type="button" onclick="window.strzelcaOrderContactDialogSave()"
+                    class="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-[#C19A6B] text-black text-sm font-bold hover:bg-[#b18a5f] transition">
+              Zapisz
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   `;
 
@@ -381,6 +398,46 @@ function attachOrderInquiryGlobals() {
     const cfg = pendingForm?.regulaminCfg;
     if (!cfg) return;
     await openRegulaminModal(ev, cfg);
+  };
+
+  function contactDialogFieldIds() {
+    const p = pendingForm;
+    if (!p) return [];
+    const ids = ["order-phone"];
+    if (p.showParcel) ids.push("order-parcelLocker");
+    if (p.showAddress) {
+      ids.push(
+        "order-address-street",
+        "order-address-building",
+        "order-address-postal",
+        "order-address-city"
+      );
+    }
+    return ids;
+  }
+
+  window.openStrzelcaOrderContactDialog = function () {
+    if (!pendingForm) return;
+    const snap = {};
+    contactDialogFieldIds().forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) snap[id] = el.value;
+    });
+    window.__strzelcaContactSnapshot = snap;
+    document.getElementById("strzelca-order-contact-modal")?.classList.remove("hidden");
+  };
+
+  window.strzelcaOrderContactDialogCancel = function () {
+    const snap = window.__strzelcaContactSnapshot || {};
+    Object.keys(snap).forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = snap[id];
+    });
+    document.getElementById("strzelca-order-contact-modal")?.classList.add("hidden");
+  };
+
+  window.strzelcaOrderContactDialogSave = function () {
+    document.getElementById("strzelca-order-contact-modal")?.classList.add("hidden");
   };
 
   window.__strzelcaClearPendingOrder = function () {

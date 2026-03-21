@@ -12,7 +12,7 @@
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-        <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-2" />
+        <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
         <style>
             :root {
                 --coyote: #c19a6b;
@@ -25,14 +25,15 @@
                 font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
                 background-color: #0a0a0a;
                 background-image:
+                    var(--strzelca-bg-vignette),
                     linear-gradient(
                         rgba(10, 10, 10, 0.22) 0%,
                         rgba(10, 10, 10, 0.55) 55%,
                         rgba(10, 10, 10, 0.9) 100%
                     ),
                     url("https://strzelca.pl/tlo.png");
-                background-size: cover;
-                background-position: top center;
+                background-size: cover, cover, cover;
+                background-position: center center, top center, top center;
                 color: #e5e5e5;
                 min-height: 100vh;
                 min-height: 100dvh;
@@ -331,7 +332,11 @@
         <script type="module">
             import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
             import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-            import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-02-06-1";
+            import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-03-21-1";
+            import {
+                getHeaderProfileFromCache,
+                setHeaderProfileCache,
+            } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
             import {
                 initializeFirestore,
                 getFirestore,
@@ -434,25 +439,60 @@
                 const userPanel = document.getElementById("user-panel");
                 const userDisplayName = document.getElementById("user-display-name");
                 const userAvatar = document.getElementById("user-avatar");
+                const fallbackName = user ? user.displayName || user.email.split("@")[0] : "";
 
                 if (user) {
                     if (loginBtn) loginBtn.classList.add("hidden");
                     if (userPanel) userPanel.classList.remove("hidden");
-                    if (userDisplayName) {
-                        const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
-                        if (profileDoc.exists()) {
-                            const profile = profileDoc.data();
-                            userDisplayName.textContent = profile.displayName || user.email.split("@")[0];
+                    try {
+                        const cached = getHeaderProfileFromCache(user.uid);
+                        if (cached) {
+                            if (userDisplayName) {
+                                userDisplayName.textContent = cached.displayName || fallbackName;
+                            }
                             if (userAvatar) {
-                                if (profile.avatar) {
-                                    userAvatar.innerHTML = `<img src="${profile.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
+                                if (cached.avatar) {
+                                    userAvatar.innerHTML = `<img src="${cached.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
                                 } else {
                                     userAvatar.innerHTML = '<i class="fa-solid fa-user text-white"></i>';
                                 }
                             }
                         } else {
-                            if (userDisplayName) userDisplayName.textContent = user.email.split("@")[0];
+                            if (userDisplayName) userDisplayName.textContent = fallbackName;
+                            if (userAvatar) userAvatar.innerHTML = '<i class="fa-solid fa-user text-white"></i>';
+
+                            const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
+                            if (profileDoc.exists()) {
+                                const profile = profileDoc.data();
+                                setHeaderProfileCache(user.uid, {
+                                    displayName: profile.displayName || "",
+                                    avatar: profile.avatar || "",
+                                    gender: profile.gender ?? null,
+                                    role: profile.role || "user",
+                                    profileExists: true,
+                                });
+                                if (userDisplayName) {
+                                    userDisplayName.textContent = profile.displayName || fallbackName;
+                                }
+                                if (userAvatar) {
+                                    if (profile.avatar) {
+                                        userAvatar.innerHTML = `<img src="${profile.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
+                                    } else {
+                                        userAvatar.innerHTML = '<i class="fa-solid fa-user text-white"></i>';
+                                    }
+                                }
+                            } else {
+                                setHeaderProfileCache(user.uid, {
+                                    displayName: fallbackName,
+                                    avatar: "",
+                                    gender: null,
+                                    role: "user",
+                                    profileExists: false,
+                                });
+                            }
                         }
+                    } catch (_) {
+                        if (userDisplayName) userDisplayName.textContent = fallbackName;
                     }
                 } else {
                     if (loginBtn) loginBtn.classList.remove("hidden");
@@ -1012,7 +1052,7 @@
                 }
             });
         </script>
-        <script type="module" src="https://strzelca.pl/auth-widget.mjs?v=2026-02-06-1"></script>
+        <script type="module" src="https://strzelca.pl/auth-widget.mjs?v=2026-03-21-2"></script>
         <script type="module" src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-4"></script>
     </body>
 </html>
