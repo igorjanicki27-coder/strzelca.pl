@@ -1,0 +1,60 @@
+// =============================================================================
+// Wewnętrzna wysyłka e-mail (SMTP) — używana z API serwera bez sesji admina
+// =============================================================================
+
+const nodemailer = require('nodemailer');
+
+function replaceTemplateVariables(template, variables) {
+  let result = template;
+  for (const [key, value] of Object.entries(variables || {})) {
+    const safe = value == null ? '' : String(value);
+    const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
+    result = result.replace(regex, safe);
+  }
+  return result;
+}
+
+function createTransporter() {
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'ssl0.ovh.net',
+    port: parseInt(process.env.SMTP_PORT || '465', 10),
+    secure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465',
+    auth: {
+      user: process.env.SMTP_USER || 'kontakt@strzelca.pl',
+      pass: process.env.SMTP_PASSWORD || '',
+    },
+  });
+}
+
+async function sendTransactionalEmail(opts) {
+  const { to, subject, html, logCategory, logMeta, skipFailureLog } = opts || {};
+  if (!to || !subject || !html) {
+    throw new Error('sendTransactionalEmail: brak to, subject lub html');
+  }
+  const transporter = createTransporter();
+  try {
+    await transporter.sendMail({
+      from: `"Strzelca.pl" <${process.env.SMTP_USER || 'kontakt@strzelca.pl'}>`,
+      to,
+      subject,
+      html,
+    });
+  } catch (err) {
+    if (!skipFailureLog) {
+      const { logEmailDeliveryFailure } = require('./_activity-email-log');
+      await logEmailDeliveryFailure({
+        category: logCategory || 'transactional_smtp',
+        to,
+        subject,
+        errorMessage: err.message || String(err),
+        meta: logMeta || {},
+      });
+    }
+    throw err;
+  }
+}
+
+module.exports = {
+  replaceTemplateVariables,
+  sendTransactionalEmail,
+};

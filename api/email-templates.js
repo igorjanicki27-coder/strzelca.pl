@@ -215,6 +215,150 @@ const defaultTemplates = {
 </body>
 </html>`,
     variables: ['senderName', 'topic', 'message']
+  },
+  'bazar_offer_submitted': {
+    name: 'Bazar — oferta wystawiona (oczekuje na akceptację)',
+    subject: 'Twoja oferta „{{offerTitle}}” została przesłana do moderacji — strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #c19a6b;">Oferta przesłana do weryfikacji</h2>
+  <p>Dzień dobry{{sellerGreeting}},</p>
+  <p>Dziękujemy za wystawienie ogłoszenia w bazarku strzelca.pl. Twoja oferta <strong>{{offerTitle}}</strong> oczekuje na akceptację przez moderatora.</p>
+  <p>Po zatwierdzeniu otrzymasz osobny e-mail. Status możesz też sprawdzić na stronie bazaru.</p>
+  <p><a href="{{bazarUrl}}" style="color: #c19a6b;">Przejdź do bazaru</a></p>
+  <p>Pozdrawiamy,<br>Zespół strzelca.pl</p>
+</body>
+</html>`,
+    variables: ['sellerGreeting', 'offerTitle', 'bazarUrl', 'offerUrl']
+  },
+  'bazar_offer_approved': {
+    name: 'Bazar — oferta zaakceptowana i opublikowana',
+    subject: 'Twoja oferta „{{offerTitle}}” jest już widoczna — strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #c19a6b;">Oferta została zaakceptowana</h2>
+  <p>Dzień dobry{{sellerGreeting}},</p>
+  <p>Twoje ogłoszenie <strong>{{offerTitle}}</strong> zostało zatwierdzone i jest widoczne na bazarku.</p>
+  <p><a href="{{offerUrl}}" style="color: #c19a6b;">Zobacz ogłoszenie</a></p>
+  <p>Oferta wygaśnie dnia <strong>{{expiresAt}}</strong> — przed tym terminem możesz ją odświeżyć w panelu „Moje oferty”.</p>
+  <p>Pozdrawiamy,<br>Zespół strzelca.pl</p>
+</body>
+</html>`,
+    variables: ['sellerGreeting', 'offerTitle', 'offerUrl', 'expiresAt', 'bazarUrl']
+  },
+  'bazar_offer_expiring_soon': {
+    name: 'Bazar — zbliża się koniec widoczności ogłoszenia',
+    subject: 'Zbliża się wygaśnięcie oferty „{{offerTitle}}” — strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #c19a6b;">Twoje ogłoszenie wkrótce wygaśnie</h2>
+  <p>Dzień dobry{{sellerGreeting}},</p>
+  <p>Oferta <strong>{{offerTitle}}</strong> przestanie być widoczna około <strong>{{expiresAt}}</strong> (za ok. {{daysLeft}} dni).</p>
+  <p>Możesz przedłużyć widoczność, odświeżając ofertę w bazarku (po upływie wymaganego czasu od ostatniego odświeżenia).</p>
+  <p><a href="{{offerUrl}}" style="color: #c19a6b;">Zobacz ogłoszenie</a> · <a href="{{bazarUrl}}" style="color: #c19a6b;">Moje oferty</a></p>
+  <p>Pozdrawiamy,<br>Zespół strzelca.pl</p>
+</body>
+</html>`,
+    variables: ['sellerGreeting', 'offerTitle', 'offerUrl', 'expiresAt', 'daysLeft', 'bazarUrl']
+  },
+  'bazar_offer_rejected': {
+    name: 'Bazar — odrzucenie publikacji oferty',
+    subject: 'Oferta „{{offerTitle}}” nie została opublikowana — strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #c19a6b;">Oferta nie została zaakceptowana</h2>
+  <p>Dzień dobry{{sellerGreeting}},</p>
+  <p>Niestety ogłoszenie <strong>{{offerTitle}}</strong> nie spełnia obecnie wymagań regulaminu i nie zostało opublikowane.</p>
+  <p><strong>Uzasadnienie:</strong> {{rejectionReason}}</p>
+  <p>Możesz wystawić poprawioną ofertę lub skontaktować się z nami: kontakt@strzelca.pl</p>
+  <p><a href="{{bazarUrl}}" style="color: #c19a6b;">Przejdź do bazaru</a></p>
+  <p>Pozdrawiamy,<br>Zespół strzelca.pl</p>
+</body>
+</html>`,
+    variables: ['sellerGreeting', 'offerTitle', 'rejectionReason', 'bazarUrl']
+  },
+  'bazar_offer_refreshed': {
+    name: 'Bazar — pomyślne odświeżenie oferty',
+    subject: 'Przedłużono widoczność oferty „{{offerTitle}}” — strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #c19a6b;">Oferta została odświeżona</h2>
+  <p>Dzień dobry{{sellerGreeting}},</p>
+  <p>Widoczność ogłoszenia <strong>{{offerTitle}}</strong> została przedłużona. Nowy orientacyjny termin wygaśnięcia: <strong>{{expiresAt}}</strong>.</p>
+  <p><a href="{{offerUrl}}" style="color: #c19a6b;">Zobacz ogłoszenie</a></p>
+  <p>Pozdrawiamy,<br>Zespół strzelca.pl</p>
+</body>
+</html>`,
+    variables: ['sellerGreeting', 'offerTitle', 'offerUrl', 'expiresAt', 'bazarUrl']
+  },
+  'newsletter_broadcast': {
+    name: 'Newsletter — ramka HTML (treść z edytora)',
+    subject: 'Aktualności strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 640px; margin: 0 auto;">
+  <div style="border-bottom: 2px solid #c19a6b; padding-bottom: 12px; margin-bottom: 20px;">
+    <h1 style="color: #c19a6b; font-size: 22px; margin: 0;">strzelca.pl</h1>
+    <p style="margin: 8px 0 0; color: #666; font-size: 13px;">Newsletter</p>
+  </div>
+  <div style="margin-bottom: 28px;">{{newsletterBody}}</div>
+  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;" />
+  <p style="font-size: 12px; color: #888;">Otrzymujesz tę wiadomość, ponieważ zapisałeś się na newsletter strzelca.pl.</p>
+  <p style="font-size: 12px; color: #888;">Rezygnacja: <a href="{{unsubscribeUrl}}" style="color: #c19a6b;">wypisz się z newslettera</a></p>
+  <p style="font-size: 12px; color: #888;">Kontakt: kontakt@strzelca.pl</p>
+</body>
+</html>`,
+    variables: ['newsletterBody', 'unsubscribeUrl']
+  },
+  'account_blocked': {
+    name: 'Konto — informacja o blokadzie',
+    subject: 'Twoje konto na strzelca.pl zostało zablokowane',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #c19a6b;">Konto zablokowane</h2>
+  <p>Dzień dobry{{userGreeting}},</p>
+  <p>Twoje konto w serwisie strzelca.pl zostało zablokowane przez administratora.</p>
+  <p><strong>Powód:</strong> {{blockReason}}</p>
+  <p><strong>Zakres blokady:</strong> {{blockedUntilText}}</p>
+  <p>W sprawie odwołania napisz na kontakt@strzelca.pl (podaj adres e-mail konta).</p>
+  <p>Zespół strzelca.pl</p>
+</body>
+</html>`,
+    variables: ['userGreeting', 'blockReason', 'blockedUntilText', 'supportEmail']
+  },
+  'account_unblocked': {
+    name: 'Konto — informacja o odblokowaniu',
+    subject: 'Twoje konto na strzelca.pl zostało odblokowane',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #c19a6b;">Konto odblokowane</h2>
+  <p>Dzień dobry{{userGreeting}},</p>
+  <p>Twoje konto w serwisie strzelca.pl jest ponownie aktywne i możesz się zalogować.</p>
+  <p>{{unblockContext}}</p>
+  <p>Jeśli masz pytania: kontakt@strzelca.pl</p>
+  <p>Zespół strzelca.pl</p>
+</body>
+</html>`,
+    variables: ['userGreeting', 'unblockContext', 'supportEmail']
+  },
+  'account_review_received': {
+    name: 'Konto — nowa opinia na profilu',
+    subject: 'Nowa opinia na Twoim profilu — strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #c19a6b;">Ktoś wystawił Ci opinię</h2>
+  <p>Dzień dobry{{userGreeting}},</p>
+  <p>Użytkownik <strong>{{raterName}}</strong> dodał opinię na Twoim profilu w serwisie strzelca.pl.</p>
+  <p><strong>Ocena:</strong> {{ratingLabel}} <span style="letter-spacing:2px;color:#c19a6b;">{{ratingStars}}</span></p>
+  <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #c19a6b;">
+    <p style="margin:0 0 8px;font-size:12px;color:#666;">Treść opinii</p>
+    <p style="margin:0;white-space:pre-wrap;">{{comment}}</p>
+  </div>
+  <p><a href="{{profileUrl}}" style="color: #c19a6b;">Zobacz swój profil</a></p>
+  <p style="font-size:13px;color:#666;">W razie pytań: {{supportEmail}}</p>
+  <p>Pozdrawiamy,<br>Zespół strzelca.pl</p>
+</body>
+</html>`,
+    variables: ['userGreeting', 'raterName', 'ratingLabel', 'ratingStars', 'comment', 'profileUrl', 'supportEmail']
   }
 };
 

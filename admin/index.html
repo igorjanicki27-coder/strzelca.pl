@@ -1613,6 +1613,35 @@
               Zarządzanie Pomocą Charytatywną
           </h1>
 
+          <div
+            id="charity-stats-bar"
+            class="flex flex-wrap items-center gap-x-8 gap-y-3 mb-6 text-sm text-zinc-300"
+          >
+            <span
+              >Aktywne:
+              <strong id="charity-count-active" class="text-white tabular-nums">0</strong></span
+            >
+            <span
+              >Zakończone:
+              <strong id="charity-count-ended" class="text-white tabular-nums">0</strong></span
+            >
+            <span
+              >Razem:
+              <strong id="charity-count-total" class="text-white tabular-nums">0</strong></span
+            >
+            <label
+              class="flex items-center gap-2 cursor-pointer select-none ml-auto"
+            >
+              <input
+                type="checkbox"
+                id="charity-show-completed"
+                class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote"
+                onchange="applyCharityListFilter()"
+              />
+              <span class="text-sm text-zinc-300">Pokaż zakończone (przeszłe)</span>
+            </label>
+          </div>
+
             <div class="flex justify-between items-center mb-8">
               <p class="text-zinc-400">
                 Zarządzaj akcjami charytatywnymi. Dodawaj zdjęcia, linki,
@@ -1641,7 +1670,18 @@
               >
                 <i class="fa-solid fa-heart text-4xl mb-4 text-zinc-600"></i>
                 <p>Brak akcji charytatywnych</p>
-          </div>
+              </div>
+
+              <div
+                id="charity-filter-empty"
+                class="text-center py-8 text-zinc-400 hidden"
+              >
+                <i class="fa-solid fa-filter-circle-xmark text-4xl mb-4 text-zinc-600"></i>
+                <p>Brak akcji do wyświetlenia przy obecnym filtrze.</p>
+                <p class="text-sm text-zinc-500 mt-2">
+                  Zaznacz „Pokaż zakończone (przeszłe)”, aby zobaczyć archiwalne akcje.
+                </p>
+              </div>
         </div>
 
             <div class="admin-card mt-8 border border-amber-900/40 bg-amber-950/10">
@@ -1713,8 +1753,15 @@
                     ></div>
                   </div>
 
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <p class="text-xs text-zinc-500 -mt-2">
+                    Przy wysyłce treść z edytora trafia do szablonu
+                    <code class="text-zinc-400">newsletter_broadcast</code> w miejsce
+                    <code class="text-zinc-400">{{newsletterBody}}</code> (zakładka Szablony e-mail).
+                  </p>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
                     <button
+                      type="button"
                       onclick="loadNewsletterDraft()"
                       class="btn-admin w-full"
                       title="Załaduj zapisaną wersję roboczą"
@@ -1723,6 +1770,7 @@
                       Załaduj wersję roboczą
                     </button>
                     <button
+                      type="button"
                       onclick="saveNewsletterDraft()"
                       class="btn-admin w-full"
                     >
@@ -1730,6 +1778,16 @@
                       Zapisz wersję roboczą
                     </button>
                     <button
+                      type="button"
+                      onclick="applyNewsletterEmailShellTemplate()"
+                      class="btn-admin w-full border border-coyote/40"
+                      title="Pobiera szablon newsletter_broadcast z API"
+                    >
+                      <i class="fa-solid fa-envelope-open-text mr-2"></i>
+                      Wczytaj szablon e-mail
+                    </button>
+                    <button
+                      type="button"
                       onclick="previewNewsletter()"
                       class="btn-admin w-full"
                     >
@@ -1737,8 +1795,9 @@
                       Podgląd
                     </button>
                     <button
+                      type="button"
                       onclick="sendNewsletter()"
-                      class="btn-admin w-full bg-gradient-to-r from-coyote to-coyote/80 hover:from-coyote/90 hover:to-coyote"
+                      class="btn-admin w-full bg-gradient-to-r from-coyote to-coyote/80 hover:from-coyote/90 hover:to-coyote sm:col-span-2 lg:col-span-2"
                     >
                       <i class="fa-solid fa-paper-plane mr-2"></i>
                       Wyślij Newsletter
@@ -2108,7 +2167,11 @@
                     <option value="date-desc">Data dodania ↓</option>
                     <option value="date-asc">Data dodania ↑</option>
                     <option value="title">Tytuł A–Z</option>
+                    <option value="list-order">Kolejność na stronie (↑↓)</option>
                   </select>
+                  <p class="text-xs text-zinc-500 mt-1">
+                    Strzałki (↑↓) pojawią się przy tym sortowaniu oraz przy filtrach „Wszystkie” (status i kategoria) — wtedy kolejność odpowiada widokowi na blogu.
+                  </p>
                 </div>
                 <div class="flex items-end">
                   <button type="button" onclick="applyBlogFilters()" class="btn-admin w-full">
@@ -2256,7 +2319,10 @@
             <div class="admin-card">
               <h3 class="text-xl font-bold mb-4">Kolejność na stronie dokumentów</h3>
               <p class="text-sm text-zinc-500 mb-4">
-                Kolekcja Firestore <code class="text-zinc-400">documents</code>. ↑ ↓ zamieniają pole <code class="text-zinc-400">order</code> z sąsiadem (jak produkty w sklepie).
+                Kolekcja Firestore <code class="text-zinc-400">documents</code>. Na stronie dokumentów kolejność wierszy odpowiada polu
+                <code class="text-zinc-400">order</code> (po scaleniu ze szablonem strony). Przyciski ↑ ↓ zamieniają
+                <code class="text-zinc-400">order</code> z sąsiadem. Jeśli na stronie publicznej widać więcej pozycji niż tutaj, uruchom
+                import / synchronizację domyślnej listy — dopisze brakujące wpisy do bazy.
               </p>
 
               <div id="documents-list" class="space-y-4">
@@ -2284,27 +2350,27 @@
 
           <!-- Szablony maili -->
           <div id="tab-email-templates" class="tab-content">
-            <h1 class="text-3xl font-bold coyote-text mb-8">
-              Zarządzanie Szablonami Maili
-          </h1>
-
-            <div class="grid grid-cols-1 gap-8 max-w-4xl mx-auto">
-              <!-- Lista szablonów -->
-              <div class="admin-card">
-                <div class="flex justify-between items-center mb-6">
-                  <h3 class="text-xl font-bold">Szablony Maili</h3>
-                  <button onclick="loadEmailTemplates()" class="btn-admin text-sm px-4 py-2">
-                    <i class="fa-solid fa-sync-alt mr-2"></i>
-                    Odśwież
-                    </button>
+            <div class="grid grid-cols-1 gap-8 max-w-6xl mx-auto">
+              <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                <div>
+                  <h1 class="text-3xl font-bold coyote-text mb-2">Szablony e-mail</h1>
+                  <p class="text-sm text-zinc-400 max-w-2xl">
+                    Powiadomienia systemowe: zamówienia, bazar (w tym przypomnienie przed wygaśnięciem — cron), newsletter (otoczka wokół treści z zakładki Newsletter), blokady kont.
+                    Wysyłka przez SMTP skonfigurowane w Vercel (<code class="text-zinc-500">SMTP_*</code>).
+                  </p>
                 </div>
+                <button type="button" onclick="loadEmailTemplates()" class="btn-admin text-sm px-4 py-2 shrink-0 self-start sm:self-center">
+                  <i class="fa-solid fa-sync-alt mr-2"></i>
+                  Odśwież listę
+                </button>
+              </div>
 
-                <div class="space-y-4" id="templates-list">
-                  <div class="text-center text-zinc-500 py-8">
-                        <i class="fa-solid fa-spinner fa-spin text-2xl mb-4 text-zinc-600"></i>
-                    <h4 class="text-lg font-semibold mb-2">Ładowanie szablonów...</h4>
-                    </div>
+              <div id="templates-list" class="space-y-10">
+                <div class="text-center text-zinc-500 py-10">
+                  <i class="fa-solid fa-spinner fa-spin text-2xl mb-4 text-zinc-600"></i>
+                  <p class="text-sm">Ładowanie szablonów…</p>
                 </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2338,17 +2404,6 @@
               <label class="text-xs text-zinc-400 block mb-2 uppercase tracking-wider">Typ akcji</label>
               <select id="activity-filter-action" class="w-full" onchange="filterActivityLogs()">
                 <option value="all">Wszystkie</option>
-                <option value="ADMIN_LOGIN_SUCCESS">Logowanie admina</option>
-                <option value="ADMIN_LOGIN_FAILED">Nieudane logowanie</option>
-                <option value="USER_CREATED">Utworzenie użytkownika</option>
-                <option value="USER_DELETED">Usunięcie użytkownika</option>
-                <option value="MESSAGE_SENT">Wysłanie wiadomości</option>
-                <option value="PRODUCT_CREATED">Utworzenie produktu</option>
-                <option value="REVIEW_CREATED">Utworzenie opinii</option>
-                <option value="EVENT_CREATED">Dodanie wydarzenia</option>
-                <option value="EVENT_UPDATED">Edycja wydarzenia</option>
-                <option value="USER_BLOCKED">Zablokowanie użytkownika</option>
-                <option value="USER_UNBLOCKED">Odblokowanie użytkownika</option>
               </select>
             </div>
             <div>
@@ -3326,28 +3381,39 @@
       let lastUnreadCount = null;
 
       // ===== SYSTEM ŚLEDZENIA AKTYWNOŚCI ONLINE =====
+      const USER_PRESENCE_HEARTBEAT_MS = 3 * 60 * 1000;
       let activityTrackingInterval = null;
-      let lastActivitySync = 0;
+      let adminActivityPagehideHandler = null;
 
-      // Funkcja aktualizacji lastSeen w Firestore
+      function sendAdminPresenceLeaveBeacon() {
+        if (!currentUser) return;
+        try {
+          if (!navigator.sendBeacon) return;
+          const payload = JSON.stringify({ userId: currentUser.uid, leave: true });
+          navigator.sendBeacon(
+            'https://strzelca.pl/api/update-last-seen',
+            new Blob([payload], { type: 'application/json' })
+          );
+        } catch (e) {
+          // ignoruj
+        }
+      }
+
       async function updateLastSeen() {
         if (!currentUser) return;
-        
+
         try {
           await updateDoc(doc(db, "userProfiles", currentUser.uid), {
             lastSeen: serverTimestamp()
           });
-          
-          // Zaktualizuj localStorage
+
           const activityData = {
             lastSeen: Date.now(),
             synced: true
           };
           localStorage.setItem('userActivity', JSON.stringify(activityData));
-          lastActivitySync = Date.now();
         } catch (error) {
           console.warn("Could not update lastSeen:", error);
-          // Zapisuj lokalnie nawet jeśli Firestore nie działa
           const activityData = {
             lastSeen: Date.now(),
             synced: false
@@ -3356,67 +3422,34 @@
         }
       }
 
-      // Funkcja śledzenia aktywności lokalnie
-      function trackLocalActivity() {
-        const activityData = {
-          lastSeen: Date.now(),
-          synced: false
-        };
-        localStorage.setItem('userActivity', JSON.stringify(activityData));
-      }
-
-      // Funkcja synchronizacji aktywności (co 15 minut)
-      async function syncActivity() {
-        if (!currentUser) return;
-        
-        // Pobierz dane z localStorage
-        const storedActivity = localStorage.getItem('userActivity');
-        if (!storedActivity) {
-          trackLocalActivity();
-          return;
-        }
-        
-        try {
-          const activityData = JSON.parse(storedActivity);
-          const timeSinceLastSeen = Date.now() - activityData.lastSeen;
-          
-          // Synchronizuj tylko jeśli użytkownik był aktywny w ostatnich 30 sekundach
-          // lub jeśli nie synchronizowaliśmy od dłuższego czasu
-          const timeSinceLastSync = Date.now() - lastActivitySync;
-          
-          if (timeSinceLastSeen < 30000 || timeSinceLastSync > 900000) { // 30 sekund lub 15 minut
-            await updateLastSeen();
-          }
-        } catch (error) {
-          console.warn("Error syncing activity:", error);
-        }
-      }
-
-      // Rozpocznij śledzenie aktywności
       function startActivityTracking() {
         if (activityTrackingInterval) {
           clearInterval(activityTrackingInterval);
+          activityTrackingInterval = null;
         }
-        
-        // Aktualizuj od razu przy starcie
+        if (adminActivityPagehideHandler) {
+          window.removeEventListener('pagehide', adminActivityPagehideHandler);
+          adminActivityPagehideHandler = null;
+        }
+
         updateLastSeen();
-        
-        // Synchronizuj co 15 minut (900000 ms)
+
         activityTrackingInterval = setInterval(() => {
-          syncActivity();
-        }, 900000);
-        
-        // Śledź aktywność przy interakcjach użytkownika
-        const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
-        events.forEach(event => {
-          document.addEventListener(event, () => {
-            trackLocalActivity();
-          }, { passive: true });
-        });
+          updateLastSeen();
+        }, USER_PRESENCE_HEARTBEAT_MS);
+
+        adminActivityPagehideHandler = () => {
+          sendAdminPresenceLeaveBeacon();
+        };
+        window.addEventListener('pagehide', adminActivityPagehideHandler);
       }
 
-      // Zatrzymaj śledzenie aktywności
       function stopActivityTracking() {
+        sendAdminPresenceLeaveBeacon();
+        if (adminActivityPagehideHandler) {
+          window.removeEventListener('pagehide', adminActivityPagehideHandler);
+          adminActivityPagehideHandler = null;
+        }
         if (activityTrackingInterval) {
           clearInterval(activityTrackingInterval);
           activityTrackingInterval = null;
@@ -3657,7 +3690,16 @@
         }
       }
 
-      // Funkcja logowania aktywności
+      function getActivityLogActorUid() {
+        try {
+          if (typeof auth !== "undefined" && auth?.currentUser?.uid) {
+            return auth.currentUser.uid;
+          }
+        } catch (_) {}
+        return currentUser?.uid || null;
+      }
+
+      // Funkcja logowania aktywności — zwraca true przy sukcesie (Firestore: userId musi być request.auth.uid, nie polegaj samym na zmiennej currentUser)
       async function logActivity(
         userId,
         action,
@@ -3669,12 +3711,14 @@
             userId: userId,
             action: action,
             details: details,
-            targetUserId: targetUserId,
             timestamp: new Date(),
-            adminId: currentUser ? currentUser.uid : null,
-            ipAddress: null, // Można dodać jeśli dostępny
+            adminId: getActivityLogActorUid(),
+            ipAddress: null,
             userAgent: navigator.userAgent,
           };
+          if (targetUserId != null && targetUserId !== undefined) {
+            activityData.targetUserId = targetUserId;
+          }
 
           console.log('[LogActivity] Próba zapisania logu:', {
             userId,
@@ -3687,8 +3731,8 @@
 
           await addDoc(collection(db, "activityLogs"), activityData);
           console.log('[LogActivity] ✅ Log zapisany pomyślnie');
+          return true;
         } catch (error) {
-          // Dla błędów permission-denied, zapis do userActivity wymaga specyficznych reguł Firestore
           console.error('[LogActivity] ❌ Błąd podczas zapisywania logu:', {
             code: error.code,
             message: error.message,
@@ -3708,7 +3752,7 @@
               hasAutomatic: details?.automatic
             });
           }
-            // Nie przerywamy wykonania innych skryptów
+          return false;
         }
       }
 
@@ -4218,6 +4262,18 @@
             // ignore
           }
 
+          // Obecność w panelu: beacon + Firestore — zanim wygaśnie cookie SSO / sesja Firebase
+          stopActivityTracking();
+          if (currentUser) {
+            try {
+              await updateDoc(doc(db, "userProfiles", currentUser.uid), {
+                lastSeen: Timestamp.fromDate(new Date(Date.now() - 35 * 60 * 1000))
+              });
+            } catch (e) {
+              // Ignoruj błędy przy wylogowaniu
+            }
+          }
+
           // SSO: wyczyść cookie wspólnej sesji (ważne dla synchronizacji między subdomenami)
           try {
             await fetch("https://strzelca.pl/api/sso-session-logout", {
@@ -4249,20 +4305,6 @@
               console.warn("Ignored Firestore CORS error during logout");
             } else {
               console.error("Logout error:", error);
-            }
-          }
-
-          // Zatrzymaj śledzenie aktywności
-          stopActivityTracking();
-          
-          // Ostatnia aktualizacja przed wylogowaniem
-          if (currentUser) {
-            try {
-              await updateDoc(doc(db, "userProfiles", currentUser.uid), {
-                lastSeen: serverTimestamp()
-              });
-            } catch (e) {
-              // Ignoruj błędy przy wylogowaniu
             }
           }
 
@@ -4489,8 +4531,231 @@
         document.body.style.overflow = '';
       };
 
-      // Funkcja ładowania wszystkich logów aktywności do modala
+      function shouldShowActivityLogEntry(entry) {
+        const a = entry?.action || entry?.type;
+        return a !== "MESSAGE_SENT";
+      }
+
       let allActivityLogs = [];
+
+      /** Katalog filtrów modala logów — w select trafiają tylko typy obecne w załadowanych logach. */
+      const ACTIVITY_FILTER_GROUPS = [
+        {
+          label: "Administrator — logowanie do panelu",
+          options: [
+            { value: "ADMIN_LOGIN_SUCCESS", text: "Udane logowanie" },
+            { value: "ADMIN_LOGIN_FAILED", text: "Nieudane logowanie" },
+          ],
+        },
+        {
+          label: "Administrator — moderacja kont",
+          options: [
+            { value: "USER_BLOCKED", text: "Zablokowanie użytkownika" },
+            { value: "USER_UNBLOCKED", text: "Odblokowanie użytkownika" },
+            { value: "USER_DELETED", text: "Usunięcie użytkownika" },
+            { value: "ROLE_CHANGE", text: "Zmiana roli użytkownika" },
+          ],
+        },
+        {
+          label: "Administrator — wydarzenia",
+          options: [
+            { value: "EVENT_CREATED", text: "Utworzone wydarzenie" },
+            { value: "EVENT_UPDATED", text: "Zmienione wydarzenie" },
+            { value: "EVENT_DELETED", text: "Usunięte wydarzenie" },
+          ],
+        },
+        {
+          label: "Administrator — pomoc.strzelca.pl (akcje charytatywne)",
+          options: [
+            { value: "CHARITY_ACTION_CREATED", text: "Dodana akcja charytatywna" },
+            { value: "CHARITY_ACTION_UPDATED", text: "Zmieniona akcja charytatywna" },
+            { value: "CHARITY_ACTION_DELETED", text: "Usunięta akcja charytatywna" },
+            { value: "CHARITY_PINNED_UPDATED", text: "Zmieniony kafelek wpłat" },
+          ],
+        },
+        {
+          label: "Administrator — szkolenia",
+          options: [
+            { value: "TRAINING_CREATED", text: "Dodanie szkolenia" },
+            { value: "TRAINING_UPDATED", text: "Edycja szkolenia" },
+            { value: "TRAINING_DELETED", text: "Usunięcie szkolenia" },
+          ],
+        },
+        {
+          label: "Administrator — katalog dokumentów (panel, historia)",
+          options: [
+            { value: "DOCUMENT_CREATED", text: "Dodanie pozycji w katalogu (stare logi)" },
+            { value: "DOCUMENT_UPDATED", text: "Edycja pozycji w katalogu (stare logi)" },
+            { value: "DOCUMENT_DELETED", text: "Usunięcie pozycji z katalogu (stare logi)" },
+          ],
+        },
+        {
+          label: "Użytkownik — rejestracja i konto",
+          options: [
+            { value: "USER_CREATED", text: "Utworzenie konta (rejestracja)" },
+            { value: "USER_REGISTER", text: "Rejestracja (stary typ wpisu)" },
+            { value: "PASSWORD_RESET_REQUEST", text: "Żądanie resetu hasła" },
+            { value: "PROFILE_EDITED", text: "Edycja profilu" },
+          ],
+        },
+        {
+          label: "Dokumenty.strzelca.pl (użytkownik)",
+          options: [
+            {
+              value: "DOCS_RETURN_FORM_PDF",
+              text: "Wygenerowanie PDF zwrotu / reklamacji",
+            },
+          ],
+        },
+        {
+          label: "Użytkownik — sklep i opinie",
+          options: [
+            { value: "PRODUCT_CREATED", text: "Wystawienie oferty" },
+            { value: "PRODUCT_EDITED", text: "Edycja oferty" },
+            { value: "PRODUCT_DELETED", text: "Usunięcie oferty" },
+            { value: "ORDER-PLACED", text: "Zamówienie (klik „Zamów”)" },
+            { value: "REVIEW_CREATED", text: "Wystawienie opinii" },
+          ],
+        },
+        {
+          label: "Użytkownik — aktywność na stronach",
+          options: [
+            { value: "PRODUCT_VIEW", text: "Przeglądanie produktu" },
+            { value: "LIKE_BLOG", text: "Polubienie posta na blogu" },
+            { value: "CONTACT_FORM", text: "Formularz kontaktowy" },
+          ],
+        },
+        {
+          label: "System — e-mail",
+          options: [
+            { value: "EMAIL_DELIVERY_FAILED", text: "Niepowodzenie wysyłki" },
+          ],
+        },
+        {
+          label: "System — monitorowanie",
+          options: [
+            { value: "service_online", text: "Usługa przywrócona" },
+            { value: "service_offline", text: "Usługa niedostępna" },
+            { value: "site_online", text: "Strona przywrócona" },
+            { value: "site_offline", text: "Strona niedostępna" },
+          ],
+        },
+      ];
+
+      function getActivityLogActionSet() {
+        const s = new Set();
+        for (const log of allActivityLogs || []) {
+          const a = log.action || log.type;
+          if (a != null && String(a).trim() !== "") s.add(String(a));
+        }
+        return s;
+      }
+
+      function rebuildActivityFilterActionSelect(preserveSelection) {
+        const sel = document.getElementById("activity-filter-action");
+        if (!sel) return;
+        const prev =
+          preserveSelection && sel.value ? sel.value : "all";
+        const present = getActivityLogActionSet();
+        const esc =
+          typeof escapeHtml === "function"
+            ? escapeHtml
+            : (t) =>
+                String(t)
+                  .replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/"/g, "&quot;");
+        const parts = ['<option value="all">Wszystkie</option>'];
+        const catalogValues = new Set();
+        for (const g of ACTIVITY_FILTER_GROUPS) {
+          const opts = g.options.filter((o) => present.has(o.value));
+          if (opts.length === 0) continue;
+          parts.push(`<optgroup label="${esc(g.label)}">`);
+          for (const o of opts) {
+            catalogValues.add(o.value);
+            parts.push(
+              `<option value="${esc(o.value)}">${esc(o.text)}</option>`,
+            );
+          }
+          parts.push("</optgroup>");
+        }
+        const orphans = [...present]
+          .filter((a) => !catalogValues.has(a))
+          .sort();
+        if (orphans.length) {
+          parts.push(`<optgroup label="${esc("Inne typy w bazie")}">`);
+          for (const a of orphans) {
+            const label =
+              typeof getActionLabel === "function" ? getActionLabel(a) : a;
+            parts.push(`<option value="${esc(a)}">${esc(label)}</option>`);
+          }
+          parts.push("</optgroup>");
+        }
+        sel.innerHTML = parts.join("");
+        const keep =
+          prev && [...sel.options].some((o) => o.value === prev);
+        sel.value = keep ? prev : "all";
+      }
+
+      function activityLogEncodedIdAttr(logId) {
+        return encodeURIComponent(String(logId || ""));
+      }
+
+      window.openActivityLogCard = function (encodedId) {
+        try {
+          const id = decodeURIComponent(encodedId);
+          if (id && window.showEventDetails) window.showEventDetails(id);
+        } catch (e) {
+          console.warn("openActivityLogCard:", e);
+        }
+      };
+
+      window.deleteActivityLogFromCard = function (encodedId) {
+        try {
+          const id = decodeURIComponent(encodedId);
+          if (id) window.deleteActivityLogEntry(id);
+        } catch (e) {
+          console.warn("deleteActivityLogFromCard:", e);
+        }
+      };
+
+      window.deleteActivityLogEntry = async function (logId) {
+        if (!logId) return;
+        if (
+          !confirm(
+            "Usunąć ten wpis z dziennika aktywności? Tej operacji nie można cofnąć.",
+          )
+        ) {
+          return;
+        }
+        try {
+          await deleteDoc(doc(db, "activityLogs", logId));
+          loadedActivityLogs = (loadedActivityLogs || []).filter(
+            (e) => e.id !== logId,
+          );
+          allActivityLogs = (allActivityLogs || []).filter(
+            (e) => e.id !== logId,
+          );
+          if (typeof window.closeEventModal === "function") {
+            window.closeEventModal();
+          }
+          showNotification("Wpis został usunięty z dziennika.", "success");
+          const allModal = document.getElementById("all-activity-logs-modal");
+          if (allModal && !allModal.classList.contains("hidden")) {
+            rebuildActivityFilterActionSelect(true);
+            await filterActivityLogs();
+          }
+          const dashLog = document.getElementById("admin-activity-log");
+          if (dashLog) {
+            await loadEventsLog(true, true);
+          }
+        } catch (err) {
+          console.error("deleteActivityLogEntry:", err);
+          showNotification("Nie udało się usunąć wpisu.", "error");
+        }
+      };
+
+      // Funkcja ładowania wszystkich logów aktywności do modala
       async function loadAllActivityLogs() {
         const container = document.getElementById('all-activity-logs-container');
         if (!container) return;
@@ -4510,15 +4775,18 @@
 
           allActivityLogs = [];
           querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            if (!shouldShowActivityLogEntry(data)) return;
             allActivityLogs.push({
               id: doc.id,
-              ...doc.data(),
-              timestamp: doc.data().timestamp
+              ...data,
+              timestamp: data.timestamp
             });
           });
 
           console.log('Loaded all activity logs:', allActivityLogs.length);
-          
+
+          rebuildActivityFilterActionSelect(true);
           // Zastosuj filtry i wyświetl
           filterActivityLogs();
         } catch (error) {
@@ -4536,7 +4804,20 @@
       // Funkcja filtrowania logów aktywności
       window.filterActivityLogs = async () => {
         const container = document.getElementById('all-activity-logs-container');
-        if (!container || allActivityLogs.length === 0) return;
+        if (!container) return;
+
+        if (!allActivityLogs || allActivityLogs.length === 0) {
+          const countEl = document.getElementById('activity-logs-count');
+          if (countEl) countEl.textContent = '0';
+          container.innerHTML = `
+            <div class="text-center text-zinc-500 py-8">
+              <i class="fa-solid fa-inbox text-2xl mb-4 text-zinc-600"></i>
+              <h4 class="text-lg font-semibold mb-2">Brak logów</h4>
+              <p class="text-sm">W dzienniku nie ma jeszcze żadnych wpisów (po uwzględnieniu filtrów widoczności).</p>
+            </div>
+          `;
+          return;
+        }
 
         const actionFilter = document.getElementById('activity-filter-action')?.value || 'all';
         const dateFrom = document.getElementById('activity-filter-date-from')?.value;
@@ -4602,18 +4883,26 @@
                 logWithName.targetUserNickname = await getUserNicknameByIdAsync(targetUserId);
               }
             }
+            if (log.action === "USER_CREATED" && log.userId) {
+              logWithName.createdUserNickname = await getUserNicknameByIdAsync(log.userId);
+              logWithName.createdUserEmail = await getUserProfileEmailAsync(log.userId);
+            }
             const activityLog = renderActivityLog ? await renderActivityLog(logWithName) : { description: log.action || 'Aktywność', content: log.details || '' };
 
+            const encId = activityLogEncodedIdAttr(log.id);
             return `
-              <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="if(window.showEventDetails) window.showEventDetails('${log.id}')">
-                <div class="flex justify-between items-start mb-2">
-                  <div class="font-semibold text-white">${activityLog.description}</div>
-                  <div class="text-xs text-zinc-500">${timeAgo}</div>
+              <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700/80 transition flex gap-2 items-start border border-zinc-700/50">
+                <div class="flex-1 min-w-0 cursor-pointer" role="button" tabindex="0" onclick="window.openActivityLogCard('${encId}')">
+                  <div class="flex justify-between items-start mb-2">
+                    <div class="font-semibold text-white">${activityLog.description}</div>
+                    <div class="text-xs text-zinc-500">${timeAgo}</div>
+                  </div>
+                  ${buildActivityLogCardMiddleHtml(activityLog)}
+                  ${!(activityLog.cardLines && activityLog.cardLines.length) ? `<div class="text-xs text-zinc-500 mt-2">${timestamp.toLocaleString("pl-PL")}</div>` : ""}
                 </div>
-                ${activityLog.content ? `<div class="text-xs text-zinc-400 mt-1">${activityLog.content}</div>` : ''}
-                <div class="text-xs text-zinc-500 mt-2">
-                  ${timestamp.toLocaleString("pl-PL")}
-                </div>
+                <button type="button" class="shrink-0 self-start p-2 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-950/40 transition border border-transparent hover:border-red-900/50" title="Usuń wpis" aria-label="Usuń wpis z dziennika" onclick="event.stopPropagation(); window.deleteActivityLogFromCard('${encId}')">
+                  <i class="fa-solid fa-trash-can text-sm"></i>
+                </button>
               </div>
             `;
           })
@@ -4728,7 +5017,6 @@
         }
       }
 
-
       // Funkcja ładowania dziennika aktywności dla dashboardu (wszystkie aktywności)
       async function loadEventsLog(reset = false, silent = false) {
         const container = document.getElementById('admin-activity-log');
@@ -4800,10 +5088,12 @@
 
           const logs = [];
           querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            if (!shouldShowActivityLogEntry(data)) return;
             logs.push({
               id: doc.id,
-              ...doc.data(),
-              timestamp: doc.data().timestamp?.toDate?.()?.toISOString() || doc.data().timestamp
+              ...data,
+              timestamp: data.timestamp?.toDate?.()?.toISOString() || data.timestamp
             });
           });
 
@@ -4843,16 +5133,26 @@
                     logWithName.targetUserNickname = await getUserNicknameByIdAsync(targetUserId);
                   }
                 }
+                if (log.action === "USER_CREATED" && log.userId) {
+                  logWithName.createdUserNickname = await getUserNicknameByIdAsync(log.userId);
+                  logWithName.createdUserEmail = await getUserProfileEmailAsync(log.userId);
+                }
                 const activityLog = renderActivityLog ? await renderActivityLog(logWithName) : { description: log.action || 'Aktywność', content: log.details || '' };
 
+                const encId = activityLogEncodedIdAttr(log.id);
                 return {
                   html: `
-                  <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="if(window.showEventDetails) window.showEventDetails('${log.id}')">
-                    <div class="flex justify-between items-start mb-2">
-                        <div class="font-semibold text-white">${activityLog.description}</div>
-                      <div class="text-xs text-zinc-500">${timeAgo}</div>
+                  <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700/80 transition flex gap-2 items-start border border-zinc-700/50">
+                    <div class="flex-1 min-w-0 cursor-pointer" role="button" tabindex="0" onclick="window.openActivityLogCard('${encId}')">
+                      <div class="flex justify-between items-start mb-2">
+                          <div class="font-semibold text-white">${activityLog.description}</div>
+                        <div class="text-xs text-zinc-500">${timeAgo}</div>
+                      </div>
+                        ${buildActivityLogCardMiddleHtml(activityLog)}
                     </div>
-                      ${activityLog.content ? `<div class="text-xs text-zinc-400 mt-1">${activityLog.content}</div>` : ''}
+                    <button type="button" class="shrink-0 self-start p-2 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-950/40 transition border border-transparent hover:border-red-900/50" title="Usuń wpis" aria-label="Usuń wpis z dziennika" onclick="event.stopPropagation(); window.deleteActivityLogFromCard('${encId}')">
+                      <i class="fa-solid fa-trash-can text-sm"></i>
+                    </button>
                   </div>
                   `,
                   timestamp
@@ -5434,6 +5734,47 @@
       };
 
       // Funkcje związane z newsletterem
+      window.applyNewsletterEmailShellTemplate = async function () {
+        try {
+          let authToken = null;
+          try {
+            if (typeof auth !== "undefined" && auth?.currentUser) {
+              authToken = await auth.currentUser.getIdToken();
+            }
+          } catch (_) {}
+          const headers = { "X-Admin-Panel": "true" };
+          if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
+          const response = await fetch("/api/email-templates", {
+            method: "GET",
+            headers,
+            credentials: "include",
+          });
+          const data = await response.json();
+          if (!data.success) throw new Error(data.error || "Błąd API");
+          const tpl = data.data?.newsletter_broadcast;
+          if (!tpl?.html) {
+            showNotification(
+              "Brak szablonu newsletter_broadcast — odśwież zakładkę Szablony e-mail lub zapisz domyślne szablony.",
+              "error",
+            );
+            return;
+          }
+          const subjEl = document.getElementById("newsletter-subject");
+          if (subjEl && tpl.subject) subjEl.value = tpl.subject;
+          const inner =
+            "<p>Wpisz tutaj treść newslettera (nagłówki, akapity, linki). Przy wysyłce zostanie wstawiona do otoczki strzelca.pl.</p>";
+          const html = tpl.html.includes("{{newsletterBody}}")
+            ? tpl.html.replace(/\{\{\s*newsletterBody\s*\}\}/g, inner)
+            : tpl.html;
+          const editor = document.getElementById("newsletter-editor");
+          if (editor) editor.innerHTML = html;
+          showNotification("Wczytano szablon newslettera — edytuj treść w edytorze.", "success");
+        } catch (e) {
+          console.error(e);
+          showNotification("Nie udało się wczytać szablonu: " + (e.message || "błąd"), "error");
+        }
+      };
+
       window.previewNewsletter = function() {
         const subject = document.getElementById("newsletter-subject")?.value || "";
         const content = document.getElementById("newsletter-editor")?.innerHTML || "";
@@ -5783,6 +6124,22 @@
           }
         } catch (error) {
           console.error("Error sending newsletter:", error);
+          try {
+            await addDoc(collection(db, "activityLogs"), {
+              userId: currentUser.uid,
+              action: "EMAIL_DELIVERY_FAILED",
+              details: {
+                category: "newsletter_queue_client",
+                error: String(error.message || error).substring(0, 600),
+                subject: (document.getElementById("newsletter-subject")?.value || "").substring(0, 200),
+                stage: "api_or_firestore_fallback",
+              },
+              timestamp: serverTimestamp(),
+              userAgent: navigator.userAgent,
+            });
+          } catch (logErr) {
+            console.warn("Nie udało się zapisać logu błędu newslettera:", logErr);
+          }
           showNotification("Błąd podczas wysyłania newslettera.", "error");
         }
       };
@@ -6113,8 +6470,9 @@
             ...doc.data(),
           }));
 
-          // Połącz i posortuj wszystkie aktywności
+          // Połącz i posortuj wszystkie aktywności (bez logów wysłanych wiadomości)
           const allActivities = [...activities, ...targetActivities]
+            .filter((a) => shouldShowActivityLogEntry(a))
             .sort((a, b) => b.timestamp.toDate() - a.timestamp.toDate())
             .slice(0, 50); // Ogranicz do 50 najnowszych
 
@@ -6158,11 +6516,16 @@
               PROFILE_EDITED: "fa-edit",
               LOGIN: "fa-sign-in-alt",
               LOGOUT: "fa-sign-out-alt",
-              MESSAGE_SENT: "fa-comment",
               PRODUCT_ADDED: "fa-plus-circle",
               PRODUCT_EDITED: "fa-edit",
               LIKE_ADDED: "fa-heart",
               COMMENT_ADDED: "fa-comment-dots",
+              EMAIL_DELIVERY_FAILED: "fa-envelope-circle-xmark",
+              CHARITY_ACTION_CREATED: "fa-hand-holding-heart",
+              CHARITY_ACTION_UPDATED: "fa-hand-holding-heart",
+              CHARITY_ACTION_DELETED: "fa-hand-holding-heart",
+              CHARITY_PINNED_UPDATED: "fa-credit-card",
+              DOCS_RETURN_FORM_PDF: "fa-file-signature",
             };
 
             const iconClass = activityIcons[activity.action] || "fa-circle";
@@ -6175,6 +6538,12 @@
               ROLE_CHANGE: "text-blue-400",
               PASSWORD_RESET_REQUEST: "text-orange-400",
               PROFILE_EDITED: "text-purple-400",
+              EMAIL_DELIVERY_FAILED: "text-amber-400",
+              CHARITY_ACTION_CREATED: "text-rose-400",
+              CHARITY_ACTION_UPDATED: "text-rose-300",
+              CHARITY_ACTION_DELETED: "text-rose-500",
+              CHARITY_PINNED_UPDATED: "text-sky-400",
+              DOCS_RETURN_FORM_PDF: "text-teal-400",
             };
 
             const colorClass =
@@ -6241,6 +6610,26 @@
               case "PROFILE_EDITED":
                 description = `Edycja profilu (${activity.details.changes?.join(", ") || "nieznane zmiany"})`;
                 break;
+              case "EMAIL_DELIVERY_FAILED":
+                description = `Błąd wysyłki e-mail: ${activity.details?.category || "?"}`;
+                break;
+              case "CHARITY_ACTION_CREATED":
+                description = `Dodano akcję na pomoc.strzelca.pl: ${activity.details?.title || "—"}`;
+                break;
+              case "CHARITY_ACTION_UPDATED":
+                description = `Zmieniono akcję na pomoc.strzelca.pl: ${activity.details?.title || "—"}`;
+                break;
+              case "CHARITY_ACTION_DELETED":
+                description = `Usunięto akcję na pomoc.strzelca.pl: ${activity.details?.title || "—"}`;
+                break;
+              case "CHARITY_PINNED_UPDATED":
+                description = `Zaktualizowano kafelek wpłat (pomoc.strzelca.pl): ${activity.details?.title || "—"}`;
+                break;
+              case "DOCS_RETURN_FORM_PDF": {
+                const d = activity.details || {};
+                description = `PDF zwrotu/reklamacji (${d.formKind || "dokumenty.strzelca.pl"})`;
+                break;
+              }
               default:
                 description = activity.action.replace(/_/g, " ").toLowerCase();
             }
@@ -6974,13 +7363,14 @@
           }
 
           if (!isAutomatic) {
-          showNotification("Użytkownik został odblokowany.");
+            showNotification("Użytkownik został odblokowany.");
+            await notifyAccountStatusEmail(userId, "unblocked", { automatic: false });
           }
           loadUsers();
         } catch (error) {
           console.error("Error unblocking user:", error);
           if (!isAutomatic) {
-          showNotification("Błąd podczas odblokowywania użytkownika.", "error");
+            showNotification("Błąd podczas odblokowywania użytkownika.", "error");
           }
         }
       }
@@ -7052,6 +7442,7 @@
                       });
                       
                       console.log(`[AutoUnblock] ✅ Zalogowano odblokowanie dla użytkownika ${userId}`);
+                      await notifyAccountStatusEmail(userId, "unblocked", { automatic: true });
                     } catch (logError) {
                       console.error(`[AutoUnblock] ❌ Błąd podczas logowania automatycznego odblokowania dla użytkownika ${userId}:`, logError);
                       console.error(`[AutoUnblock] ❌ Szczegóły błędu:`, {
@@ -7098,6 +7489,7 @@
                 });
                 
                 console.log(`[AutoUnblock] ✅ Zalogowano odblokowanie dla użytkownika ${userId}`);
+                await notifyAccountStatusEmail(userId, "unblocked", { automatic: true });
               } catch (logError) {
                 console.error(`[AutoUnblock] ❌ Błąd podczas logowania automatycznego odblokowania dla użytkownika ${userId}:`, logError);
                 console.error(`[AutoUnblock] ❌ Szczegóły błędu:`, {
@@ -8654,7 +9046,7 @@
       async function handleEventFormSubmit(e) {
         e.preventDefault();
 
-        const eventId = document.getElementById("event-id").value;
+        const eventId = (document.getElementById("event-id").value || "").trim();
         const title = document.getElementById("event-title").value.trim();
         const dateTime = document.getElementById("event-date").value;
         const category = normalizeEventCategory(document.getElementById("event-category").value);
@@ -8693,35 +9085,44 @@
             }
           }
 
+          const actorUid = getActivityLogActorUid();
+          const eventLogDetails = {
+            eventTitle: title,
+            eventDate: eventDate.toISOString(),
+            category,
+            location: location || null,
+            pinned,
+            published,
+            adminEmail: adminEmail || null,
+          };
+
           if (eventId) {
             // Aktualizacja istniejącego wydarzenia
             await updateDoc(doc(db, "events", eventId), eventData);
-            await logActivity(currentUser?.uid || "system", "EVENT_UPDATED", {
-              eventId,
-              eventTitle: title,
-              eventDate: eventDate.toISOString(),
-              category,
-              location: location || null,
-              pinned,
-              published,
-              adminEmail,
-            });
+            eventLogDetails.eventId = eventId;
             showNotification("Wydarzenie zostało zaktualizowane.", "success");
+            if (actorUid) {
+              const ok = await logActivity(actorUid, "EVENT_UPDATED", eventLogDetails);
+              if (!ok) {
+                showNotification("Uwaga: nie udało się dodać wpisu do dziennika aktywności.", "warning");
+              }
+            } else {
+              console.warn("[Events] Brak auth.currentUser.uid — pominięto log EVENT_UPDATED");
+            }
           } else {
             // Dodanie nowego wydarzenia
             eventData.createdAt = new Date();
             const newEventRef = await addDoc(collection(db, "events"), eventData);
-            await logActivity(currentUser?.uid || "system", "EVENT_CREATED", {
-              eventId: newEventRef.id,
-              eventTitle: title,
-              eventDate: eventDate.toISOString(),
-              category,
-              location: location || null,
-              pinned,
-              published,
-              adminEmail,
-            });
+            eventLogDetails.eventId = newEventRef.id;
             showNotification("Wydarzenie zostało dodane.", "success");
+            if (actorUid) {
+              const ok = await logActivity(actorUid, "EVENT_CREATED", eventLogDetails);
+              if (!ok) {
+                showNotification("Uwaga: nie udało się dodać wpisu do dziennika aktywności.", "warning");
+              }
+            } else {
+              console.warn("[Events] Brak auth.currentUser.uid — pominięto log EVENT_CREATED");
+            }
           }
 
           closeEventFormModal();
@@ -8745,14 +9146,17 @@
           
           await deleteDoc(doc(db, "events", eventId));
           
-          if (currentUser) {
-            await logActivity(currentUser.uid, "EVENT_DELETED", {
-              eventTitle: eventName,
-              eventId: eventId
-            });
-          }
-          
+          const delActor = getActivityLogActorUid();
           showNotification("Wydarzenie zostało usunięte.", "success");
+          if (delActor) {
+            const ok = await logActivity(delActor, "EVENT_DELETED", {
+              eventTitle: eventName,
+              eventId: eventId,
+            });
+            if (!ok) {
+              showNotification("Uwaga: nie udało się dodać wpisu do dziennika aktywności.", "warning");
+            }
+          }
           await loadEvents();
         } catch (error) {
           console.error("Error deleting event:", error);
@@ -8834,16 +9238,124 @@
         return `<p>Twoja wpłata pomoże nam rozwijać działalność, wprowadzać nowe produkty i usługi, oraz wspierać społeczność strzelecką. Każda kwota ma znaczenie i przyczynia się do budowania lepszej przyszłości dla naszego środowiska.</p><p>Wszystkie wpłaty są dobrowolne i nie wiążą się z żadnymi zobowiązaniami. Za pośrednictwem bezpiecznej bramki płatniczej Stripe.</p><p><a href="https://dokumenty.strzelca.pl#donation-clause" rel="noopener noreferrer">Klauzula Donacji</a></p>`;
       }
 
+      function charityActionEventDate(item) {
+        const raw = item?.date;
+        if (raw && typeof raw.toDate === "function") return raw.toDate();
+        return new Date(raw || Date.now());
+      }
+
+      function charityActionIsPast(item) {
+        return charityActionEventDate(item) < new Date();
+      }
+
+      function updateCharityStatsCounters() {
+        let active = 0;
+        let ended = 0;
+        charityActionsList.forEach((item) => {
+          if (charityActionIsPast(item)) ended++;
+          else active++;
+        });
+        const total = charityActionsList.length;
+        const elA = document.getElementById("charity-count-active");
+        const elE = document.getElementById("charity-count-ended");
+        const elT = document.getElementById("charity-count-total");
+        if (elA) elA.textContent = String(active);
+        if (elE) elE.textContent = String(ended);
+        if (elT) elT.textContent = String(total);
+      }
+
+      function renderCharityActionsListDOM() {
+        const listEl = document.getElementById("charity-actions-list");
+        const emptyEl = document.getElementById("charity-empty");
+        const filterEmptyEl = document.getElementById("charity-filter-empty");
+        if (!listEl) return;
+
+        const showCompleted = document.getElementById("charity-show-completed")?.checked;
+        const fullLen = charityActionsList.length;
+
+        if (fullLen === 0) {
+          listEl.innerHTML = "";
+          if (emptyEl) emptyEl.classList.remove("hidden");
+          if (filterEmptyEl) filterEmptyEl.classList.add("hidden");
+          return;
+        }
+
+        if (emptyEl) emptyEl.classList.add("hidden");
+
+        const filtered = showCompleted
+          ? charityActionsList.slice()
+          : charityActionsList.filter((item) => !charityActionIsPast(item));
+
+        if (filtered.length === 0) {
+          listEl.innerHTML = "";
+          if (filterEmptyEl) filterEmptyEl.classList.remove("hidden");
+          return;
+        }
+
+        if (filterEmptyEl) filterEmptyEl.classList.add("hidden");
+
+        const nFull = fullLen;
+        const rows = filtered.map((item) => {
+          const data = item;
+          const docId = item.id;
+          const fullIndex = charityActionsList.findIndex((c) => c.id === docId);
+          const eventDate = charityActionEventDate(item);
+          const isPast = charityActionIsPast(item);
+          const descPlain = (data.description || "Brak opisu").replace(/<[^>]+>/g, "").trim() || "Brak opisu";
+          const rawDateStr = data.date != null ? String(data.date) : "";
+          const isTimeProvided =
+            (data.date && typeof data.date.toDate === "function") ||
+            (typeof data.date === "string" && rawDateStr.includes("T") && rawDateStr.length > 10);
+          const timeStr = isTimeProvided
+            ? eventDate.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })
+            : null;
+          const dateStr = eventDate.toLocaleDateString("pl-PL");
+          const imgAlt = (data.title || "").replace(/"/g, "&quot;");
+
+          return `
+                <div class="border border-zinc-700 rounded-lg p-4">
+                  <div class="flex justify-between items-start mb-3">
+                    <h4 class="text-lg font-bold coyote-text">${data.title || "Bez tytułu"}</h4>
+                    <div class="flex flex-wrap items-center gap-2 justify-end">
+                      <button type="button" onclick="moveCharityActionUp('${docId}')" class="text-zinc-400 hover:text-zinc-200 px-2 py-1 border border-zinc-500 rounded text-xs disabled:opacity-30" ${fullIndex === 0 ? "disabled" : ""} title="Wyżej na stronie Pomoc">↑</button>
+                      <button type="button" onclick="moveCharityActionDown('${docId}')" class="text-zinc-400 hover:text-zinc-200 px-2 py-1 border border-zinc-500 rounded text-xs disabled:opacity-30" ${fullIndex === nFull - 1 ? "disabled" : ""} title="Niżej na stronie Pomoc">↓</button>
+                      <button onclick="editCharityAction('${docId}')" class="text-blue-400 text-sm hover:underline">Edytuj</button>
+                      <button onclick="deleteCharityAction('${docId}')" class="text-red-400 text-sm hover:underline">Usuń</button>
+                    </div>
+                  </div>
+                  <div class="text-sm text-zinc-400 mb-2 space-y-2">
+                    <div class="flex flex-wrap items-center gap-2">
+                    ${isPast ? '<span class="px-2 py-1 bg-red-600 text-white text-xs rounded">Zakończona</span>' : '<span class="px-2 py-1 bg-green-600 text-white text-xs rounded">Aktywna</span>'}
+                    ${data.active ? "" : '<span class="px-2 py-1 bg-zinc-600 text-white text-xs rounded">Nieaktywna</span>'}
+                    </div>
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-zinc-300">
+                      <span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-calendar-day text-coyote text-xs shrink-0" aria-hidden="true"></i>${dateStr}</span>
+                      ${timeStr ? `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-clock text-coyote text-xs shrink-0" aria-hidden="true"></i>${timeStr}</span>` : ""}
+                    </div>
+                  </div>
+                  ${data.image ? `<img src="${data.image}" alt="${imgAlt}" class="w-full h-48 object-cover rounded mb-3">` : ""}
+                  <p class="text-zinc-300 text-sm line-clamp-4">${descPlain}</p>
+                </div>
+              `;
+        });
+        listEl.innerHTML = rows.join("");
+      }
+
+      window.applyCharityListFilter = () => {
+        renderCharityActionsListDOM();
+      };
+
       async function loadCharity() {
-        // Funkcja do ładowania akcji charytatywnych
         const loadingEl = document.getElementById("charity-loading");
         const listEl = document.getElementById("charity-actions-list");
         const emptyEl = document.getElementById("charity-empty");
-        
+        const filterEmptyEl = document.getElementById("charity-filter-empty");
+
         if (loadingEl) loadingEl.classList.remove("hidden");
         if (listEl) listEl.innerHTML = "";
         if (emptyEl) emptyEl.classList.add("hidden");
-        
+        if (filterEmptyEl) filterEmptyEl.classList.add("hidden");
+
         try {
           const { collection, getDocs, getDoc, doc, query, orderBy } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
           const pinnedSnap = await getDoc(doc(db, "charity", PINNED_CHARITY_ID));
@@ -8851,14 +9363,15 @@
 
           const q = query(collection(db, "charity"), orderBy("order", "asc"));
           const snap = await getDocs(q);
-          
+
           if (loadingEl) loadingEl.classList.add("hidden");
 
           charityActionsList = [];
           if (listEl) listEl.innerHTML = "";
 
           if (snap.empty) {
-            if (emptyEl) emptyEl.classList.remove("hidden");
+            updateCharityStatsCounters();
+            renderCharityActionsListDOM();
             return;
           }
 
@@ -8868,53 +9381,23 @@
             charityRowDocs.push(docSnapshot);
           });
 
-          if (charityRowDocs.length === 0) {
-            if (emptyEl) emptyEl.classList.remove("hidden");
-            return;
-          }
-
-          const nCharity = charityRowDocs.length;
-
-          charityRowDocs.forEach((docSnapshot, index) => {
+          charityRowDocs.forEach((docSnapshot) => {
             const data = docSnapshot.data();
-            const charityItem = { id: docSnapshot.id, ...data };
-            charityActionsList.push(charityItem);
-
-            if (listEl) {
-              const eventDate = new Date(data.date || Date.now());
-              const isPast = eventDate < new Date();
-              const descPlain = (data.description || "Brak opisu").replace(/<[^>]+>/g, "").trim() || "Brak opisu";
-
-              listEl.innerHTML += `
-                <div class="border border-zinc-700 rounded-lg p-4">
-                  <div class="flex justify-between items-start mb-3">
-                    <h4 class="text-lg font-bold coyote-text">${data.title || "Bez tytułu"}</h4>
-                    <div class="flex flex-wrap items-center gap-2 justify-end">
-                      <button type="button" onclick="moveCharityActionUp('${docSnapshot.id}')" class="text-zinc-400 hover:text-zinc-200 px-2 py-1 border border-zinc-500 rounded text-xs disabled:opacity-30" ${index === 0 ? "disabled" : ""} title="Wyżej na stronie Pomoc">↑</button>
-                      <button type="button" onclick="moveCharityActionDown('${docSnapshot.id}')" class="text-zinc-400 hover:text-zinc-200 px-2 py-1 border border-zinc-500 rounded text-xs disabled:opacity-30" ${index === nCharity - 1 ? "disabled" : ""} title="Niżej na stronie Pomoc">↓</button>
-                      <button onclick="editCharityAction('${docSnapshot.id}')" class="text-blue-400 text-sm hover:underline">Edytuj</button>
-                      <button onclick="deleteCharityAction('${docSnapshot.id}')" class="text-red-400 text-sm hover:underline">Usuń</button>
-                    </div>
-                  </div>
-                  <div class="text-sm text-zinc-400 mb-2">
-                    📅 ${eventDate.toLocaleDateString("pl-PL")}
-                    ${isPast ? '<span class="ml-2 px-2 py-1 bg-red-600 text-white text-xs rounded">Zakończona</span>' : '<span class="ml-2 px-2 py-1 bg-green-600 text-white text-xs rounded">Aktywna</span>'}
-                    ${data.active ? "" : '<span class="ml-2 px-2 py-1 bg-zinc-600 text-white text-xs rounded">Nieaktywna</span>'}
-                  </div>
-                  ${data.image ? `<img src="${data.image}" alt="${data.title}" class="w-full h-48 object-cover rounded mb-3">` : ""}
-                  <p class="text-zinc-300 text-sm line-clamp-4">${descPlain}</p>
-                </div>
-              `;
-            }
+            charityActionsList.push({ id: docSnapshot.id, ...data });
           });
 
-          if (emptyEl) emptyEl.classList.add("hidden");
+          updateCharityStatsCounters();
+          renderCharityActionsListDOM();
         } catch (error) {
           console.error("Error loading charity actions:", error);
           if (loadingEl) loadingEl.classList.add("hidden");
+          charityActionsList = [];
+          updateCharityStatsCounters();
           if (listEl) {
             listEl.innerHTML = '<div class="text-center text-red-400 py-4">Błąd podczas ładowania akcji charytatywnych</div>';
           }
+          if (emptyEl) emptyEl.classList.add("hidden");
+          if (filterEmptyEl) filterEmptyEl.classList.add("hidden");
         }
       }
 
@@ -9158,7 +9641,7 @@
       async function handleCharityFormSubmit(e) {
         e.preventDefault();
 
-        const charityId = document.getElementById("charity-id").value;
+        const charityId = (document.getElementById("charity-id").value || "").trim();
         if (charityId === PINNED_CHARITY_ID) {
           showNotification('Ten dokument edytuj przez „Edytuj kafelek wpłat”.', 'error');
           return;
@@ -9192,16 +9675,43 @@
             updatedAt: new Date(),
           };
 
+          const actorUid = getActivityLogActorUid();
+          const charityLogBase = {
+            title,
+            charityDate: date,
+            active,
+            hasButtonLink: !!(buttonLink && buttonLink.trim()),
+            imagesCount: finalImages.length,
+          };
+
           if (charityId) {
             // Aktualizacja istniejącej akcji
             await setDoc(doc(db, "charity", charityId), charityData);
             showNotification("Akcja charytatywna została zaktualizowana.", "success");
+            if (actorUid) {
+              const ok = await logActivity(actorUid, "CHARITY_ACTION_UPDATED", {
+                ...charityLogBase,
+                charityId,
+              });
+              if (!ok) {
+                showNotification("Uwaga: nie udało się dodać wpisu do dziennika aktywności.", "warning");
+              }
+            }
           } else {
             // Dodanie nowej akcji
             charityData.created = Date.now();
             const newId = Date.now().toString();
             await setDoc(doc(db, "charity", newId), charityData);
             showNotification("Akcja charytatywna została dodana.", "success");
+            if (actorUid) {
+              const ok = await logActivity(actorUid, "CHARITY_ACTION_CREATED", {
+                ...charityLogBase,
+                charityId: newId,
+              });
+              if (!ok) {
+                showNotification("Uwaga: nie udało się dodać wpisu do dziennika aktywności.", "warning");
+              }
+            }
           }
 
           closeCharityFormModal();
@@ -9224,8 +9734,20 @@
         if (!confirm("Czy na pewno chcesz usunąć tę akcję charytatywną?")) return;
 
         try {
+          const removed = charityActionsList.find((c) => c.id === charityId);
+          const removedTitle = removed?.title || charityId;
           await deleteDoc(doc(db, "charity", charityId));
           showNotification("Akcja charytatywna została usunięta.", "success");
+          const actorUid = getActivityLogActorUid();
+          if (actorUid) {
+            const ok = await logActivity(actorUid, "CHARITY_ACTION_DELETED", {
+              charityId,
+              title: removedTitle,
+            });
+            if (!ok) {
+              showNotification("Uwaga: nie udało się dodać wpisu do dziennika aktywności.", "warning");
+            }
+          }
           await loadCharity();
         } catch (error) {
           console.error("Error deleting charity action:", error);
@@ -9386,6 +9908,18 @@
           );
 
           showNotification("Kafelek wpłat został zapisany.", "success");
+          const actorUid = getActivityLogActorUid();
+          if (actorUid) {
+            const ok = await logActivity(actorUid, "CHARITY_PINNED_UPDATED", {
+              kind: "pinnedCompanyDonations",
+              title: title || "Dobrowolne wpłaty na rzecz rozwoju firmy",
+              imagesCount: finalImages.length,
+              stripeConfigured: !!(stripeBuy && stripePk),
+            });
+            if (!ok) {
+              showNotification("Uwaga: nie udało się dodać wpisu do dziennika aktywności.", "warning");
+            }
+          }
           closePinnedDonationsModal();
           await loadCharity();
         } catch (error) {
@@ -10097,7 +10631,10 @@
             siteMap[siteName] = service;
           });
 
-          // Zapisz wyniki i loguj zdarzenia
+          // Zapisz wyniki; jeden zbiorczy log na cykl (zamiast osobnego wpisu na każdą domenę)
+          const wentOffline = [];
+          const cameOnline = [];
+
           SITES_TO_CHECK.forEach((site) => {
             const previousStatus = sitesStatus[site];
             const apiResult = siteMap[site];
@@ -10113,22 +10650,21 @@
               
               sitesStatus[site] = currentStatus;
 
-              // Loguj tylko zmiany stanu: offline -> online
               if (previousStatus && !previousStatus.online && currentStatus.online) {
-                logSystemEvent('site_online', site, null, {
+                cameOnline.push({
+                  site,
                   message: 'Strona wróciła do działania',
-                  responseTime: apiResult.responseTime || 0
-                }, 'success');
+                  responseTime: apiResult.responseTime || 0,
+                });
               }
-              // Loguj tylko zmiany stanu: online -> offline (nie przy pierwszym sprawdzeniu)
               if (previousStatus && previousStatus.online && !currentStatus.online) {
-                logSystemEvent('site_offline', site, null, {
+                wentOffline.push({
+                  site,
                   message: 'Strona stała się niedostępna',
-                  error: apiResult.error || 'Nieznany błąd'
-                }, 'error');
+                  error: apiResult.error || 'Nieznany błąd',
+                });
               }
             } else {
-              // Jeśli nie znaleziono w wynikach API, ustaw jako offline
               const errorStatus = {
                 online: false,
                 lastCheck: new Date(),
@@ -10136,15 +10672,48 @@
               };
               sitesStatus[site] = errorStatus;
 
-              // Loguj tylko zmiany stanu: online -> offline
               if (previousStatus && previousStatus.online) {
-                logSystemEvent('site_offline', site, null, {
+                wentOffline.push({
+                  site,
                   message: 'Strona nie została znaleziona w odpowiedzi API',
-                  error: 'Service not found in API response'
-                }, 'error');
+                  error: 'Service not found in API response',
+                });
               }
             }
           });
+
+          if (wentOffline.length > 0) {
+            await logSystemEvent(
+              'site_offline',
+              null,
+              null,
+              {
+                message:
+                  wentOffline.length === 1
+                    ? `Strona niedostępna: ${wentOffline[0].site}`
+                    : `Strony stały się niedostępne (${wentOffline.length})`,
+                sites: wentOffline.map((w) => w.site),
+                sitesDetail: wentOffline,
+              },
+              'error',
+            );
+          }
+          if (cameOnline.length > 0) {
+            await logSystemEvent(
+              'site_online',
+              null,
+              null,
+              {
+                message:
+                  cameOnline.length === 1
+                    ? `Strona przywrócona: ${cameOnline[0].site}`
+                    : `Strony wróciły do działania (${cameOnline.length})`,
+                sites: cameOnline.map((w) => w.site),
+                sitesDetail: cameOnline,
+              },
+              'success',
+            );
+          }
 
           renderSitesStatus();
           lastStatusCheck = new Date();
@@ -10154,7 +10723,7 @@
         } catch (error) {
           console.error('Error checking sites status via API:', error);
           
-          // Fallback: ustaw wszystkie jako offline w przypadku błędu
+          const wentOffline = [];
           SITES_TO_CHECK.forEach((site) => {
             const previousStatus = sitesStatus[site];
             const errorStatus = {
@@ -10164,14 +10733,31 @@
             };
             sitesStatus[site] = errorStatus;
 
-            // Loguj tylko zmiany stanu: online -> offline
             if (previousStatus && previousStatus.online) {
-              logSystemEvent('site_offline', site, null, {
-                message: 'Błąd podczas sprawdzania statusu strony',
-                error: error.message || 'Nieznany błąd'
-              }, 'error');
+              wentOffline.push({
+                site,
+                message: 'Błąd podczas sprawdzania statusu — strona uznana za niedostępną',
+                error: error.message || 'Nieznany błąd',
+              });
             }
           });
+
+          if (wentOffline.length > 0) {
+            await logSystemEvent(
+              'site_offline',
+              null,
+              null,
+              {
+                message:
+                  wentOffline.length === 1
+                    ? `Błąd API statusów — ${wentOffline[0].site} uznana za niedostępną`
+                    : `Błąd API statusów — ${wentOffline.length} stron uznanych za niedostępne`,
+                sites: wentOffline.map((w) => w.site),
+                sitesDetail: wentOffline,
+              },
+              'error',
+            );
+          }
 
           renderSitesStatus();
           
@@ -10653,6 +11239,32 @@
             return;
           }
 
+        if (
+          event.action === "USER_CREATED" &&
+          event.detailsEncrypted &&
+          auth?.currentUser
+        ) {
+          try {
+            const idToken = await auth.currentUser.getIdToken();
+            const decryptUrl = strzelcaActivityLogApiUrl("/api/activity-log-decrypt-details");
+            const dr = await fetch(decryptUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ idToken, logId: event.id }),
+            });
+            const dj = await dr.json().catch(() => ({}));
+            if (dr.ok && dj.success && dj.details && typeof dj.details === "object") {
+              event = {
+                ...event,
+                details: dj.details,
+                detailsDecrypted: true,
+              };
+            }
+          } catch (decErr) {
+            console.warn("activity-log-decrypt-details:", decErr);
+          }
+        }
+
         // Pobierz nick użytkownika docelowego jeśli to USER_BLOCKED lub USER_UNBLOCKED
         if ((event.action === "USER_BLOCKED" || event.action === "USER_UNBLOCKED") && (event.targetUserId || (event.details && event.details.targetUser))) {
           const targetUserId = event.targetUserId || (event.details && event.details.targetUser);
@@ -10660,8 +11272,13 @@
             event.targetUserNickname = await getUserNicknameByIdAsync(targetUserId);
           }
         }
+        if (event.action === "USER_CREATED" && event.userId) {
+          event.createdUserNickname = await getUserNicknameByIdAsync(event.userId);
+          event.createdUserEmail = await getUserProfileEmailAsync(event.userId);
+        }
         const activityLog = await renderActivityLog(event);
         const userDisplayName = await getUserDisplayNameAsync(event);
+        const encModalLogId = activityLogEncodedIdAttr(event.id);
 
           // Utwórz modal
           const modalHtml = `
@@ -10677,27 +11294,27 @@
                 <div class="space-y-4">
                   <div>
                     <label class="text-sm text-zinc-400">Użytkownik:</label>
-                    <div class="text-white font-semibold">${userDisplayName}</div>
+                    <div class="text-white font-semibold">${escapeHtml(String(userDisplayName || ""))}</div>
                   </div>
 
                   <div>
                     <label class="text-sm text-zinc-400">Rodzaj zdarzenia:</label>
-                    <div class="text-white">${getActionLabel(event.action || event.type || "UNKNOWN")}</div>
+                    <div class="text-white">${escapeHtml(String(getActionLabel(event.action || event.type || "UNKNOWN")))}</div>
                   </div>
 
                   <div>
                     <label class="text-sm text-zinc-400">Nagłówek:</label>
-                    <div class="text-white">${activityLog.description}</div>
+                    <div class="text-white">${escapeHtml(String(activityLog.description || ""))}</div>
                   </div>
 
                   <div>
                     <label class="text-sm text-zinc-400">Szczegóły:</label>
-                    <div class="text-white">${activityLog.details}</div>
+                    <div class="text-white whitespace-pre-wrap text-sm leading-relaxed">${escapeHtml(String(activityLog.details || ""))}</div>
                   </div>
 
                   <div>
                     <label class="text-sm text-zinc-400">Data i czas:</label>
-                    <div class="text-white">${event.timestamp?.toDate?.()?.toLocaleString("pl-PL") || (event.timestamp ? new Date(event.timestamp).toLocaleString("pl-PL") : "Data niedostępna")}</div>
+                    <div class="text-white">${escapeHtml(String(event.timestamp?.toDate?.()?.toLocaleString("pl-PL") || (event.timestamp ? new Date(event.timestamp).toLocaleString("pl-PL") : "Data niedostępna")))}</div>
                   </div>
                   
                   ${event.userId && event.userId !== "system" ? `
@@ -10713,6 +11330,12 @@
                     <div class="text-white text-sm font-mono">${event.action}</div>
                   </div>
                   ` : ""}
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-zinc-700 flex flex-wrap justify-end gap-2">
+                  <button type="button" onclick="window.deleteActivityLogFromCard('${encModalLogId}')" class="px-4 py-2 rounded-lg border border-red-500/40 text-red-400 hover:bg-red-950/35 transition text-sm">
+                    <i class="fa-solid fa-trash-can mr-2"></i>Usuń wpis z dziennika
+                  </button>
                 </div>
               </div>
             </div>
@@ -11082,10 +11705,12 @@
 
           const logs = [];
           querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            if (!shouldShowActivityLogEntry(data)) return;
             logs.push({
               id: doc.id,
-              ...doc.data(),
-              timestamp: doc.data().timestamp?.toDate?.()?.toISOString() || doc.data().timestamp
+              ...data,
+              timestamp: data.timestamp?.toDate?.()?.toISOString() || data.timestamp
             });
           });
 
@@ -11121,16 +11746,26 @@
                   logWithName.targetUserNickname = await getUserNicknameByIdAsync(targetUserId);
                 }
               }
+              if (log.action === "USER_CREATED" && log.userId) {
+                logWithName.createdUserNickname = await getUserNicknameByIdAsync(log.userId);
+                logWithName.createdUserEmail = await getUserProfileEmailAsync(log.userId);
+              }
               const activityLog = renderActivityLog ? await renderActivityLog(logWithName) : { description: log.action || 'Aktywność', content: log.details || '' };
 
+              const encIdSilent = activityLogEncodedIdAttr(log.id);
               return {
                 html: `
-                <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition cursor-pointer" onclick="if(window.showEventDetails) window.showEventDetails('${log.id}')">
-                  <div class="flex justify-between items-start mb-2">
-                      <div class="font-semibold text-white">${activityLog.description}</div>
-                    <div class="text-xs text-zinc-500">${timeAgo}</div>
+                <div class="p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700/80 transition flex gap-2 items-start border border-zinc-700/50">
+                  <div class="flex-1 min-w-0 cursor-pointer" role="button" tabindex="0" onclick="window.openActivityLogCard('${encIdSilent}')">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="font-semibold text-white">${activityLog.description}</div>
+                      <div class="text-xs text-zinc-500">${timeAgo}</div>
+                    </div>
+                      ${buildActivityLogCardMiddleHtml(activityLog)}
                   </div>
-                    ${activityLog.content ? `<div class="text-xs text-zinc-400 mt-1">${activityLog.content}</div>` : ''}
+                  <button type="button" class="shrink-0 self-start p-2 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-950/40 transition border border-transparent hover:border-red-900/50" title="Usuń wpis" aria-label="Usuń wpis z dziennika" onclick="event.stopPropagation(); window.deleteActivityLogFromCard('${encIdSilent}')">
+                    <i class="fa-solid fa-trash-can text-sm"></i>
+                  </button>
                 </div>
                 `,
                 timestamp
@@ -11236,7 +11871,6 @@
           "PASSWORD_RESET_REQUEST": "Żądanie resetu hasła",
           "ROLE_CHANGE": "Zmiana roli użytkownika",
           "PROFILE_EDITED": "Edycja profilu",
-          "MESSAGE_SENT": "Wysłanie wiadomości do administracji",
           "LIKE_BLOG": "Polubienie posta",
           "CONTACT_FORM": "Wypełnienie formularza kontaktowego",
           "USER_REGISTER": "Rejestracja użytkownika",
@@ -11245,19 +11879,26 @@
           "PRODUCT_EDITED": "Edycja oferty w sklepie",
           "PRODUCT_DELETED": "Usunięcie oferty ze sklepu",
           "REVIEW_CREATED": "Wystawienie opinii",
-          "EVENT_CREATED": "Dodanie wydarzenia",
-          "EVENT_UPDATED": "Edycja wydarzenia",
-          "EVENT_DELETED": "Usunięcie wydarzenia",
+          "EVENT_CREATED": "Utworzone wydarzenie",
+          "EVENT_UPDATED": "Zmienione wydarzenie",
+          "EVENT_DELETED": "Usunięte wydarzenie",
           "TRAINING_CREATED": "Dodanie szkolenia",
           "TRAINING_UPDATED": "Edycja szkolenia",
           "TRAINING_DELETED": "Usunięcie szkolenia",
-          "DOCUMENT_CREATED": "Dodanie dokumentu pomocy",
-          "DOCUMENT_UPDATED": "Edycja dokumentu pomocy",
-          "DOCUMENT_DELETED": "Usunięcie dokumentu pomocy",
+          "DOCUMENT_CREATED": "Dodanie pozycji w katalogu dokumentów (panel — historia)",
+          "DOCUMENT_UPDATED": "Edycja pozycji w katalogu dokumentów (panel — historia)",
+          "DOCUMENT_DELETED": "Usunięcie pozycji z katalogu dokumentów (panel — historia)",
+          "DOCS_RETURN_FORM_PDF": "PDF zwrotu / reklamacji (dokumenty.strzelca.pl)",
+          "ORDER-PLACED": "Zamówienie ze sklepu (klik „Zamów”)",
+          "CHARITY_ACTION_CREATED": "Dodana akcja (pomoc.strzelca.pl)",
+          "CHARITY_ACTION_UPDATED": "Zmieniona akcja (pomoc.strzelca.pl)",
+          "CHARITY_ACTION_DELETED": "Usunięta akcja (pomoc.strzelca.pl)",
+          "CHARITY_PINNED_UPDATED": "Kafelek wpłat (pomoc.strzelca.pl)",
           "service_online": "Usługa włączona",
           "service_offline": "Usługa wyłączona",
           "site_online": "Strona włączona",
-          "site_offline": "Strona wyłączona"
+          "site_offline": "Strona wyłączona",
+          "EMAIL_DELIVERY_FAILED": "E-mail — niepowodzenie wysyłki"
         };
         return actionLabels[action] || action || "Nieznana akcja";
       }
@@ -11350,10 +11991,107 @@
         return null;
       }
 
+      async function getUserProfileEmailAsync(userId) {
+        if (!userId || userId === "system" || userId === "anonymous") {
+          return null;
+        }
+        try {
+          const userDoc = await getDoc(doc(db, "userProfiles", userId));
+          if (userDoc.exists()) {
+            const e = userDoc.data().email;
+            return typeof e === "string" && e ? e : null;
+          }
+        } catch (e) {
+          console.warn("Could not fetch user email for userId:", userId, e);
+        }
+        return null;
+      }
+
+      function formatUserCreatedDetailsForDisplay(d) {
+        if (!d || typeof d !== "object") return String(d || "");
+        const lines = [];
+        const add = (label, val) => {
+          if (val === undefined || val === null || val === "") return;
+          lines.push(`${label}: ${val}`);
+        };
+        add("Nick (login)", d.displayName);
+        add("E-mail", d.email);
+        add("Telefon", d.phone);
+        add("Imię", d.firstName);
+        add("Nazwisko", d.lastName);
+        add("Płeć", d.gender);
+        if (d.address && typeof d.address === "object") {
+          add("Ulica", d.address.street);
+          add("Numer budynku/lokalu", d.address.buildingNumber);
+          add("Kod pocztowy", d.address.postalCode);
+          add("Miejscowość", d.address.city);
+        }
+        add("Paczkomat / punkt odbioru", d.parcelLocker);
+        if (d.ageConfirmed === true) add("Potwierdzenie pełnoletności", "tak");
+        else if (d.ageConfirmed === false) add("Potwierdzenie pełnoletności", "nie");
+        if (d.termsAccepted === true) add("Akceptacja regulaminu", "tak");
+        else if (d.termsAccepted === false) add("Akceptacja regulaminu", "nie");
+        if (d.privacyAccepted === true) add("Akceptacja polityki prywatności", "tak");
+        else if (d.privacyAccepted === false) add("Akceptacja polityki prywatności", "nie");
+        if (d.newsletter === true) add("Zgoda na newsletter", "tak");
+        else if (d.newsletter === false) add("Zgoda na newsletter", "nie");
+        add("Data wysłania formularza (ISO)", d.createdAt);
+        return lines.join("\n");
+      }
+
+      function buildActivityLogCardMiddleHtml(activityLog) {
+        if (activityLog.cardLines && activityLog.cardLines.length) {
+          return activityLog.cardLines
+            .map(
+              (l) =>
+                `<div class="text-xs text-zinc-400 mt-0.5">${escapeHtml(String(l))}</div>`,
+            )
+            .join("");
+        }
+        if (activityLog.content) {
+          return `<div class="text-xs text-zinc-400 mt-1">${escapeHtml(String(activityLog.content))}</div>`;
+        }
+        return "";
+      }
+
+      function strzelcaActivityLogApiUrl(path) {
+        const h = typeof location !== "undefined" ? location.hostname : "";
+        const origin =
+          h === "strzelca.pl" || h === "www.strzelca.pl" ? "" : "https://strzelca.pl";
+        return `${origin}${path}`;
+      }
+
+      /** Ujednolicenie komunikatów błędów monitora stron (karty + modal). */
+      function cleanSiteMonitorErrorString(siteError) {
+        let cleanError = siteError;
+        if (cleanError && typeof cleanError === "string") {
+          if (
+            cleanError.includes("Can't find variable") ||
+            cleanError.includes("ReferenceError")
+          ) {
+            cleanError = "Błąd połączenia z serwerem";
+          } else if (
+            cleanError.includes("timeout") ||
+            cleanError.includes("Timeout")
+          ) {
+            cleanError = "Przekroczono czas oczekiwania na odpowiedź";
+          } else if (
+            cleanError.includes("network") ||
+            cleanError.includes("Network")
+          ) {
+            cleanError = "Błąd sieci";
+          } else if (cleanError.includes("CORS")) {
+            cleanError = "Błąd CORS - brak dostępu";
+          }
+        }
+        return cleanError || "";
+      }
+
       async function renderActivityLog(event) {
         let description = "";
         let content = "";
         let details = "";
+        let cardLines = null;
 
         // Użyj właściwych pól z bazy danych
         const action = event.action || event.type || "UNKNOWN";
@@ -11364,11 +12102,6 @@
         const detailsText = typeof eventDetails === 'string' ? eventDetails : JSON.stringify(eventDetails);
 
         switch (action) {
-          case "MESSAGE_SENT":
-            description = `${userDisplayName} wysłał wiadomość`;
-            content = eventDetails.content || eventDetails.message || "Treść niedostępna";
-            details = `Użytkownik ${userDisplayName} wysłał wiadomość${eventDetails.recipient ? ` do ${eventDetails.recipient}` : ""}${content !== "Treść niedostępna" ? ` o treści: "${content}"` : ""}`;
-            break;
           case "LIKE_BLOG":
             description = `${userDisplayName} polubił post`;
             content = eventDetails.title || eventDetails.postTitle || "Tytuł niedostępny";
@@ -11462,24 +12195,24 @@
             details = `Użytkownik ${userDisplayName} wystawił nową ofertę: "${content}"`;
             break;
           case "EVENT_CREATED":
-            description = `${userDisplayName} dodał wydarzenie`;
+            description = `Utworzono wydarzenie`;
             content = eventDetails.eventTitle || eventDetails.title || "Wydarzenie";
             const createdEventDateRaw = eventDetails.eventDate || eventDetails.date;
             const createdEventDateObj = createdEventDateRaw ? new Date(createdEventDateRaw) : null;
             const createdEventDateText = createdEventDateObj && !Number.isNaN(createdEventDateObj.getTime())
               ? createdEventDateObj.toLocaleString("pl-PL")
               : null;
-            details = `Administrator ${userDisplayName} dodał wydarzenie "${content}"${createdEventDateText ? ` zaplanowane na ${createdEventDateText}` : ""}${eventDetails.category ? `. Kategoria: ${eventDetails.category}` : ""}`;
+            details = `${userDisplayName} utworzył wydarzenie „${content}”${createdEventDateText ? ` (termin: ${createdEventDateText})` : ""}${eventDetails.category ? `. Kategoria: ${eventDetails.category}` : ""}${eventDetails.location ? `. Miejsce: ${eventDetails.location}` : ""}`;
             break;
           case "EVENT_UPDATED":
-            description = `${userDisplayName} zaktualizował wydarzenie`;
+            description = `Zmieniono wydarzenie`;
             content = eventDetails.eventTitle || eventDetails.title || "Wydarzenie";
             const updatedEventDateRaw = eventDetails.eventDate || eventDetails.date;
             const updatedEventDateObj = updatedEventDateRaw ? new Date(updatedEventDateRaw) : null;
             const updatedEventDateText = updatedEventDateObj && !Number.isNaN(updatedEventDateObj.getTime())
               ? updatedEventDateObj.toLocaleString("pl-PL")
               : null;
-            details = `Administrator ${userDisplayName} zaktualizował wydarzenie "${content}"${updatedEventDateText ? ` (termin: ${updatedEventDateText})` : ""}${eventDetails.category ? `. Kategoria: ${eventDetails.category}` : ""}`;
+            details = `${userDisplayName} zmienił wydarzenie „${content}”${updatedEventDateText ? ` (termin: ${updatedEventDateText})` : ""}${eventDetails.category ? `. Kategoria: ${eventDetails.category}` : ""}${eventDetails.location ? `. Miejsce: ${eventDetails.location}` : ""}`;
             break;
           case "PRODUCT_EDITED":
             description = `${userDisplayName} zaktualizował ofertę w sklepie`;
@@ -11492,9 +12225,9 @@
             details = `Użytkownik ${userDisplayName} usunął ofertę: "${content}"`;
             break;
           case "EVENT_DELETED":
-            description = `${userDisplayName} usunął wydarzenie`;
+            description = `Usunięto wydarzenie`;
             content = eventDetails.eventTitle || eventDetails.title || "Wydarzenie";
-            details = `Administrator ${userDisplayName} usunął wydarzenie "${content}"`;
+            details = `${userDisplayName} usunął wydarzenie „${content}”`;
             break;
           case "TRAINING_CREATED":
             description = `${userDisplayName} dodał szkolenie`;
@@ -11512,30 +12245,105 @@
             details = `Administrator ${userDisplayName} usunął szkolenie "${content}"`;
             break;
           case "DOCUMENT_CREATED":
-            description = `${userDisplayName} dodał dokument pomocy`;
+            description = `${userDisplayName} dodał pozycję w katalogu dokumentów`;
             content = eventDetails.documentTitle || eventDetails.title || "Dokument";
-            details = `Administrator ${userDisplayName} dodał dokument pomocy "${content}"`;
+            details = `Administrator ${userDisplayName} dodał pozycję w katalogu dokumentów (dokumenty.strzelca.pl): „${content}”`;
             break;
           case "DOCUMENT_UPDATED":
-            description = `${userDisplayName} zaktualizował dokument pomocy`;
+            description = `${userDisplayName} zaktualizował pozycję w katalogu dokumentów`;
             content = eventDetails.documentTitle || eventDetails.title || "Dokument";
-            details = `Administrator ${userDisplayName} zaktualizował dokument pomocy "${content}"`;
+            details = `Administrator ${userDisplayName} zaktualizował pozycję w katalogu dokumentów: „${content}”`;
             break;
           case "DOCUMENT_DELETED":
-            description = `${userDisplayName} usunął dokument pomocy`;
+            description = `${userDisplayName} usunął pozycję z katalogu dokumentów`;
             content = eventDetails.documentTitle || eventDetails.title || "Dokument";
-            details = `Administrator ${userDisplayName} usunął dokument pomocy "${content}"`;
+            details = `Administrator ${userDisplayName} usunął pozycję z katalogu dokumentów: „${content}”`;
+            break;
+          case "DOCS_RETURN_FORM_PDF": {
+            const d = eventDetails || {};
+            description = "Wygenerowano PDF zwrotu / reklamacji";
+            content = d.formKind || d.source || "dokumenty.strzelca.pl";
+            const lines = [];
+            const push = (label, val) => {
+              if (val === undefined || val === null || val === "") return;
+              lines.push(`${label}: ${val}`);
+            };
+            push("Źródło", d.source);
+            push("Rodzaj zgłoszenia", d.formKind);
+            push("Imię", d.imie);
+            push("Nazwisko", d.nazwisko);
+            push("Numer zamówienia", d.numerZamowienia);
+            push("Numer faktury", d.numerFaktury);
+            if (d.typeRaw === "reklamacja") push("Opis wady", d.opisWady);
+            if (d.typeRaw === "zwrot") push("Powód zwrotu", d.powodZwrotu);
+            push("Żądanie", d.zadanie);
+            push("Dodatkowe informacje", d.dodatkoweInformacje);
+            push(
+              "Konto",
+              d.zalogowany ? "Użytkownik zalogowany" : "Bez logowania (gość)",
+            );
+            cardLines = lines.length ? lines : [content];
+            details = lines.join("\n");
+            break;
+          }
+          case "CHARITY_ACTION_CREATED":
+            description = `Dodano akcję (pomoc.strzelca.pl)`;
+            content = eventDetails.title || "Akcja charytatywna";
+            details = `${userDisplayName} dodał akcję charytatywną na pomoc.strzelca.pl: „${content}”${eventDetails.charityDate ? ` (data: ${eventDetails.charityDate})` : ""}${eventDetails.active === false ? ". Status: nieaktywna" : ""}${eventDetails.hasButtonLink ? ". Ma przycisk/link" : ""}${typeof eventDetails.imagesCount === "number" ? `. Zdjęć: ${eventDetails.imagesCount}` : ""}`;
+            break;
+          case "CHARITY_ACTION_UPDATED":
+            description = `Zmieniono akcję (pomoc.strzelca.pl)`;
+            content = eventDetails.title || "Akcja charytatywna";
+            details = `${userDisplayName} zmienił akcję na pomoc.strzelca.pl: „${content}” (id: ${eventDetails.charityId || "—"})${eventDetails.charityDate ? `. Data: ${eventDetails.charityDate}` : ""}${eventDetails.active === false ? ". Nieaktywna" : ""}${typeof eventDetails.imagesCount === "number" ? `. Zdjęć: ${eventDetails.imagesCount}` : ""}`;
+            break;
+          case "CHARITY_ACTION_DELETED":
+            description = `Usunięto akcję (pomoc.strzelca.pl)`;
+            content = eventDetails.title || "Akcja charytatywna";
+            details = `${userDisplayName} usunął akcję z pomoc.strzelca.pl: „${content}” (id: ${eventDetails.charityId || "—"})`;
+            break;
+          case "CHARITY_PINNED_UPDATED":
+            description = `Zmieniono kafelek wpłat (pomoc.strzelca.pl)`;
+            content = eventDetails.title || "Kafelek wpłat";
+            details = `${userDisplayName} zaktualizował stały kafelek wpłat na pomoc.strzelca.pl: „${content}”${typeof eventDetails.imagesCount === "number" ? `. Zdjęć: ${eventDetails.imagesCount}` : ""}${eventDetails.stripeConfigured ? ". Skonfigurowano Stripe" : ""}`;
             break;
           case "REVIEW_CREATED":
             description = `${userDisplayName} wystawił opinię`;
             content = eventDetails.productName || eventDetails.target || "Produkt";
             details = `Użytkownik ${userDisplayName} wystawił opinię dla: ${content}`;
             break;
-          case "USER_CREATED":
+          case "USER_CREATED": {
             description = `Utworzono nowe konto użytkownika`;
-            content = eventDetails.email || eventDetails.userId || "Użytkownik";
-            details = `Nowe konto zostało utworzone dla: ${content}`;
+            const nick =
+              event.createdUserNickname ||
+              eventDetails.displayName ||
+              "";
+            const em =
+              event.createdUserEmail ||
+              eventDetails.email ||
+              "";
+            const ts = event.timestamp?.toDate
+              ? event.timestamp.toDate()
+              : new Date(event.timestamp);
+            const dateLine =
+              ts && !Number.isNaN(ts.getTime())
+                ? ts.toLocaleString("pl-PL")
+                : "Data niedostępna";
+            content = "";
+            cardLines = [nick || "—", em || "—", dateLine];
+            if (
+              event.details &&
+              typeof event.details === "object" &&
+              Object.keys(event.details).length > 0
+            ) {
+              details = formatUserCreatedDetailsForDisplay(event.details);
+            } else if (event.detailsEncrypted) {
+              details =
+                "Szczegóły są zaszyfrowane w bazie. Jeśli nadal widzisz ten komunikat, odśwież panel lub sprawdź konfigurację ACTIVITY_LOG_ENCRYPTION_KEY na serwerze.";
+            } else {
+              details = "Brak zapisanych szczegółów rejestracji.";
+            }
             break;
+          }
           case "service_online":
             const serviceName = eventDetails?.service || 'Nieznana usługa';
             const serviceMessage = eventDetails?.message || eventDetails?.details || 'Usługa została przywrócona';
@@ -11552,35 +12360,104 @@
             content = serviceMessageOff + (serviceError ? ` (${serviceError})` : '');
             details = `Usługa "${serviceNameOff}" przestała działać. ${serviceMessageOff}${serviceError ? ` Błąd: ${serviceError}` : ''}`;
             break;
-          case "site_online":
-            const siteName = eventDetails?.site || 'Nieznana strona';
-            const siteMessage = eventDetails?.message || eventDetails?.details || 'Strona wróciła do działania';
-            description = `✅ Strona "${siteName}" została przywrócona`;
-            content = siteMessage;
-            details = `Strona "${siteName}" wróciła do działania. ${siteMessage}`;
-            break;
-          case "site_offline":
-            const siteNameOff = eventDetails?.site || 'Nieznana strona';
-            const siteMessageOff = eventDetails?.message || eventDetails?.details || 'Strona stała się niedostępna';
-            const siteError = eventDetails?.error || '';
-            // Wyczyść błędy JavaScript, aby były czytelne
-            let cleanError = siteError;
-            if (cleanError && typeof cleanError === 'string') {
-              // Usuń nieczytelne błędy JavaScript
-              if (cleanError.includes("Can't find variable") || cleanError.includes("ReferenceError")) {
-                cleanError = "Błąd połączenia z serwerem";
-              } else if (cleanError.includes("timeout") || cleanError.includes("Timeout")) {
-                cleanError = "Przekroczono czas oczekiwania na odpowiedź";
-              } else if (cleanError.includes("network") || cleanError.includes("Network")) {
-                cleanError = "Błąd sieci";
-              } else if (cleanError.includes("CORS")) {
-                cleanError = "Błąd CORS - brak dostępu";
-              }
+          case "site_online": {
+            const sitesBatch =
+              Array.isArray(eventDetails?.sites) && eventDetails.sites.length > 0
+                ? eventDetails.sites
+                : null;
+            if (sitesBatch) {
+              const n = sitesBatch.length;
+              const siteMessage =
+                eventDetails?.message ||
+                eventDetails?.details ||
+                "Strony wróciły do działania";
+              description =
+                n === 1
+                  ? `✅ Strona „${sitesBatch[0]}” została przywrócona`
+                  : `✅ Przywrócono działanie stron (${n})`;
+              content = sitesBatch.join(", ");
+              const det = eventDetails.sitesDetail || [];
+              cardLines =
+                det.length > 0
+                  ? det.map((row) => {
+                      const rt =
+                        row.responseTime != null && row.responseTime !== ""
+                          ? ` (${row.responseTime} ms)`
+                          : "";
+                      return `${row.site}${rt}`;
+                    })
+                  : sitesBatch.slice();
+              details =
+                det.length > 0
+                  ? `${siteMessage}\n${det
+                      .map((row) => {
+                        const rt =
+                          row.responseTime != null && row.responseTime !== ""
+                            ? ` — czas odpowiedzi ~${row.responseTime} ms`
+                            : "";
+                        return `• ${row.site}${rt}`;
+                      })
+                      .join("\n")}`
+                  : `${siteMessage}\n${sitesBatch.join(", ")}`;
+            } else {
+              const siteName = eventDetails?.site || "Nieznana strona";
+              const siteMessage =
+                eventDetails?.message ||
+                eventDetails?.details ||
+                "Strona wróciła do działania";
+              description = `✅ Strona "${siteName}" została przywrócona`;
+              content = siteMessage;
+              details = `Strona "${siteName}" wróciła do działania. ${siteMessage}`;
             }
-            description = `❌ Strona "${siteNameOff}" przestała działać`;
-            content = siteMessageOff + (cleanError ? ` (${cleanError})` : '');
-            details = `Strona "${siteNameOff}" przestała działać. ${siteMessageOff}${cleanError ? ` Przyczyna: ${cleanError}` : ''}`;
             break;
+          }
+          case "site_offline": {
+            const sitesBatchOff =
+              Array.isArray(eventDetails?.sites) && eventDetails.sites.length > 0
+                ? eventDetails.sites
+                : null;
+            if (sitesBatchOff) {
+              const n = sitesBatchOff.length;
+              const siteMessageOff =
+                eventDetails?.message ||
+                eventDetails?.details ||
+                "Strony stały się niedostępne";
+              description =
+                n === 1
+                  ? `❌ Strona „${sitesBatchOff[0]}” przestała działać`
+                  : `❌ Strony niedostępne (${n})`;
+              content = sitesBatchOff.join(", ");
+              const detOff = eventDetails.sitesDetail || [];
+              cardLines =
+                detOff.length > 0
+                  ? detOff.map((row) => {
+                      const ce = cleanSiteMonitorErrorString(row.error);
+                      return `${row.site}${ce ? ` — ${ce}` : ""}`;
+                    })
+                  : sitesBatchOff.slice();
+              details =
+                detOff.length > 0
+                  ? `${siteMessageOff}\n${detOff
+                      .map((row) => {
+                        const ce = cleanSiteMonitorErrorString(row.error);
+                        return `• ${row.site}: ${row.message || "niedostępna"}${ce ? ` — ${ce}` : ""}`;
+                      })
+                      .join("\n")}`
+                  : `${siteMessageOff}\n${sitesBatchOff.join(", ")}`;
+            } else {
+              const siteNameOff = eventDetails?.site || "Nieznana strona";
+              const siteMessageOff =
+                eventDetails?.message ||
+                eventDetails?.details ||
+                "Strona stała się niedostępna";
+              const siteError = eventDetails?.error || "";
+              const cleanError = cleanSiteMonitorErrorString(siteError);
+              description = `❌ Strona "${siteNameOff}" przestała działać`;
+              content = siteMessageOff + (cleanError ? ` (${cleanError})` : "");
+              details = `Strona "${siteNameOff}" przestała działać. ${siteMessageOff}${cleanError ? ` Przyczyna: ${cleanError}` : ""}`;
+            }
+            break;
+          }
           case "ORDER-PLACED":
             // Wyciągnij nazwę produktu z details
             let productName = "produkt";
@@ -11608,6 +12485,16 @@
             content = productName;
             details = `Użytkownik ${userDisplayName} kliknął zamów na produkcie: "${productName}"`;
             break;
+          case "EMAIL_DELIVERY_FAILED": {
+            const cat = eventDetails.category || "nieznany kanał";
+            const subj = eventDetails.subject || "—";
+            const err = eventDetails.error || "—";
+            const masked = eventDetails.toMasked || "—";
+            description = `Nie udało się wysłać wiadomości e-mail (${cat})`;
+            content = subj.length > 80 ? `${subj.substring(0, 80)}…` : subj;
+            details = `Kategoria: ${cat}. Odbiorca (zmaskowany): ${masked}. Temat: ${subj}. Błąd: ${err}`;
+            break;
+          }
           default:
             description = `${userDisplayName} wykonał akcję: ${actionLabel}`;
             content = actionLabel;
@@ -11618,7 +12505,7 @@
             }
         }
 
-        return { description, content, details };
+        return { description, content, details, cardLines };
       }
 
       // Funkcje liczników formularzy i niezakończonych spraw
@@ -13097,8 +13984,21 @@
         if (elArch) elArch.textContent = String(archived);
       }
 
+      function sortBlogPostsByListOrder(arr) {
+        arr.sort((a, b) => {
+          const oa = typeof a.order === "number" && !Number.isNaN(a.order) ? a.order : Infinity;
+          const ob = typeof b.order === "number" && !Number.isNaN(b.order) ? b.order : Infinity;
+          if (oa !== ob) return oa - ob;
+          return normalizeBlogCreatedAt(b.createdAt) - normalizeBlogCreatedAt(a.createdAt);
+        });
+      }
+
       function sortBlogPostsInPlace(arr, sortMode) {
         const mode = sortMode || "date-desc";
+        if (mode === "list-order") {
+          sortBlogPostsByListOrder(arr);
+          return;
+        }
         arr.sort((a, b) => {
           if (mode === "title") {
             return (a.title || "").localeCompare(b.title || "", "pl", { sensitivity: "base" });
@@ -13132,7 +14032,7 @@
           }
 
           blogPostsList = snapshot.docs.map(mapBlogDoc);
-          sortBlogPostsInPlace(blogPostsList, "date-desc");
+          sortBlogPostsByListOrder(blogPostsList);
           filteredBlogPosts = [...blogPostsList];
           const sortSel = document.getElementById("blog-sort-filter");
           sortBlogPostsInPlace(filteredBlogPosts, sortSel?.value || "date-desc");
@@ -13189,8 +14089,15 @@
           return;
         }
 
+        const sortMode = document.getElementById("blog-sort-filter")?.value || "date-desc";
+        const statusF = document.getElementById("blog-status-filter")?.value || "all";
+        const categoryF = document.getElementById("blog-category-filter")?.value || "all";
+        const canReorderBlog =
+          sortMode === "list-order" && statusF === "all" && categoryF === "all";
+        const nFiltered = filteredBlogPosts.length;
+
         const postsHtml = filteredBlogPosts
-          .map((post) => {
+          .map((post, index) => {
             const statusLabels = {
               published: "Opublikowany",
               draft: "Szkic",
@@ -13234,7 +14141,15 @@
                   })}
                 </div>
               </div>
-              <div class="flex flex-shrink-0 space-x-2 ml-4">
+              <div class="flex flex-shrink-0 items-center space-x-2 ml-4">
+                ${
+                  canReorderBlog
+                    ? `<div class="flex flex-col gap-1 mr-1">
+                  <button type="button" onclick="moveBlogPostUp('${post.id}')" class="text-zinc-400 hover:text-zinc-200 px-2 py-1 border border-zinc-500 rounded text-xs disabled:opacity-30" ${index === 0 ? "disabled" : ""} title="Wyżej (kolejność na blogu)">↑</button>
+                  <button type="button" onclick="moveBlogPostDown('${post.id}')" class="text-zinc-400 hover:text-zinc-200 px-2 py-1 border border-zinc-500 rounded text-xs disabled:opacity-30" ${index === nFiltered - 1 ? "disabled" : ""} title="Niżej (kolejność na blogu)">↓</button>
+                </div>`
+                    : ""
+                }
                 <button type="button" onclick="editBlogPost('${post.id}')" class="text-blue-400 hover:text-blue-300 px-3 py-1 border border-blue-400 rounded text-sm transition">
                   <i class="fa-solid fa-edit mr-1"></i>Edytuj
                 </button>
@@ -13433,6 +14348,16 @@
             showNotification("Wpis zaktualizowany pomyślnie", "success");
             logActivity("BLOG_UPDATED", `Zaktualizowano wpis bloga: ${postData.title}`);
           } else {
+            sortBlogPostsByListOrder(blogPostsList);
+            let maxOrder = -1;
+            for (const p of blogPostsList) {
+              if (typeof p.order === "number" && !Number.isNaN(p.order)) {
+                maxOrder = Math.max(maxOrder, p.order);
+              }
+            }
+            if (maxOrder >= 0) {
+              postData.order = maxOrder + 1;
+            }
             postData.createdAt = Timestamp.now();
             const newDocRef = doc(collection(db, "blogPosts"));
             await setDoc(newDocRef, postData);
@@ -13478,6 +14403,50 @@
         } catch (error) {
           console.error("Error deleting blog post:", error);
           showNotification("Błąd usuwania wpisu.", "error");
+        }
+      };
+
+      window.moveBlogPostUp = async (postId) => {
+        if ((document.getElementById("blog-sort-filter")?.value || "") !== "list-order") return;
+        if ((document.getElementById("blog-status-filter")?.value || "") !== "all") return;
+        if ((document.getElementById("blog-category-filter")?.value || "") !== "all") return;
+        sortBlogPostsByListOrder(blogPostsList);
+        const index = blogPostsList.findIndex((p) => p.id === postId);
+        if (index <= 0) return;
+        const cur = blogPostsList[index];
+        const prev = blogPostsList[index - 1];
+        const co = typeof cur.order === "number" && !Number.isNaN(cur.order) ? cur.order : index;
+        const po = typeof prev.order === "number" && !Number.isNaN(prev.order) ? prev.order : index - 1;
+        try {
+          await updateDoc(doc(db, "blogPosts", cur.id), { order: po, updatedAt: Timestamp.now() });
+          await updateDoc(doc(db, "blogPosts", prev.id), { order: co, updatedAt: Timestamp.now() });
+          await loadBlogPosts();
+          showNotification("Zaktualizowano kolejność na blogu.", "success");
+        } catch (error) {
+          console.error("moveBlogPostUp:", error);
+          showNotification("Błąd zmiany kolejności.", "error");
+        }
+      };
+
+      window.moveBlogPostDown = async (postId) => {
+        if ((document.getElementById("blog-sort-filter")?.value || "") !== "list-order") return;
+        if ((document.getElementById("blog-status-filter")?.value || "") !== "all") return;
+        if ((document.getElementById("blog-category-filter")?.value || "") !== "all") return;
+        sortBlogPostsByListOrder(blogPostsList);
+        const index = blogPostsList.findIndex((p) => p.id === postId);
+        if (index < 0 || index >= blogPostsList.length - 1) return;
+        const cur = blogPostsList[index];
+        const next = blogPostsList[index + 1];
+        const co = typeof cur.order === "number" && !Number.isNaN(cur.order) ? cur.order : index;
+        const no = typeof next.order === "number" && !Number.isNaN(next.order) ? next.order : index + 1;
+        try {
+          await updateDoc(doc(db, "blogPosts", cur.id), { order: no, updatedAt: Timestamp.now() });
+          await updateDoc(doc(db, "blogPosts", next.id), { order: co, updatedAt: Timestamp.now() });
+          await loadBlogPosts();
+          showNotification("Zaktualizowano kolejność na blogu.", "success");
+        } catch (error) {
+          console.error("moveBlogPostDown:", error);
+          showNotification("Błąd zmiany kolejności.", "error");
         }
       };
 
@@ -13686,11 +14655,6 @@
           if (notifyIfSynced) {
             if (synced > 0) {
               showNotification(`Dodano ${synced} brakujących pozycji (regulaminy / pliki).`, "success");
-              if (currentUser) {
-                await logActivity(currentUser.uid, "DOCUMENT_CREATED", {
-                  documentTitle: `Synchronizacja listy dokumentów (+${synced})`,
-                });
-              }
             } else {
               showNotification("Wszystkie pozycje ze szablonu są już w bazie.", "info");
             }
@@ -13904,14 +14868,7 @@
           const documentTitle = docItem ? docItem.title : "Nieznany dokument";
 
           await deleteDoc(doc(db, "documents", documentId));
-          
-          if (currentUser) {
-            await logActivity(currentUser.uid, "DOCUMENT_DELETED", {
-              documentTitle: documentTitle,
-              documentId: documentId
-            });
-          }
-          
+
           showNotification("Dokument został usunięty.", "success");
           await loadDocuments();
         } catch (error) {
@@ -13986,26 +14943,14 @@
               };
               await updateDoc(doc(db, "documents", docId), patch);
               showNotification("Zapisano.", "success");
-              if (currentUser) {
-                await logActivity(currentUser.uid, "DOCUMENT_UPDATED", {
-                  documentTitle: title,
-                  documentId: docId,
-                });
-              }
             } else {
               const docData = {
                 ...baseData,
                 order: nextOrder,
                 ...(kind === "modal" ? { modalTarget } : kind === "form" ? { formId } : { url }),
               };
-              const newRef = await addDoc(collection(db, "documents"), docData);
+              await addDoc(collection(db, "documents"), docData);
               showNotification("Dodano pozycję.", "success");
-              if (currentUser) {
-                await logActivity(currentUser.uid, "DOCUMENT_CREATED", {
-                  documentTitle: title,
-                  documentId: newRef.id,
-                });
-              }
             }
             window.clearDocumentForm();
             await loadDocuments();
@@ -14462,6 +15407,12 @@
             showNotification(
               `Użytkownik został zablokowany${blockedUntil ? " do " + blockedUntil.toLocaleString("pl-PL") : " na zawsze"}.`,
             );
+
+            await notifyAccountStatusEmail(userId, "blocked", {
+              blockReason,
+              isPermanent: duration === "permanent",
+              blockedUntil: blockedUntil ? blockedUntil.toISOString() : null,
+            });
             
             // Wyczyść formularz
             document.getElementById("block-reason").value = "";
@@ -17883,7 +18834,77 @@
       // =============================================================================
       // SZABLONY MAILI - Funkcje zarządzania szablonami
       // =============================================================================
-      
+
+      async function notifyAccountStatusEmail(targetUserId, kind, extra = {}) {
+        try {
+          if (!targetUserId || !kind) return;
+          let authToken = null;
+          try {
+            if (typeof auth !== "undefined" && auth?.currentUser) {
+              authToken = await auth.currentUser.getIdToken();
+            }
+          } catch (_) {}
+          const headers = { "Content-Type": "application/json" };
+          if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
+          const res = await fetch("/api/account-status-email", {
+            method: "POST",
+            headers,
+            credentials: "include",
+            body: JSON.stringify({ targetUserId, kind, ...extra }),
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            console.warn("notifyAccountStatusEmail:", err);
+          }
+        } catch (e) {
+          console.warn("notifyAccountStatusEmail:", e);
+        }
+      }
+
+      const EMAIL_TEMPLATE_SECTIONS = [
+        {
+          title: "Szablony zamówień",
+          description:
+            "Powiadomienia o utworzeniu zamówienia i zmianach statusu realizacji.",
+          ids: [
+            "order_created",
+            "order_status_zlozone",
+            "order_status_realizacja",
+            "order_status_wyslane",
+            "order_status_zakonczone",
+          ],
+        },
+        {
+          title: "Szablony bazaru",
+          description:
+            "Wystawienie oferty, akceptacja, odrzucenie, przypomnienie przed wygaśnięciem (cron ~72 h przed końcem), udane odświeżenie oferty.",
+          ids: [
+            "bazar_offer_submitted",
+            "bazar_offer_approved",
+            "bazar_offer_expiring_soon",
+            "bazar_offer_rejected",
+            "bazar_offer_refreshed",
+          ],
+        },
+        {
+          title: "Szablony newslettera",
+          description:
+            "Otoczka HTML: przy wysyłce treść z edytora trafia w miejsce {{newsletterBody}}. Temat wpisujesz w edytorze newslettera — pole „temat” w szablonie to domyślna podpowiedź przy przycisku „Wczytaj szablon e-mail”.",
+          ids: ["newsletter_broadcast"],
+        },
+        {
+          title: "Szablony konta",
+          description:
+            "Powiadomienia o blokadzie i odblokowaniu konta oraz o nowej opinii na profilu użytkownika (bazar / konto).",
+          ids: ["account_blocked", "account_unblocked", "account_review_received"],
+        },
+        {
+          title: "Pozostałe",
+          description: "Automatyczna odpowiedź na wiadomość z formularza kontaktowego.",
+          ids: ["contact_form_auto_reply"],
+        },
+      ];
+
       // Ładowanie szablonów maili
       window.loadEmailTemplates = async function() {
         try {
@@ -17947,50 +18968,49 @@
         }
       };
 
-      // Renderowanie listy szablonów
+      // Renderowanie listy szablonów (pogrupowane)
       function renderTemplatesList(templates) {
-        const templatesList = document.getElementById('templates-list');
+        const templatesList = document.getElementById("templates-list");
         if (!templatesList) return;
 
-        const templateOrder = [
-          'order_created',
-          'order_status_zlozone',
-          'order_status_realizacja',
-          'order_status_wyslane',
-          'order_status_zakonczone',
-          'contact_form_auto_reply'
-        ];
-
-        templatesList.innerHTML = templateOrder.map(templateId => {
-          const template = templates[templateId];
-          if (!template) return '';
+        templatesList.innerHTML = EMAIL_TEMPLATE_SECTIONS.map((section) => {
+          const cards = section.ids
+            .map((templateId) => {
+              const template = templates[templateId];
+              if (!template) {
+                return `<div class="rounded-lg border border-dashed border-zinc-600 p-4 text-sm text-zinc-500">Brak szablonu <code class="text-zinc-400">${templateId}</code> — kliknij Odśwież (szablony domyślne tworzą się przy pierwszym GET).</div>`;
+              }
+              const vars = (template.variables || []).slice(0, 10);
+              const subj = template.subject || "";
+              const subjShort = subj.length > 140 ? subj.slice(0, 140) + "…" : subj;
+              return `
+            <div class="rounded-lg border border-zinc-700/80 bg-zinc-900/40 p-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <h5 class="font-semibold text-white text-base">${escapeHtml(template.name || templateId)}</h5>
+                <p class="text-xs text-zinc-500 mt-1 font-mono">${templateId}</p>
+                <p class="text-sm text-zinc-300 mt-2"><span class="text-zinc-500">Temat:</span> ${escapeHtml(subjShort) || "—"}</p>
+                ${
+                  vars.length
+                    ? `<p class="text-xs text-zinc-500 mt-2 leading-relaxed">${vars.map((v) => `<code class="bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-400 mr-1 mb-1 inline-block">{{${escapeHtml(v)}}}</code>`).join("")}</p>`
+                    : ""
+                }
+              </div>
+              <button type="button" onclick="editTemplate('${templateId}')" class="btn-admin text-sm px-4 py-2 shrink-0 self-start sm:self-center">
+                <i class="fa-solid fa-pen mr-2"></i>Edytuj
+              </button>
+            </div>`;
+            })
+            .join("");
 
           return `
-            <div class="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700">
-              <div class="flex justify-between items-start mb-4">
-                <div>
-                  <h4 class="text-lg font-bold text-white mb-2">${template.name || templateId}</h4>
-                  <p class="text-sm text-zinc-400">ID: ${templateId}</p>
-                </div>
-                <button onclick="editTemplate('${templateId}')" class="btn-admin text-sm px-4 py-2">
-                  <i class="fa-solid fa-edit mr-2"></i>
-                  Edytuj
-                </button>
-              </div>
-              <div class="mb-4">
-                <div class="text-sm text-zinc-300 mb-2">
-                  <strong>Temat:</strong> ${template.subject || 'Brak tematu'}
-                </div>
-                <div class="text-xs text-zinc-500">
-                  <strong>Zmienne:</strong> ${(template.variables || []).join(', ') || 'Brak zmiennych'}
-                </div>
-              </div>
-              <div class="text-xs text-zinc-400">
-                ${template.html ? template.html.substring(0, 200) + '...' : 'Brak treści'}
-              </div>
+          <section class="admin-card border-l-4 border-l-coyote/90">
+            <div class="mb-5">
+              <h3 class="text-xl font-bold text-white">${section.title}</h3>
+              <p class="text-sm text-zinc-400 mt-1">${section.description}</p>
             </div>
-          `;
-        }).join('');
+            <div class="space-y-3">${cards}</div>
+          </section>`;
+        }).join("");
       }
 
       // Edycja szablonu

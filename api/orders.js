@@ -143,8 +143,12 @@ function replaceTemplateVariables(template, variables) {
 
 // Wysyłanie maila o zamówieniu
 async function sendOrderEmail(order, eventType, oldStatus = null) {
+  let recipientEmail = '';
+  let subject = '';
+  let templateId = '';
+  let orderEmailFailureLogged = false;
   try {
-    let recipientEmail = order.email;
+    recipientEmail = order.email;
     if (!recipientEmail) {
       // Jeśli nie ma emaila, spróbuj pobrać z profilu użytkownika
       if (order.userId) {
@@ -172,8 +176,7 @@ async function sendOrderEmail(order, eventType, oldStatus = null) {
     // Pobierz szablon z Firestore
     initAdmin();
     const db = admin.firestore();
-    let templateId = '';
-    
+
     if (eventType === 'created') {
       templateId = 'order_created';
     } else if (eventType === 'status_changed') {
@@ -222,7 +225,7 @@ async function sendOrderEmail(order, eventType, oldStatus = null) {
     };
 
     // Zamień zmienne w szablonie
-    const subject = replaceTemplateVariables(template.subject || '', variables);
+    subject = replaceTemplateVariables(template.subject || '', variables);
     const html = replaceTemplateVariables(template.html || '', variables);
 
     // Przygotuj załączniki (faktura jeśli jest)
@@ -248,11 +251,55 @@ async function sendOrderEmail(order, eventType, oldStatus = null) {
 
     if (!emailResponse.ok) {
       const errorData = await emailResponse.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to send email');
+      const errText = errorData.error || `HTTP ${emailResponse.status}`;
+      if (
+        (emailResponse.status === 401 || emailResponse.status === 403) &&
+        recipientEmail &&
+        subject
+      ) {
+        try {
+          const { logEmailDeliveryFailure } = require('./_activity-email-log');
+          await logEmailDeliveryFailure({
+            category: 'order_notification',
+            to: recipientEmail,
+            subject,
+            errorMessage: errText,
+            meta: {
+              orderNumber: String(order.orderNumber || ''),
+              templateId: String(templateId || ''),
+              httpStatus: String(emailResponse.status),
+              hint: 'Backend wywołuje /api/send-email bez tokenu admina — błąd konfiguracji.',
+            },
+          });
+        } catch (logErr) {
+          console.error('logEmailDeliveryFailure (order 401/403):', logErr);
+        }
+        orderEmailFailureLogged = true;
+      }
+      throw new Error(errText);
     }
   } catch (error) {
     console.error('Error in sendOrderEmail:', error);
-    // Nie rzucaj błędu dalej - mail jest opcjonalny
+    try {
+      const msg = error.message || String(error);
+      const smtpAlreadyLogged = /Failed to send email/i.test(msg);
+      if (recipientEmail && subject && !smtpAlreadyLogged && !orderEmailFailureLogged) {
+        const { logEmailDeliveryFailure } = require('./_activity-email-log');
+        await logEmailDeliveryFailure({
+          category: 'order_notification',
+          to: recipientEmail,
+          subject,
+          errorMessage: msg,
+          meta: {
+            orderNumber: String(order.orderNumber || ''),
+            templateId: String(templateId || ''),
+            via: 'orders_sendOrderEmail',
+          },
+        });
+      }
+    } catch (logErr) {
+      console.error('logEmailDeliveryFailure (order):', logErr);
+    }
   }
 }
 

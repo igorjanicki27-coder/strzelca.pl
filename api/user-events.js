@@ -217,7 +217,6 @@ async function handleGetTypes(req, res, db) {
     const types = [
       { name: 'Rejestracja', type: 'user_registration', description: 'Użytkownik się zarejestrował' },
       { name: 'Logowanie', type: 'user_login', description: 'Użytkownik się zalogował' },
-      { name: 'Wiadomość', type: 'message_sent', description: 'Użytkownik wysłał wiadomość' },
       { name: 'Zakup', type: 'purchase', description: 'Użytkownik dokonał zakupu' },
       { name: 'Kontakt', type: 'contact_form', description: 'Użytkownik wypełnił formularz kontaktowy' },
       { name: 'Newsletter', type: 'newsletter_subscribe', description: 'Użytkownik zapisał się do newslettera' }

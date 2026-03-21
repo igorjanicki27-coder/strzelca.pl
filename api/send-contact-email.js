@@ -48,6 +48,9 @@ module.exports = async (req, res) => {
     return;
   }
 
+  let mailTo = '';
+  let mailSubject = '';
+
   try {
     initAdmin();
     const db = admin.firestore();
@@ -71,6 +74,8 @@ module.exports = async (req, res) => {
       res.status(400).json({ success: false, error: 'Invalid email format or length' });
       return;
     }
+
+    mailTo = to;
 
     // Pobierz szablon z Firestore
     let template;
@@ -127,6 +132,7 @@ module.exports = async (req, res) => {
     const subject = replaceTemplateVariables(template.subject, {
       senderName: senderName
     });
+    mailSubject = subject;
     
     const html = replaceTemplateVariables(template.html, {
       senderName: senderName,
@@ -152,6 +158,20 @@ module.exports = async (req, res) => {
     });
   } catch (error) {
     console.error('Error sending contact email:', error);
+    if (mailTo) {
+      try {
+        const { logEmailDeliveryFailure } = require('./_activity-email-log');
+        await logEmailDeliveryFailure({
+          category: 'contact_form_auto_reply',
+          to: mailTo,
+          subject: mailSubject || 'Formularz kontaktowy — auto-odpowiedź',
+          errorMessage: error.message || String(error),
+          meta: { source: 'send-contact-email' },
+        });
+      } catch (logErr) {
+        console.error('logEmailDeliveryFailure:', logErr);
+      }
+    }
     res.status(500).json({ 
       success: false, 
       error: 'Failed to send email: ' + (error.message || 'Unknown error') 

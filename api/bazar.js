@@ -7,6 +7,7 @@ const {
   verifyLocalSessionJwt,
   readJsonBody,
 } = require('./_sso-utils');
+const { sendBazarOfferTemplateEmail } = require('./_bazar-offer-email');
 
 const SUPERADMIN_UID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
 
@@ -358,6 +359,9 @@ module.exports = async (req, res) => {
       };
 
       const docRef = await db.collection('bazarOffers').add(offerData);
+      sendBazarOfferTemplateEmail(db, 'bazar_offer_submitted', { ...offerData, id: docRef.id, slug }).catch(
+        () => {},
+      );
       return res.json({ success: true, id: docRef.id, slug });
     }
 
@@ -426,7 +430,20 @@ module.exports = async (req, res) => {
         expires_at: expiresAt,
         last_refreshed_at: now,
         rejection_reason: null,
+        expiry_warning_sent_at: null,
       });
+
+      const approvedRow = {
+        ...docSnap.data(),
+        status: 'ACTIVE',
+        approved_at: now,
+        expires_at: expiresAt,
+        last_refreshed_at: now,
+        rejection_reason: null,
+        slug: docSnap.data().slug || offerId,
+        id: offerId,
+      };
+      sendBazarOfferTemplateEmail(db, 'bazar_offer_approved', approvedRow, {}).catch(() => {});
 
       return res.json({ success: true });
     }
@@ -446,10 +463,18 @@ module.exports = async (req, res) => {
       const docSnap = await docRef.get();
       if (!docSnap.exists) return res.status(404).json({ success: false, error: 'Oferta nie znaleziona' });
 
+      const reasonShort = String(reason).substring(0, 500);
       await docRef.update({
         status: 'REJECTED',
-        rejection_reason: String(reason).substring(0, 500),
+        rejection_reason: reasonShort,
       });
+
+      sendBazarOfferTemplateEmail(
+        db,
+        'bazar_offer_rejected',
+        { ...docSnap.data(), id: offerId, status: 'REJECTED', rejection_reason: reasonShort },
+        { rejectionReason: reasonShort },
+      ).catch(() => {});
 
       return res.json({ success: true });
     }
@@ -559,7 +584,21 @@ module.exports = async (req, res) => {
         last_refreshed_at: now,
         expires_at: newExpires,
         status: 'ACTIVE',
+        expiry_warning_sent_at: null,
       });
+
+      sendBazarOfferTemplateEmail(
+        db,
+        'bazar_offer_refreshed',
+        {
+          ...data,
+          id: subAction,
+          last_refreshed_at: now,
+          expires_at: newExpires,
+          status: 'ACTIVE',
+        },
+        {},
+      ).catch(() => {});
 
       return res.json({ success: true });
     }

@@ -5,7 +5,7 @@
  * - działa dla zalogowanych i niezalogowanych użytkowników
  * 
  * Użycie:
- *   import { initVisitTracker } from "https://strzelca.pl/visit-tracker.mjs?v=2026-02-06-3";
+ *   import { initVisitTracker } from "https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-1";
  *   await initVisitTracker();
  */
 
@@ -115,24 +115,54 @@ async function trackVisit(userId = null) {
   }
 }
 
-/**
- * Wysyła "heartbeat" obecności gościa do API (zapis w guestPresence, nie w dzienniku activityLogs)
- */
-async function pingGuestActivity(userId = null) {
-  // Nie pingujemy dla użytkowników zalogowanych, oni mają status lastSeen aktualizowany w inny sposób
-  if (userId) return;
-  
-  const lastPing = sessionStorage.getItem('lastGuestActivityPing');
-  const now = Date.now();
-  
-  // Pinguj co najwyżej co 10 minut (600000 ms) w obrębie sesji
-  if (lastPing && (now - parseInt(lastPing, 10) < 600000)) {
-    return;
+/** Okres odświeżania obecności (panel admina liczy „online” wg timestamp w ~30 min) */
+const GUEST_PRESENCE_HEARTBEAT_MS = 3 * 60 * 1000;
+
+let guestHeartbeatInterval = null;
+let guestPagehideHandler = null;
+let guestAuthUnsubscribe = null;
+let guestPresenceSessionActive = false;
+
+function stopGuestHeartbeatSession(sendLeave) {
+  const shouldBeaconLeave = sendLeave && guestPresenceSessionActive;
+  guestPresenceSessionActive = false;
+
+  if (guestHeartbeatInterval !== null) {
+    clearInterval(guestHeartbeatInterval);
+    guestHeartbeatInterval = null;
   }
-  
+  if (guestPagehideHandler) {
+    window.removeEventListener('pagehide', guestPagehideHandler);
+    guestPagehideHandler = null;
+  }
+  if (guestAuthUnsubscribe) {
+    guestAuthUnsubscribe();
+    guestAuthUnsubscribe = null;
+  }
+
+  if (shouldBeaconLeave) {
+    try {
+      const visitorId = localStorage.getItem('visitorId');
+      if (visitorId && navigator.sendBeacon) {
+        const payload = JSON.stringify({
+          visitorId,
+          leave: true,
+          userAgent: navigator.userAgent,
+        });
+        navigator.sendBeacon(
+          'https://strzelca.pl/api/ping-activity',
+          new Blob([payload], { type: 'application/json' })
+        );
+      }
+    } catch (e) {
+      // ignoruj przy zamykaniu karty
+    }
+  }
+}
+
+async function sendGuestPresencePing() {
   const visitorId = generateVisitorId();
-  console.log('[Visit Tracker] Pinging guest activity...', { visitorId });
-  
+  console.log('[Visit Tracker] Guest presence heartbeat...', { visitorId });
   try {
     const response = await fetch('https://strzelca.pl/api/ping-activity', {
       method: 'POST',
@@ -140,19 +170,53 @@ async function pingGuestActivity(userId = null) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        visitorId: visitorId,
-        pageUrl: window.location.href,
-        userAgent: navigator.userAgent
+        visitorId,
+        userAgent: navigator.userAgent,
       }),
-      keepalive: true
+      keepalive: true,
     });
-    
-    if (response.ok) {
-      sessionStorage.setItem('lastGuestActivityPing', now.toString());
-      console.log('[Visit Tracker] Guest activity pinged successfully');
+    if (!response.ok) {
+      console.warn('[Visit Tracker] Guest presence ping failed:', response.status);
     }
   } catch (error) {
     console.warn('[Visit Tracker] Error pinging guest activity:', error);
+  }
+}
+
+/**
+ * Heartbeat gościa + usunięcie wpisu przy wyjściu (pagehide / logowanie).
+ * Zalogowani: lastSeen + heartbeat w activity-tracker.mjs (nie guestPresence).
+ */
+async function startGuestHeartbeatSession(userId, auth) {
+  if (userId) return;
+
+  stopGuestHeartbeatSession(false);
+  guestPresenceSessionActive = true;
+
+  await sendGuestPresencePing();
+
+  guestHeartbeatInterval = setInterval(() => {
+    sendGuestPresencePing();
+  }, GUEST_PRESENCE_HEARTBEAT_MS);
+
+  guestPagehideHandler = () => {
+    stopGuestHeartbeatSession(true);
+  };
+  window.addEventListener('pagehide', guestPagehideHandler);
+
+  if (auth) {
+    try {
+      const { onAuthStateChanged } = await import(
+        'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js'
+      );
+      guestAuthUnsubscribe = onAuthStateChanged(auth, (user) => {
+        if (user && guestPresenceSessionActive) {
+          stopGuestHeartbeatSession(true);
+        }
+      });
+    } catch (error) {
+      console.warn('[Visit Tracker] Auth listener for guest presence failed:', error);
+    }
   }
 }
 
@@ -163,14 +227,19 @@ async function pingGuestActivity(userId = null) {
 export async function initVisitTracker(auth = null) {
   console.log('[Visit Tracker] Initializing visit tracker...', { hasAuth: !!auth });
   // Poczekaj, aż strona się załaduje
+  const run = () =>
+    handleVisitTracking(auth).catch((err) =>
+      console.warn('[Visit Tracker] handleVisitTracking failed:', err)
+    );
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       console.log('[Visit Tracker] DOM loaded, starting tracking...');
-      handleVisitTracking(auth);
+      run();
     });
   } else {
     console.log('[Visit Tracker] DOM already loaded, starting tracking...');
-    handleVisitTracking(auth);
+    run();
   }
 }
 
@@ -241,8 +310,8 @@ async function handleVisitTracking(auth) {
     await trackVisit(null);
   }
   
-  // Niezależnie od tego, czy zliczyliśmy wizytę (dzienną), dla gości wyślij "ping" aktywności teraz
-  pingGuestActivity(userId);
+  // Gość: heartbeat co kilka minut + skasowanie obecności przy zamknięciu / zalogowaniu
+  await startGuestHeartbeatSession(userId, auth);
   
   // Śledź również przy zamknięciu strony (sendBeacon dla niezawodności)
   window.addEventListener('beforeunload', () => {

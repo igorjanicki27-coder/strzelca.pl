@@ -1,4 +1,5 @@
 const { initAdmin, admin, setCors } = require('./_sso-utils');
+const { sendBazarOfferTemplateEmail } = require('./_bazar-offer-email');
 
 /**
  * Odczyt sekretów crona wyłącznie przez dynamiczny klucz (process.env[key] w pętli).
@@ -54,7 +55,46 @@ function expiresAtToMillis(exp) {
  * Zapytanie: tylko where('status','==','ACTIVE') — bez drugiego filtra w Firestore,
  * zeby nie wymagac indeksu zlozonego (unika 500 / FAILED_PRECONDITION na swiezym projekcie).
  * Filtrowanie expires_at odbywa sie w pamieci (do limitu odczytu).
+ *
+ * Sekret (kolejność): zmienne env (dynamiczny odczyt), potem Firestore
+ * dokument serverSecrets/bazarCronExpire pole cronSecret (tylko Admin SDK).
+ * Fallback Firestore jest na wypadek gdy Vercel nie wstrzykuje env do funkcji
+ * (Custom Environment, polityka zespołu itd.) — FIREBASE_SERVICE_ACCOUNT_KEY i tak jest wymagane.
  */
+const FIRESTORE_BAZAR_CRON_SECRET_PATH = 'serverSecrets/bazarCronExpire';
+
+async function resolveExpectedCronSecret() {
+  const { expected: fromEnv, diag } = resolveCronSecretFromEnv();
+  if (fromEnv) {
+    return {
+      expected: fromEnv,
+      secretDiag: { ...diag, cronSecretSource: 'env', cronEnvReadMode: 'dynamic' },
+    };
+  }
+
+  const secretDiag = { ...diag, cronEnvReadMode: 'dynamic' };
+  let expected = '';
+  try {
+    const snap = await admin.firestore().doc(FIRESTORE_BAZAR_CRON_SECRET_PATH).get();
+    const fsSecret = snap.exists ? String(snap.data().cronSecret || '').trim() : '';
+    secretDiag.firestoreCronSecretDoc = FIRESTORE_BAZAR_CRON_SECRET_PATH;
+    secretDiag.firestoreCronSecretDocExists = snap.exists;
+    secretDiag.firestoreCronSecretTrimmedLength = fsSecret.length;
+    if (fsSecret) {
+      expected = fsSecret;
+      secretDiag.cronSecretSource = 'firestore';
+    } else {
+      secretDiag.cronSecretSource = 'none';
+    }
+  } catch (err) {
+    console.error('[bazar-cron-expire] Odczyt sekretu z Firestore:', err?.message || err);
+    secretDiag.firestoreCronSecretReadFailed = true;
+    secretDiag.cronSecretSource = 'none';
+  }
+
+  return { expected, secretDiag };
+}
+
 async function handleBazarExpireCron(req, res) {
   try {
     setCors(req, res);
@@ -64,29 +104,27 @@ async function handleBazarExpireCron(req, res) {
     }
 
     initAdmin();
-    const { expected, diag: secretDiag } = resolveCronSecretFromEnv();
+    const { expected, secretDiag } = await resolveExpectedCronSecret();
     const h = req.headers || {};
     const bearer = String(h.authorization || h.Authorization || '').replace(/^Bearer\s+/i, '').trim();
     const got = String(h['x-bazar-cron-secret'] || '').trim() || bearer;
 
     if (!expected) {
-      console.error(
-        '[bazar-cron-expire] Brak sekretu crona (dynamiczny odczyt STRZELCA_* / BAZAR_* / CRON_*)',
-        secretDiag
-      );
+      console.error('[bazar-cron-expire] Brak sekretu crona (env + Firestore)', secretDiag);
       return res.status(503).json({
         success: false,
         error: 'Cron nie skonfigurowany',
         detail:
-          'Brak niepustego sekretu w process.env (nazwy: STRZELCA_BAZAR_EXPIRE_SECRET, BAZAR_CRON_SECRET, CRON_SECRET). Sprawdź Production + Redeploy. Ta wersja API czyta zmienne dynamicznie (ominięcie podstawiania przy buildzie). Jeśli diag nadal pokazuje *_KeyPresent: false — zmienna nie jest wstrzykiwana do tego deploymentu (inny projekt / Custom Environment / zły zakres).',
-        diag: { ...secretDiag, cronEnvReadMode: 'dynamic' },
+          'Brak sekretu: ani w process.env (STRZELCA_BAZAR_EXPIRE_SECRET / BAZAR_CRON_SECRET / CRON_SECRET), ani w Firestore w dokumencie serverSecrets/bazarCronExpire (pole cronSecret). Ustaw jedno z tych — Firestore działa przez Admin SDK i omija problemy Vercel env. Wdróż też reguły firestore.rules.',
+        diag: secretDiag,
       });
     }
     if (got !== expected) {
       return res.status(401).json({
         success: false,
         error: 'Brak autoryzacji crona',
-        hint: 'Bearer / x-bazar-cron-secret musi być identyczny z aktywnym sekretem: STRZELCA_BAZAR_EXPIRE_SECRET (pierwszeństwo), potem BAZAR_CRON_SECRET, potem CRON_SECRET.',
+        hint:
+          'Bearer / x-bazar-cron-secret musi być identyczny z sekretem z env albo z Firestore (serverSecrets/bazarCronExpire.cronSecret).',
       });
     }
 
@@ -111,7 +149,36 @@ async function handleBazarExpireCron(req, res) {
       expired += slice.length;
     }
 
-    return res.status(200).json({ success: true, expired, scanned: snap.size });
+    const snapActive = await db.collection('bazarOffers').where('status', '==', 'ACTIVE').limit(500).get();
+    const warnHorizon = nowMs + 72 * 60 * 60 * 1000;
+    const MAX_EXPIRY_WARNINGS_PER_RUN = 25;
+    let warningsSent = 0;
+    for (const d of snapActive.docs) {
+      if (warningsSent >= MAX_EXPIRY_WARNINGS_PER_RUN) break;
+      const row = d.data();
+      const ms = expiresAtToMillis(row.expires_at);
+      if (ms == null || ms <= nowMs || ms > warnHorizon) continue;
+      if (row.expiry_warning_sent_at) continue;
+      const daysLeft = Math.max(1, Math.ceil((ms - nowMs) / (24 * 60 * 60 * 1000)));
+      const sent = await sendBazarOfferTemplateEmail(
+        db,
+        'bazar_offer_expiring_soon',
+        { ...row, id: d.id },
+        { daysLeft },
+      );
+      if (sent) {
+        await d.ref.update({ expiry_warning_sent_at: admin.firestore.FieldValue.serverTimestamp() });
+        warningsSent += 1;
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      expired,
+      scanned: snap.size,
+      warningsSent,
+      scannedActive: snapActive.size,
+    });
   } catch (e) {
     console.error('Bazar expire cron:', e);
     const msg = e?.message || String(e);

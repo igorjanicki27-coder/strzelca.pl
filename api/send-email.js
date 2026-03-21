@@ -109,6 +109,9 @@ module.exports = async (req, res) => {
     return;
   }
 
+  let mailTo = '';
+  let mailSubject = '';
+
   try {
     initAdmin();
     const sessionUser = await getSessionUser(req);
@@ -138,6 +141,9 @@ module.exports = async (req, res) => {
       return;
     }
 
+    mailTo = to;
+    mailSubject = subject;
+
     const transporter = createTransporter();
     
     const mailOptions = {
@@ -157,6 +163,20 @@ module.exports = async (req, res) => {
     });
   } catch (error) {
     console.error('Error sending email:', error);
+    if (mailTo) {
+      try {
+        const { logEmailDeliveryFailure } = require('./_activity-email-log');
+        await logEmailDeliveryFailure({
+          category: 'admin_smtp',
+          to: mailTo,
+          subject: mailSubject,
+          errorMessage: error.message || String(error),
+          meta: { source: 'send-email' },
+        });
+      } catch (logErr) {
+        console.error('logEmailDeliveryFailure:', logErr);
+      }
+    }
     res.status(500).json({ 
       success: false, 
       error: 'Failed to send email: ' + (error.message || 'Unknown error') 

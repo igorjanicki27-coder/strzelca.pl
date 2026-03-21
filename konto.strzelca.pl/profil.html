@@ -2654,6 +2654,23 @@
                 );
               }
 
+              try {
+                const idToken = await currentUser.getIdToken();
+                await fetch("https://strzelca.pl/api/profile-review-notify", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${idToken}`,
+                  },
+                  body: JSON.stringify({ reviewId: reviewRef.id }),
+                });
+              } catch (notifyErr) {
+                console.warn(
+                  "Powiadomienie e-mail o opinii (opcjonalne):",
+                  notifyErr,
+                );
+              }
+
               alert("Opinia została dodana pomyślnie!");
               closeReviewModal();
 
@@ -2883,7 +2900,7 @@
           // Inicjalizuj śledzenie aktywności
           try {
             const { initActivityTracker } =
-              await import("https://strzelca.pl/activity-tracker.mjs?v=2026-02-06-1");
+              await import("https://strzelca.pl/activity-tracker.mjs?v=2026-03-21-2");
             await initActivityTracker(auth, db);
 
             // Monitorowanie statusu użytkownika (blokowanie)
@@ -2897,7 +2914,7 @@
           // Inicjalizuj śledzenie odwiedzin (działa dla wszystkich użytkowników, również niezalogowanych)
           try {
             const { initVisitTracker } =
-              await import("https://strzelca.pl/visit-tracker.mjs?v=2026-02-06-3");
+              await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-1");
             await initVisitTracker(auth);
           } catch (error) {
             console.warn("Could not initialize visit tracker:", error);

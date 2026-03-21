@@ -14,6 +14,8 @@ const {
   verifyLocalSessionJwt,
   readJsonBody,
 } = require('./_sso-utils');
+const { replaceTemplateVariables } = require('./_transactional-mail');
+const { logEmailDeliveryFailure } = require('./_activity-email-log');
 
 let dbManager = null;
 
@@ -129,10 +131,27 @@ async function handlePostNewsletter(req, res, firestoreDb, requesterUid) {
       });
     }
 
+    let htmlContent = content;
+    try {
+      const wrapDoc = await firestoreDb.collection('emailTemplates').doc('newsletter_broadcast').get();
+      if (wrapDoc.exists) {
+        const shell = wrapDoc.data().html || '';
+        if (/\{\{\s*newsletterBody\s*\}\}/.test(shell)) {
+          const withBody = shell.replace(/\{\{\s*newsletterBody\s*\}\}/g, () => content);
+          htmlContent = replaceTemplateVariables(withBody, {
+            newsletterBody: '',
+            unsubscribeUrl: 'https://konto.strzelca.pl/newsletter.html',
+          });
+        }
+      }
+    } catch (wrapErr) {
+      console.warn('newsletter wrap template:', wrapErr?.message || wrapErr);
+    }
+
     // Przygotuj dane newslettera
     const newsletterData = {
       subject: subject.trim(),
-      content: content,
+      content: htmlContent,
       subscribers: subscribers,
       subscriberCount: subscriberCount || subscribers.length,
       senderName: senderName || 'Administrator',
@@ -157,6 +176,24 @@ async function handlePostNewsletter(req, res, firestoreDb, requesterUid) {
   } catch (error) {
     console.error('Error creating newsletter:', error);
     console.error('Error stack:', error.stack);
+    try {
+      const b = req.body && typeof req.body === 'object' ? req.body : {};
+      const subj = b.subject != null ? String(b.subject) : '';
+      const subs = Array.isArray(b.subscribers) ? b.subscribers.length : 0;
+      await logEmailDeliveryFailure({
+        category: 'newsletter_queue',
+        to: 'newsletter-bulk',
+        subject: subj.substring(0, 200) || 'Newsletter',
+        errorMessage: error.message || String(error),
+        meta: {
+          subscriberCount: String(subs),
+          sentBy: String(b.sentBy || ''),
+          stage: 'queue_firestore',
+        },
+      });
+    } catch (logErr) {
+      console.error('logEmailDeliveryFailure (newsletter):', logErr);
+    }
     res.status(500).json({
       success: false,
       error: 'Failed to create newsletter: ' + (error.message || 'Unknown error')

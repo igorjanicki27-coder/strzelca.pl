@@ -70,6 +70,13 @@ To znaczy, że **w runtime tej funkcji** żadna z nazw sekretu nie ma niepustej 
 
 **Implementacja `/api/bazar-cron-expire`:** sekrety są czytane z `process.env` **dynamicznym kluczem w pętli** (nie `process.env.CRON_SECRET` na sztywno), żeby uniknąć sytuacji, w której bundler Vercel podstawia pustą wartość w czasie buildu i w produkcji zmienna „znika” mimo ustawień w panelu.
 
+**Gdy Vercel w ogóle nie wstrzykuje zmiennych do funkcji** (np. Custom Environment, polityka zespołu): ustaw sekret w **Firestore** — dokument `serverSecrets/bazarCronExpire`, pole string **`cronSecret`** (ta sama wartość co w `Authorization: Bearer …`). Odczyt jest po stronie serwera (**Admin SDK**), reguły `firestore.rules` blokują dostęp z aplikacji klienckiej. Wdróż reguły: `firebase deploy --only firestore:rules`. Pole `diag.cronSecretSource` w odpowiedzi API wskaże `env` albo `firestore`.
+
+
+### Dziennik aktywności — szyfrowanie szczegółów rejestracji (`USER_CREATED`)
+- **ACTIVITY_LOG_ENCRYPTION_KEY** (zalecane na produkcji) — **64 znaki szesnastkowe** (32 losowe bajty), np. wygeneruj: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.  
+  Gdy ustawione: endpoint **`POST /api/log-user-created`** zapisuje w `activityLogs` pole **`detailsEncrypted`** (AES-256-GCM) zamiast jawnych szczegółów; odczyt w panelu admina przez **`POST /api/activity-log-decrypt-details`** (tylko administrator).  
+  Gdy **brak** klucza: serwer zapisuje szczegóły **jawnie** w `details` (tryb awaryjny / dev — niezalecane na produkcji).
 
 ### Development - Opcjonalne
 - **ALLOW_LOCALHOST** - Czy pozwolić na localhost (domyślnie: `false`, ustaw na `true` tylko dla developmentu)

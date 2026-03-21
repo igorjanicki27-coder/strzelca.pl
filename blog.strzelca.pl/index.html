@@ -1323,7 +1323,7 @@ const firebaseConfig = {
         // Monitorowanie stanu logowania
         // Inicjalizuj śledzenie aktywności
         try {
-            const { initActivityTracker } = await import("https://strzelca.pl/activity-tracker.mjs?v=2026-02-06-1");
+            const { initActivityTracker } = await import("https://strzelca.pl/activity-tracker.mjs?v=2026-03-21-2");
             await initActivityTracker(auth, db);
             
             // Monitorowanie statusu użytkownika (blokowanie)
@@ -1335,7 +1335,7 @@ const firebaseConfig = {
         
         // Inicjalizuj śledzenie odwiedzin (działa dla wszystkich użytkowników, również niezalogowanych)
         try {
-          const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-02-06-3");
+          const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-1");
           await initVisitTracker(auth);
         } catch (error) {
           console.warn("Could not initialize visit tracker:", error);
@@ -1592,6 +1592,9 @@ const firebaseConfig = {
         function compareBlogPosts(a, b) {
             if (a.pinned && !b.pinned) return -1;
             if (!a.pinned && b.pinned) return 1;
+            const oa = typeof a.order === 'number' && !Number.isNaN(a.order) ? a.order : Infinity;
+            const ob = typeof b.order === 'number' && !Number.isNaN(b.order) ? b.order : Infinity;
+            if (oa !== ob) return oa - ob;
             return b.dateObj - a.dateObj;
         }
 
@@ -1711,7 +1714,7 @@ const firebaseConfig = {
                             ...event,
                             dateObj: dateObj,
                             category: event.category || 'news',
-                            pinned: false
+                            pinned: !!event.pinned
                         });
                     } else {
                         skippedCount++;
@@ -1720,7 +1723,7 @@ const firebaseConfig = {
 
                 console.log(`Loaded ${allEvents.length} published events, skipped ${skippedCount} unpublished events`);
 
-                allEvents.sort((a, b) => b.dateObj - a.dateObj);
+                allEvents.sort((a, b) => compareBlogPosts(a, b));
 
                 updateLastUpdate();
                 applyBlogSearch();

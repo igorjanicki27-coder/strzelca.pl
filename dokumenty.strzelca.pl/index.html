@@ -1670,10 +1670,20 @@ const firebaseConfig = {
                 }
                 return true;
             });
-            extrasDeduped.sort((a, b) =>
-                a.order !== b.order ? a.order - b.order : String(a.title).localeCompare(String(b.title)),
-            );
-            return merged.concat(extrasDeduped);
+
+            /** Kolejność z panelu admina (pole order w Firestore), nie kolejność wpisów w szablonie FALLBACK. */
+            function catalogSortKey(item) {
+                const o = item.order;
+                if (typeof o === "number" && Number.isFinite(o)) return o;
+                return 1e9;
+            }
+            const combined = merged.concat(extrasDeduped);
+            combined.sort((a, b) => {
+                const d = catalogSortKey(a) - catalogSortKey(b);
+                if (d !== 0) return d;
+                return String(a.title || "").localeCompare(String(b.title || ""), "pl");
+            });
+            return combined;
         }
 
         function normalizeFirestoreDocument(data) {
@@ -1827,6 +1837,45 @@ const firebaseConfig = {
                 </div>`;
             }
 
+            async function logReturnFormActivityToStrzelca(fields) {
+                const urls = [
+                    "https://strzelca.pl/api/log-documents-return-form",
+                    "/api/log-documents-return-form",
+                ];
+                let idToken = null;
+                try {
+                    if (authRef?.currentUser) {
+                        idToken = await authRef.currentUser.getIdToken();
+                    }
+                } catch (_) {
+                    /* gość */
+                }
+                const body = {
+                    idToken,
+                    userAgent:
+                        typeof navigator !== "undefined"
+                            ? navigator.userAgent
+                            : "",
+                    payload: {
+                        ...fields,
+                        zalogowany: !!(authRef && authRef.currentUser),
+                    },
+                };
+                const json = JSON.stringify(body);
+                for (const url of urls) {
+                    try {
+                        const r = await fetch(url, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: json,
+                        });
+                        if (r.ok) return;
+                    } catch (_) {
+                        /* następny URL */
+                    }
+                }
+            }
+
             async function submitReturnClaimForm(ev) {
                 ev.preventDefault();
                 const fd = new FormData(form);
@@ -1913,6 +1962,17 @@ const firebaseConfig = {
                         alert("Nie udało się otworzyć nowej karty. Zezwól na wyskakujące okienka dla tej strony.");
                     }
                     setTimeout(() => URL.revokeObjectURL(url), 180000);
+                    void logReturnFormActivityToStrzelca({
+                        type: typ,
+                        imie,
+                        nazwisko,
+                        zamowienie: zam,
+                        faktura,
+                        zadanie,
+                        dodatkowe,
+                        opis: typ === "reklamacja" ? opis : "",
+                        powod: typ === "zwrot" ? powod : "",
+                    }).catch(() => {});
                     closeReturnClaimForm();
                 } catch (e) {
                     console.error(e);
@@ -2108,7 +2168,7 @@ const firebaseConfig = {
         // Monitorowanie stanu logowania
         // Inicjalizuj śledzenie aktywności
         try {
-            const { initActivityTracker } = await import("https://strzelca.pl/activity-tracker.mjs?v=2026-02-06-1");
+            const { initActivityTracker } = await import("https://strzelca.pl/activity-tracker.mjs?v=2026-03-21-2");
             await initActivityTracker(auth, db);
             
             // Monitorowanie statusu użytkownika (blokowanie)
@@ -2120,7 +2180,7 @@ const firebaseConfig = {
         
         // Inicjalizuj śledzenie odwiedzin (działa dla wszystkich użytkowników, również niezalogowanych)
         try {
-          const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-02-06-3");
+          const { initVisitTracker } = await import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-1");
           await initVisitTracker(auth);
         } catch (error) {
           console.warn("Could not initialize visit tracker:", error);

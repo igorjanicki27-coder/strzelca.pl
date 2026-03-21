@@ -50,10 +50,16 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const { visitorId, userAgent } = body;
+    const { visitorId, userAgent, leave } = body;
 
     if (!visitorId) {
       res.status(400).json({ success: false, error: "Missing visitorId" });
+      return;
+    }
+
+    const docId = String(visitorId).trim().slice(0, 1200).replace(/\//g, "_");
+    if (!docId) {
+      res.status(400).json({ success: false, error: "Invalid visitorId" });
       return;
     }
 
@@ -62,7 +68,14 @@ module.exports = async (req, res) => {
       || req.connection?.remoteAddress 
       || 'unknown';
 
-    // Minimalny zapis obecności gościa (bez URL — nie trafia do dziennika zdarzeń)
+    // Jawne wyjście ze strony (sendBeacon przy pagehide) — usuń wpis, żeby nie wisiał 30 min
+    if (leave === true || leave === "true") {
+      await db.collection("guestPresence").doc(docId).delete().catch(() => {});
+      res.status(200).json({ success: true, left: true });
+      return;
+    }
+
+    // Jeden dokument na gościa (visitorId jako ID) + okresowy heartbeat — zgodność z oknem ~30 min w panelu
     const presenceData = {
       visitorId,
       ipAddress: ipAddress,
@@ -70,12 +83,12 @@ module.exports = async (req, res) => {
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    const docRef = await db.collection("guestPresence").add(presenceData);
+    await db.collection("guestPresence").doc(docId).set(presenceData);
 
     res.status(200).json({ 
       success: true, 
       message: "Guest activity pinged",
-      id: docRef.id
+      id: docId
     });
   } catch (error) {
     console.error("[ping-activity] API error:", error);

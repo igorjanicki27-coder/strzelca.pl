@@ -2,7 +2,7 @@
 // API: UPDATE LAST SEEN - strzelca.pl (Vercel Serverless)
 // =============================================================================
 // Endpoint do aktualizacji lastSeen użytkownika w Firestore
-// Używany przez activity-tracker.mjs przy zamykaniu strony (sendBeacon)
+// Heartbeat / sendBeacon przy pagehide (leave: true) — activity-tracker.mjs i panel admina
 // =============================================================================
 
 const {
@@ -69,6 +69,7 @@ module.exports = async (req, res) => {
     }
     
     const userIdFromBody = body?.userId;
+    const leave = body?.leave === true || body?.leave === "true";
 
     // Weryfikacja: userId z body musi odpowiadać uid z sesji (zabezpieczenie)
     if (userIdFromBody && userIdFromBody !== uid) {
@@ -76,18 +77,32 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // Aktualizuj lastSeen w Firestore
     const db = admin.firestore();
     const userProfileRef = db.collection("userProfiles").doc(uid);
-    
+
+    // Wyjście ze strony / sesji — cofnij lastSeen poza okno „online” (~30 min) w panelu
+    if (leave) {
+      const past = admin.firestore.Timestamp.fromDate(
+        new Date(Date.now() - 35 * 60 * 1000)
+      );
+      await userProfileRef.update({ lastSeen: past });
+      res.status(200).json({
+        success: true,
+        message: "Marked offline (left)",
+        userId: uid,
+        left: true,
+      });
+      return;
+    }
+
     await userProfileRef.update({
-      lastSeen: admin.firestore.FieldValue.serverTimestamp()
+      lastSeen: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       message: "Last seen updated",
-      userId: uid
+      userId: uid,
     });
   } catch (error) {
     console.error("update-last-seen API error:", error);
