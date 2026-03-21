@@ -30,6 +30,68 @@ const SUPERADMIN_UID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
 const SUPPORT_SENDER_ID = 'admin';
 const SUPPORT_SENDER_NAME = 'Pomoc STRZELCA.PL';
 
+/** Dozwolone MIME + limit binarny (Firestore ~1 MiB na dokument; base64 zwiększa rozmiar). */
+const ALLOWED_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const MAX_MESSAGE_IMAGE_BYTES = 720 * 1024;
+
+function stripBase64Payload(input) {
+  const s = (input || '').toString().trim();
+  const m = s.match(/^data:([a-z0-9.+/=-]+);base64,(.*)$/i);
+  if (m) return m[2].replace(/\s/g, '');
+  return s.replace(/\s/g, '');
+}
+
+function verifyImageMagicBytes(buf, mimeType) {
+  if (!buf || buf.length < 12) return false;
+  if (mimeType === 'image/jpeg') {
+    return buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+  }
+  if (mimeType === 'image/png') {
+    return (
+      buf[0] === 0x89 &&
+      buf[1] === 0x50 &&
+      buf[2] === 0x4e &&
+      buf[3] === 0x47 &&
+      buf[4] === 0x0d &&
+      buf[5] === 0x0a &&
+      buf[6] === 0x1a &&
+      buf[7] === 0x0a
+    );
+  }
+  if (mimeType === 'image/webp') {
+    const riff = buf.toString('utf8', 0, 4);
+    const webp = buf.toString('utf8', 8, 12);
+    return riff === 'RIFF' && webp === 'WEBP';
+  }
+  return false;
+}
+
+/**
+ * @returns {{ value: { mimeType: string, dataBase64: string } } | { error: string } | null}
+ */
+function normalizeImageAttachment(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const mimeType = (raw.mimeType || raw.mimetype || '').toString().trim().toLowerCase();
+  const dataBase64 = stripBase64Payload(raw.dataBase64 || raw.data);
+  if (!mimeType || !dataBase64) return null;
+  if (!ALLOWED_IMAGE_MIMES.has(mimeType)) {
+    return { error: 'Dozwolone są tylko obrazy JPEG, PNG lub WebP' };
+  }
+  let buf;
+  try {
+    buf = Buffer.from(dataBase64, 'base64');
+  } catch {
+    return { error: 'Nieprawidłowe kodowanie obrazu (base64)' };
+  }
+  if (!buf.length || buf.length > MAX_MESSAGE_IMAGE_BYTES) {
+    return { error: 'Obraz jest zbyt duży (maks. ok. 720 KB po zapisaniu; skompresuj zdjęcie i spróbuj ponownie)' };
+  }
+  if (!verifyImageMagicBytes(buf, mimeType)) {
+    return { error: 'Plik nie jest rozpoznany jako bezpieczny obraz (nagłówek nie zgadza się z typem MIME)' };
+  }
+  return { value: { mimeType, dataBase64: buf.toString('base64') } };
+}
+
 function normalizePathSegments(urlPathname) {
   let segs = urlPathname.split('/').filter(Boolean);
   // wspieramy oba warianty: /api/messages/... oraz /messages/... oraz /...
@@ -354,8 +416,17 @@ async function handlePostMessage(req, res, db, { requesterUid, requesterIsAdmin 
   try {
     const messageData = req.body || {};
 
+    const imgNorm = normalizeImageAttachment(messageData.imageAttachment);
+    if (imgNorm && imgNorm.error) {
+      return res.status(400).json({ success: false, error: imgNorm.error });
+    }
+    const imageAttachment = imgNorm && imgNorm.value ? imgNorm.value : null;
+
     const rawContent = (messageData.content || '').toString();
-    const content = rawContent.trim().slice(0, 4000);
+    let content = rawContent.trim().slice(0, 4000);
+    if (imageAttachment && !content) {
+      content = '[Zdjęcie]';
+    }
     if (!content) {
       return res.status(400).json({ success: false, error: 'Missing required field: content' });
     }
@@ -415,13 +486,15 @@ async function handlePostMessage(req, res, db, { requesterUid, requesterIsAdmin 
       status: messageData.status || 'pending',
       categoryId: messageData.categoryId
     });
+    const { imageAttachment: _discardUnvalidatedImage, ...messageDataRest } = messageData;
     const message = await db.addMessage({
-      ...messageData,
+      ...messageDataRest,
       content,
       senderId,
       senderName,
       recipientId,
       timestamp: Date.now(),
+      ...(imageAttachment ? { imageAttachment } : {}),
     });
     console.log('handlePostMessage: Message added successfully:', message?.id);
 

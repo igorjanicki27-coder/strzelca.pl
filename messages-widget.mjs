@@ -70,6 +70,170 @@ function conversationIdFor(a, b) {
   return [String(a || ""), String(b || "")].sort().join("_");
 }
 
+/** Limit binarny zgodny z API (dokument Firestore ~1 MiB z base64). */
+const MAX_MESSAGE_IMAGE_BYTES = 720 * 1024;
+
+function stripDataUrlBase64(s) {
+  const str = (s || "").toString().trim();
+  const m = str.match(/^data:([a-z0-9.+-]+\/[a-z0-9.+-]+);base64,(.*)$/i);
+  if (m) return m[2].replace(/\s/g, "");
+  return str.replace(/\s/g, "");
+}
+
+function decodeBase64ToUint8(b64) {
+  try {
+    const clean = stripDataUrlBase64(b64);
+    const bin = atob(clean);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+function verifyImageMagicBytesClient(buf, mimeType) {
+  if (!buf || buf.length < 12) return false;
+  if (mimeType === "image/jpeg") {
+    return buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+  }
+  if (mimeType === "image/png") {
+    return (
+      buf[0] === 0x89 &&
+      buf[1] === 0x50 &&
+      buf[2] === 0x4e &&
+      buf[3] === 0x47 &&
+      buf[4] === 0x0d &&
+      buf[5] === 0x0a &&
+      buf[6] === 0x1a &&
+      buf[7] === 0x0a
+    );
+  }
+  if (mimeType === "image/webp") {
+    const riff = String.fromCharCode(buf[0], buf[1], buf[2], buf[3]);
+    const webp = String.fromCharCode(buf[8], buf[9], buf[10], buf[11]);
+    return riff === "RIFF" && webp === "WEBP";
+  }
+  return false;
+}
+
+function isSafeRenderableAttachment(att) {
+  if (!att || typeof att !== "object") return false;
+  const mime = (att.mimeType || "").toString().trim().toLowerCase();
+  const b64 = stripDataUrlBase64(att.dataBase64 || "");
+  if (!b64 || !["image/jpeg", "image/png", "image/webp"].includes(mime)) return false;
+  const bytes = decodeBase64ToUint8(b64);
+  if (!bytes || bytes.length > MAX_MESSAGE_IMAGE_BYTES) return false;
+  return verifyImageMagicBytesClient(bytes, mime);
+}
+
+function captionForBubble(rawContent, hasImage) {
+  const t = (rawContent || "").toString().trim();
+  if (hasImage && (t === "" || t === "[Zdjęcie]")) return "";
+  return (rawContent || "").toString();
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const dataUrl = r.result;
+      if (typeof dataUrl !== "string" || !dataUrl.includes(",")) {
+        reject(new Error("Odczyt pliku nie powiódł się"));
+        return;
+      }
+      resolve(stripDataUrlBase64(dataUrl));
+    };
+    r.onerror = () => reject(new Error("Odczyt pliku nie powiódł się"));
+    r.readAsDataURL(blob);
+  });
+}
+
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Nie można wczytać obrazu"));
+    };
+    img.src = url;
+  });
+}
+
+/**
+ * Kompresja do JPEG i dopasowanie rozmiaru pod limit Firestore/API (~720 KB binarnie).
+ */
+async function compressImageFileToJpegAttachment(file) {
+  if (!file || !/^image\//.test(file.type || "")) {
+    throw new Error("Wybierz plik graficzny (JPG, PNG lub WebP).");
+  }
+  if (file.size > 30 * 1024 * 1024) {
+    throw new Error("Plik jest zbyt duży (max 30 MB przed kompresją).");
+  }
+  const img = await loadImageFromFile(file);
+  let w = img.naturalWidth || img.width;
+  let h = img.naturalHeight || img.height;
+  if (!w || !h) throw new Error("Nieprawidłowy obraz.");
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d", { alpha: false });
+  const maxDim = 1920;
+
+  function scaleToMax(side) {
+    if (w <= side && h <= side) return;
+    const sc = side / Math.max(w, h);
+    w = Math.max(1, Math.round(w * sc));
+    h = Math.max(1, Math.round(h * sc));
+  }
+  scaleToMax(maxDim);
+
+  canvas.width = w;
+  canvas.height = h;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(img, 0, 0, w, h);
+
+  let quality = 0.88;
+  let blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", quality));
+  if (!blob) throw new Error("Kompresja nie powiodła się.");
+
+  async function shrinkUntilOk() {
+    for (;;) {
+      if (blob.size <= MAX_MESSAGE_IMAGE_BYTES) return;
+      if (quality > 0.42) {
+        quality -= 0.07;
+        blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", quality));
+        if (!blob) throw new Error("Kompresja nie powiodła się.");
+        continue;
+      }
+      if (w <= 360 && h <= 360) {
+        throw new Error(
+          "Nie udało się zmieścić zdjęcia w bezpiecznym limicie (~720 KB). Wybierz mniejszy obraz."
+        );
+      }
+      w = Math.max(320, Math.round(w * 0.82));
+      h = Math.max(320, Math.round(h * 0.82));
+      canvas.width = w;
+      canvas.height = h;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      quality = 0.82;
+      blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", quality));
+      if (!blob) throw new Error("Kompresja nie powiodła się.");
+    }
+  }
+  await shrinkUntilOk();
+
+  const dataBase64 = await blobToBase64(blob);
+  return { mimeType: "image/jpeg", dataBase64 };
+}
+
 // Funkcja pomocnicza do uzyskania URL API (zawsze używa głównej domeny)
 function getApiUrl(path) {
   const isMain = (window.location?.hostname || "") === "strzelca.pl";
@@ -317,23 +481,77 @@ function makeStyles() {
       background: rgba(255,255,255,0.06);
       line-height: 1.35;
       word-wrap: break-word;
-      white-space: pre-wrap;
     }
     .bubble.me { background: rgba(193,154,107,0.18); border-color: rgba(193,154,107,0.28); }
+    .bubbleImg {
+      max-width: 100%;
+      max-height: 220px;
+      width: auto;
+      height: auto;
+      border-radius: 10px;
+      display: block;
+      margin-bottom: 6px;
+      object-fit: contain;
+      background: rgba(0,0,0,0.25);
+    }
+    .bubbleText { word-wrap: break-word; white-space: pre-wrap; }
     .meta { margin-top: 6px; font-size: 11px; color: rgba(229,229,229,0.55); text-align: right; }
     .composer { 
       border-top: 1px solid rgba(255,255,255,0.10); 
       padding: 10px; 
-      display: flex; 
-      gap: 10px; 
-      align-items: flex-end;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
       flex-shrink: 0;
       min-height: 64px;
       box-sizing: border-box;
-      position: relative;
+    }
+    .composerRow {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px;
+    }
+    .attach {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: #e5e5e5;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 0;
+    }
+    .attach:hover { border-color: rgba(193,154,107,0.7); color: rgba(193,154,107,0.95); }
+    .attach:disabled { opacity: 0.45; cursor: not-allowed; }
+    .attach svg { width: 18px; height: 18px; stroke: currentColor; fill: none; }
+    .pendingAttach {
+      font-size: 11px;
+      color: rgba(229,229,229,0.65);
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 0 2px;
+    }
+    .pendingAttach.show { display: flex; }
+    .pendingRemove {
+      border: none;
+      background: rgba(239,68,68,0.2);
+      color: #f87171;
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
     }
     textarea {
       flex: 1 1 auto;
+      min-width: 0;
       min-height: 44px;
       max-height: 130px;
       resize: none;
@@ -341,16 +559,14 @@ function makeStyles() {
       border: 1px solid rgba(255,255,255,0.14);
       background: rgba(0,0,0,0.55);
       color: #fff;
-      padding: 10px 50px 10px 12px;
+      padding: 10px 12px;
       outline: none;
       font: inherit;
       font-size: 13px;
     }
     textarea:focus { border-color: rgba(193,154,107,0.7); }
     .send {
-      position: absolute;
-      right: 14px;
-      bottom: 14px;
+      flex: 0 0 auto;
       width: 40px;
       height: 40px;
       border-radius: 12px;
@@ -921,6 +1137,32 @@ async function main() {
 
   const composer = document.createElement("div");
   composer.className = "composer";
+  const pendingAttach = document.createElement("div");
+  pendingAttach.className = "pendingAttach";
+  const pendingLabel = document.createElement("span");
+  const pendingRemove = document.createElement("button");
+  pendingRemove.type = "button";
+  pendingRemove.className = "pendingRemove";
+  pendingRemove.textContent = "Usuń zdjęcie";
+  pendingAttach.appendChild(pendingLabel);
+  pendingAttach.appendChild(pendingRemove);
+
+  const composerRow = document.createElement("div");
+  composerRow.className = "composerRow";
+
+  const attachBtn = document.createElement("button");
+  attachBtn.className = "attach";
+  attachBtn.type = "button";
+  attachBtn.title = "Dodaj zdjęcie";
+  attachBtn.setAttribute("aria-label", "Dodaj zdjęcie");
+  attachBtn.innerHTML =
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>';
+
+  const fileInput = document.createElement("input");
+  fileInput.type = "file";
+  fileInput.accept = "image/jpeg,image/png,image/webp";
+  fileInput.style.display = "none";
+
   const ta = document.createElement("textarea");
   ta.placeholder = "Napisz wiadomość…";
   ta.setAttribute("rows", "1");
@@ -929,8 +1171,24 @@ async function main() {
   sendBtn.type = "button";
   sendBtn.title = "Wyślij wiadomość";
   sendBtn.innerHTML = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>`;
-  composer.appendChild(ta);
-  composer.appendChild(sendBtn);
+
+  composerRow.appendChild(attachBtn);
+  composerRow.appendChild(ta);
+  composerRow.appendChild(sendBtn);
+  composer.appendChild(pendingAttach);
+  composer.appendChild(composerRow);
+  composer.appendChild(fileInput);
+
+  let pendingImageAttachment = null;
+  function updatePendingAttachUI() {
+    if (pendingImageAttachment) {
+      pendingAttach.classList.add("show");
+      pendingLabel.textContent = "Zdjęcie gotowe do wysłania (JPEG, skompresowane).";
+    } else {
+      pendingAttach.classList.remove("show");
+      pendingLabel.textContent = "";
+    }
+  }
 
   right.appendChild(msgs);
   right.appendChild(composer);
@@ -1127,7 +1385,31 @@ async function main() {
       row.className = `bubbleRow ${isMe ? "me" : ""}`;
       const b = document.createElement("div");
       b.className = `bubble ${isMe ? "me" : ""}`;
-      b.textContent = (m.content || "").toString();
+      const hasImg = isSafeRenderableAttachment(m.imageAttachment);
+      if (hasImg) {
+        const img = document.createElement("img");
+        img.className = "bubbleImg";
+        img.alt = "Załącznik graficzny";
+        img.loading = "lazy";
+        img.decoding = "async";
+        img.referrerPolicy = "no-referrer";
+        const mime = m.imageAttachment.mimeType;
+        const rawB64 = stripDataUrlBase64(m.imageAttachment.dataBase64);
+        img.src = `data:${mime};base64,${rawB64}`;
+        b.appendChild(img);
+      }
+      const cap = captionForBubble(m.content || "", hasImg);
+      if (cap) {
+        const textEl = document.createElement("div");
+        textEl.className = "bubbleText";
+        textEl.textContent = cap;
+        b.appendChild(textEl);
+      } else if (!hasImg) {
+        const textEl = document.createElement("div");
+        textEl.className = "bubbleText";
+        textEl.textContent = (m.content || "").toString();
+        b.appendChild(textEl);
+      }
       const meta = document.createElement("div");
       meta.className = "meta";
       meta.textContent = formatTime(m.timestampMs || Date.now());
@@ -1216,10 +1498,13 @@ async function main() {
     }
   }
 
-  async function sendMessageTo(peerId, content) {
-    const text = (content || "").toString().trim().slice(0, 4000);
-    if (!text) return;
+  async function sendMessageTo(peerId, textContent, imageAttachment) {
+    const text = (textContent || "").toString().trim().slice(0, 4000);
+    if (!text && !imageAttachment) return;
     if (!peerId || peerId === uid) return;
+
+    const storedContent = text || "[Zdjęcie]";
+    const lastPreview = text || "📷 Zdjęcie";
 
     const conversationId = conversationIdFor(uid, peerId);
     const convRef = doc(db, "privateConversations", conversationId);
@@ -1244,7 +1529,7 @@ async function main() {
           participantNames: { [uid]: myDisplayName || null, [peerId]: peerDisplayName || null },
           participantAvatars: { [peerId]: peerAvatar || null },
           updatedAt: serverTimestamp(),
-          lastMessage: { content: text, senderId: uid, timestamp: serverTimestamp() },
+          lastMessage: { content: lastPreview, senderId: uid, timestamp: serverTimestamp() },
           unreadCounts: { [peerId]: increment(1) },
         },
         { merge: true }
@@ -1252,11 +1537,19 @@ async function main() {
 
       tx.set(msgRef, {
         conversationId,
-        content: text,
+        content: storedContent,
         senderId: uid,
         recipientId: peerId,
         isRead: false,
         timestamp: serverTimestamp(),
+        ...(imageAttachment
+          ? {
+              imageAttachment: {
+                mimeType: imageAttachment.mimeType,
+                dataBase64: imageAttachment.dataBase64,
+              },
+            }
+          : {}),
       });
     });
   }
@@ -1430,6 +1723,15 @@ async function main() {
           recipientId: data.recipientId || null,
           isRead: data.isRead === true,
           timestampMs,
+          imageAttachment:
+            data.imageAttachment &&
+            typeof data.imageAttachment.mimeType === "string" &&
+            typeof data.imageAttachment.dataBase64 === "string"
+              ? {
+                  mimeType: data.imageAttachment.mimeType,
+                  dataBase64: data.imageAttachment.dataBase64,
+                }
+              : null,
         };
       });
     }
@@ -1502,6 +1804,8 @@ async function main() {
   }
 
   function selectPeer(peerId, labelName) {
+    pendingImageAttachment = null;
+    updatePendingAttachUI();
     state.selectedPeerId = peerId;
     setStoredSelectedPeerId(peerId);
     titleText.textContent = labelName || "Wiadomości";
@@ -1616,6 +1920,15 @@ async function main() {
         recipientId: m.recipientId || null,
         isRead: m.isRead === true,
         timestampMs: typeof m.timestamp === "number" ? m.timestamp : Date.now(),
+        imageAttachment:
+          m.imageAttachment &&
+          typeof m.imageAttachment.mimeType === "string" &&
+          typeof m.imageAttachment.dataBase64 === "string"
+            ? {
+                mimeType: m.imageAttachment.mimeType,
+                dataBase64: m.imageAttachment.dataBase64,
+              }
+            : null,
       };
     });
     renderMessages(mapped);
@@ -1729,8 +2042,9 @@ async function main() {
 
   async function doSend() {
     const content = (ta.value || "").toString().trim();
-    if (!content) return;
-    
+    const hasImage = !!pendingImageAttachment;
+    if (!content && !hasImage) return;
+
     sendBtn.disabled = true;
     try {
       if (state.selectedPeerId === SUPPORT_PEER_ID) {
@@ -1757,7 +2071,14 @@ async function main() {
         }
         
         const apiUrl = getApiUrl("/api/messages");
-        const requestBody = { content, recipientId: "admin", status: "in_progress" };
+        const requestBody = {
+          content,
+          recipientId: "admin",
+          status: "in_progress",
+        };
+        if (hasImage) {
+          requestBody.imageAttachment = pendingImageAttachment;
+        }
         console.log("doSend: Sending POST request to", apiUrl, {
           body: requestBody,
           headers: Object.keys(headers)
@@ -1786,6 +2107,8 @@ async function main() {
         
         console.log("doSend: Message sent successfully", data?.data?.id);
         ta.value = "";
+        pendingImageAttachment = null;
+        updatePendingAttachUI();
         ta.focus();
         // refresh
         await fetchSupportThread().then((items) => {
@@ -1800,8 +2123,10 @@ async function main() {
         await ensureConversation(state.selectedPeerId).catch((e) => {
           console.error("doSend: Failed to ensure conversation", e);
         });
-        await sendMessageTo(state.selectedPeerId, content);
+        await sendMessageTo(state.selectedPeerId, content, hasImage ? pendingImageAttachment : null);
         ta.value = "";
+        pendingImageAttachment = null;
+        updatePendingAttachUI();
         ta.focus();
       }
     } catch (e) {
@@ -1910,7 +2235,7 @@ async function main() {
     newMsgSend.textContent = "Wysyłanie...";
     try {
       await ensureConversation(userId).catch(() => {});
-      await sendMessageTo(userId, content);
+      await sendMessageTo(userId, content, null);
       closeNewMessageModal();
       // Otwórz konwersację z wybranym użytkownikiem
       selectPeer(userId, newMsgUserSearch.value || "Użytkownik");
@@ -1958,6 +2283,25 @@ async function main() {
   });
   closeBtn.addEventListener("click", closePanel);
   sendBtn.addEventListener("click", doSend);
+  attachBtn.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", async () => {
+    const f = fileInput.files && fileInput.files[0];
+    fileInput.value = "";
+    if (!f) return;
+    try {
+      attachBtn.disabled = true;
+      pendingImageAttachment = await compressImageFileToJpegAttachment(f);
+      updatePendingAttachUI();
+    } catch (e) {
+      alert(e?.message || "Nie udało się przygotować zdjęcia");
+    } finally {
+      attachBtn.disabled = false;
+    }
+  });
+  pendingRemove.addEventListener("click", () => {
+    pendingImageAttachment = null;
+    updatePendingAttachUI();
+  });
   ta.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();

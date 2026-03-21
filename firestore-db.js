@@ -96,12 +96,25 @@ class FirestoreDatabaseManager {
         metadata: messageData.metadata || {}
       };
 
+      if (
+        messageData.imageAttachment &&
+        typeof messageData.imageAttachment.mimeType === 'string' &&
+        typeof messageData.imageAttachment.dataBase64 === 'string'
+      ) {
+        message.imageAttachment = {
+          mimeType: messageData.imageAttachment.mimeType,
+          dataBase64: messageData.imageAttachment.dataBase64,
+        };
+      }
+
       // Dodaj wiadomość do kolekcji messages
+      const contentPreview = (message.content || '').toString();
       console.log('addMessage: Adding message to Firestore:', {
         senderId: message.senderId,
         senderName: message.senderName,
         recipientId: message.recipientId,
-        content: message.content.substring(0, 50) + (message.content.length > 50 ? '...' : ''),
+        content: contentPreview.substring(0, 50) + (contentPreview.length > 50 ? '...' : ''),
+        hasImage: !!message.imageAttachment,
         status: message.status,
         collection: 'messages'
       });

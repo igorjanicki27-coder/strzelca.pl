@@ -17169,6 +17169,23 @@
             return;
           }
 
+          const escapeHtml = (s) => String(s ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+          const allowedImgMime = new Set(['image/jpeg', 'image/png', 'image/webp']);
+          function messageImageHtml(msg) {
+            const att = msg.imageAttachment;
+            if (!att || typeof att.mimeType !== 'string' || typeof att.dataBase64 !== 'string') return '';
+            const mime = att.mimeType.trim().toLowerCase();
+            if (!allowedImgMime.has(mime)) return '';
+            const b64 = att.dataBase64.replace(/\s/g, '');
+            if (!b64 || b64.length > 1400000) return '';
+            return `<div class="mb-2"><img class="max-w-full max-h-64 rounded-lg object-contain bg-black/25" src="data:${mime};base64,${b64}" alt="Załącznik" loading="lazy" referrerpolicy="no-referrer"/></div>`;
+          }
+
           // Znajdź punkt zmiany statusu z completed na in_progress
           let statusChangeIndex = -1;
           for (let i = 0; i < allMessages.length; i++) {
@@ -17238,12 +17255,19 @@
               return cleanedContent.trim();
             }
 
-            const cleanedContent = cleanMessageContent(msg.content || '');
+            const cleanedRaw = cleanMessageContent(msg.content || '');
+            const capTrim = cleanedRaw.trim();
+            const imgBlock = messageImageHtml(msg);
+            const hideCaption = imgBlock && (capTrim === '' || capTrim === '[Zdjęcie]');
+            const textBlock = hideCaption
+              ? ''
+              : `<div class="text-sm ${isFromUser ? 'text-zinc-100' : 'text-white'} whitespace-pre-wrap leading-relaxed">${escapeHtml(cleanedRaw)}</div>`;
 
             return separatorHtml + `
               <div class="flex ${isFromUser ? 'justify-start' : 'justify-end'} mb-3">
                 <div class="max-w-[75%] ${messageClasses} rounded-2xl ${isFromUser ? 'rounded-tl-sm' : 'rounded-tr-sm'} px-4 py-3 shadow-sm">
-                  <div class="text-sm ${isFromUser ? 'text-zinc-100' : 'text-white'} whitespace-pre-wrap leading-relaxed">${cleanedContent}</div>
+                  ${imgBlock}
+                  ${textBlock}
                   <div class="text-xs ${isFromUser ? 'text-zinc-400' : 'text-coyote/80'} mt-2 flex justify-end">${time}</div>
                 </div>
               </div>
@@ -19389,16 +19413,17 @@
 
         <!-- Pole odpowiedzi -->
         <div class="flex flex-col gap-2 mt-4">
-          <div class="relative">
+          <div class="flex flex-row items-center gap-2">
             <textarea
               id="chat-reply-input"
               placeholder="Napisz odpowiedź..."
-              class="flex-1 min-h-[80px] max-h-[160px] pr-14 bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-3 text-white placeholder-zinc-400 focus:outline-none focus:border-coyote resize-none"
+              class="flex-1 min-w-0 min-h-[80px] max-h-[160px] bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-3 text-white placeholder-zinc-400 focus:outline-none focus:border-coyote resize-none"
               rows="4"
             ></textarea>
             <button 
+              type="button"
               onclick="sendChatReply()" 
-              class="absolute right-2 bottom-2 w-10 h-10 flex items-center justify-center bg-coyote hover:bg-coyote/90 text-white rounded-lg transition-all shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+              class="flex-shrink-0 self-center w-10 h-10 flex items-center justify-center bg-coyote hover:bg-coyote/90 text-white rounded-lg transition-all shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
               title="Wyślij wiadomość">
               <i class="fa-solid fa-paper-plane text-sm"></i>
             </button>
