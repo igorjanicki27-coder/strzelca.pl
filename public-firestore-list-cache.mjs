@@ -100,11 +100,16 @@ function reviveStorable(x) {
 }
 
 export async function readPublicListVersion(db, getDoc, docFn, metaDocId) {
-  const snap = await getDoc(docFn(db, PUBLIC_LIST_CACHE_META, metaDocId));
-  if (!snap.exists()) return null;
-  const v = snap.data()?.v;
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  return null;
+  try {
+    const snap = await getDoc(docFn(db, PUBLIC_LIST_CACHE_META, metaDocId));
+    if (!snap.exists()) return null;
+    const v = snap.data()?.v;
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    return null;
+  } catch (e) {
+    console.warn("[publicListCacheMeta] read failed, fetching list without version:", e?.code || e?.message || e);
+    return null;
+  }
 }
 
 /**

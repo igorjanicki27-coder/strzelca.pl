@@ -204,16 +204,32 @@ class FirestoreDatabaseManager {
       let snapshot;
       let needsInMemorySort = true; // Zawsze sortuj w pamięci, żeby uniknąć problemów z indeksami
       
-      // Zbuduj zapytanie bez orderBy (żeby uniknąć problemów z indeksami)
+      const hasExtraFilters = !!(
+        options.senderId ||
+        options.status ||
+        options.categoryId ||
+        typeof options.isRead === 'boolean' ||
+        options.dateFrom ||
+        options.dateTo
+      );
+      // Indeks recipientId + timestamp — tylko dla „skrzynki admina” bez dodatkowych where
+      const canOrderByTimestamp = !!options.recipientId && !hasExtraFilters;
+
       let baseQuery = db.collection('messages');
       if (options.recipientId) baseQuery = baseQuery.where('recipientId', '==', options.recipientId);
       if (options.senderId) baseQuery = baseQuery.where('senderId', '==', options.senderId);
       if (options.status) baseQuery = baseQuery.where('status', '==', options.status);
       if (options.categoryId) baseQuery = baseQuery.where('categoryId', '==', options.categoryId);
       if (typeof options.isRead === 'boolean') baseQuery = baseQuery.where('isRead', '==', options.isRead);
-      
-      // Pobierz więcej dokumentów, bo posortujemy w pamięci
-      const fetchLimit = options.limit ? options.limit * 2 : 200;
+
+      if (canOrderByTimestamp) {
+        baseQuery = baseQuery.orderBy('timestamp', 'desc');
+        needsInMemorySort = false;
+      }
+
+      const fetchLimit = canOrderByTimestamp
+        ? (options.limit || 50)
+        : (options.limit ? options.limit * 2 : 200);
       baseQuery = baseQuery.limit(fetchLimit);
       
       try {
@@ -256,12 +272,11 @@ class FirestoreDatabaseManager {
         };
       });
 
-      // Jeśli pobraliśmy bez orderBy, posortuj w pamięci
       if (needsInMemorySort && messages.length > 0) {
         messages.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-        if (options.limit) {
-          messages = messages.slice(0, options.limit);
-        }
+      }
+      if (options.limit && messages.length > options.limit) {
+        messages = messages.slice(0, options.limit);
       }
 
       // Debug: sprawdź czy w ogóle są wiadomości w kolekcji
@@ -461,21 +476,29 @@ class FirestoreDatabaseManager {
     try {
       const db = await this.initializeFirebase();
 
-      // Pobierz tylko wiadomości skierowane do administratora (jak w handleGetMessages)
-      const snapshot = await db.collection('messages')
-        .where('recipientId', '==', 'admin')
-        .get();
-      const messages = snapshot.docs.map(doc => doc.data());
+      // Agregacje count() — bez pobierania całej kolekcji (przy dużej liczbie wiadomości
+      // pełne .get() powodowało FUNCTION_INVOCATION_TIMEOUT na Vercel).
+      const base = () => db.collection('messages').where('recipientId', '==', 'admin');
 
-      const stats = {
-        total: messages.length,
-        pending: messages.filter(m => m.status === 'pending').length,
-        in_progress: messages.filter(m => m.status === 'in_progress').length,
-        completed: messages.filter(m => m.status === 'completed').length,
-        unread: messages.filter(m => !m.isRead).length
+      const [totalSnap, pendingSnap, inProgressSnap, completedSnap, readSnap] = await Promise.all([
+        base().count().get(),
+        base().where('status', '==', 'pending').count().get(),
+        base().where('status', '==', 'in_progress').count().get(),
+        base().where('status', '==', 'completed').count().get(),
+        base().where('isRead', '==', true).count().get(),
+      ]);
+
+      const total = totalSnap.data().count;
+      const read = readSnap.data().count;
+
+      return {
+        total,
+        pending: pendingSnap.data().count,
+        in_progress: inProgressSnap.data().count,
+        completed: completedSnap.data().count,
+        // Dokumenty bez pola isRead traktujemy jak nieprzeczytane (jak wcześniej: !m.isRead)
+        unread: Math.max(0, total - read),
       };
-
-      return stats;
     } catch (error) {
       console.error('Error getting message stats:', error);
       throw error;

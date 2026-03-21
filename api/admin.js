@@ -4,8 +4,21 @@
 // Firebase-based admin authentication - no local SQL admin logic needed
 // =============================================================================
 
-const admin = require('firebase-admin');
+const {
+  initAdmin,
+  admin,
+  setCors,
+  parseCookies,
+  getCookieName,
+  verifyLocalSessionJwt,
+} = require('./_sso-utils');
+
+// Przed firestore-db: pełna inicjalizacja Admin SDK + klucze SSO (cookie __session)
+initAdmin();
+
 const FirestoreDatabaseManager = require('../firestore-db');
+
+const SUPERADMIN_UID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
 
 let dbManager = null;
 async function initDatabase() {
@@ -16,20 +29,88 @@ async function initDatabase() {
   return dbManager;
 }
 
+async function getSessionUser(req) {
+  try {
+    initAdmin();
+    const cookies = parseCookies(req.headers.cookie || '');
+    const cookieName = getCookieName();
+    const sessionCookie = cookies[cookieName];
+
+    if (sessionCookie) {
+      try {
+        const decoded = verifyLocalSessionJwt(sessionCookie);
+        if (decoded?.uid) {
+          return { uid: decoded.uid, emailVerified: decoded.emailVerified === true };
+        }
+      } catch (e) {
+        console.debug('admin API: cookie SSO verification failed', e?.message);
+      }
+    }
+
+    const authHeader = req.headers.authorization || '';
+    if (authHeader.startsWith('Bearer ')) {
+      const idToken = authHeader.substring(7);
+      try {
+        const decoded = await admin.auth().verifyIdToken(idToken);
+        if (decoded?.uid) {
+          return { uid: decoded.uid, emailVerified: decoded.email_verified === true };
+        }
+      } catch (e) {
+        console.debug('admin API: Firebase ID token verification failed', e?.message);
+      }
+    }
+
+    return null;
+  } catch (e) {
+    console.debug('admin API getSessionUser:', e?.message || e);
+    return null;
+  }
+}
+
+async function isAdmin(uid) {
+  if (!uid) return false;
+  if (uid === SUPERADMIN_UID) return true;
+
+  try {
+    initAdmin();
+    const profileDoc = await admin.firestore().collection('userProfiles').doc(uid).get();
+    if (!profileDoc.exists) return false;
+    const profile = profileDoc.data();
+    return profile?.role === 'admin';
+  } catch (e) {
+    console.error('admin API isAdmin:', e);
+    return false;
+  }
+}
+
+/** Zwraca użytkownika sesji albo kończy odpowiedź 401/403. */
+async function requireAdmin(req, res) {
+  const sessionUser = await getSessionUser(req);
+  if (!sessionUser) {
+    res.status(401).json({ success: false, error: 'Unauthorized' });
+    return null;
+  }
+  if (!(await isAdmin(sessionUser.uid))) {
+    res.status(403).json({ success: false, error: 'Forbidden' });
+    return null;
+  }
+  return sessionUser;
+}
+
 // Serverless function handler
 module.exports = async (req, res) => {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCors(req, res, { methods: 'GET, OPTIONS' });
+  res.setHeader('Cache-Control', 'no-store');
 
-  // Handle preflight requests
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
   try {
+    const authed = await requireAdmin(req, res);
+    if (!authed) return;
+
     const db = await initDatabase();
 
     const url = new URL(req.url, `http://${req.headers.host}`);
