@@ -1949,7 +1949,6 @@ const firebaseConfig = {
             if (!grid) return;
 
             let items = [];
-            let dbHadModal = false;
             try {
                 const q = query(collection(db, "documents"), orderBy("order", "asc"));
                 const snapshot = await getDocs(q);
@@ -1957,7 +1956,6 @@ const firebaseConfig = {
                     .map((d) => normalizeFirestoreDocument(d.data()))
                     .filter(Boolean);
                 if (items.length) {
-                    dbHadModal = items.some((i) => i.kind === "modal" || i.kind === "form");
                     items.sort((a, b) =>
                         a.order !== b.order ? a.order - b.order : String(a.title).localeCompare(String(b.title)),
                     );
@@ -1975,15 +1973,7 @@ const firebaseConfig = {
                 }
             } else {
                 items = mergeSiteDocumentsWithFallback(items);
-                if (noteEl) {
-                    if (!dbHadModal) {
-                        noteEl.textContent =
-                            "W bazie były tylko pliki — lista została uzupełniona o regulaminy z szablonu strony. Otwórz zakładkę Dokumenty w panelu admina: brakujące wpisy dopiszą się do Firestore i będzie można ustawić jedną wspólną kolejność.";
-                        noteEl.classList.remove("hidden");
-                    } else {
-                        noteEl.classList.add("hidden");
-                    }
-                }
+                if (noteEl) noteEl.classList.add("hidden");
             }
 
             grid.innerHTML = items.map((row) => renderCatalogRow(row)).join("");

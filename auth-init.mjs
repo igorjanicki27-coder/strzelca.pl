@@ -5,7 +5,7 @@
  * - cache i optymalizacja requestów
  * 
  * Użycie:
- *   import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-02-06-2";
+ *   import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-03-21-1";
  *   const { auth, db } = await initAuth(firebaseConfig);
  */
 
@@ -59,9 +59,11 @@ export async function initAuth(firebaseConfig, options = {}) {
   // Inicjalizuj Firestore (z opcjonalnymi opcjami)
   // WAŻNE: Sprawdź, czy Firestore nie został już zainicjalizowany
   let db;
+  // Safari / WebKit: WebChannel + Fetch streams często kończy się „access control checks” i 400 na
+  // …/channel — long polling + wyłączone fetch streams jest stabilniejsze (admin, panel itd.).
   const firestoreOptions = options.firestore || {
-    experimentalAutoDetectLongPolling: true,
-    useFetchStreams: true,
+    experimentalForceLongPolling: true,
+    useFetchStreams: false,
   };
   
   try {

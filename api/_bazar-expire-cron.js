@@ -1,5 +1,41 @@
 const { initAdmin, admin, setCors } = require('./_sso-utils');
 
+/**
+ * Odczyt sekretów crona wyłącznie przez dynamiczny klucz (process.env[key] w pętli).
+ * Bundler Vercel (@vercel/node / esbuild) potrafi w czasie buildu podstawić
+ * process.env.CRON_SECRET wartością z etapu kompilacji (często pustą), przez co
+ * w runtime zmienna z panelu Vercel „znika”. Dynamiczny dostęp tego unika.
+ */
+const CRON_SECRET_ENV = (() => {
+  const j = (parts) => parts.join('_');
+  return {
+    entries: [
+      { key: j(['STRZELCA', 'BAZAR', 'EXPIRE', 'SECRET']), diagPrefix: 'strzelcaBazarExpireSecret' },
+      { key: j(['BAZAR', 'CRON', 'SECRET']), diagPrefix: 'bazarCronSecret' },
+      { key: j(['CRON', 'SECRET']), diagPrefix: 'cronSecret' },
+    ],
+  };
+})();
+
+function resolveCronSecretFromEnv() {
+  const e = process.env;
+  let expected = '';
+  const diag = {
+    vercelEnv: e.VERCEL_ENV || null,
+    vercelProjectId: e.VERCEL_PROJECT_ID || null,
+    vercelProjectProductionUrl: e.VERCEL_PROJECT_PRODUCTION_URL || null,
+  };
+  for (const { key, diagPrefix } of CRON_SECRET_ENV.entries) {
+    const raw = e[key];
+    diag[`${diagPrefix}KeyPresent`] = raw !== undefined;
+    diag[`${diagPrefix}TrimmedLength`] = raw != null ? String(raw).trim().length : 0;
+    if (!expected && raw != null && String(raw).trim() !== '') {
+      expected = String(raw).trim();
+    }
+  }
+  return { expected, diag };
+}
+
 function expiresAtToMillis(exp) {
   if (exp == null) return null;
   if (typeof exp.toMillis === 'function') return exp.toMillis();
@@ -28,37 +64,22 @@ async function handleBazarExpireCron(req, res) {
     }
 
     initAdmin();
-    const rawStrzelca = process.env.STRZELCA_BAZAR_EXPIRE_SECRET;
-    const rawBazar = process.env.BAZAR_CRON_SECRET;
-    const rawCron = process.env.CRON_SECRET;
-    const expected = String(rawStrzelca || rawBazar || rawCron || '').trim();
+    const { expected, diag: secretDiag } = resolveCronSecretFromEnv();
     const h = req.headers || {};
     const bearer = String(h.authorization || h.Authorization || '').replace(/^Bearer\s+/i, '').trim();
     const got = String(h['x-bazar-cron-secret'] || '').trim() || bearer;
 
     if (!expected) {
-      const diag = {
-        vercelEnv: process.env.VERCEL_ENV || null,
-        vercelProjectId: process.env.VERCEL_PROJECT_ID || null,
-        vercelProjectProductionUrl: process.env.VERCEL_PROJECT_PRODUCTION_URL || null,
-        strzelcaBazarExpireSecretKeyPresent: rawStrzelca !== undefined,
-        strzelcaBazarExpireSecretTrimmedLength:
-          rawStrzelca != null ? String(rawStrzelca).trim().length : 0,
-        bazarCronSecretKeyPresent: rawBazar !== undefined,
-        bazarCronSecretTrimmedLength: rawBazar != null ? String(rawBazar).trim().length : 0,
-        cronSecretKeyPresent: rawCron !== undefined,
-        cronSecretTrimmedLength: rawCron != null ? String(rawCron).trim().length : 0,
-      };
       console.error(
-        '[bazar-cron-expire] Brak sekretu crona (STRZELCA_BAZAR_EXPIRE_SECRET / BAZAR_CRON_SECRET / CRON_SECRET)',
-        diag
+        '[bazar-cron-expire] Brak sekretu crona (dynamiczny odczyt STRZELCA_* / BAZAR_* / CRON_*)',
+        secretDiag
       );
       return res.status(503).json({
         success: false,
         error: 'Cron nie skonfigurowany',
         detail:
-          'W tej funkcji nie ma żadnej niepustej wartości STRZELCA_BAZAR_EXPIRE_SECRET, BAZAR_CRON_SECRET ani CRON_SECRET. Najczęstsza przyczyna: zmienne dodane w innym projekcie Vercel niż ten, który obsługuje domenę — porównaj pole diag.vercelProjectId z ID projektu w URL panelu Vercel. Ustaw sekret w tym projekcie, zaznacz Production, Redeploy.',
-        diag,
+          'Brak niepustego sekretu w process.env (nazwy: STRZELCA_BAZAR_EXPIRE_SECRET, BAZAR_CRON_SECRET, CRON_SECRET). Sprawdź Production + Redeploy. Ta wersja API czyta zmienne dynamicznie (ominięcie podstawiania przy buildzie). Jeśli diag nadal pokazuje *_KeyPresent: false — zmienna nie jest wstrzykiwana do tego deploymentu (inny projekt / Custom Environment / zły zakres).',
+        diag: { ...secretDiag, cronEnvReadMode: 'dynamic' },
       });
     }
     if (got !== expected) {

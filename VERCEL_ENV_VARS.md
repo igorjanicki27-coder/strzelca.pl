@@ -68,6 +68,8 @@ To znaczy, że **w runtime tej funkcji** żadna z nazw sekretu nie ma niepustej 
 
 **Zalecana nazwa zmiennej:** **`STRZELCA_BAZAR_EXPIRE_SECRET`** (unikalna, mniej myląca niż ogólne `CRON_SECRET` przy wielu projektach). Nagłówek nadal: `Authorization: Bearer <wartość>` lub `x-bazar-cron-secret`.
 
+**Implementacja `/api/bazar-cron-expire`:** sekrety są czytane z `process.env` **dynamicznym kluczem w pętli** (nie `process.env.CRON_SECRET` na sztywno), żeby uniknąć sytuacji, w której bundler Vercel podstawia pustą wartość w czasie buildu i w produkcji zmienna „znika” mimo ustawień w panelu.
+
 
 ### Development - Opcjonalne
 - **ALLOW_LOCALHOST** - Czy pozwolić na localhost (domyślnie: `false`, ustaw na `true` tylko dla developmentu)

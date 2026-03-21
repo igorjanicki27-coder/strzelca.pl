@@ -102,6 +102,16 @@
         background: #161616 !important;
       }
 
+      /* Checkboxy i radio — bez width:100% (inaczej w flexie wypychają etykietę) */
+      input[type="checkbox"],
+      input[type="radio"] {
+        width: auto !important;
+        max-width: none;
+        padding: 0 !important;
+        flex-shrink: 0;
+        align-self: flex-start;
+      }
+
       /* Status wpisu (blog) — kolory jak etykiety na liście wpisów */
       select#blog-status.blog-status--draft {
         color: #facc15 !important;
@@ -1562,6 +1572,15 @@
                     Filtruj
                   </button>
                 </div>
+                <div class="md:col-span-4 flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="events-show-completed"
+                    class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote"
+                    onchange="applyEventsFilters()"
+                  />
+                  <label for="events-show-completed" class="text-sm text-zinc-300 cursor-pointer select-none">Pokaż zakończone (przeszłe)</label>
+                </div>
               </div>
             </div>
 
@@ -2270,103 +2289,6 @@
           </h1>
 
             <div class="grid grid-cols-1 gap-8 max-w-4xl mx-auto">
-              <!-- Ustawienia SMTP -->
-            <div class="admin-card">
-                <h3 class="text-xl font-bold mb-6">Ustawienia SMTP</h3>
-                <p class="text-sm text-zinc-400 mb-6">
-                  Konfiguracja serwera pocztowego. Te ustawienia są również dostępne jako zmienne środowiskowe w Vercel.
-                </p>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label class="block text-sm font-medium mb-2">Host SMTP *</label>
-                <input
-                      type="text"
-                      id="smtp-host"
-                      placeholder="ssl0.ovh.net"
-                      class="w-full"
-                    />
-                    <p class="text-xs text-zinc-500 mt-1">
-                      Dla OVH: ssl0.ovh.net (SSL) lub ns0.ovh.net (TLS)
-                    </p>
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-medium mb-2">Port SMTP *</label>
-                    <input
-                      type="number"
-                      id="smtp-port"
-                      placeholder="465"
-                      class="w-full"
-                    />
-                    <p class="text-xs text-zinc-500 mt-1">
-                      465 (SSL) lub 587 (TLS)
-                    </p>
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-medium mb-2">Użytkownik (Email) *</label>
-                    <input
-                      type="email"
-                      id="smtp-user"
-                      placeholder="kontakt@strzelca.pl"
-                      class="w-full"
-                    />
-                    <p class="text-xs text-zinc-500 mt-1">
-                      Pełny adres email (np. kontakt@strzelca.pl)
-                    </p>
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-medium mb-2">Hasło *</label>
-                <input
-                      type="password"
-                      id="smtp-password"
-                      placeholder="••••••••"
-                      class="w-full"
-                    />
-                    <p class="text-xs text-zinc-500 mt-1">
-                      Hasło do skrzynki email (z panelu OVH)
-                    </p>
-                  </div>
-
-                  <div>
-                    <label class="flex items-center space-x-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        id="smtp-secure"
-                        checked
-                        class="w-4 h-4"
-                      />
-                      <span class="text-sm font-medium">Połączenie bezpieczne (SSL/TLS)</span>
-                    </label>
-                    <p class="text-xs text-zinc-500 mt-1">
-                      Zaznacz dla portu 465 (SSL), odznacz dla 587 (TLS)
-                    </p>
-                </div>
-              </div>
-
-              <div class="mt-6 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
-                <h4 class="text-sm font-bold text-coyote mb-2">Instrukcja konfiguracji OVH:</h4>
-                <ol class="text-xs text-zinc-400 space-y-1 list-decimal list-inside">
-                  <li>Zaloguj się do panelu OVH</li>
-                  <li>Przejdź do "E-maile" → wybierz domenę strzelca.pl</li>
-                  <li>Kliknij na skrzynkę kontakt@strzelca.pl</li>
-                  <li>W zakładce "Ogólne" znajdziesz hasło (lub ustaw nowe)</li>
-                  <li>W zakładce "Konfiguracja klienta e-mail" znajdziesz ustawienia SMTP</li>
-                  <li>Dla SSL: Host: ssl0.ovh.net, Port: 465</li>
-                  <li>Dla TLS: Host: ns0.ovh.net, Port: 587</li>
-                </ol>
-              </div>
-
-              <div class="mt-6">
-                <button onclick="saveSmtpSettings()" class="btn-admin px-6 py-2">
-                  <i class="fa-solid fa-save mr-2"></i>
-                  Zapisz ustawienia SMTP
-                </button>
-              </div>
-            </div>
-
               <!-- Lista szablonów -->
               <div class="admin-card">
                 <div class="flex justify-between items-center mb-6">
@@ -3208,7 +3130,7 @@
         Timestamp,
         deleteField,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-      import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-02-06-3";
+      import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-03-21-1";
 
       
       async function getFirebaseApiKey() {
@@ -3314,9 +3236,8 @@
           logAuthReady: true,
           logSSO: true,
           firestore: {
-            // Użyj auto-detekcji long polling, aby uniknąć problemów z CORS
-            experimentalAutoDetectLongPolling: true,
-            useFetchStreams: true,
+            experimentalForceLongPolling: true,
+            useFetchStreams: false,
           },
         });
         
@@ -8441,6 +8362,50 @@
         }
       }
 
+      function getAdminEventsFilteredAndSorted() {
+        const statusFilter = document.getElementById("events-status-filter")?.value || "all";
+        const categoryFilter = document.getElementById("events-category-filter")?.value || "all";
+        const sortFilter = document.getElementById("events-sort-filter")?.value || "date-desc";
+        const showCompleted = document.getElementById("events-show-completed")?.checked === true;
+
+        let filtered = [...eventsList];
+        const now = new Date();
+
+        if (statusFilter !== "all") {
+          if (statusFilter === "upcoming") {
+            filtered = filtered.filter((e) => e.dateObj >= now);
+          } else if (statusFilter === "past") {
+            filtered = filtered.filter((e) => e.dateObj < now);
+          } else if (statusFilter === "pinned") {
+            filtered = filtered.filter((e) => e.pinned);
+          }
+        }
+
+        if (!showCompleted && statusFilter !== "past") {
+          filtered = filtered.filter((e) => e.dateObj >= now);
+        }
+
+        if (categoryFilter !== "all") {
+          filtered = filtered.filter((e) => normalizeEventCategory(e.category) === categoryFilter);
+        }
+
+        if (sortFilter === "date-asc") {
+          filtered.sort((a, b) => a.dateObj - b.dateObj);
+        } else if (sortFilter === "date-desc") {
+          filtered.sort((a, b) => b.dateObj - a.dateObj);
+        } else if (sortFilter === "title") {
+          filtered.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+        } else if (sortFilter === "pinned") {
+          filtered.sort((a, b) => {
+            if (a.pinned && !b.pinned) return -1;
+            if (!a.pinned && b.pinned) return 1;
+            return b.dateObj - a.dateObj;
+          });
+        }
+
+        return filtered;
+      }
+
       function renderEventsList() {
         const listEl = document.getElementById("events-list");
         if (!listEl) return;
@@ -8450,7 +8415,15 @@
           return;
         }
 
-        const eventsHtml = eventsList
+        const filtered = getAdminEventsFilteredAndSorted();
+
+        if (filtered.length === 0) {
+          listEl.innerHTML =
+            '<div class="text-center text-zinc-500 py-4">Brak wydarzeń spełniających kryteria</div>';
+          return;
+        }
+
+        const eventsHtml = filtered
           .map((event) => {
             const eventDate = event.dateObj || new Date(event.date);
             const isPast = eventDate < new Date();
@@ -8788,96 +8761,7 @@
       };
 
       window.applyEventsFilters = () => {
-        const statusFilter = document.getElementById("events-status-filter")?.value || "all";
-        const categoryFilter = document.getElementById("events-category-filter")?.value || "all";
-        const sortFilter = document.getElementById("events-sort-filter")?.value || "date-desc";
-
-        let filtered = [...eventsList];
-
-        // Filtrowanie po statusie
-        if (statusFilter !== "all") {
-          const now = new Date();
-          if (statusFilter === "upcoming") {
-            filtered = filtered.filter((e) => e.dateObj >= now);
-          } else if (statusFilter === "past") {
-            filtered = filtered.filter((e) => e.dateObj < now);
-          } else if (statusFilter === "pinned") {
-            filtered = filtered.filter((e) => e.pinned);
-          }
-        }
-
-        // Filtrowanie po kategorii
-        if (categoryFilter !== "all") {
-          filtered = filtered.filter((e) => normalizeEventCategory(e.category) === categoryFilter);
-        }
-
-        // Sortowanie
-        if (sortFilter === "date-asc") {
-          filtered.sort((a, b) => a.dateObj - b.dateObj);
-        } else if (sortFilter === "date-desc") {
-          filtered.sort((a, b) => b.dateObj - a.dateObj);
-        } else if (sortFilter === "title") {
-          filtered.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
-        } else if (sortFilter === "pinned") {
-          filtered.sort((a, b) => {
-            if (a.pinned && !b.pinned) return -1;
-            if (!a.pinned && b.pinned) return 1;
-            return b.dateObj - a.dateObj;
-          });
-        }
-
-        // Renderuj przefiltrowaną listę
-        const listEl = document.getElementById("events-list");
-        if (!listEl) return;
-
-        if (filtered.length === 0) {
-          listEl.innerHTML = '<div class="text-center text-zinc-500 py-4">Brak wydarzeń spełniających kryteria</div>';
-          return;
-        }
-
-        const eventsHtml = filtered
-          .map((event) => {
-            const eventDate = event.dateObj || new Date(event.date);
-            const isPast = eventDate < new Date();
-            const isPinned = event.pinned || false;
-            const category = normalizeEventCategory(event.category);
-
-            return `
-              <div class="flex justify-between items-center p-4 bg-zinc-800 rounded-lg border ${isPinned ? "border-coyote" : "border-zinc-700"}">
-                <div class="flex-1">
-                  <div class="flex items-center gap-2 mb-2">
-                    ${isPinned ? '<i class="fa-solid fa-thumbtack text-coyote" title="Przypięte"></i>' : ""}
-                    <div class="font-semibold text-white">${event.title || "Bez tytułu"}</div>
-                    <span class="text-xs px-2 py-1 rounded bg-zinc-700 text-zinc-300">${getEventCategoryLabel(category)}</span>
-                    ${isPast ? '<span class="text-xs px-2 py-1 rounded bg-red-900/30 text-red-400">Przeszłe</span>' : '<span class="text-xs px-2 py-1 rounded bg-green-900/30 text-green-400">Nadchodzące</span>'}
-                  </div>
-                  <div class="text-sm text-zinc-400 mb-1">
-                    <i class="fa-solid fa-calendar mr-1"></i>
-                    ${eventDate.toLocaleString("pl-PL", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </div>
-                  ${event.location ? `<div class="text-sm text-zinc-400 mb-1"><i class="fa-solid fa-location-dot mr-1"></i>${event.location}</div>` : ""}
-                  ${event.description ? `<div class="text-sm text-zinc-500 mt-2 line-clamp-2">${eventDescriptionPlainPreview(event.description)}</div>` : ""}
-                </div>
-                <div class="flex space-x-2 ml-4">
-                  <button onclick="editEvent('${event.id}')" class="text-blue-400 hover:text-blue-300 px-3 py-1 border border-blue-400 rounded text-sm transition">
-                    <i class="fa-solid fa-edit mr-1"></i>Edytuj
-                  </button>
-                  <button onclick="deleteEventItem('${event.id}')" class="text-red-400 hover:text-red-300 px-3 py-1 border border-red-400 rounded text-sm transition">
-                    <i class="fa-solid fa-trash mr-1"></i>Usuń
-                  </button>
-                </div>
-              </div>
-            `;
-          })
-          .join("");
-
-        listEl.innerHTML = eventsHtml;
+        renderEventsList();
       };
 
       // Funkcje zarządzania akcjami charytatywnymi
@@ -8978,8 +8862,20 @@
             return;
           }
 
+          const charityRowDocs = [];
           snap.forEach((docSnapshot) => {
             if (docSnapshot.id === PINNED_CHARITY_ID) return;
+            charityRowDocs.push(docSnapshot);
+          });
+
+          if (charityRowDocs.length === 0) {
+            if (emptyEl) emptyEl.classList.remove("hidden");
+            return;
+          }
+
+          const nCharity = charityRowDocs.length;
+
+          charityRowDocs.forEach((docSnapshot, index) => {
             const data = docSnapshot.data();
             const charityItem = { id: docSnapshot.id, ...data };
             charityActionsList.push(charityItem);
@@ -8993,7 +8889,9 @@
                 <div class="border border-zinc-700 rounded-lg p-4">
                   <div class="flex justify-between items-start mb-3">
                     <h4 class="text-lg font-bold coyote-text">${data.title || "Bez tytułu"}</h4>
-                    <div class="flex space-x-2">
+                    <div class="flex flex-wrap items-center gap-2 justify-end">
+                      <button type="button" onclick="moveCharityActionUp('${docSnapshot.id}')" class="text-zinc-400 hover:text-zinc-200 px-2 py-1 border border-zinc-500 rounded text-xs disabled:opacity-30" ${index === 0 ? "disabled" : ""} title="Wyżej na stronie Pomoc">↑</button>
+                      <button type="button" onclick="moveCharityActionDown('${docSnapshot.id}')" class="text-zinc-400 hover:text-zinc-200 px-2 py-1 border border-zinc-500 rounded text-xs disabled:opacity-30" ${index === nCharity - 1 ? "disabled" : ""} title="Niżej na stronie Pomoc">↓</button>
                       <button onclick="editCharityAction('${docSnapshot.id}')" class="text-blue-400 text-sm hover:underline">Edytuj</button>
                       <button onclick="deleteCharityAction('${docSnapshot.id}')" class="text-red-400 text-sm hover:underline">Usuń</button>
                     </div>
@@ -9010,10 +8908,6 @@
             }
           });
 
-          if (charityActionsList.length === 0) {
-            if (emptyEl) emptyEl.classList.remove("hidden");
-            return;
-          }
           if (emptyEl) emptyEl.classList.add("hidden");
         } catch (error) {
           console.error("Error loading charity actions:", error);
@@ -9336,6 +9230,42 @@
         } catch (error) {
           console.error("Error deleting charity action:", error);
           showNotification("Błąd usuwania akcji charytatywnej.", "error");
+        }
+      };
+
+      window.moveCharityActionUp = async (charityId) => {
+        if (charityId === PINNED_CHARITY_ID) return;
+        const index = charityActionsList.findIndex((c) => c.id === charityId);
+        if (index <= 0) return;
+        const cur = charityActionsList[index];
+        const prev = charityActionsList[index - 1];
+        const co = typeof cur.order === "number" ? cur.order : index;
+        const po = typeof prev.order === "number" ? prev.order : index - 1;
+        try {
+          await updateDoc(doc(db, "charity", cur.id), { order: po, updatedAt: new Date() });
+          await updateDoc(doc(db, "charity", prev.id), { order: co, updatedAt: new Date() });
+          await loadCharity();
+        } catch (error) {
+          console.error("moveCharityActionUp:", error);
+          showNotification("Błąd zmiany kolejności akcji.", "error");
+        }
+      };
+
+      window.moveCharityActionDown = async (charityId) => {
+        if (charityId === PINNED_CHARITY_ID) return;
+        const index = charityActionsList.findIndex((c) => c.id === charityId);
+        if (index < 0 || index >= charityActionsList.length - 1) return;
+        const cur = charityActionsList[index];
+        const next = charityActionsList[index + 1];
+        const co = typeof cur.order === "number" ? cur.order : index;
+        const no = typeof next.order === "number" ? next.order : index + 1;
+        try {
+          await updateDoc(doc(db, "charity", cur.id), { order: no, updatedAt: new Date() });
+          await updateDoc(doc(db, "charity", next.id), { order: co, updatedAt: new Date() });
+          await loadCharity();
+        } catch (error) {
+          console.error("moveCharityActionDown:", error);
+          showNotification("Błąd zmiany kolejności akcji.", "error");
         }
       };
 
@@ -11879,14 +11809,12 @@
         
         if (productId) {
           title.textContent = "Edytuj produkt";
-          document.getElementById("product-legal-block")?.classList.add("hidden");
           setTimeout(() => {
             editProduct(productId);
           }, 200);
         } else {
           title.textContent = "Dodaj produkt";
           clearProductForm();
-          document.getElementById("product-legal-block")?.classList.remove("hidden");
         }
       };
 
@@ -12040,15 +11968,6 @@
             return;
           }
 
-          if (!productId) {
-            const ap = document.getElementById("product-accept-platform");
-            const ab = document.getElementById("product-accept-bazar");
-            if (!ap?.checked || !ab?.checked) {
-              showNotification("Zaznacz akceptację regulaminu ogólnego oraz regulaminu bazaru.", "error");
-              return;
-            }
-          }
-
           try {
             // Przygotuj tablicę zdjęć
             const images = productImages.map((img, idx) => ({
@@ -12111,10 +12030,6 @@
         document.getElementById("product-id").value = "";
         productImages = [];
         renderProductImages();
-        const ap = document.getElementById("product-accept-platform");
-        const ab = document.getElementById("product-accept-bazar");
-        if (ap) ap.checked = false;
-        if (ab) ab.checked = false;
       };
 
       window.openAdminRegModal = async (docId) => {
@@ -12190,8 +12105,9 @@
                           ${training.available === true ? '<span class="text-green-400">Dostępne dla wszystkich</span>' : '<span class="text-yellow-400">Ograniczony dostęp</span>'}
                         </div>
                     </div>
-                    <div class="flex space-x-2">
+                    <div class="flex flex-wrap gap-2 justify-end">
                         <button onclick="openTrainingPublicForm('${training.id}')" class="text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400 rounded text-xs">Edytuj</button>
+                        <button onclick="openTrainingAccessModal('${training.id}')" class="text-amber-400 hover:text-amber-300 px-2 py-1 border border-amber-400 rounded text-xs">Dostęp</button>
                         <button onclick="openTrainingContentForm('${training.id}')" class="text-green-400 hover:text-green-300 px-2 py-1 border border-green-400 rounded text-xs">Treść</button>
                         <button onclick="moveTrainingUp('${training.id}')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 border border-zinc-400 rounded text-xs" ${index === 0 ? 'disabled' : ''} title="Przenieś wyżej">↑</button>
                         <button onclick="moveTrainingDown('${training.id}')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 border border-zinc-400 rounded text-xs" ${index === trainingsList.length - 1 ? 'disabled' : ''} title="Przenieś niżej">↓</button>
@@ -12294,6 +12210,62 @@
         `).join('');
       }
       let trainingPublicImageBase64 = null;
+      /** ID szkolenia w modalu „Dostęp” (osobno od currentTrainingId — treść lekcji itd.) */
+      let trainingAccessModalTrainingId = null;
+
+      window.openTrainingAccessModal = async (trainingId) => {
+        if (!trainingId) return;
+        const training = trainingsList.find((t) => t.id === trainingId);
+        if (!training) {
+          showNotification("Nie znaleziono szkolenia.", "error");
+          return;
+        }
+        trainingAccessModalTrainingId = trainingId;
+        document.getElementById("training-access-modal-title").textContent =
+          `Dostęp: ${training.title || "Szkolenie"}`;
+        document.getElementById("training-public-available-all").checked = training.available === true;
+        document.getElementById("training-public-hidden").checked = training.hidden === true;
+        await loadTrainingAccessList(trainingId);
+        document.getElementById("training-access-modal").classList.remove("hidden");
+      };
+
+      window.closeTrainingAccessModal = () => {
+        document.getElementById("training-access-modal").classList.add("hidden");
+        trainingAccessModalTrainingId = null;
+        const accessList = document.getElementById("training-public-access-list");
+        if (accessList) {
+          accessList.innerHTML =
+            '<div class="text-sm text-zinc-500">Brak użytkowników z dostępem</div>';
+        }
+      };
+
+      window.saveTrainingAccessSettings = async () => {
+        const tid = trainingAccessModalTrainingId;
+        if (!tid) {
+          showNotification("Błąd: brak wybranego szkolenia.", "error");
+          return;
+        }
+        const available = document.getElementById("training-public-available-all").checked;
+        const hidden = document.getElementById("training-public-hidden").checked;
+        try {
+          await updateDoc(doc(db, "trainings", tid), {
+            available: available ? true : false,
+            hidden: hidden ? true : false,
+          });
+          showNotification("Ustawienia dostępu zostały zapisane.", "success");
+          if (currentUser) {
+            const t = trainingsList.find((x) => x.id === tid);
+            await logActivity(currentUser.uid, "TRAINING_UPDATED", {
+              trainingTitle: t?.title || "",
+              trainingId: tid,
+            });
+          }
+          await loadTrainings();
+        } catch (error) {
+          console.error("Error saving training access:", error);
+          showNotification("Błąd zapisywania dostępu.", "error");
+        }
+      };
 
       window.openTrainingPublicForm = async (trainingId = null) => {
         const modal = document.getElementById("training-public-form-modal");
@@ -12328,19 +12300,13 @@
         trainingImages = training.images ? [...training.images] : (training.img ? [{url: training.img, order: 0}] : []);
         renderTrainingImages();
         
-        document.getElementById("training-public-available-all").checked = training.available === true;
-        document.getElementById("training-public-hidden").checked = training.hidden === true;
         document.getElementById("training-public-description").innerHTML = training.desc || "";
-
-        await loadTrainingAccessList(trainingId);
       };
 
       window.clearTrainingPublicForm = () => {
         document.getElementById("training-public-form").reset();
         document.getElementById("training-public-description").innerHTML = "";
         document.getElementById("training-public-id").value = "";
-        document.getElementById("training-public-available-all").checked = false;
-        document.getElementById("training-public-hidden").checked = false;
         trainingImages = [];
         renderTrainingImages();
         currentTrainingId = null;
@@ -12701,16 +12667,16 @@
         if (index <= 0) return;
 
         try {
-          const currentTraining = trainingsList[index];
-          const previousTraining = trainingsList[index - 1];
-          
-          const currentOrder = currentTraining.order;
-          const previousOrder = previousTraining.order;
+          const reordered = [...trainingsList];
+          [reordered[index - 1], reordered[index]] = [reordered[index], reordered[index - 1]];
 
-          await updateDoc(doc(db, "trainings", currentTraining.id), { order: previousOrder });
-          await updateDoc(doc(db, "trainings", previousTraining.id), { order: currentOrder });
+          const batch = writeBatch(db);
+          reordered.forEach((t, i) => {
+            batch.update(doc(db, "trainings", t.id), { order: i });
+          });
+          await batch.commit();
 
-          loadTrainings();
+          await loadTrainings();
         } catch (error) {
           console.error("Error moving training up:", error);
           showNotification("Błąd zmiany pozycji szkolenia.", "error");
@@ -12722,16 +12688,16 @@
         if (index >= trainingsList.length - 1) return;
 
         try {
-          const currentTraining = trainingsList[index];
-          const nextTraining = trainingsList[index + 1];
-          
-          const currentOrder = currentTraining.order;
-          const nextOrder = nextTraining.order;
+          const reordered = [...trainingsList];
+          [reordered[index], reordered[index + 1]] = [reordered[index + 1], reordered[index]];
 
-          await updateDoc(doc(db, "trainings", currentTraining.id), { order: nextOrder });
-          await updateDoc(doc(db, "trainings", nextTraining.id), { order: currentOrder });
+          const batch = writeBatch(db);
+          reordered.forEach((t, i) => {
+            batch.update(doc(db, "trainings", t.id), { order: i });
+          });
+          await batch.commit();
 
-          loadTrainings();
+          await loadTrainings();
         } catch (error) {
           console.error("Error moving training down:", error);
           showNotification("Błąd zmiany pozycji szkolenia.", "error");
@@ -13789,6 +13755,18 @@
                 ? "border-l-4 border-l-green-500"
                 : "border-l-4 border-l-[#c19a6b]";
           const rowId = String(docRow.id || "").replace(/'/g, "\\'");
+          const editBtn = `<button type="button" onclick="window.editDocument('${rowId}')" class="text-blue-400 hover:text-blue-300 px-3 py-1 border border-blue-400 rounded text-sm transition">
+                  <i class="fa-solid fa-edit mr-1"></i>Edytuj
+                </button>`;
+          const deleteBtn = `<button type="button" onclick="window.deleteDocument('${rowId}')" class="text-red-400 hover:text-red-300 px-3 py-1 border border-red-400 rounded text-sm transition">
+                  <i class="fa-solid fa-trash mr-1"></i>Usuń
+                </button>`;
+          let extraActions = "";
+          if (kind === "modal") {
+            extraActions = `${editBtn}${deleteBtn}`;
+          } else if (kind === "file") {
+            extraActions = deleteBtn;
+          }
           return `
             <div class="flex flex-wrap justify-between items-start gap-4 p-4 bg-zinc-800 rounded-lg border border-zinc-700 hover:border-coyote/60 transition ${border}">
               <div class="flex-1 min-w-[200px]">
@@ -13802,12 +13780,7 @@
               <div class="flex flex-wrap items-center gap-2 shrink-0">
                 <button type="button" onclick="window.moveDocumentUp('${rowId}')" class="text-zinc-400 hover:text-zinc-200 px-2 py-1 border border-zinc-500 rounded text-xs disabled:opacity-30" ${index === 0 ? "disabled" : ""} title="Wyżej">↑</button>
                 <button type="button" onclick="window.moveDocumentDown('${rowId}')" class="text-zinc-400 hover:text-zinc-200 px-2 py-1 border border-zinc-500 rounded text-xs disabled:opacity-30" ${index === n - 1 ? "disabled" : ""} title="Niżej">↓</button>
-                <button type="button" onclick="window.editDocument('${rowId}')" class="text-blue-400 hover:text-blue-300 px-3 py-1 border border-blue-400 rounded text-sm transition">
-                  <i class="fa-solid fa-edit mr-1"></i>Edytuj
-                </button>
-                <button type="button" onclick="window.deleteDocument('${rowId}')" class="text-red-400 hover:text-red-300 px-3 py-1 border border-red-400 rounded text-sm transition">
-                  <i class="fa-solid fa-trash mr-1"></i>Usuń
-                </button>
+                ${extraActions}
               </div>
             </div>
           `;
@@ -13839,6 +13812,17 @@
         const dom = window.document;
         const rec = documentsList.find((d) => d.id === documentId);
         if (!rec) return;
+
+        const editKind =
+          rec.kind === "modal" || (!rec.kind && rec.modalTarget)
+            ? "modal"
+            : rec.kind === "form" || rec.formId
+              ? "form"
+              : "file";
+        if (editKind !== "modal") {
+          showNotification("Edycja jest dostępna tylko dla dokumentów tekstowych (regulaminy).", "info");
+          return;
+        }
 
         currentDocumentId = documentId;
         dom.getElementById("document-id").value = rec.id;
@@ -13906,12 +13890,17 @@
       };
 
       window.deleteDocument = async (documentId) => {
+        const docItem = documentsList.find((d) => d.id === documentId);
+        if (docItem && docItem.kind === "form") {
+          showNotification("Formularzy interaktywnych nie można usunąć z tego panelu.", "error");
+          return;
+        }
+
         if (!confirm("Czy na pewno chcesz usunąć ten dokument?")) {
           return;
         }
 
         try {
-          const docItem = documentsList.find((d) => d.id === documentId);
           const documentTitle = docItem ? docItem.title : "Nieznany dokument";
 
           await deleteDoc(doc(db, "documents", documentId));
@@ -14028,8 +14017,8 @@
       }
 
       window.openTrainingUserDialog = async () => {
-        if (!currentTrainingId) {
-          showNotification("Najpierw wybierz szkolenie.", "error");
+        if (!trainingAccessModalTrainingId) {
+          showNotification("Otwórz najpierw okno Dostęp przy wybranym szkoleniu.", "error");
           return;
         }
 
@@ -14119,7 +14108,7 @@
           return;
         }
 
-        if (!currentTrainingId) {
+        if (!trainingAccessModalTrainingId) {
           showNotification("Błąd: brak wybranego szkolenia.", "error");
           return;
         }
@@ -14128,19 +14117,20 @@
           const accessRef = collection(db, "trainingAccess");
           let addedCount = 0;
           let skippedCount = 0;
+          const tid = trainingAccessModalTrainingId;
 
           for (const userId of selectedTrainingUsers) {
             // Sprawdź czy użytkownik już ma dostęp
             const accessQuery = query(
               accessRef,
-              where("trainingId", "==", currentTrainingId),
+              where("trainingId", "==", tid),
               where("userId", "==", userId)
             );
             const existingAccess = await getDocs(accessQuery);
 
             if (existingAccess.empty) {
               await addDoc(accessRef, {
-                trainingId: currentTrainingId,
+                trainingId: tid,
                 userId: userId,
                 grantedAt: new Date(),
                 grantedBy: currentUser.uid,
@@ -14158,7 +14148,7 @@
             showNotification(`${skippedCount} użytkownik${skippedCount === 1 ? '' : skippedCount < 5 ? 'ów' : 'ów'} już ma dostęp.`, "warning");
           }
 
-          await loadTrainingAccessList(currentTrainingId);
+          await loadTrainingAccessList(tid);
           closeTrainingUserDialog();
         } catch (error) {
           console.error("Error adding training access:", error);
@@ -14221,7 +14211,8 @@
         try {
           await deleteDoc(doc(db, "trainingAccess", accessId));
           showNotification("Dostęp został usunięty.");
-          await loadTrainingAccessList(currentTrainingId);
+          const tid = trainingAccessModalTrainingId;
+          if (tid) await loadTrainingAccessList(tid);
         } catch (error) {
           console.error("Error removing training access:", error);
           showNotification("Błąd usuwania dostępu.", "error");
@@ -14238,8 +14229,6 @@
           const title = document.getElementById("training-public-title").value.trim();
           const price = document.getElementById("training-public-price").value.trim();
           const desc = document.getElementById("training-public-description").innerHTML;
-          const available = document.getElementById("training-public-available-all").checked;
-          const hidden = document.getElementById("training-public-hidden").checked;
 
           if (!title || !price || trainingImages.length === 0) {
             showNotification("Wypełnij wszystkie wymagane pola (w tym zdjęcia).", "error");
@@ -14247,21 +14236,23 @@
           }
 
           try {
+            const existingTraining = trainingId
+              ? trainingsList.find((t) => t.id === trainingId)
+              : null;
             const trainingData = {
               title,
               price,
               images: trainingImages.map(img => ({ url: img.url, order: img.order })),
               img: trainingImages[0] ? trainingImages[0].url : "",
               desc,
-              available: available ? true : false,
-              hidden: hidden ? true : false,
+              available: existingTraining ? existingTraining.available === true : false,
+              hidden: existingTraining ? existingTraining.hidden === true : false,
               date: Date.now(),
               order: trainingId ? trainingsList.find(t => t.id === trainingId)?.order || trainingsList.length : trainingsList.length,
             };
 
             if (trainingId) {
               // Aktualizacja istniejącego szkolenia - zachowaj content jeśli istnieje
-              const existingTraining = trainingsList.find(t => t.id === trainingId);
               if (existingTraining && existingTraining.content) {
                 trainingData.content = existingTraining.content;
               }
@@ -14286,7 +14277,6 @@
                   trainingId: currentTrainingId
                 });
               }
-              await loadTrainingAccessList(currentTrainingId);
               clearTrainingPublicForm();
               closeTrainingPublicForm();
             }
@@ -18183,36 +18173,6 @@
         }
       };
 
-      // Zapisywanie ustawień SMTP
-      window.saveSmtpSettings = async function() {
-        try {
-          const settings = {
-            host: document.getElementById('smtp-host').value,
-            port: parseInt(document.getElementById('smtp-port').value, 10),
-            user: document.getElementById('smtp-user').value,
-            password: document.getElementById('smtp-password').value,
-            secure: document.getElementById('smtp-secure').checked,
-          };
-
-          if (!settings.host || !settings.port || !settings.user || !settings.password) {
-            showNotification('Wypełnij wszystkie wymagane pola', 'error');
-            return;
-          }
-
-          // Zapisz do Firestore (lub użyj zmiennych środowiskowych)
-          // Na razie tylko informacja - użytkownik musi ustawić w Vercel
-          showNotification('Ustawienia SMTP należy skonfigurować w Vercel jako zmienne środowiskowe:\n' +
-            `SMTP_HOST=${settings.host}\n` +
-            `SMTP_PORT=${settings.port}\n` +
-            `SMTP_USER=${settings.user}\n` +
-            `SMTP_PASSWORD=${settings.password}\n` +
-            `SMTP_SECURE=${settings.secure}`, 'info');
-        } catch (error) {
-          console.error('Error saving SMTP settings:', error);
-          showNotification('Błąd zapisywania ustawień: ' + error.message, 'error');
-        }
-      };
-
       // Ładowanie szablonów przy przejściu do zakładki
       if (typeof switchTab === 'function') {
         const originalSwitchTab = window.switchTab;
@@ -18345,24 +18305,6 @@
             <div id="product-description-editor" style="min-height: 300px;" class="editor-content" contenteditable="true" placeholder="Opis produktu..."></div>
           </div>
 
-          <div id="product-legal-block" class="bg-zinc-900/80 border border-zinc-700 rounded-lg p-4 space-y-3">
-            <p class="text-xs text-zinc-400 leading-relaxed">
-              Przy <strong class="text-zinc-300">dodawaniu</strong> nowego produktu potwierdzasz zapoznanie się z dokumentami:
-            </p>
-            <label class="flex items-start gap-3 cursor-pointer text-sm text-zinc-300">
-              <input type="checkbox" id="product-accept-platform" class="mt-1 accent-[#c19a6b]" />
-              <span>Zapoznałem/am się z
-                <a href="#" class="coyote-text hover:underline" onclick="event.preventDefault(); openAdminRegModal('regulamin-platformy');">Regulaminem ogólnym (platformy)</a>
-                i akceptuję jego postanowienia.</span>
-            </label>
-            <label class="flex items-start gap-3 cursor-pointer text-sm text-zinc-300">
-              <input type="checkbox" id="product-accept-bazar" class="mt-1 accent-[#c19a6b]" />
-              <span>Zapoznałem/am się z
-                <a href="#" class="coyote-text hover:underline" onclick="event.preventDefault(); openAdminRegModal('regulamin-bazar');">Regulaminem bazaru</a>
-                i akceptuję jego postanowienia.</span>
-            </label>
-          </div>
-
           <div class="flex gap-4 pt-4 border-t border-zinc-700">
             <button type="submit" class="btn-admin flex-1">
               <i class="fa-solid fa-save mr-2"></i>
@@ -18457,8 +18399,30 @@
             ></div>
           </div>
 
-          <!-- Zarządzanie dostępem -->
-          <div class="border-t border-zinc-700 pt-4 mt-4">
+          <div class="flex gap-4 pt-4 border-t border-zinc-700">
+            <button type="submit" class="btn-admin flex-1">
+              <i class="fa-solid fa-save mr-2"></i>
+              Zapisz szkolenie
+            </button>
+            <button type="button" onclick="closeTrainingPublicForm()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
+              Anuluj
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal dostępu do szkolenia (widoczność + lista użytkowników) -->
+    <div id="training-access-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onclick="if(event.target.id === 'training-access-modal') closeTrainingAccessModal()">
+      <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold coyote-text" id="training-access-modal-title">Dostęp</h2>
+          <button type="button" onclick="closeTrainingAccessModal()" class="text-zinc-400 hover:text-white">
+            <i class="fa-solid fa-times text-xl"></i>
+          </button>
+        </div>
+        <div class="flex-1 overflow-y-auto space-y-4 pr-2">
+          <div>
             <h4 class="text-lg font-semibold mb-4">Dostępność</h4>
             <div class="space-y-3">
               <label class="flex items-center gap-2 cursor-pointer">
@@ -18483,8 +18447,9 @@
             <p class="text-xs text-zinc-500 mt-2">
               Jeśli żadna opcja nie jest zaznaczona, kurs jest widoczny tylko dla użytkowników z dostępem.
             </p>
-            
-            <h4 class="text-lg font-bold mb-4 mt-6">Zarządzanie dostępem</h4>
+          </div>
+          <div class="border-t border-zinc-700 pt-4">
+            <h4 class="text-lg font-bold mb-4">Zarządzanie dostępem</h4>
             <div class="space-y-4">
               <button
                 type="button"
@@ -18496,23 +18461,22 @@
               </button>
               <div>
                 <label class="block text-sm font-medium mb-2">Użytkownicy z dostępem</label>
-                <div id="training-public-access-list" class="space-y-2">
-                  <!-- Lista użytkowników z dostępem -->
+                <div id="training-public-access-list" class="space-y-2 min-h-[48px]">
+                  <div class="text-sm text-zinc-500">Brak użytkowników z dostępem</div>
                 </div>
               </div>
             </div>
           </div>
-
-          <div class="flex gap-4 pt-4 border-t border-zinc-700">
-            <button type="submit" class="btn-admin flex-1">
-              <i class="fa-solid fa-save mr-2"></i>
-              Zapisz szkolenie
-            </button>
-            <button type="button" onclick="closeTrainingPublicForm()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
-              Anuluj
-            </button>
-          </div>
-        </form>
+        </div>
+        <div class="flex gap-4 pt-4 mt-4 border-t border-zinc-700 flex-shrink-0">
+          <button type="button" onclick="saveTrainingAccessSettings()" class="btn-admin flex-1">
+            <i class="fa-solid fa-save mr-2"></i>
+            Zapisz dostęp
+          </button>
+          <button type="button" onclick="closeTrainingAccessModal()" class="btn-admin bg-zinc-700 hover:bg-zinc-600">
+            Zamknij
+          </button>
+        </div>
       </div>
     </div>
 
@@ -18639,7 +18603,7 @@
     </div>
 
     <!-- Modal wyboru użytkowników do szkoleń -->
-    <div id="training-user-dialog" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onclick="if(event.target.id === 'training-user-dialog') closeTrainingUserDialog()">
+    <div id="training-user-dialog" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onclick="if(event.target.id === 'training-user-dialog') closeTrainingUserDialog()">
       <div class="admin-card max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold coyote-text">Dodaj użytkowników do szkolenia</h2>
