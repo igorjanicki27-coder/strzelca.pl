@@ -27,15 +27,27 @@ function createTransporter() {
 }
 
 async function sendTransactionalEmail(opts) {
-  const { to, subject, html, logCategory, logMeta, skipFailureLog } = opts || {};
+  const {
+    to,
+    subject,
+    html,
+    logCategory,
+    logMeta,
+    skipFailureLog,
+    replyTo,
+    fromDisplayName,
+  } = opts || {};
   if (!to || !subject || !html) {
     throw new Error('sendTransactionalEmail: brak to, subject lub html');
   }
   const transporter = createTransporter();
+  const smtpUser = process.env.SMTP_USER || 'kontakt@strzelca.pl';
+  const name = String(fromDisplayName || 'Strzelca.pl').replace(/"/g, "'");
   try {
     await transporter.sendMail({
-      from: `"Strzelca.pl" <${process.env.SMTP_USER || 'kontakt@strzelca.pl'}>`,
+      from: `"${name}" <${smtpUser}>`,
       to,
+      replyTo: replyTo || undefined,
       subject,
       html,
     });

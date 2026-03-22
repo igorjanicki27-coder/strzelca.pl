@@ -273,4 +273,4 @@ async function handleBazarExpireCron(req, res) {
   }
 }
 
-module.exports = { handleBazarExpireCron };
+module.exports = { handleBazarExpireCron, resolveExpectedCronSecret };
