@@ -124,6 +124,8 @@
             background: #27272a;
             border-radius: 0.5rem;
             border: 1px solid #3f3f46;
+            /* Górna obwódka w tym samym kolorze co tło strony — unika „jasnego paska” nad pierwszą kartą */
+            border-top-color: #0a0a0a;
         }
         .doc-catalog-row--modal {
             border-left: 4px solid #d97706;
@@ -196,7 +198,9 @@
             outline-offset: 2px;
         }
 
-        /* html2canvas musi „widzieć” element: poza ekranem często daje biały PDF */
+        /* html2canvas musi „widzieć” element w viewport (poza ekranem często daje biały PDF).
+           Przezroczystość 0.02 potrafi dać pusty zrzut — na czas generowania dodajemy
+           .return-claim-pdf-root--capture-active (opacity: 1). */
         .return-claim-pdf-root--capture {
             position: fixed;
             left: 0;
@@ -208,8 +212,17 @@
             pointer-events: none;
             opacity: 0.02;
             overflow: visible;
+            color-scheme: light;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+        }
+        .return-claim-pdf-root--capture-active {
+            opacity: 1 !important;
+            color-scheme: light !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            forced-color-adjust: none;
+            -webkit-forced-color-adjust: none;
         }
     </style>
     <!-- Wspólne poprawki responsywności -->
@@ -217,7 +230,7 @@
     <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/documents-catalog-shared.mjs?v=2026-03-22-3" crossorigin />
-    <link rel="modulepreload" href="https://strzelca.pl/regulamin-txt-render.mjs?v=2026-03-22-3" crossorigin />
+    <link rel="modulepreload" href="https://strzelca.pl/regulamin-txt-render.mjs?v=2026-03-22-4" crossorigin />
 </head>
 <body>
     <!-- Panel użytkownika -->
@@ -774,7 +787,7 @@
         id="return-claim-pdf-root"
         aria-hidden="true"
         class="return-claim-pdf-root--capture"
-        style="padding:12mm;background:#fafafa;color:#18181b;font-family:Inter,system-ui,sans-serif;font-size:10.5pt;line-height:1.45;"
+        style="padding:12mm;background:#fafafa;color:#18181b;font-family:Inter,system-ui,sans-serif;font-size:10.5pt;line-height:1.45;color-scheme:light;"
     ></div>
 
     <!-- Modal: podgląd PDF + pobieranie (bez nowej karty) -->
@@ -831,7 +844,7 @@
             "klauzula-donacji": "Klauzula Donacji",
         };
 
-        const REGULAMIN_TXT_RENDER_URL = "https://strzelca.pl/regulamin-txt-render.mjs?v=2026-03-22-3";
+        const REGULAMIN_TXT_RENDER_URL = "https://strzelca.pl/regulamin-txt-render.mjs?v=2026-03-22-4";
         let regulaminWitrynyHtmlCache = null;
         let regulaminWitrynyLoadPromise = null;
 
@@ -1795,15 +1808,19 @@ const firebaseConfig = {
                         scrollX: 0,
                         scrollY: 0,
                         allowTaint: false,
+                        letterRendering: true,
                         onclone(clonedDoc) {
                             try {
-                                const node =
-                                    clonedDoc && clonedDoc.getElementById
-                                        ? clonedDoc.getElementById("return-claim-pdf-root")
-                                        : null;
-                                if (node && node.style) {
+                                if (!clonedDoc?.getElementById) return;
+                                const node = clonedDoc.getElementById("return-claim-pdf-root");
+                                if (node?.style) {
                                     node.style.cssText =
-                                        "position:relative;left:0;top:0;opacity:1;z-index:0;box-sizing:border-box;width:210mm;max-width:100%;height:auto;min-height:0;max-height:none;overflow:visible;background:#fafafa;color:#18181b;padding:10mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;";
+                                        "position:relative;left:0;top:0;opacity:1;z-index:0;box-sizing:border-box;width:210mm;max-width:100%;height:auto;min-height:0;max-height:none;overflow:visible;background:#fafafa;color:#18181b;padding:10mm;color-scheme:light;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none;-webkit-forced-color-adjust:none;";
+                                }
+                                const inner = clonedDoc.getElementById("rc-pdf-inner");
+                                if (inner?.style) {
+                                    inner.style.color = "#18181b";
+                                    inner.style.backgroundColor = "transparent";
                                 }
                             } catch (_) {
                                 /* ignore */
@@ -1819,6 +1836,14 @@ const firebaseConfig = {
                     if (btn) {
                         btn.disabled = true;
                         btn.setAttribute("aria-busy", "true");
+                    }
+                    pdfRoot.classList.add("return-claim-pdf-root--capture-active");
+                    try {
+                        if (document.fonts?.ready) {
+                            await document.fonts.ready;
+                        }
+                    } catch (_) {
+                        /* starsze przeglądarki / brak Font Loading API */
                     }
                     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
                     const blob = await html2pdf().set(opt).from(pdfRoot).outputPdf("blob");
@@ -1841,6 +1866,7 @@ const firebaseConfig = {
                     console.error(e);
                     alert("Nie udało się wygenerować pliku PDF. Spróbuj ponownie.");
                 } finally {
+                    pdfRoot.classList.remove("return-claim-pdf-root--capture-active");
                     if (btn) {
                         btn.removeAttribute("aria-busy");
                         btn.disabled = getReturnClaimCooldownRemainingMs() > 0;

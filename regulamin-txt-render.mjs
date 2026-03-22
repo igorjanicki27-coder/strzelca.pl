@@ -1,5 +1,6 @@
 /**
- * Zamiana treści regulaminu-witryny.txt na HTML w stylu dokumentów strzelca.pl (karty, działy, §).
+ * Zamiana treści regulaminu-witryny.txt na HTML w stylu dokumentów strzelca.pl
+ * (akapity, listy, nagłówki działów i paragrafów w kolorystyce Coyote — bez ramek wokół bloków tekstu).
  */
 
 export function renderRegulaminTxtToHtml(raw, options = {}) {
@@ -23,8 +24,8 @@ export function renderRegulaminTxtToHtml(raw, options = {}) {
   function flushBullets(buf) {
     if (!buf.length) return;
     out.push(
-      '<ul class="list-disc pl-5 space-y-1.5 text-zinc-300 text-sm leading-relaxed my-3">' +
-        buf.map((t) => `<li>${esc(t.replace(/^\s*•\s*/, ""))}</li>`).join("") +
+      '<ul class="list-disc pl-5 space-y-2 text-zinc-300 text-sm leading-relaxed my-4 marker:text-[#C19A6B]">' +
+        buf.map((t) => `<li class="pl-1">${esc(t.replace(/^\s*•\s*/, ""))}</li>`).join("") +
         "</ul>",
     );
   }
@@ -34,7 +35,12 @@ export function renderRegulaminTxtToHtml(raw, options = {}) {
       .split(/\n\n+/)
       .map((p) => p.trim())
       .filter(Boolean);
-    return parts.map((p) => `<p class="mb-2 last:mb-0">${esc(p).replace(/\n/g, "<br/>")}</p>`).join("");
+    return parts
+      .map(
+        (p) =>
+          `<p class="mb-3 last:mb-0 text-zinc-300 text-sm leading-relaxed">${esc(p).replace(/\n/g, "<br/>")}</p>`,
+      )
+      .join("");
   }
 
   while (i < lines.length) {
@@ -55,14 +61,14 @@ export function renderRegulaminTxtToHtml(raw, options = {}) {
     }
 
     if (isSpis(trimmed)) {
-      out.push(`<h3 class="text-lg font-bold coyote-text mb-3 mt-2 tracking-wide">${esc(trimmed)}</h3>`);
+      out.push(`<h3 class="text-lg font-bold coyote-text mb-4 mt-2 tracking-wide">${esc(trimmed)}</h3>`);
       i++;
       continue;
     }
 
     if (isDzial(trimmed)) {
       out.push(
-        `<h3 class="text-xl md:text-2xl font-bold coyote-text mt-10 mb-4 pt-8 border-t border-zinc-700 first:mt-0 first:pt-0 first:border-t-0">${esc(trimmed)}</h3>`,
+        `<h3 class="text-xl md:text-2xl font-bold coyote-text mt-14 mb-5 first:mt-0 tracking-tight">${esc(trimmed)}</h3>`,
       );
       i++;
       continue;
@@ -86,10 +92,10 @@ export function renderRegulaminTxtToHtml(raw, options = {}) {
       }
       const bodyText = bodyLines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
       out.push(
-        `<div class="border-l-4 bg-zinc-800/40 rounded-r-lg pl-4 pr-3 py-3 mt-4 first:mt-0" style="border-left-color:var(--coyote,#C19A6B);border-left-style:solid">` +
-          `<h4 class="text-base font-bold coyote-text mb-2">${esc(titleLine)}</h4>` +
-          (bodyText ? `<div class="text-zinc-300 text-sm leading-relaxed">${formatParagraphs(bodyText)}</div>` : "") +
-          `</div>`,
+        `<section class="mt-6 scroll-mt-4">` +
+          `<h4 class="text-base font-bold coyote-text mb-3">${esc(titleLine)}</h4>` +
+          (bodyText ? `<div class="space-y-0">${formatParagraphs(bodyText)}</div>` : "") +
+          `</section>`,
       );
       continue;
     }
@@ -109,13 +115,11 @@ export function renderRegulaminTxtToHtml(raw, options = {}) {
     const firstLine = block.split("\n")[0].trim();
     if (/^Regulamin witryny strzelca\.pl$/i.test(firstLine)) {
       out.push(
-        `<h2 class="text-2xl md:text-3xl font-bold coyote-text mb-5 leading-tight">${esc(firstLine)}</h2>`,
+        `<h2 class="text-2xl md:text-3xl font-bold coyote-text mb-4 leading-tight">${esc(firstLine)}</h2>`,
       );
       const rest = block.split("\n").slice(1).join("\n").trim();
       if (rest) {
-        out.push(
-          `<div class="bg-zinc-800/60 p-5 rounded-xl border border-zinc-700/80 text-zinc-300 text-sm leading-relaxed mb-6">${formatParagraphs(rest)}</div>`,
-        );
+        out.push(`<div class="mb-8 space-y-0">${formatParagraphs(rest)}</div>`);
       }
     } else if (
       /^Regulamin strzelca\.pl$/i.test(firstLine) ||
@@ -125,16 +129,14 @@ export function renderRegulaminTxtToHtml(raw, options = {}) {
       /^Regulamin zamówień/i.test(firstLine)
     ) {
       out.push(
-        `<div class="bg-zinc-800/50 p-4 rounded-lg mb-3" style="border:1px solid rgba(193,154,107,0.35)"><p class="text-lg font-bold text-zinc-100 coyote-text">${esc(firstLine)}</p></div>`,
+        `<h3 class="text-lg md:text-xl font-bold coyote-text mt-10 mb-4">${esc(firstLine)}</h3>`,
       );
       const rest = block.split("\n").slice(1).join("\n").trim();
       if (rest) {
-        out.push(`<div class="text-zinc-300 text-sm leading-relaxed mb-4">${formatParagraphs(rest)}</div>`);
+        out.push(`<div class="mb-6 space-y-0">${formatParagraphs(rest)}</div>`);
       }
     } else {
-      out.push(
-        `<div class="bg-zinc-800/50 p-4 rounded-lg text-zinc-300 text-sm leading-relaxed mb-3 border border-zinc-700/40">${formatParagraphs(block)}</div>`,
-      );
+      out.push(`<div class="mb-5 space-y-0">${formatParagraphs(block)}</div>`);
     }
   }
 

@@ -401,18 +401,19 @@
                     <div class="space-y-4">
                         <input type="hidden" id="charity-edit-id">
                         <input id="charity-title" type="text" placeholder="Nazwa akcji">
-                        <input id="charity-date" type="datetime-local" placeholder="Data i czas zakończenia">
-                        <p class="text-[10px] text-zinc-500 leading-relaxed">Data służy też do statusu aktywnej / zakończonej — nawet gdy nie jest widoczna na karcie.</p>
                         <div class="rounded-lg border border-zinc-700/80 bg-zinc-900/60 p-3 space-y-2">
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <input type="checkbox" id="charity-hide-date" class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded shrink-0" onchange="window.syncCharityHideTimeFieldsPomoc()" />
-                                <span class="text-sm">Nie podawaj daty</span>
+                                <span class="text-sm">Nie podawaj daty (akcja do odwołania)</span>
                             </label>
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <input type="checkbox" id="charity-hide-time" class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded shrink-0" />
                                 <span class="text-sm">Nie podawaj godziny</span>
                             </label>
                         </div>
+                        <label class="block text-xs text-zinc-500 uppercase tracking-wider mb-1">Data i czas zakończenia (gdy pokazywane na karcie)</label>
+                        <input id="charity-date" type="datetime-local" placeholder="Data i czas zakończenia" class="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white transition-opacity">
+                        <p class="text-[10px] text-zinc-500 leading-relaxed">Przy „Nie podawaj daty” pole jest wyszarzone — akcja nie przechodzi w status zakończonej i domyślnie trafia na koniec listy (kolejność zmienisz w panelu).</p>
                         <label class="block text-xs text-zinc-500 uppercase tracking-wider mb-1">Opis akcji (edytor jak w sklepie)</label>
                         <div id="charity-description-editor-pomoc" class="rounded-lg overflow-hidden border border-zinc-700"></div>
                         <input id="charity-button-link" type="url" placeholder="Link do przycisku WESPRZYJ (np. Stripe)">
@@ -844,18 +845,18 @@ const firebaseConfig = {
             const rawDateStr = charityItemDateRawString(item);
 
             let dateMetaHtml = '';
-            if (!hasValidDate) {
-                dateMetaHtml = `
-                    <div class="charity-card-meta-block charity-card-meta-row text-xs text-zinc-400 font-medium flex flex-col gap-1 items-center px-1">
-                        <div class="uppercase tracking-wide leading-tight">Brak daty zakończenia</div>
-                    </div>`;
-            } else if (hideDate) {
+            if (hideDate) {
                 dateMetaHtml = `
                     <div class="charity-card-meta-block charity-card-meta-row flex flex-col gap-1 items-stretch px-1 py-0.5">
                         <div class="flex items-center justify-center gap-2 normal-case text-zinc-300 leading-tight text-[11px] sm:text-xs">
                             <i class="fa-solid fa-calendar-day charity-fa-coyote text-sm" aria-hidden="true"></i>
-                            <span>Odwołania</span>
+                            <span>Do odwołania</span>
                         </div>
+                    </div>`;
+            } else if (!hasValidDate) {
+                dateMetaHtml = `
+                    <div class="charity-card-meta-block charity-card-meta-row text-xs text-zinc-400 font-medium flex flex-col gap-1 items-center px-1">
+                        <div class="uppercase tracking-wide leading-tight">Brak daty zakończenia</div>
                     </div>`;
             } else {
                 const dateStr = eventDate.toLocaleDateString('pl-PL');
@@ -1416,6 +1417,7 @@ const firebaseConfig = {
         window.syncCharityHideTimeFieldsPomoc = () => {
             const hd = document.getElementById('charity-hide-date');
             const ht = document.getElementById('charity-hide-time');
+            const dateEl = document.getElementById('charity-date');
             if (!hd || !ht) return;
             if (hd.checked) {
                 ht.checked = true;
@@ -1423,9 +1425,29 @@ const firebaseConfig = {
             } else {
                 ht.disabled = false;
             }
+            if (dateEl) {
+                dateEl.disabled = hd.checked;
+                dateEl.classList.toggle('opacity-40', hd.checked);
+                dateEl.classList.toggle('cursor-not-allowed', hd.checked);
+                if (hd.checked) {
+                    dateEl.removeAttribute('required');
+                } else {
+                    dateEl.setAttribute('required', '');
+                }
+            }
         };
 
         // Funkcje zarządzania akcjami charytatywnymi
+        function charityPomocMaxOrderAmong(excludeId = null) {
+            let m = -1;
+            for (const c of charityActions) {
+                if (c.id === PINNED_CHARITY_ID || c.id === excludeId) continue;
+                const o = typeof c.order === 'number' ? c.order : 0;
+                if (o > m) m = o;
+            }
+            return m;
+        }
+
         window.saveCharity = async () => {
             const id = document.getElementById('charity-edit-id').value || Date.now().toString();
             if (id === PINNED_CHARITY_ID) {
@@ -1441,10 +1463,33 @@ const firebaseConfig = {
                 const hideDate = document.getElementById('charity-hide-date')?.checked === true;
                 let hideTime = document.getElementById('charity-hide-time')?.checked === true;
                 if (hideDate) hideTime = true;
+                const dateRaw = document.getElementById('charity-date').value;
+                const titleVal = document.getElementById('charity-title').value.trim();
+                if (!titleVal || (!hideDate && !dateRaw)) {
+                    alert('Uzupełnij tytuł i datę zakończenia albo zaznacz „Nie podawaj daty”.');
+                    return;
+                }
+                const dateVal = hideDate ? (dateRaw || '') : dateRaw;
+                const isEdit = !!document.getElementById('charity-edit-id').value;
+                const prevRow = isEdit ? charityActions.find((c) => c.id === id) : null;
+                let orderVal;
+                if (prevRow) {
+                    const idx = charityActions.findIndex((c) => c.id === id);
+                    orderVal = typeof prevRow.order === 'number' ? prevRow.order : Math.max(0, idx);
+                } else {
+                    orderVal = charityActions.length;
+                }
+                if (hideDate) {
+                    if (!isEdit) {
+                        orderVal = charityPomocMaxOrderAmong(null) + 1;
+                    } else if (prevRow && prevRow.hideDate !== true) {
+                        orderVal = charityPomocMaxOrderAmong(id) + 1;
+                    }
+                }
 
                 await setDoc(doc(db, "charity", id), {
-                    title: document.getElementById('charity-title').value,
-                    date: document.getElementById('charity-date').value,
+                    title: titleVal,
+                    date: dateVal,
                     description: descHtml,
                     buttonLink: document.getElementById('charity-button-link').value,
                     image: finalImage,
@@ -1452,8 +1497,8 @@ const firebaseConfig = {
                     active: document.getElementById('charity-active').checked,
                     hideDate,
                     hideTime,
-                    order: document.getElementById('charity-edit-id').value ? (charityActions.find(c => c.id === id)?.order || charityActions.length) : charityActions.length,
-                    created: Date.now()
+                    order: orderVal,
+                    created: isEdit && prevRow && prevRow.created != null ? prevRow.created : Date.now(),
                 });
 
                 alert("Akcja została zapisana!");
@@ -1484,6 +1529,7 @@ const firebaseConfig = {
             }
             charityImages = [];
             renderCharityImagesAdmin();
+            window.syncCharityHideTimeFieldsPomoc();
         }
 
         async function fetchCharityActions() {
@@ -1505,13 +1551,20 @@ const firebaseConfig = {
                         const snap = await getDocs(q);
                         const charityActionsFresh = [];
                         const publicCharityItemsFresh = [];
+                        const toEventDate = (data) => {
+                            const raw = data?.date;
+                            if (raw == null || raw === '') return null;
+                            if (typeof raw?.toDate === 'function') return raw.toDate();
+                            const ev = new Date(raw);
+                            return isNaN(ev.getTime()) ? null : ev;
+                        };
                         snap.forEach((d) => {
                             if (d.id === PINNED_CHARITY_ID) return;
                             const data = d.data();
                             charityActionsFresh.push({ id: d.id, ...data });
-                            const eventDate = data.date ? new Date(data.date) : null;
-                            const hasValidDate = eventDate && !isNaN(eventDate.getTime());
-                            const isPast = hasValidDate && eventDate < new Date();
+                            const eventDate = toEventDate(data);
+                            const hasValidDate = eventDate != null;
+                            const isPast = hasValidDate && eventDate < new Date() && data.hideDate !== true;
                             if (data.active && !isPast) {
                                 publicCharityItemsFresh.push({ id: d.id, ...data });
                             }
@@ -1538,9 +1591,15 @@ const firebaseConfig = {
                 list.innerHTML = "";
                 charityActions.forEach((row) => {
                     const data = row;
-                    const eventDate = data.date ? new Date(data.date) : null;
-                    const hasValidDate = eventDate && !isNaN(eventDate.getTime());
-                    const isPast = hasValidDate && eventDate < new Date();
+                    const rawD = data.date;
+                    const eventDate =
+                        rawD == null || rawD === ''
+                            ? null
+                            : typeof rawD?.toDate === 'function'
+                              ? rawD.toDate()
+                              : new Date(rawD);
+                    const hasValidDate = eventDate != null && !isNaN(eventDate.getTime());
+                    const isPast = hasValidDate && eventDate < new Date() && data.hideDate !== true;
                     list.innerHTML += `<div class="flex justify-between items-center p-3 bg-black/40 border border-zinc-800 rounded mb-1">
                     <span class="text-[10px] font-bold uppercase">${escapeHtml(data.title || '')}${isPast ? ' <span class="text-zinc-500">(zakończona)</span>' : ''}</span>
                     <div class="flex space-x-2">
@@ -1604,6 +1663,7 @@ const firebaseConfig = {
 
         // Załaduj akcje przy starcie strony
         fetchCharityActions();
+        window.syncCharityHideTimeFieldsPomoc();
     </script>
     <script
       type="module"

@@ -682,7 +682,9 @@
       };
 
       const app = initializeApp(firebaseConfig);
-      const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true, useFetchStreams: true });
+      // Spójnie z auth-init.mjs / messages-widget.mjs: pierwsza inicjalizacja wygrywa — na Safari
+      // fetch streams + auto long polling często kończy się „access control checks” na …/channel.
+      const db = initializeFirestore(app, { experimentalForceLongPolling: true, useFetchStreams: false });
       const auth = getAuth(app);
 
       await setPersistence(auth, browserLocalPersistence);
