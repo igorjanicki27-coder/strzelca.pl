@@ -375,27 +375,35 @@ module.exports = async (req, res) => {
           orderIds.map(async (orderId) => {
             try {
               const invoiceDoc = await db.collection('invoices').doc(orderId).get();
-              return { orderId, hasInvoice: invoiceDoc.exists };
+              const invData = invoiceDoc.exists ? invoiceDoc.data() : null;
+              const fileName = invData && typeof invData.fileName === 'string' ? invData.fileName.trim() : '';
+              return { orderId, hasInvoice: invoiceDoc.exists, invoiceFileName: fileName };
             } catch (e) {
-              return { orderId, hasInvoice: false };
+              return { orderId, hasInvoice: false, invoiceFileName: '' };
             }
           })
         );
         
         const invoicesMap = {};
+        const invoiceFileNameMap = {};
         invoiceChecks.forEach(check => {
           invoicesMap[check.orderId] = check.hasInvoice;
+          invoiceFileNameMap[check.orderId] = check.invoiceFileName || '';
         });
 
         let orders = snapshot.docs.map(doc => {
           const data = doc.data();
           // Sprawdź czy faktura istnieje w kolekcji invoices lub w polu invoiceFile
           const hasInvoice = invoicesMap[doc.id] || !!data.invoiceFile;
+          const invName = invoiceFileNameMap[doc.id] || '';
+          const invNameNoExt = invName.replace(/\.pdf$/i, '').trim();
           return {
             id: doc.id,
             ...data,
             // URL do pobrania faktury (jeśli istnieje)
             invoiceFile: hasInvoice ? `/api/download-invoice?orderId=${doc.id}` : null,
+            /** Nazwa pliku faktury z kolekcji invoices (bez ścieżki), do podpowiedzi w formularzach */
+            invoiceDocumentLabel: invNameNoExt || null,
             createdAtFormatted: formatDate(data.createdAt),
             updatedAtFormatted: formatDate(data.updatedAt),
           };

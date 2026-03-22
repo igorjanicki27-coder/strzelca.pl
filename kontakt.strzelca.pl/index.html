@@ -585,15 +585,32 @@
 
       window.openContactForm = function () {
         if (window.currentUser) {
-          if (typeof window.__strzelcaMessagesOpenSupport === 'function') {
-            window.__strzelcaMessagesOpenSupport();
-          } else if (typeof window.__strzelcaMessagesOpen === 'function') {
-            window.__strzelcaMessagesOpen();
-          } else {
+          var tries = 0;
+          var maxTries = 40;
+          var delayMs = 100;
+          function tryOpenChat() {
+            if (typeof window.__strzelcaMessagesOpenSupport === 'function') {
+              window.__strzelcaMessagesOpenSupport();
+              return;
+            }
+            if (typeof window.__strzelcaMessagesOpen === 'function') {
+              window.__strzelcaMessagesOpen();
+              return;
+            }
             var widgetHost = document.getElementById('strzelca-messages-widget');
             var fab = widgetHost && widgetHost.shadowRoot && widgetHost.shadowRoot.querySelector('.btn');
-            if (fab) { fab.click(); } else { window.location.href = 'https://konto.strzelca.pl/profil.html#messages'; }
+            if (fab) {
+              fab.click();
+              return;
+            }
+            tries += 1;
+            if (tries < maxTries) {
+              setTimeout(tryOpenChat, delayMs);
+              return;
+            }
+            window.location.href = 'https://konto.strzelca.pl/profil.html#messages';
           }
+          tryOpenChat();
           return;
         }
         var modal = document.getElementById('contact-form-modal');
@@ -879,6 +896,6 @@
       });
     </script>
     <script type="module" src="https://strzelca.pl/auth-widget.mjs?v=2026-03-21-2"></script>
-    <script type="module" src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-4"></script>
+    <script type="module" src="https://strzelca.pl/messages-widget.mjs?v=2026-03-22-1"></script>
   </body>
 </html>

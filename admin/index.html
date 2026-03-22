@@ -2252,10 +2252,11 @@
                 Ta zakładka pokazuje <strong class="text-zinc-300">tę samą listę i kolejność</strong> co
                 <code class="text-zinc-500">dokumenty.strzelca.pl</code> (szablon + Firestore). Przy otwarciu dopisywane są
                 wyłącznie brakujące pozycje ze wspólnego szablonu — bez osobnego importu.
-                <strong class="text-zinc-300">Tekst</strong> = regulamin z HTML strony dokumentów,
-                <strong class="text-zinc-300">Plik</strong> = <code class="text-zinc-500">pdf/</code>,
-                <strong class="text-zinc-300">Formularz</strong> = logika w kodzie strony. Regulaminy edytujesz w repozytorium
-                (<code class="text-zinc-500">dokumenty.strzelca.pl/index.html</code>); tutaj kolejność, tytuł i krótki opis.
+                <strong class="text-zinc-300">Tekst</strong> = treść w oknie modalnym (np. polityki — HTML w
+                <code class="text-zinc-500">dokumenty.strzelca.pl/index.html</code>),
+                <strong class="text-zinc-300">Plik</strong> = m.in. <code class="text-zinc-500">pdf/</code> lub
+                <code class="text-zinc-500">regulamin-witryny.txt</code>,
+                <strong class="text-zinc-300">Formularz</strong> = logika w kodzie strony. Regulamin witryny edytujesz w repozytorium jako plik tekstowy; tutaj kolejność, tytuł i krótki opis.
               </p>
               <div class="flex flex-wrap gap-2">
                 <button type="button" onclick="addNewDocument()" class="btn-admin">
@@ -2275,7 +2276,7 @@
                   <label class="block text-sm font-medium mb-2">Rodzaj *</label>
                   <select id="document-kind" class="w-full" onchange="onDocumentKindChange()">
                     <option value="file">Plik do pobrania (katalog pdf/)</option>
-                    <option value="modal">Tekst na stronie (regulamin — okno modalne)</option>
+                    <option value="modal">Tekst na stronie (okno modalne, np. polityka)</option>
                     <option value="form">Formularz interaktywny (np. zwrot/reklamacja)</option>
                   </select>
                 </div>
@@ -2305,12 +2306,8 @@
                   <label class="block text-sm font-medium mb-2">Szablon treści (ID bloku HTML) *</label>
                   <select id="document-modal-target" class="w-full" onchange="onDocumentModalPresetChange()">
                     <option value="">— wybierz —</option>
-                    <option value="regulamin-platformy" data-default-title="Regulamin Platformy" data-default-icon="fa-users">Regulamin Platformy</option>
-                    <option value="regulamin-sklepu" data-default-title="Regulamin Sklepu i Serwisu" data-default-icon="fa-store">Regulamin Sklepu i Serwisu</option>
-                    <option value="regulamin-bazar" data-default-title="Regulamin bazaru" data-default-icon="fa-handshake">Regulamin bazaru</option>
                     <option value="polityka-prywatnosci-platformy" data-default-title="Polityka Prywatności Platformy" data-default-icon="fa-user-shield">Polityka prywatności platformy</option>
                     <option value="polityka-prywatnosci" data-default-title="Polityka Prywatności Sklepu" data-default-icon="fa-shield-alt">Polityka prywatności sklepu</option>
-                    <option value="regulamin-szkolen" data-default-title="Regulamin Szkoleń" data-default-icon="fa-graduation-cap">Regulamin Szkoleń</option>
                     <option value="procedura-monitorowania" data-default-title="Procedura monitorowania po wprowadzeniu do obrotu" data-default-icon="fa-chart-line">Procedura monitorowania po wprowadzeniu do obrotu</option>
                     <option value="klauzula-donacji" data-default-title="Klauzula Donacji" data-default-icon="fa-heart">Klauzula Donacji</option>
                   </select>
@@ -3245,7 +3242,7 @@
         normalizeFirestoreCatalogDocument,
         normDocPath,
         catalogFileUrlForFirestore,
-      } from "https://strzelca.pl/documents-catalog-shared.mjs?v=2026-03-22-1";
+      } from "https://strzelca.pl/documents-catalog-shared.mjs?v=2026-03-22-2";
 
       
       async function getFirebaseApiKey() {
@@ -14975,7 +14972,7 @@
               ? "form"
               : "file";
         if (editKind !== "modal") {
-          showNotification("Edycja jest dostępna tylko dla dokumentów tekstowych (regulaminy).", "info");
+          showNotification("Edycja treści jest tylko dla dokumentów modalnych (np. polityki w HTML).", "info");
           return;
         }
 

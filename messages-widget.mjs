@@ -1030,7 +1030,25 @@ async function main() {
     } catch {}
     user = auth.currentUser || (await waitForAuth());
   }
-  if (!user) return;
+  if (!user) {
+    // Często na subdomenach (np. kontakt.strzelca.pl) ten moduł startuje równolegle z auth-widget /
+    // inline Firebase — pierwszy snapshot bywa null, a dopiero chwilę później SSO ustawia usera.
+    // Wtedy wcześniejsze `return` blokowało na stałe montaż i globalne `__strzelcaMessagesOpenSupport`.
+    const lateUnsub = onAuthStateChanged(auth, (u) => {
+      if (!u) return;
+      lateUnsub();
+      void mountMessagesWidgetUi(auth, app, db, u).catch((e) =>
+        console.warn("messages-widget: opóźniony montaż", e)
+      );
+    });
+    return;
+  }
+
+  await mountMessagesWidgetUi(auth, app, db, user);
+}
+
+async function mountMessagesWidgetUi(auth, app, db, user) {
+  if (document.getElementById("strzelca-messages-widget")) return;
 
   const uid = user.uid;
 

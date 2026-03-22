@@ -3,12 +3,12 @@
  * POST → https://strzelca.pl/api/orders (cookie SSO .strzelca.pl)
  */
 
-const DOC_URL = "https://dokumenty.strzelca.pl/";
+const REGULAMIN_TXT_URL = "https://dokumenty.strzelca.pl/regulamin-witryny.txt";
 export const STRZELCA_ORDERS_API = "https://strzelca.pl/api/orders";
 
-const legalHtmlCache = Object.create(null);
+let regulaminPlainTextCache = null;
 
-/** @type {null | { context: string, db: import('firebase/firestore').Firestore, auth: import('firebase/auth').Auth, regulaminCfg: { sectionId: string, docTitle: string, fallbackHash: string }, showParcel: boolean, showAddress: boolean }} */
+/** @type {null | { context: string, db: import('firebase/firestore').Firestore, auth: import('firebase/auth').Auth, regulaminCfg: { docTitle: string }, showParcel: boolean, showAddress: boolean }} */
 let pendingForm = null;
 
 function prefixDisplayTitle(context, rawTitle) {
@@ -26,10 +26,8 @@ const CONTEXT = {
     formTitle: "Złóż zamówienie",
     submitIcon: "fa-shopping-cart",
     submitLabel: "Złóż zamówienie",
-    regulaminSection: "regulamin-sklepu",
-    regulaminDocTitle: "Regulamin Sklepu i Serwisu",
-    regulaminLinkLabel: "regulamin zamówień",
-    regulaminFallbackHash: "#regulamin-sklepu",
+    regulaminDocTitle: "Regulamin witryny",
+    regulaminLinkLabel: "regulamin witryny",
     disclaimerWarning: "Zamówienie może nie zostać zaakceptowane.",
     disclaimerAcceptHtml: "Klikając przycisk „Złóż zamówienie” akceptujesz",
     showParcel: true,
@@ -45,10 +43,8 @@ const CONTEXT = {
     formTitle: "Zapytanie o ofertę",
     submitIcon: "fa-paper-plane",
     submitLabel: "Wyślij zapytanie",
-    regulaminSection: "regulamin-szkolen",
-    regulaminDocTitle: "Regulamin Szkoleń",
-    regulaminLinkLabel: "regulamin szkoleń",
-    regulaminFallbackHash: "#regulamin-szkolen",
+    regulaminDocTitle: "Regulamin witryny",
+    regulaminLinkLabel: "regulamin witryny",
     disclaimerWarning: "Zapytanie może nie zostać rozpatrzone pozytywnie.",
     disclaimerAcceptHtml: "Klikając przycisk „Wyślij zapytanie” akceptujesz",
     showParcel: false,
@@ -71,16 +67,12 @@ function closeRegulaminModal() {
   if (el) el.remove();
 }
 
-async function fetchLegalFragment(sectionId) {
-  if (legalHtmlCache[sectionId]) return legalHtmlCache[sectionId];
-  const res = await fetch(DOC_URL, { credentials: "omit", cache: "force-cache" });
+async function fetchRegulaminPlainText() {
+  if (regulaminPlainTextCache != null) return regulaminPlainTextCache;
+  const res = await fetch(REGULAMIN_TXT_URL, { credentials: "omit", cache: "force-cache" });
   if (!res.ok) throw new Error("HTTP " + res.status);
-  const html = await res.text();
-  const parsed = new DOMParser().parseFromString(html, "text/html");
-  const section = parsed.querySelector(`#${sectionId} .accordion-body`);
-  if (!section) throw new Error("Brak sekcji regulaminu");
-  legalHtmlCache[sectionId] = section.innerHTML;
-  return legalHtmlCache[sectionId];
+  regulaminPlainTextCache = await res.text();
+  return regulaminPlainTextCache;
 }
 
 async function openRegulaminModal(ev, cfg) {
@@ -121,19 +113,12 @@ async function openRegulaminModal(ev, cfg) {
   bodyEl.innerHTML = "<p class=\"text-zinc-500\">Wczytywanie regulaminu…</p>";
 
   try {
-    const fragment = await fetchLegalFragment(cfg.sectionId);
-    bodyEl.innerHTML = fragment;
-    const base = DOC_URL.replace(/\/$/, "");
-    bodyEl.querySelectorAll('a[href^="#"]').forEach((a) => {
-      const hash = a.getAttribute("href");
-      a.setAttribute("href", base + hash);
-      a.setAttribute("target", "_blank");
-      a.setAttribute("rel", "noopener noreferrer");
-    });
+    const text = await fetchRegulaminPlainText();
+    bodyEl.innerHTML = `<pre class="whitespace-pre-wrap text-xs text-zinc-300 font-sans leading-relaxed max-w-none">${escapeHtml(text)}</pre>`;
   } catch (err) {
     console.error("Regulamin:", err);
-    const fb = `https://dokumenty.strzelca.pl${cfg.fallbackHash}`;
-    bodyEl.innerHTML = `<p class="text-red-400">Nie udało się wczytać regulaminu. Otwórz <a href="${fb}" target="_blank" rel="noopener noreferrer" class="text-[#C19A6B] underline">dokumenty.strzelca.pl</a>.</p>`;
+    const fb = REGULAMIN_TXT_URL.replace(/"/g, "&quot;");
+    bodyEl.innerHTML = `<p class="text-red-400">Nie udało się wczytać regulaminu. Otwórz <a href="${fb}" target="_blank" rel="noopener noreferrer" class="text-[#C19A6B] underline">regulamin-witryny.txt</a> na dokumenty.strzelca.pl.</p>`;
   }
 }
 
@@ -251,9 +236,7 @@ export async function openOrderInquiryFlow(deps) {
     displayName,
     price: price || 0,
     regulaminCfg: {
-      sectionId: cfg.regulaminSection,
       docTitle: cfg.regulaminDocTitle,
-      fallbackHash: cfg.regulaminFallbackHash,
     },
     showParcel: cfg.showParcel,
     showAddress: cfg.showAddress,

@@ -6,40 +6,36 @@
 export const FALLBACK_SITE_DOCUMENTS = [
   {
     kind: "file",
-    url: "regulamin-witryny.html",
-    title: "Regulamin witryny (scalony)",
-    description: "Jeden dokument: wszystkie regulaminy z dokumentów strzelca.pl + regulamin zamówień.",
-    icon: "fa-file-contract",
+    url: "regulamin-witryny.txt",
+    title: "Regulamin witryny",
+    description: "Jeden dokument tekstowy: wszystkie wcześniejsze regulaminy + regulamin zamówień.",
+    icon: "fa-file-lines",
     order: -1,
   },
-  { kind: "modal", modalTarget: "regulamin-platformy", title: "Regulamin Platformy", icon: "fa-users", order: 0 },
-  { kind: "modal", modalTarget: "regulamin-sklepu", title: "Regulamin Sklepu i Serwisu", icon: "fa-store", order: 1 },
-  { kind: "modal", modalTarget: "regulamin-bazar", title: "Regulamin bazaru", icon: "fa-handshake", order: 2 },
   {
     kind: "modal",
     modalTarget: "polityka-prywatnosci-platformy",
     title: "Polityka Prywatności Platformy",
     icon: "fa-user-shield",
-    order: 3,
+    order: 0,
   },
-  { kind: "modal", modalTarget: "polityka-prywatnosci", title: "Polityka Prywatności Sklepu", icon: "fa-shield-alt", order: 4 },
-  { kind: "modal", modalTarget: "regulamin-szkolen", title: "Regulamin Szkoleń", icon: "fa-graduation-cap", order: 5 },
+  { kind: "modal", modalTarget: "polityka-prywatnosci", title: "Polityka Prywatności Sklepu", icon: "fa-shield-alt", order: 1 },
   {
     kind: "form",
     formId: "zwrot-reklamacja",
     title: "Formularz odstąpienia od umowy zwrotu/reklamacji",
     icon: "fa-file-signature",
-    order: 6,
+    order: 2,
   },
-  { kind: "file", url: "pdf/instrukcja-bezpieczenstwa.html", title: "Instrukcja Bezpieczeństwa Zestawu", icon: "fa-shield-alt", order: 7 },
-  { kind: "modal", modalTarget: "klauzula-donacji", title: "Klauzula Donacji", icon: "fa-heart", order: 8 },
-  { kind: "file", url: "pdf/oswiadczenie-zgodnosci.html", title: "Oświadczenie o zgodności zestawu", icon: "fa-check-circle", order: 9 },
+  { kind: "file", url: "pdf/instrukcja-bezpieczenstwa.html", title: "Instrukcja Bezpieczeństwa Zestawu", icon: "fa-shield-alt", order: 3 },
+  { kind: "modal", modalTarget: "klauzula-donacji", title: "Klauzula Donacji", icon: "fa-heart", order: 4 },
+  { kind: "file", url: "pdf/oswiadczenie-zgodnosci.html", title: "Oświadczenie o zgodności zestawu", icon: "fa-check-circle", order: 5 },
   {
     kind: "modal",
     modalTarget: "procedura-monitorowania",
     title: "Procedura monitorowania po wprowadzeniu do obrotu",
     icon: "fa-chart-line",
-    order: 10,
+    order: 6,
   },
 ];
 
@@ -120,6 +116,14 @@ export function mergeSiteDocumentsWithFallback(dbItems) {
   const DEPRECATED_FILE_PATHS = new Set([
     normDocPath("pdf/formularz-odstapienia.html"),
     normDocPath("pdf/formularz-reklamacyjny.html"),
+    normDocPath("regulamin-witryny.html"),
+  ]);
+
+  const DEPRECATED_MODAL_TARGETS = new Set([
+    "regulamin-platformy",
+    "regulamin-sklepu",
+    "regulamin-bazar",
+    "regulamin-szkolen",
   ]);
 
   for (const fb of FALLBACK_SITE_DOCUMENTS) {
@@ -157,6 +161,7 @@ export function mergeSiteDocumentsWithFallback(dbItems) {
     { modalTarget: "klauzula-donacji", path: "pdf/klauzula-donacji.html" },
   ];
   const extrasDeduped = extras.filter((i) => {
+    if (i.kind === "modal" && DEPRECATED_MODAL_TARGETS.has(String(i.modalTarget || "").trim())) return false;
     if (i.kind === "file") {
       const p = normDocPath(i.url);
       if (DEPRECATED_FILE_PATHS.has(p)) return false;

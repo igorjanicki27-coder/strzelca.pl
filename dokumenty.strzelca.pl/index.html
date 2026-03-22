@@ -186,12 +186,28 @@
             outline: 2px solid var(--coyote);
             outline-offset: 1px;
         }
+
+        /* html2canvas musi „widzieć” element: poza ekranem często daje biały PDF */
+        .return-claim-pdf-root--capture {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 210mm;
+            max-width: min(210mm, 100vw);
+            box-sizing: border-box;
+            z-index: 2147483000;
+            pointer-events: none;
+            opacity: 0.02;
+            overflow: visible;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
     </style>
     <!-- Wspólne poprawki responsywności -->
     <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
     <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
-    <link rel="modulepreload" href="https://strzelca.pl/documents-catalog-shared.mjs?v=2026-03-22-1" crossorigin />
+    <link rel="modulepreload" href="https://strzelca.pl/documents-catalog-shared.mjs?v=2026-03-22-2" crossorigin />
 </head>
 <body>
     <!-- Panel użytkownika -->
@@ -265,364 +281,6 @@
                 </p>
                 <p id="documents-catalog-note" class="text-zinc-600 text-xs hidden"></p>
                 <div id="documents-catalog-grid" class="space-y-3"></div>
-            </div>
-
-            <!-- Regulamin Platformy -->
-            <div class="accordion-item hidden" aria-hidden="true">
-                <div class="accordion-header" onclick="openDocModal('regulamin-platformy')">
-                    <div class="flex items-center gap-3">
-                        <i class="fas fa-users text-coyote text-xl"></i>
-                        <span class="font-bold text-lg">Regulamin Platformy</span>
-                    </div>
-                    <i class="fas fa-up-right-from-square text-zinc-400"></i>
-                </div>
-                <div id="regulamin-platformy" class="accordion-content">
-                    <div class="accordion-body">
-                        <p class="text-zinc-400 mb-4">Zawiera: zasady rejestracji, treści użytkowników i moderację (DSA), bazar C2C vs. sklep, system wiadomości, ochronę danych, odpowiedzialność.</p>
-
-                        <div id="regulamin-platformy-content">
-                            <div class="space-y-6">
-                                <h3 class="text-xl font-bold coyote-text mb-6 uppercase">Regulamin strzelca.pl</h3>
-
-                                <div class="space-y-6">
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§1. Postanowienia ogólne</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            Niniejszy regulamin określa zasady korzystania z platformy strzelca.pl, będącej portalem internetowym
-                                            przeznaczonym dla społeczności strzeleckiej.
-                                        </p>
-                                        <p class="text-zinc-300">
-                                            Użytkownik zobowiązuje się do przestrzegania wszystkich postanowień regulaminu oraz przepisów prawa.
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§2. Rejestracja i konto użytkownika</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            Rejestracja na platformie jest dobrowolna i bezpłatna. Użytkownik zobowiązuje się podać prawdziwe dane.
-                                        </p>
-                                        <ul class="text-zinc-300 list-disc list-inside space-y-2">
-                                            <li>Wymagany wiek: minimum 18 lat</li>
-                                            <li>Zakaz tworzenia wielu kont przez jedną osobę</li>
-                                            <li>Odpowiedzialność za bezpieczeństwo danych logowania</li>
-                                            <li>Możliwość usunięcia konta w każdej chwili</li>
-                                        </ul>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§3. Prawa i obowiązki użytkowników</h4>
-                                        <h5 class="text-base font-semibold text-zinc-200 mb-2">Prawa:</h5>
-                                        <ul class="text-zinc-300 list-disc list-inside space-y-1 mb-4">
-                                            <li>Korzystanie z wszystkich funkcji platformy</li>
-                                            <li>Wystawianie przedmiotów na bazarze</li>
-                                            <li>Uczestnictwo w dyskusjach i eventach</li>
-                                            <li>Kontaktowanie się z innymi użytkownikami poprzez system wiadomości</li>
-                                            <li>Otrzymywanie powiadomień o nowych ofertach i wiadomościach</li>
-                                        </ul>
-
-                                        <h5 class="text-base font-semibold text-zinc-200 mb-2">Obowiązki:</h5>
-                                        <ul class="text-zinc-300 list-disc list-inside space-y-1">
-                                            <li>Przestrzeganie prawa polskiego</li>
-                                            <li>Szanowanie innych użytkowników</li>
-                                            <li>Podawanie prawdziwych informacji</li>
-                                            <li>Zachowanie poufności danych innych użytkowników</li>
-                                        </ul>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§4. System wiadomości i komunikacji</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            Platforma udostępnia system wiadomości umożliwiający komunikację między użytkownikami oraz z administracją.
-                                        </p>
-                                        <ul class="text-zinc-300 list-disc list-inside space-y-2">
-                                            <li>Wiadomości są prywatne i dostępne tylko dla nadawcy oraz odbiorcy</li>
-                                            <li>Administracja może wysyłać wiadomości zbiorowe do wszystkich STRZELCÓW</li>
-                                            <li>STRZELCY wyrażający zgodę na newsletter otrzymują informacje o nowych ofertach</li>
-                                            <li>Każda wiadomość newsletter zawiera link do anulowania subskrypcji</li>
-                                            <li>Administrator może wysyłać powiadomienia email o nowych wiadomościach w systemie czatu</li>
-                                            <li>Zakaz wysyłania spamu, treści obraźliwych lub niezgodnych z prawem</li>
-                                            <li>Możliwość zablokowania niechcianych kontaktów</li>
-                                        </ul>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§5. Treści użytkowników, moderacja i zgłoszenia (w tym DSA)</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            Punkt kontaktowy do zgłaszania treści mogących naruszać prawo lub regulamin (w tym nielegalnych treści w rozumieniu przepisów o usługach cyfrowych): <strong class="text-zinc-200">kontakt@strzelca.pl</strong> — możliwy jest także kontakt przez formularz na stronie kontaktowej.
-                                        </p>
-                                        <p class="text-zinc-300 mb-4">
-                                            Administrator ma prawo usunąć lub zmodyfikować treści publikowane przez użytkowników (w tym ogłoszenia, wpisy, załączniki), jeżeli naruszają obowiązujące prawo, niniejszy regulamin lub regulaminy dodatkowe (np. Regulamin bazaru), albo zagrażają bezpieczeństwu lub porządkowi serwisu. Decyzje moderacyjne mogą obejmować ograniczenie widoczności, odmowę publikacji lub blokadę konta — zgodnie z zakresem opisanym w regulaminach funkcji (np. bazaru).
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§6. Bazar i transakcje</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            Platforma umożliwia wystawianie przedmiotów strzeleckich na sprzedaż w modelu ogłoszeniowym (C2C). W relacji Kupujący–Sprzedawca stroną umowy nie jest operator platformy — szczegóły: <a href="#regulamin-bazar" class="text-coyote hover:underline">Regulamin bazaru</a>.
-                                        </p>
-                                        <p class="text-zinc-300 mb-4">
-                                            Wszystkie transakcje na bazarze odbywają się na odpowiedzialność stron umowy.
-                                        </p>
-                                        <ul class="text-zinc-300 list-disc list-inside space-y-2">
-                                            <li>Weryfikacja wieku i uprawnień sprzedawcy</li>
-                                            <li>Zakaz sprzedaży broni bez wymaganych zezwoleń</li>
-                                            <li><strong class="coyote-text">Zakaz reklamowania innych firm niż STRZELCA.PL pod rygorem bana</strong></li>
-                                            <li>Opłaty transakcyjne pokrywane przez sprzedawcę</li>
-                                        </ul>
-                                        <p class="text-zinc-300 mt-4">
-                                            Platforma nie pośredniczy w zwrotach ani reklamacjach dotyczących transakcji C2C na bazarze. Zasady rękojmi, gwarancji i ewentualnych zwrotów w relacjach między osobami fizycznymi wynikają z przepisów Kodeksu cywilnego i umów zawieranych bezpośrednio między użytkownikami — w zakresie dopuszczalnym przez prawo (w typowej relacji konsument–konsument 14-dniowe prawo odstąpienia od umowy na odległość co do zasady nie ma zastosowania).
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§7. Ochrona danych osobowych</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            Administracja zobowiązuje się do ochrony danych osobowych zgodnie z RODO.
-                                            Szczegółowe informacje znajdują się w polityce prywatności.
-                                        </p>
-                                        <ul class="text-zinc-300 list-disc list-inside space-y-2">
-                                            <li>Przetwarzanie danych tylko w niezbędnym zakresie</li>
-                                            <li>Możliwość usunięcia danych na żądanie</li>
-                                            <li>Bezpieczne przechowywanie danych</li>
-                                            <li>Prawo do wglądu w swoje dane</li>
-                                        </ul>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§8. Odpowiedzialność</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            Platforma strzelca.pl nie ponosi odpowiedzialności za:
-                                        </p>
-                                        <ul class="text-zinc-300 list-disc list-inside space-y-2">
-                                            <li>Transakcje między użytkownikami</li>
-                                            <li>Zawartość ogłoszeń wystawionych przez użytkowników</li>
-                                            <li>Przestoje techniczne niezależne od administratora</li>
-                                            <li>Utraty danych spowodowane siłą wyższą</li>
-                                        </ul>
-                                        <p class="text-zinc-300 mt-4">
-                                            Platforma strzelca.pl jest projektem autorskim, rozwijanym w miarę możliwości technicznych. Administrator nie gwarantuje nieprzerwanej dostępności usług ani braku błędów (bugów) w kodzie. Użytkownik korzysta z platformy w stanie, w jakim się ona znajduje („as is”). Administrator nie odpowiada za utratę danych wynikającą z awarii systemowych lub błędów oprogramowania, choć deklaruje wykonywanie regularnych kopii zapasowych w celu minimalizacji ryzyka.
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§9. Zmiany regulaminu</h4>
-                                        <p class="text-zinc-300">
-                                            Administracja zastrzega sobie prawo do zmian w regulaminie. Użytkownicy zostaną poinformowani
-                                            o zmianach poprzez powiadomienie na platformie. Dalsze korzystanie z serwisu oznacza akceptację
-                                            nowych warunków.
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§10. Kontakt</h4>
-                                        <p class="text-zinc-300">
-                                            W przypadku pytań dotyczących regulaminu prosimy o kontakt poprzez formularz na stronie
-                                            kontaktowej platformy.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Regulamin Sklepu i Serwisu -->
-            <div class="accordion-item hidden" aria-hidden="true">
-                <div class="accordion-header" onclick="openDocModal('regulamin-sklepu')">
-                    <div class="flex items-center gap-3">
-                        <i class="fas fa-store text-coyote text-xl"></i>
-                        <span class="font-bold text-lg">Regulamin Sklepu i Serwisu</span>
-                    </div>
-                    <i class="fas fa-up-right-from-square text-zinc-400"></i>
-                </div>
-                <div id="regulamin-sklepu" class="accordion-content">
-                    <div class="accordion-body">
-                        <p class="text-zinc-400 mb-4">Zawiera: zasady zamówień, zasady świadczenia usług drogą elektroniczną, zasady zwrotów i reklamacji. Szczegółowe zasady ogłoszeń C2C: <a href="#regulamin-bazar" class="text-coyote hover:underline">Regulamin bazaru (Bazar.Strzelca.pl)</a>.</p>
-
-                        <div id="regulamin-sklepu-content">
-                            <div class="space-y-6">
-                                <h3 class="text-xl font-bold coyote-text mb-2 uppercase">Regulamin Sklepu Internetowego Bezpieczny Strzelec</h3>
-                                <p class="text-zinc-400 text-sm mb-6">Niniejszy regulamin dotyczy <strong class="text-zinc-300">wyłącznie sprzedaży towarów przez Sprzedawcę w Sklepie</strong>. Nie reguluje transakcji C2C na ogłoszeniach — te określa <a href="#regulamin-bazar" class="text-coyote hover:underline">Regulamin bazaru</a>.</p>
-
-                                <div class="space-y-6">
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§1 Postanowienia ogólne</h4>
-                                        <ol class="list-decimal list-inside text-zinc-300 space-y-2 ml-4">
-                                            <li>Sprzedawcą jest Igor Janicki, zamieszkały we Wrocławiu przy ul. Pułtuskiej 20/9, 53-116 Wrocław NIP: [Twój NIP], prowadzący działalność nierejestrowaną w granicach limitów przychodu przewidzianych dla tej formy działalności w obowiązujących przepisach (w 2026 r. typowo rząd wielkości ok. 3 300–3 500 zł miesięcznie — <strong class="text-zinc-200">aktualną kwotę i warunki należy zweryfikować w tekście ustawy i rozporządzeń na dany rok</strong>). Po przekroczeniu dopuszczalnego limitu Sprzedawca zobowiązuje się do zarejestrowania działalności gospodarczej, co do zasady w terminie 7 dni od przekroczenia.</li>
-                                            <li>Kontakt ze Sprzedawcą możliwy jest pod adresem e-mail: kontakt@strzelca.pl.</li>
-                                            <li>Regulamin określa zasady sprzedaży towarów oraz korzystania z serwisu. Szczegółowe zasady korzystania z platformy ogłoszeniowej Bazar.Strzelca.pl określa odrębny <a href="#regulamin-bazar" class="text-coyote hover:underline">Regulamin bazaru</a>.</li>
-                                            <li>Do dokumentu zakupu Klient otrzymuje <strong class="text-zinc-200">rachunek</strong> (nie jest to faktura VAT, ze względu na zwolnienie Sprzedawcy z VAT) w <strong class="text-zinc-200">formie elektronicznej</strong> (np. wiadomość e-mail lub udostępnienie w panelu / korespondencji), stanowiący dowód zakupu.</li>
-                                        </ol>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§2 Składanie zamówień i płatności</h4>
-                                        <ol class="list-decimal list-inside text-zinc-300 space-y-2 ml-4">
-                                            <li>Ceny podane w Sklepie są cenami brutto (Sprzedawca korzysta ze zwolnienia z VAT).</li>
-                                            <li>Ceny podane w Sklepie są cenami szacowanymi. Ostateczna cena produktu podana będzie po wycenie zamówienia.</li>
-                                            <li>Zamówienie uważa się za złożone w momencie potwierdzenia przez klienta wyceny, kliknięcia przycisku potwierdzającego zakup i opłacenia zamówienia.</li>
-                                            <li>Zamówienia są weryfikowane pod kątem dostępności towaru. W przypadku braku możliwości realizacji zamówienia (np. błąd magazynowy), Sprzedawca niezwłocznie informuje o tym Klienta i zwraca wpłacone środki.</li>
-                                            <li>Złożenie zamówienia przez formularz zamówienia na stronie sklepu nie jest równoznaczne z zawarciem umowy sprzedaży. Umowa zostaje zawarta dopiero po potwierdzeniu przyjęcia zamówienia przez Sprzedawcę.</li>
-                                        </ol>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§3 Odstąpienie od umowy (Zwroty)</h4>
-                                        <ol class="list-decimal list-inside text-zinc-300 space-y-2 ml-4">
-                                            <li>Konsument ma prawo odstąpić od umowy bez podania przyczyny w terminie 14 dni od otrzymania towaru.</li>
-                                            <li>Wyjątek higieniczny: Prawo do odstąpienia od umowy nie przysługuje w przypadku otwarcia sterylnego opakowania wyrobu medycznego wchodzącego w skład zestawu.</li>
-                                            <li>Jeśli zestaw został rozpakowany w sposób naruszający sterylność chociaż jednego komponentu, zwrot całości może zostać odrzucony ze względu na ochronę zdrowia.</li>
-                                            <li>Koszt odesłania towaru ponosi Kupujący.</li>
-                                        </ol>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§4 Reklamacje (Brak zgodności towaru z umową)</h4>
-                                        <ol class="list-decimal list-inside text-zinc-300 space-y-2 ml-4">
-                                            <li>Sprzedawca odpowiada za brak zgodności towaru z umową przez okres 2 lat od dnia dostarczenia produktu.</li>
-                                            <li>Reklamacje są rozpatrywane w ciągu 14 dni od ich zgłoszenia.</li>
-                                            <li>Kupujący może żądać naprawy, wymiany, obniżenia ceny lub zwrotu gotówki w przypadku istotnej wady.</li>
-                                        </ol>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§5 Sekcja Bazar (Ogłoszenia)</h4>
-                                        <ol class="list-decimal list-inside text-zinc-300 space-y-2 ml-4">
-                                            <li>Sprzedawca udostępnia miejsce do wystawiania ogłoszeń przez użytkowników.</li>
-                                            <li>Sprzedawca nie ponosi odpowiedzialności za transakcje między użytkownikami w sekcji Bazar, pełniąc jedynie rolę dostawcy infrastruktury.</li>
-                                            <li>Zasady publikacji ogłoszeń, moderacji, ważności ofert oraz obowiązki stron określa <a href="#regulamin-bazar" class="text-coyote hover:underline">Regulamin Użytkowania Serwisu Bazar.Strzelca.pl</a>.</li>
-                                            <li><strong class="coyote-text">Zakaz reklamowania innych firm niż STRZELCA.PL pod rygorem bana.</strong></li>
-                                        </ol>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Regulamin bazaru (Bazar.Strzelca.pl) -->
-            <div class="accordion-item hidden" aria-hidden="true">
-                <div class="accordion-header" onclick="openDocModal('regulamin-bazar')">
-                    <div class="flex items-center gap-3">
-                        <i class="fas fa-handshake text-coyote text-xl"></i>
-                        <span class="font-bold text-lg">Regulamin bazaru</span>
-                    </div>
-                    <i class="fas fa-up-right-from-square text-zinc-400"></i>
-                </div>
-                <div id="regulamin-bazar" class="accordion-content">
-                    <div class="accordion-body">
-                        <p class="text-zinc-400 mb-4">Zawiera: zasady platformy ogłoszeniowej Bazar.Strzelca.pl (C2C), odpowiedzialność, moderacja, transport broni, ważność ogłoszeń, sankcje.</p>
-
-                        <div id="regulamin-bazar-content">
-                            <div class="space-y-6">
-                                <h3 class="text-xl font-bold coyote-text mb-6 uppercase">Regulamin Użytkowania Serwisu Bazar.Strzelca.pl</h3>
-
-                                <div class="space-y-6">
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§1. Postanowienia ogólne</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            Niniejszy regulamin określa zasady korzystania z platformy ogłoszeniowej Bazar.Strzelca.pl (zwanej dalej „Bazarem”).
-                                        </p>
-                                        <p class="text-zinc-300 mb-4">
-                                            Właścicielem i administratorem Bazaru jest Igor Janicki.
-                                        </p>
-                                        <p class="text-zinc-300 mb-4">
-                                            Bazar jest platformą typu C2C (Consumer-to-Consumer), która umożliwia użytkownikom zamieszczanie ogłoszeń sprzedaży broni, amunicji oraz akcesoriów strzeleckich.
-                                        </p>
-                                        <p class="text-zinc-300">
-                                            Bazar nie jest stroną transakcji. Wszystkie umowy sprzedaży są zawierane bezpośrednio pomiędzy Użytkownikiem Wystawiającym (Sprzedawcą) a Użytkownikiem Kupującym.
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§2. Warunki korzystania i odpowiedzialność</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            Korzystanie z Bazaru jest dozwolone wyłącznie dla osób pełnoletnich, posiadających pełną zdolność do czynności prawnych.
-                                        </p>
-                                        <p class="text-zinc-300 mb-4">
-                                            Sprzedawca oświadcza, że posiada wszelkie niezbędne uprawnienia (w tym wymagane przez polskie prawo pozwolenia na broń) do posiadania i zbywania przedmiotów objętych ogłoszeniem.
-                                        </p>
-                                        <p class="text-zinc-300 mb-4">
-                                            Kupujący ma obowiązek zweryfikować uprawnienia Sprzedawcy, a Sprzedawca ma bezwzględny obowiązek zweryfikować uprawnienia Kupującego (np. ważną promesę) przed dokonaniem transakcji.
-                                        </p>
-                                        <p class="text-zinc-300 mb-2">Administrator nie ponosi odpowiedzialności za:</p>
-                                        <ul class="text-zinc-300 list-disc list-inside space-y-2">
-                                            <li>Prawdziwość danych zawartych w ogłoszeniach.</li>
-                                            <li>Stan techniczny i prawny oferowanych przedmiotów.</li>
-                                            <li>Przebieg oraz skutki zawieranych transakcji.</li>
-                                            <li>Szkody powstałe w wyniku niewłaściwego użytkowania zakupionego towaru.</li>
-                                        </ul>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§3. Zasady wystawiania ogłoszeń</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            Ogłoszenie musi być rzetelne, zgodne ze stanem faktycznym i nie może wprowadzać w błąd.
-                                        </p>
-                                        <p class="text-zinc-300 mb-2">Zabrania się wystawiania przedmiotów, których obrót jest zabroniony na terenie Rzeczypospolitej Polskiej, w tym:</p>
-                                        <ul class="text-zinc-300 list-disc list-inside space-y-2 mb-4">
-                                            <li>Broni palnej wykonanej sposobem rzemieślniczym.</li>
-                                            <li>Istotnych części broni bez wymaganych numerów seryjnych.</li>
-                                            <li>Amunicji elaborowanej przez osoby nieposiadające stosownych uprawnień do jej zbywania.</li>
-                                            <li>Przedmiotów promujących ideologie totalitarne lub nienawiść.</li>
-                                        </ul>
-                                        <p class="text-zinc-300">
-                                            Każde ogłoszenie przed publikacją podlega moderacji przez Administratora. Administrator zastrzega sobie prawo do edycji lub odmowy publikacji ogłoszenia bez podania przyczyny, jeśli narusza ono dobre imię serwisu lub bezpieczeństwo społeczności.
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§4. Transport i przekazanie towaru</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            Bezwzględnie zakazuje się przesyłania broni palnej oraz amunicji za pośrednictwem firm kurierskich lub operatorów pocztowych.
-                                        </p>
-                                        <p class="text-zinc-300">
-                                            Przekazanie broni i amunicji musi odbyć się osobiście, zgodnie z obowiązującymi przepisami Ustawy o broni i amunicji, po okazaniu przez Kupującego stosownych dokumentów uprawniających do nabycia danej jednostki broni (promesy).
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§5. Okres ważności i odświeżanie ogłoszeń</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            Ogłoszenie jest aktywne przez okres 30 dni od momentu akceptacji przez Administratora.
-                                        </p>
-                                        <p class="text-zinc-300 mb-4">
-                                            Użytkownik ma możliwość bezpłatnego odświeżenia ogłoszenia po upływie 25 dni od jego ostatniej publikacji/odświeżenia.
-                                        </p>
-                                        <p class="text-zinc-300">
-                                            Odświeżenie ogłoszenia powoduje przedłużenie jego ważności o kolejne 30 dni oraz przesunięcie na górę listy w danej kategorii.
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§6. Zgłoszenia naruszeń i sankcje</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            Użytkownik ma prawo zgłosić ogłoszenie, które narusza regulamin lub przepisy prawa za pomocą funkcji „Zgłoś ofertę”.
-                                        </p>
-                                        <p class="text-zinc-300 mb-2">Naruszenie regulaminu może skutkować:</p>
-                                        <ul class="text-zinc-300 list-disc list-inside space-y-2">
-                                            <li>Usunięciem ogłoszenia.</li>
-                                            <li>Czasową blokadą konta użytkownika.</li>
-                                            <li>Trwałym usunięciem konta i powiadomieniem odpowiednich organów ścigania (w przypadku podejrzenia popełnienia przestępstwa).</li>
-                                        </ul>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§7. Postanowienia końcowe</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            Administrator zastrzega sobie prawo do zmiany regulaminu. Nowy regulamin wchodzi w życie z chwilą publikacji na stronie.
-                                        </p>
-                                        <p class="text-zinc-300">
-                                            W sprawach nieuregulowanych niniejszym regulaminem mają zastosowanie przepisy Kodeksu Cywilnego oraz Ustawy o broni i amunicji.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- Polityka Prywatności Platformy -->
@@ -867,191 +525,6 @@
                 </div>
             </div>
 
-            <!-- Regulamin Szkoleń -->
-            <div class="accordion-item hidden" aria-hidden="true">
-                <div class="accordion-header" onclick="openDocModal('regulamin-szkolen')">
-                    <div class="flex items-center gap-3">
-                        <i class="fas fa-graduation-cap text-coyote text-xl"></i>
-                        <span class="font-bold text-lg">Regulamin Szkoleń</span>
-                    </div>
-                    <i class="fas fa-up-right-from-square text-zinc-400"></i>
-                </div>
-                <div id="regulamin-szkolen" class="accordion-content">
-                    <div class="accordion-body">
-                        <p class="text-zinc-400 mb-4">Zawiera: warunki uczestnictwa w szkoleniach, prawa autorskie, zakazy udostępniania materiałów szkoleniowych.</p>
-
-                        <div id="regulamin-szkolen-content">
-                            <div class="space-y-6">
-                                <h3 class="text-xl font-bold coyote-text mb-6 uppercase">Regulamin korzystania ze szkoleń strzelca.pl</h3>
-
-                                <div class="space-y-6">
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§1. Postanowienia ogólne</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            Niniejszy regulamin określa zasady korzystania ze szkoleń organizowanych przez platformę strzelca.pl.
-                                            Szkolenia są własnością intelektualną administratora platformy i podlegają ochronie prawnej.
-                                        </p>
-                                        <p class="text-zinc-300 mb-4">
-                                            Uczestnictwo w szkoleniach jest dobrowolne i wymaga wcześniejszej rejestracji oraz akceptacji niniejszego regulaminu.
-                                        </p>
-                                        <p class="text-zinc-300">
-                                            W przypadku rozpoczęcia korzystania z materiałów kursu online akceptacja regulaminu — w tym postanowień o karach umownych za rozpowszechnianie materiałów — następuje przez potwierdzenie w oknie dialogowym serwisu przed dostępem do treści. W przypadku zapisu na szkolenie odpłatne lub składania oferty nabycia dostępu użytkownik jest informowany o treści regulaminu komunikatem w interfejsie serwisu przed podjęciem dalszych czynności.
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§2. Własność intelektualna i prawa autorskie</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            Wszystkie materiały szkoleniowe, treści, programy nauczania, ćwiczenia, prezentacje, nagrania wideo, 
-                                            materiały audio, grafiki, teksty, schematy oraz inne elementy stanowiące część szkoleń 
-                                            są wyłączną własnością intelektualną administratora platformy strzelca.pl i podlegają ochronie 
-                                            prawnej zgodnie z ustawą z dnia 4 lutego 1994 r. o prawie autorskim i prawach pokrewnych (Dz. U. 2021.1062).
-                                        </p>
-                                        <ul class="text-zinc-300 list-disc list-inside space-y-2">
-                                            <li>Wszelkie prawa autorskie majątkowe i osobiste, prawa pokrewne oraz inne prawa własności intelektualnej 
-                                                przysługują wyłącznie administratorowi platformy strzelca.pl</li>
-                                            <li>Materiały szkoleniowe są chronione prawem autorskim oraz innymi przepisami prawa własności intelektualnej, 
-                                                w tym ustawą o prawie autorskim i prawach pokrewnych</li>
-                                            <li>Uczestnik szkolenia nie nabywa żadnych praw własności intelektualnej do materiałów szkoleniowych, 
-                                                w tym prawa do ich kopiowania, rozpowszechniania, modyfikacji czy wykorzystania komercyjnego</li>
-                                            <li>Zabrania się jakichkolwiek form kopiowania, powielania, rozpowszechniania, modyfikacji, 
-                                                adaptacji lub tworzenia utworów zależnych na podstawie materiałów szkoleniowych</li>
-                                            <li>Wszelkie naruszenia praw autorskich będą ścigane na drodze cywilnej i karnej zgodnie z obowiązującymi przepisami prawa</li>
-                                            <li>Administrator zastrzega sobie prawo do dochodzenia roszczeń z tytułu naruszenia praw autorskich, 
-                                                w tym żądania zaniechania naruszeń, usunięcia skutków naruszeń oraz naprawienia szkody</li>
-                                        </ul>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§3. Zakaz udostępniania i powielania materiałów</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            <strong class="coyote-text">SUROWO ZABRONIONE</strong> jest jakiekolwiek udostępnianie, powielanie, kopiowanie,
-                                            rozpowszechnianie lub publikowanie materiałów szkoleniowych w jakiejkolwiek formie, zarówno w formie 
-                                            cyfrowej, jak i analogowej. Materiały szkoleniowe są przeznaczone wyłącznie do użytku osobistego uczestnika 
-                                            szkolenia i nie mogą być udostępniane osobom trzecim.
-                                        </p>
-                                        <ul class="text-zinc-300 list-disc list-inside space-y-2">
-                                            <li><strong>Zakaz udostępniania materiałów szkoleniowych innym osobom</strong> - w tym członkom rodziny, 
-                                                znajomym, współpracownikom lub innym uczestnikom szkoleń</li>
-                                            <li><strong>Zakaz nagrywania, fotografowania lub rejestrowania treści szkoleń</strong> - w tym nagrywania 
-                                                ekranu, nagrań audio, zdjęć, screenshotów lub innych form rejestracji treści</li>
-                                            <li><strong>Zakaz kopiowania lub powielania materiałów</strong> - w celach prywatnych, komercyjnych, 
-                                                edukacyjnych lub jakichkolwiek innych</li>
-                                            <li><strong>Zakaz sprzedaży, wymiany lub innego rodzaju transferu materiałów szkoleniowych</strong> - 
-                                                w tym udostępniania za opłatą lub bezpłatnie</li>
-                                            <li><strong>Zakaz publikowania materiałów na stronach internetowych, forach, mediach społecznościowych, 
-                                                platformach wideo lub innych serwisach</strong> - w tym YouTube, Facebook, Instagram, TikTok, 
-                                                fora dyskusyjne, blogi, strony internetowe</li>
-                                            <li><strong>Zakaz wykorzystywania materiałów szkoleniowych do celów konkurencyjnych</strong> - w tym 
-                                                tworzenia własnych szkoleń na podstawie treści dostępnych w szkoleniach strzelca.pl</li>
-                                            <li><strong>Zakaz udostępniania linków, kodów dostępu, haseł lub innych środków umożliwiających 
-                                                dostęp do materiałów szkoleniowych</strong> osobom nieuprawnionym</li>
-                                            <li><strong>Zakaz tworzenia kopii zapasowych, archiwizacji lub przechowywania materiałów szkoleniowych 
-                                                w sposób umożliwiający ich późniejsze udostępnienie</strong></li>
-                                        </ul>
-                                        <p class="text-zinc-300 mt-4 p-4 bg-red-900/20 border border-red-500/50 rounded-lg">
-                                            <strong class="text-red-400">UWAGA:</strong> Naruszenie powyższych zakazów stanowi naruszenie praw autorskich 
-                                            i może skutkować odpowiedzialnością cywilną (odszkodowanie, zadośćuczynienie) oraz karną (grzywna, kara pozbawienia 
-                                            wolności do lat 3 zgodnie z art. 115 ustawy o prawie autorskim i prawach pokrewnych).
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§4. Warunki uczestnictwa w szkoleniach</h4>
-                                        <ul class="text-zinc-300 list-disc list-inside space-y-2">
-                                            <li>Minimalny wiek uczestnika: 18 lat</li>
-                                            <li>Posiadanie odpowiednich uprawnień do posiadania broni (jeśli wymagane)</li>
-                                            <li>Przyjęcie do wiadomości i akceptacja niniejszego regulaminu</li>
-                                            <li>Zachowanie poufności wszystkich materiałów i informacji przekazanych podczas szkolenia</li>
-                                            <li>Przestrzeganie zasad bezpieczeństwa obowiązujących podczas szkolenia</li>
-                                            <li>Punktualność i regularne uczestnictwo w zajęciach</li>
-                                        </ul>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§5. Prawa i obowiązki uczestników</h4>
-                                        <h5 class="text-base font-semibold text-zinc-200 mb-2">Prawa uczestnika:</h5>
-                                        <ul class="text-zinc-300 list-disc list-inside space-y-1 mb-4">
-                                            <li>Korzystanie z materiałów szkoleniowych wyłącznie do celów osobistego rozwoju</li>
-                                            <li>Otrzymywanie certyfikatu ukończenia szkolenia (jeśli przewidziane)</li>
-                                            <li>Kontakt z instruktorem w sprawach związanych ze szkoleniem</li>
-                                            <li>Wysoka jakość materiałów i profesjonalizm prowadzącego</li>
-                                        </ul>
-
-                                        <h5 class="text-base font-semibold text-zinc-200 mb-2">Obowiązki uczestnika:</h5>
-                                        <ul class="text-zinc-300 list-disc list-inside space-y-1">
-                                            <li>Przestrzeganie wszystkich postanowień regulaminu</li>
-                                            <li>Zachowanie poufności materiałów szkoleniowych</li>
-                                            <li>Przestrzeganie zasad bezpieczeństwa</li>
-                                            <li>Poważne traktowanie procesu nauki</li>
-                                            <li>Punktualność i zaangażowanie podczas zajęć</li>
-                                            <li>Informowanie o wszelkich przeciwwskazaniach zdrowotnych</li>
-                                        </ul>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§6. Odpowiedzialność</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            Uczestnik szkolenia ponosi pełną odpowiedzialność za:
-                                        </p>
-                                        <ul class="text-zinc-300 list-disc list-inside space-y-2">
-                                            <li>Naruszenie postanowień regulaminu</li>
-                                            <li>Nieprzestrzeganie zasad bezpieczeństwa</li>
-                                            <li>Jakiekolwiek formy udostępniania lub powielania materiałów szkoleniowych</li>
-                                            <li>Szkody wyrządzone w wyniku niewłaściwego korzystania z wiedzy zdobytej podczas szkolenia</li>
-                                        </ul>
-                                        <p class="text-zinc-300 mt-4">
-                                            Administrator platformy nie ponosi odpowiedzialności za ewentualne szkody wynikłe z niewłaściwego
-                                            zastosowania wiedzy zdobytej podczas szkolenia.
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§7. Konsekwencje naruszenia regulaminu</h4>
-                                        <p class="text-zinc-300 mb-4">
-                                            W przypadku naruszenia postanowień regulaminu, administrator zastrzega sobie prawo do:
-                                        </p>
-                                        <ul class="text-zinc-300 list-disc list-inside space-y-2">
-                                            <li>Natychmiastowego wykluczenia uczestnika ze szkolenia</li>
-                                            <li>Żądania zapłaty kary umownej w wysokości do 10.000 PLN</li>
-                                            <li>Podjęcia kroków prawnych w celu ochrony praw własności intelektualnej</li>
-                                            <li>Zablokowania dostępu do platformy strzelca.pl</li>
-                                            <li>Żądania usunięcia wszelkich kopii materiałów szkoleniowych</li>
-                                        </ul>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§8. Ochrona danych osobowych</h4>
-                                        <p class="text-zinc-300">
-                                            Dane osobowe uczestników szkoleń są przetwarzane zgodnie z polityką prywatności platformy strzelca.pl.
-                                            Uczestnictwo w szkoleniu wymaga wyrażenia zgody na przetwarzanie danych osobowych w zakresie niezbędnym
-                                            do przeprowadzenia szkolenia.
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§9. Kontakt</h4>
-                                        <p class="text-zinc-300">
-                                            W przypadku pytań dotyczących regulaminu szkoleń prosimy o kontakt poprzez formularz kontaktowy
-                                            dostępny na stronie kontakt.strzelca.pl lub email: kontakt@strzelca.pl
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <h4 class="text-lg font-bold text-zinc-200 mb-3">§10. Zmiany regulaminu</h4>
-                                        <p class="text-zinc-300">
-                                            Administrator zastrzega sobie prawo do zmian w regulaminie szkoleń. Uczestnicy zostaną poinformowani
-                                            o zmianach poprzez powiadomienie na platformie lub email. Dalsze uczestnictwo w szkoleniach oznacza
-                                            akceptację nowych warunków.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Treść tylko w modalu / katalogu (jak regulaminy) -->
             <div class="accordion-item hidden" aria-hidden="true">
                 <div class="accordion-header" onclick="toggleAccordion('procedura-monitorowania')">
@@ -1174,53 +647,66 @@
     <!-- Formularz zwrot / reklamacja + szablon pod PDF (html2pdf) -->
     <div id="return-claim-form-modal" class="fixed inset-0 z-[10000] hidden" role="dialog" aria-modal="true" aria-labelledby="return-claim-form-title" aria-hidden="true">
         <div id="return-claim-form-overlay" class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
-        <div class="relative mx-auto my-6 w-[95vw] max-w-lg max-h-[92vh] overflow-y-auto">
-            <div class="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl p-5 md:p-6">
-                <div class="flex justify-between items-start gap-3 border-b border-zinc-800 pb-4 mb-4">
-                    <h2 id="return-claim-form-title" class="text-white font-bold text-lg leading-snug pr-2">Formularz odstąpienia od umowy zwrotu/reklamacji</h2>
+        <div class="relative mx-auto my-6 w-[95vw] max-w-md max-h-[92vh] overflow-y-auto">
+            <div class="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl p-4 md:p-5">
+                <div class="flex justify-between items-start gap-3 border-b border-zinc-800 pb-3 mb-3">
+                    <h2 id="return-claim-form-title" class="text-white font-bold text-base leading-snug pr-2">Zwrot / reklamacja</h2>
                     <button type="button" id="return-claim-form-close" class="text-zinc-400 hover:text-white transition shrink-0 p-1" aria-label="Zamknij">
                         <i class="fas fa-times text-lg"></i>
                     </button>
                 </div>
-                <form id="return-claim-form" class="space-y-4">
-                    <fieldset class="space-y-2 border-0 p-0 m-0">
-                        <legend class="text-sm font-semibold text-zinc-300 mb-2">Rodzaj zgłoszenia *</legend>
-                        <label class="flex items-center gap-2 text-zinc-300 text-sm cursor-pointer">
-                            <input type="radio" name="rc-type" value="zwrot" class="accent-[var(--coyote)]" required />
-                            Zwrot (odstąpienie od umowy)
-                        </label>
-                        <label class="flex items-center gap-2 text-zinc-300 text-sm cursor-pointer">
-                            <input type="radio" name="rc-type" value="reklamacja" class="accent-[var(--coyote)]" />
-                            Reklamacja
-                        </label>
+                <form id="return-claim-form" class="space-y-3">
+                    <fieldset class="border-0 p-0 m-0">
+                        <legend class="sr-only">Rodzaj zgłoszenia</legend>
+                        <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
+                            <span class="text-xs font-medium text-zinc-500 w-full sm:w-auto shrink-0">Rodzaj *</span>
+                            <label class="flex items-center gap-2 text-zinc-300 text-sm cursor-pointer">
+                                <input type="radio" name="rc-type" value="zwrot" class="accent-[var(--coyote)]" required />
+                                Zwrot
+                            </label>
+                            <label class="flex items-center gap-2 text-zinc-300 text-sm cursor-pointer">
+                                <input type="radio" name="rc-type" value="reklamacja" class="accent-[var(--coyote)]" />
+                                Reklamacja
+                            </label>
+                        </div>
                     </fieldset>
-                    <div>
-                        <label for="rc-imie" class="block text-xs font-medium text-zinc-400 mb-1">Imię *</label>
-                        <input id="rc-imie" name="rc-imie" type="text" required autocomplete="given-name" class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-2 text-sm" />
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                            <label for="rc-imie" class="block text-xs font-medium text-zinc-400 mb-1">Imię *</label>
+                            <input id="rc-imie" name="rc-imie" type="text" required autocomplete="given-name" class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-1.5 text-sm" />
+                        </div>
+                        <div>
+                            <label for="rc-nazwisko" class="block text-xs font-medium text-zinc-400 mb-1">Nazwisko *</label>
+                            <input id="rc-nazwisko" name="rc-nazwisko" type="text" required autocomplete="family-name" class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-1.5 text-sm" />
+                        </div>
                     </div>
-                    <div>
-                        <label for="rc-nazwisko" class="block text-xs font-medium text-zinc-400 mb-1">Nazwisko *</label>
-                        <input id="rc-nazwisko" name="rc-nazwisko" type="text" required autocomplete="family-name" class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-2 text-sm" />
+                    <div id="rc-wrap-order-pick" class="hidden">
+                        <label for="rc-zamowienie-select" class="block text-xs font-medium text-zinc-400 mb-1">Zamówienie z konta</label>
+                        <select id="rc-zamowienie-select" class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-1.5 text-sm">
+                            <option value="">— wybierz lub wpisz ręcznie —</option>
+                        </select>
                     </div>
-                    <div>
-                        <label for="rc-zamowienie" class="block text-xs font-medium text-zinc-400 mb-1">Numer zamówienia *</label>
-                        <input id="rc-zamowienie" name="rc-zamowienie" type="text" required class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-2 text-sm" />
-                    </div>
-                    <div>
-                        <label for="rc-faktura" class="block text-xs font-medium text-zinc-400 mb-1">Numer faktury *</label>
-                        <input id="rc-faktura" name="rc-faktura" type="text" required class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-2 text-sm" />
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                            <label for="rc-zamowienie" class="block text-xs font-medium text-zinc-400 mb-1">Numer zamówienia *</label>
+                            <input id="rc-zamowienie" name="rc-zamowienie" type="text" required autocomplete="off" class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-1.5 text-sm" />
+                        </div>
+                        <div>
+                            <label for="rc-faktura" class="block text-xs font-medium text-zinc-400 mb-1">Numer faktury / rachunku *</label>
+                            <input id="rc-faktura" name="rc-faktura" type="text" required autocomplete="off" class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-1.5 text-sm" />
+                        </div>
                     </div>
                     <div id="rc-wrap-opis" class="hidden">
                         <label for="rc-opis" class="block text-xs font-medium text-zinc-400 mb-1">Opis wady *</label>
-                        <textarea id="rc-opis" name="rc-opis" rows="3" class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-2 text-sm"></textarea>
+                        <textarea id="rc-opis" name="rc-opis" rows="2" class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-1.5 text-sm"></textarea>
                     </div>
                     <div id="rc-wrap-powod" class="hidden">
                         <label for="rc-powod" class="block text-xs font-medium text-zinc-400 mb-1">Powód zwrotu *</label>
-                        <textarea id="rc-powod" name="rc-powod" rows="3" class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-2 text-sm"></textarea>
+                        <textarea id="rc-powod" name="rc-powod" rows="2" class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-1.5 text-sm"></textarea>
                     </div>
                     <div>
                         <label for="rc-zadanie" class="block text-xs font-medium text-zinc-400 mb-1">Żądanie *</label>
-                        <select id="rc-zadanie" name="rc-zadanie" required class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-2 text-sm">
+                        <select id="rc-zadanie" name="rc-zadanie" required class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-1.5 text-sm">
                             <option value="">— wybierz —</option>
                             <option value="Wymiana">Wymiana</option>
                             <option value="Naprawa">Naprawa</option>
@@ -1230,37 +716,89 @@
                         </select>
                     </div>
                     <div>
-                        <label for="rc-dodatkowe" class="block text-xs font-medium text-zinc-400 mb-1">Dodatkowe informacje (opcjonalnie)</label>
-                        <textarea id="rc-dodatkowe" name="rc-dodatkowe" rows="2" class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-2 text-sm"></textarea>
+                        <label for="rc-dodatkowe" class="block text-xs font-medium text-zinc-400 mb-1">Uwagi (opcjonalnie)</label>
+                        <textarea id="rc-dodatkowe" name="rc-dodatkowe" rows="2" class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-1.5 text-sm"></textarea>
                     </div>
-                    <div class="flex flex-col sm:flex-row gap-3 pt-2">
-                        <button type="submit" id="return-claim-form-submit" class="doc-catalog-btn flex-1 border-0">
+                    <div class="flex justify-center pt-1">
+                        <button type="submit" id="return-claim-form-submit" class="doc-catalog-btn border-0 min-w-[12rem] px-6">
                             <i class="fas fa-check"></i> Zatwierdź
-                        </button>
-                        <button type="button" id="return-claim-form-cancel" class="doc-catalog-btn doc-catalog-btn--ghost flex-1">
-                            Anuluj
                         </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-    <div id="return-claim-pdf-root" aria-hidden="true" class="fixed left-[-20000px] top-0 w-[210mm] box-border" style="padding:12mm;background:#fafafa;color:#18181b;font-family:Inter,system-ui,sans-serif;font-size:10.5pt;line-height:1.45;"></div>
+
+    <!-- Ukryty szablon HTML → html2pdf (musi mieć realne wymiary w viewport na czas zrzutu) -->
+    <div
+        id="return-claim-pdf-root"
+        aria-hidden="true"
+        class="return-claim-pdf-root--capture"
+        style="padding:12mm;background:#fafafa;color:#18181b;font-family:Inter,system-ui,sans-serif;font-size:10.5pt;line-height:1.45;"
+    ></div>
+
+    <!-- Modal: podgląd PDF + pobieranie (bez nowej karty) -->
+    <div
+        id="return-claim-pdf-result-modal"
+        class="fixed inset-0 z-[10001] hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rc-pdf-result-title"
+        aria-hidden="true"
+    >
+        <div id="rc-pdf-result-overlay" class="absolute inset-0 bg-black/85 backdrop-blur-sm z-0"></div>
+        <div
+            class="relative z-10 mx-auto my-3 md:my-6 w-[96vw] max-w-3xl h-[min(90dvh,880px)] flex flex-col rounded-2xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden"
+        >
+            <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-zinc-800 shrink-0">
+                <h2 id="rc-pdf-result-title" class="text-white font-bold text-base pr-2">Twój protokół PDF</h2>
+                <div class="flex items-center gap-2 shrink-0">
+                    <a
+                        id="rc-pdf-download-link"
+                        href="#"
+                        download
+                        class="doc-catalog-btn border-0 text-sm px-4 py-2 inline-flex items-center gap-2"
+                    >
+                        <i class="fas fa-download" aria-hidden="true"></i> Pobierz
+                    </a>
+                    <button
+                        type="button"
+                        id="rc-pdf-result-close"
+                        class="doc-catalog-btn doc-catalog-btn--ghost text-sm px-4 py-2"
+                    >
+                        Zamknij
+                    </button>
+                </div>
+            </div>
+            <iframe
+                id="rc-pdf-preview-iframe"
+                class="flex-1 w-full min-h-[240px] bg-zinc-950 border-0"
+                title="Podgląd wygenerowanego PDF"
+            ></iframe>
+            <p class="text-zinc-500 text-xs px-4 py-2 border-t border-zinc-800 shrink-0">
+                Jeśli podgląd jest pusty (ograniczenia przeglądarki), plik i tak zapiszesz przyciskiem „Pobierz”.
+            </p>
+        </div>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <script>
         // Dokumenty (te sekcje otwieramy w modalu)
         const DOC_TITLES = {
-            "regulamin-platformy": "Regulamin Platformy",
-            "regulamin-sklepu": "Regulamin Sklepu i Serwisu",
-            "regulamin-bazar": "Regulamin bazaru",
             "polityka-prywatnosci-platformy": "Polityka Prywatności Platformy",
             "polityka-prywatnosci": "Polityka Prywatności Sklepu",
-            "regulamin-szkolen": "Regulamin Szkoleń",
             "procedura-monitorowania": "Procedura monitorowania po wprowadzeniu do obrotu",
             "klauzula-donacji": "Klauzula Donacji",
         };
+
+        const LEGACY_REGULAMIN_HASHES = new Set([
+            "regulamin-platformy",
+            "regulamin-sklepu",
+            "regulamin-bazar",
+            "regulamin-szkolen",
+            "regulamin-witryny",
+        ]);
 
         const PDF_ACCORDION_ID = "wzory-dokumentow";
 
@@ -1431,6 +969,23 @@
                 // - jeśli hash wskazuje na element w środku dokumentu, otwórz modal i przewiń do elementu (np. #cookies-platformy)
                 // - jeśli hash wskazuje na PDF-y, rozwiń akordeon
                 const targetId = urlHash.slice(1);
+                if (LEGACY_REGULAMIN_HASHES.has(targetId)) {
+                    setTimeout(() => {
+                        scrollDocumentsCatalogIntoView();
+                        flashCatalogRow((row) => {
+                            const t = (row.getAttribute("data-doc-title") || "").toLowerCase();
+                            return t.includes("regulamin witryny");
+                        });
+                    }, 200);
+                    if (targetId !== "regulamin-witryny") {
+                        try {
+                            history.replaceState(null, "", window.location.pathname + window.location.search + "#regulamin-witryny");
+                        } catch (_) {
+                            /* ignore */
+                        }
+                    }
+                    return;
+                }
                 const targetEl = document.getElementById(targetId);
                 if (!targetEl) return;
 
@@ -1496,7 +1051,7 @@
             FALLBACK_SITE_DOCUMENTS,
             mergeSiteDocumentsWithFallback,
             normalizeFirestoreCatalogDocument,
-        } from "https://strzelca.pl/documents-catalog-shared.mjs?v=2026-03-22-1";
+        } from "https://strzelca.pl/documents-catalog-shared.mjs?v=2026-03-22-2";
         import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
 
         
@@ -1620,7 +1175,25 @@ const firebaseConfig = {
                     </button>
                 </div>`;
             }
+            const urlStr = String(item.url || "").trim().toLowerCase();
+            const isPlainTextFile = item.kind === "file" && /\.txt(\?|#|$)/i.test(urlStr);
             const safeHref = safePdfLinkHref(item.url).replace(/"/g, "&quot;");
+            if (isPlainTextFile) {
+                return `
+                <div class="doc-catalog-row doc-catalog-row--file doc-catalog-row--textfile" data-doc-title="${attrTitle}">
+                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                        <span class="text-[10px] uppercase tracking-wider text-amber-500/90 border border-amber-600/50 px-2 py-0.5 rounded shrink-0">Tekst</span>
+                        <i class="fas ${ic} text-amber-500/90 shrink-0 text-lg"></i>
+                        <div class="min-w-0">
+                            <div class="font-bold text-zinc-100 leading-snug">${title}</div>
+                            ${desc}
+                        </div>
+                    </div>
+                    <a href="${safeHref}" class="doc-catalog-btn doc-catalog-btn--ghost shrink-0" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-up-right-from-square"></i> Czytaj
+                    </a>
+                </div>`;
+            }
             return `
                 <div class="doc-catalog-row doc-catalog-row--file" data-doc-title="${attrTitle}">
                     <div class="flex items-center gap-3 min-w-0 flex-1">
@@ -1637,7 +1210,7 @@ const firebaseConfig = {
                 </div>`;
         }
 
-        function initReturnClaimForm(authRef) {
+        function initReturnClaimForm(authRef, dbRef) {
             const modal = document.getElementById("return-claim-form-modal");
             const form = document.getElementById("return-claim-form");
             const pdfRoot = document.getElementById("return-claim-pdf-root");
@@ -1645,10 +1218,145 @@ const firebaseConfig = {
             const wrapPowod = document.getElementById("rc-wrap-powod");
             const opisEl = document.getElementById("rc-opis");
             const powodEl = document.getElementById("rc-powod");
+            const zamowienieInput = document.getElementById("rc-zamowienie");
+            const fakturaInput = document.getElementById("rc-faktura");
+            const orderSelect = document.getElementById("rc-zamowienie-select");
+            const wrapOrderPick = document.getElementById("rc-wrap-order-pick");
+            const imieInput = document.getElementById("rc-imie");
+            const nazwiskoInput = document.getElementById("rc-nazwisko");
             if (!modal || !form || !pdfRoot) return;
+
+            const pdfResultModal = document.getElementById("return-claim-pdf-result-modal");
+            const pdfPreviewIframe = document.getElementById("rc-pdf-preview-iframe");
+            const pdfDownloadLink = document.getElementById("rc-pdf-download-link");
+            const pdfResultOverlay = document.getElementById("rc-pdf-result-overlay");
+            const pdfResultCloseBtn = document.getElementById("rc-pdf-result-close");
+
+            let rcPdfBlobUrl = null;
+
+            function closePdfResultModal() {
+                if (rcPdfBlobUrl) {
+                    URL.revokeObjectURL(rcPdfBlobUrl);
+                    rcPdfBlobUrl = null;
+                }
+                if (pdfPreviewIframe) pdfPreviewIframe.src = "about:blank";
+                if (pdfDownloadLink) {
+                    pdfDownloadLink.removeAttribute("href");
+                    pdfDownloadLink.removeAttribute("download");
+                }
+                if (pdfResultModal) {
+                    pdfResultModal.classList.add("hidden");
+                    pdfResultModal.setAttribute("aria-hidden", "true");
+                }
+                document.body.classList.remove("overflow-hidden");
+            }
+
+            function openPdfResultModal(blob, filename) {
+                closePdfResultModal();
+                rcPdfBlobUrl = URL.createObjectURL(blob);
+                if (pdfDownloadLink) {
+                    pdfDownloadLink.href = rcPdfBlobUrl;
+                    pdfDownloadLink.setAttribute("download", filename || "strzelca-protokol.pdf");
+                }
+                if (pdfPreviewIframe) pdfPreviewIframe.src = rcPdfBlobUrl;
+                if (pdfResultModal) {
+                    pdfResultModal.classList.remove("hidden");
+                    pdfResultModal.setAttribute("aria-hidden", "false");
+                }
+                document.body.classList.add("overflow-hidden");
+            }
+
+            pdfResultOverlay?.addEventListener("click", closePdfResultModal);
+            pdfResultCloseBtn?.addEventListener("click", closePdfResultModal);
+
+            /** @type {Map<string, { invoiceDocumentLabel: string }>} */
+            const rcOrderMetaByNumber = new Map();
 
             function esc(s) {
                 return escapeHtml(String(s ?? ""));
+            }
+
+            function splitDisplayName(displayName) {
+                const t = String(displayName || "").trim();
+                if (!t) return { imie: "", nazwisko: "" };
+                const i = t.indexOf(" ");
+                if (i === -1) return { imie: t, nazwisko: "" };
+                return { imie: t.slice(0, i).trim(), nazwisko: t.slice(i + 1).trim() };
+            }
+
+            async function tryProfileFirstLast(uid) {
+                if (!dbRef || !uid) return null;
+                try {
+                    const profileDoc = await getDoc(doc(dbRef, "userProfiles", uid));
+                    if (!profileDoc.exists()) return null;
+                    const d = profileDoc.data();
+                    const fn = typeof d.firstName === "string" ? d.firstName.trim() : "";
+                    const ln = typeof d.lastName === "string" ? d.lastName.trim() : "";
+                    if (!fn && !ln) return null;
+                    if (fn.length > 120 || ln.length > 120) return null;
+                    return { imie: fn, nazwisko: ln };
+                } catch (_) {
+                    return null;
+                }
+            }
+
+            async function fetchOrdersForReturnForm() {
+                const urls = ["https://strzelca.pl/api/orders", "/api/orders"];
+                let idToken = null;
+                try {
+                    if (authRef?.currentUser) {
+                        idToken = await authRef.currentUser.getIdToken();
+                    }
+                } catch (_) {
+                    return [];
+                }
+                if (!idToken) return [];
+                const headers = { Authorization: `Bearer ${idToken}` };
+                for (const url of urls) {
+                    try {
+                        const r = await fetch(url, {
+                            method: "GET",
+                            headers,
+                            credentials: url.startsWith("http") ? "include" : "same-origin",
+                        });
+                        if (!r.ok) continue;
+                        const data = await r.json().catch(() => null);
+                        if (data && data.success && Array.isArray(data.data)) return data.data;
+                    } catch (_) {
+                        /* next */
+                    }
+                }
+                return [];
+            }
+
+            function resetOrderPickUi() {
+                rcOrderMetaByNumber.clear();
+                if (orderSelect) {
+                    orderSelect.innerHTML =
+                        '<option value="">— wybierz lub wpisz ręcznie —</option>';
+                    orderSelect.value = "";
+                }
+                if (wrapOrderPick) wrapOrderPick.classList.add("hidden");
+                if (zamowienieInput) {
+                    zamowienieInput.readOnly = false;
+                    zamowienieInput.value = "";
+                }
+                if (fakturaInput) fakturaInput.value = "";
+            }
+
+            function onOrderSelectChange() {
+                if (!orderSelect || !zamowienieInput || !fakturaInput) return;
+                const v = orderSelect.value.trim();
+                if (!v) {
+                    zamowienieInput.readOnly = false;
+                    zamowienieInput.value = "";
+                    fakturaInput.value = "";
+                    return;
+                }
+                zamowienieInput.value = v;
+                zamowienieInput.readOnly = true;
+                const meta = rcOrderMetaByNumber.get(v);
+                fakturaInput.value = meta?.invoiceDocumentLabel || "";
             }
 
             function updateRcTypeFields() {
@@ -1679,11 +1387,47 @@ const firebaseConfig = {
                 }
             }
 
-            function openReturnClaimForm() {
+            async function openReturnClaimForm() {
                 form.reset();
+                resetOrderPickUi();
                 const first = form.querySelector('input[name="rc-type"][value="zwrot"]');
                 if (first) first.checked = true;
                 updateRcTypeFields();
+
+                const u = authRef?.currentUser;
+                if (imieInput) imieInput.value = "";
+                if (nazwiskoInput) nazwiskoInput.value = "";
+
+                if (u) {
+                    const fromProf = await tryProfileFirstLast(u.uid);
+                    if (fromProf) {
+                        if (imieInput) imieInput.value = fromProf.imie;
+                        if (nazwiskoInput) nazwiskoInput.value = fromProf.nazwisko;
+                    } else {
+                        const sp = splitDisplayName(u.displayName || "");
+                        if (imieInput) imieInput.value = sp.imie;
+                        if (nazwiskoInput) nazwiskoInput.value = sp.nazwisko;
+                    }
+
+                    const orders = await fetchOrdersForReturnForm();
+                    if (orders.length && orderSelect && wrapOrderPick) {
+                        for (const o of orders) {
+                            const num = String(o.orderNumber || "").trim();
+                            if (!num) continue;
+                            rcOrderMetaByNumber.set(num, {
+                                invoiceDocumentLabel: o.invoiceDocumentLabel
+                                    ? String(o.invoiceDocumentLabel).trim()
+                                    : "",
+                            });
+                            const opt = document.createElement("option");
+                            opt.value = num;
+                            opt.textContent = num;
+                            orderSelect.appendChild(opt);
+                        }
+                        wrapOrderPick.classList.remove("hidden");
+                    }
+                }
+
                 modal.classList.remove("hidden");
                 modal.setAttribute("aria-hidden", "false");
                 document.body.classList.add("overflow-hidden");
@@ -1788,7 +1532,7 @@ const firebaseConfig = {
                         ${pdfRow("Imię", esc(imie))}
                         ${pdfRow("Nazwisko", esc(nazwisko))}
                         ${pdfRow("Numer zamówienia", esc(zam))}
-                        ${pdfRow("Numer faktury", esc(faktura))}
+                        ${pdfRow("Numer faktury / rachunku", esc(faktura))}
                         ${typ === "reklamacja" ? pdfRow("Opis wady", esc(opis)) : ""}
                         ${typ === "zwrot" ? pdfRow("Powód zwrotu", esc(powod)) : ""}
                         ${pdfRow("Żądanie", esc(zadanie))}
@@ -1799,11 +1543,36 @@ const firebaseConfig = {
                     <div style="margin-top:10px;text-align:center;font-size:8pt;color:#a1a1aa;">dokumenty.strzelca.pl</div>
                 `;
 
+                const pdfFilename = `strzelca-zwrot-reklamacja-${Date.now()}.pdf`;
                 const opt = {
                     margin: [10, 10, 10, 10],
-                    filename: `strzelca-zwrot-reklamacja-${Date.now()}.pdf`,
+                    filename: pdfFilename,
                     image: { type: "jpeg", quality: 0.96 },
-                    html2canvas: { scale: 2, useCORS: true, logging: false },
+                    html2canvas: {
+                        scale: 2,
+                        useCORS: true,
+                        logging: false,
+                        backgroundColor: "#fafafa",
+                        onclone(clonedDoc) {
+                            try {
+                                const node =
+                                    clonedDoc && clonedDoc.getElementById
+                                        ? clonedDoc.getElementById("return-claim-pdf-root")
+                                        : null;
+                                if (node && node.style) {
+                                    node.style.opacity = "1";
+                                    node.style.position = "relative";
+                                    node.style.left = "0";
+                                    node.style.top = "0";
+                                    node.style.zIndex = "0";
+                                    node.style.backgroundColor = "#fafafa";
+                                    node.style.color = "#18181b";
+                                }
+                            } catch (_) {
+                                /* ignore */
+                            }
+                        },
+                    },
                     jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
                     pagebreak: { mode: ["avoid-all", "css", "legacy"] },
                 };
@@ -1814,13 +1583,8 @@ const firebaseConfig = {
                         btn.disabled = true;
                         btn.setAttribute("aria-busy", "true");
                     }
+                    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
                     const blob = await html2pdf().set(opt).from(pdfRoot).outputPdf("blob");
-                    const url = URL.createObjectURL(blob);
-                    const win = window.open(url, "_blank", "noopener,noreferrer");
-                    if (!win) {
-                        alert("Nie udało się otworzyć nowej karty. Zezwól na wyskakujące okienka dla tej strony.");
-                    }
-                    setTimeout(() => URL.revokeObjectURL(url), 180000);
                     void logReturnFormActivityToStrzelca({
                         type: typ,
                         imie,
@@ -1833,6 +1597,8 @@ const firebaseConfig = {
                         powod: typ === "zwrot" ? powod : "",
                     }).catch(() => {});
                     closeReturnClaimForm();
+                    openPdfResultModal(blob, pdfFilename);
+                    pdfRoot.innerHTML = "";
                 } catch (e) {
                     console.error(e);
                     alert("Nie udało się wygenerować pliku PDF. Spróbuj ponownie.");
@@ -1846,20 +1612,31 @@ const firebaseConfig = {
 
             form.querySelectorAll('input[name="rc-type"]').forEach((r) => r.addEventListener("change", updateRcTypeFields));
 
+            orderSelect?.addEventListener("change", onOrderSelectChange);
+            zamowienieInput?.addEventListener("input", () => {
+                if (!zamowienieInput || zamowienieInput.readOnly) return;
+                if (orderSelect && orderSelect.value) orderSelect.value = "";
+            });
+
             document.getElementById("return-claim-form-overlay")?.addEventListener("click", closeReturnClaimForm);
             document.getElementById("return-claim-form-close")?.addEventListener("click", closeReturnClaimForm);
-            document.getElementById("return-claim-form-cancel")?.addEventListener("click", closeReturnClaimForm);
             form.addEventListener("submit", submitReturnClaimForm);
 
             document.addEventListener("keydown", (e) => {
-                if (e.key === "Escape" && modal && !modal.classList.contains("hidden")) closeReturnClaimForm();
+                if (e.key !== "Escape") return;
+                if (pdfResultModal && !pdfResultModal.classList.contains("hidden")) {
+                    closePdfResultModal();
+                    return;
+                }
+                if (modal && !modal.classList.contains("hidden")) closeReturnClaimForm();
             });
 
             window.openReturnClaimForm = openReturnClaimForm;
             window.closeReturnClaimForm = closeReturnClaimForm;
+            window.closeReturnClaimPdfResultModal = closePdfResultModal;
         }
 
-        initReturnClaimForm(auth);
+        initReturnClaimForm(auth, db);
 
         async function loadDocumentsCatalogFromFirestore() {
             const grid = document.getElementById("documents-catalog-grid");

@@ -263,7 +263,7 @@
 
         <footer class="w-full py-10 text-center text-zinc-800 text-[10px] uppercase font-bold tracking-[0.4em]">
             <a href="https://strzelca.pl" class="hover:text-zinc-500 transition">STRZELCA.PL</a> |
-            <a href="https://dokumenty.strzelca.pl#regulamin-bazar" class="hover:text-zinc-500 transition ml-4">Regulamin bazaru</a> |
+            <a href="https://dokumenty.strzelca.pl/regulamin-witryny.txt" class="hover:text-zinc-500 transition ml-4">Regulamin witryny</a> |
             <a href="?cookies=1" class="hover:text-zinc-500 transition ml-4">Ustawienia cookies</a>
         </footer>
     </div>
@@ -1019,11 +1019,9 @@
                             <label class="flex items-start gap-3 cursor-pointer">
                                 <input type="checkbox" id="accept-regulations" required class="mt-1 accent-[#C19A6B]">
                                 <span class="text-xs text-zinc-400 leading-relaxed">
-                                    Oswiadczam, ze zapoznalem/am sie z
-                                    <a href="#" onclick="event.preventDefault(); event.stopPropagation(); openRegulationModal('regulamin-platformy')" class="text-[#C19A6B] hover:underline">Regulaminem ogolnym</a>
-                                    oraz
-                                    <a href="#" onclick="event.preventDefault(); event.stopPropagation(); openRegulationModal('regulamin-bazar')" class="text-[#C19A6B] hover:underline">Regulaminem bazaru</a>
-                                    i akceptuje ich postanowienia. Potwierdzam, ze posiadam wymagane prawem uprawnienia do posiadania i zbywania wystawianych przedmiotow.
+                                    Oświadczam, że zapoznałem/am się z
+                                    <a href="#" onclick="event.preventDefault(); event.stopPropagation(); openRegulationModal()" class="text-[#C19A6B] hover:underline">Regulaminem witryny</a>
+                                    (w tym zasadami Bazaru) i akceptuję jego postanowienia. Potwierdzam, że posiadam wymagane prawem uprawnienia do posiadania i zbywania wystawianych przedmiotów.
                                 </span>
                             </label>
                         </div>
@@ -1054,7 +1052,7 @@
         window.submitNewOffer = async () => {
             const acceptEl = document.getElementById('accept-regulations');
             if (!acceptEl || !acceptEl.checked) {
-                alert('Aby wysłać ofertę, zaznacz oświadczenie o zapoznaniu się z Regulaminem ogólnym i Regulaminem bazaru.');
+                alert('Aby wysłać ofertę, zaznacz oświadczenie o zapoznaniu się z Regulaminem witryny.');
                 acceptEl?.focus();
                 return;
             }
@@ -1187,23 +1185,22 @@
             } catch (e) { alert('Blad: ' + (e.message || 'Nie udalo sie zmienic statusu')); }
         };
 
-        window.openRegulationModal = async (docId) => {
+        function escapeRegulaminText(s) {
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        window.openRegulationModal = async () => {
+            const txtUrl = 'https://dokumenty.strzelca.pl/regulamin-witryny.txt';
             try {
-                const res = await fetch(`https://dokumenty.strzelca.pl/`);
-                const html = await res.text();
-                const parser = new DOMParser();
-                const docEl = parser.parseFromString(html, 'text/html');
-                const contentEl = docEl.getElementById(docId + '-content') || docEl.getElementById(docId);
-
-                let contentHTML = '';
-                if (contentEl) {
-                    const body = contentEl.querySelector('.accordion-body') || contentEl;
-                    contentHTML = body.innerHTML;
-                }
-
-                if (!contentHTML) {
-                    contentHTML = `<div class="p-6 text-center text-zinc-400"><p>Tresc regulaminu niedostepna.</p><a href="https://dokumenty.strzelca.pl#${docId}" target="_blank" class="text-[#C19A6B] hover:underline">Otworz na stronie dokumentow</a></div>`;
-                }
+                const res = await fetch(txtUrl, { credentials: 'omit', cache: 'force-cache' });
+                const raw = res.ok ? await res.text() : '';
+                const contentHTML = raw
+                    ? `<pre class="text-sm text-zinc-300 whitespace-pre-wrap font-sans leading-relaxed">${escapeRegulaminText(raw)}</pre>`
+                    : `<div class="p-6 text-center text-zinc-400"><p>Treść regulaminu niedostępna.</p><a href="${txtUrl}" target="_blank" rel="noopener noreferrer" class="text-[#C19A6B] hover:underline">Otwórz plik tekstowy</a></div>`;
 
                 const overlay = document.createElement('div');
                 overlay.id = 'regulation-modal';
@@ -1211,14 +1208,14 @@
                 overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
                 overlay.innerHTML = `<div class="bg-zinc-900 border border-zinc-700 rounded-2xl max-w-3xl w-full my-8 overflow-hidden">
                     <div class="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
-                        <span class="text-xs uppercase font-bold tracking-widest text-zinc-500">Dokument</span>
-                        <button onclick="document.getElementById('regulation-modal').remove()" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-times"></i></button>
+                        <span class="text-xs uppercase font-bold tracking-widest text-zinc-500">Regulamin witryny</span>
+                        <button type="button" onclick="document.getElementById('regulation-modal').remove()" class="text-zinc-400 hover:text-white" aria-label="Zamknij"><i class="fa-solid fa-times"></i></button>
                     </div>
                     <div class="p-5 max-h-[70vh] overflow-y-auto">${contentHTML}</div>
                 </div>`;
                 document.body.appendChild(overlay);
             } catch (e) {
-                window.open(`https://dokumenty.strzelca.pl#${docId}`, '_blank');
+                window.open(txtUrl, '_blank', 'noopener,noreferrer');
             }
         };
 
