@@ -1675,6 +1675,17 @@
                 <p>Brak wydarzeń do wyświetlenia</p>
               </div>
             </div>
+
+            <div class="mt-6">
+              <button
+                type="button"
+                onclick="openMojEventAdminModal()"
+                class="btn-admin w-full inline-flex items-center justify-center py-3 text-base font-semibold"
+              >
+                <i class="fa-solid fa-clipboard-list mr-2"></i>
+                Moj Event
+              </button>
+            </div>
         </div>
 
         <!-- Pomoc Charytatywna -->
@@ -3129,6 +3140,79 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Modal: zgłoszenia „Moj Event” (event.html) -->
+    <div
+      id="moj-event-admin-modal"
+      class="fixed inset-0 z-[60] hidden flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-sm"
+      onclick="if(event.target.id === 'moj-event-admin-modal') closeMojEventAdminModal()"
+      style="overflow-y: auto;"
+    >
+      <div
+        class="admin-card max-w-5xl w-full my-4 sm:my-8 max-h-[94vh] flex flex-col shadow-2xl"
+        onclick="event.stopPropagation()"
+      >
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3 mb-4 pb-3 border-b border-zinc-700/80">
+          <button
+            type="button"
+            onclick="mojEventAdminClearAll()"
+            class="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-medium transition shrink-0"
+          >
+            Wyczyść listę
+          </button>
+          <h2 class="text-lg sm:text-xl font-bold coyote-text flex-1 min-w-0 text-center order-last sm:order-none w-full sm:w-auto">
+            Moj Event — zgłoszenia
+          </h2>
+          <button
+            type="button"
+            onclick="closeMojEventAdminModal()"
+            class="text-zinc-400 hover:text-white p-2 rounded-lg hover:bg-zinc-800 shrink-0 ml-auto sm:ml-0"
+            aria-label="Zamknij"
+          >
+            <i class="fa-solid fa-times text-xl" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <div
+          id="moj-event-admin-loading"
+          class="hidden text-center py-10 text-zinc-400"
+        >
+          <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 block" aria-hidden="true"></i>
+          Ładowanie listy…
+        </div>
+        <div
+          id="moj-event-admin-empty"
+          class="hidden text-center py-10 text-zinc-500 text-sm"
+        >
+          Brak zgłoszeń na stronie eventu.
+        </div>
+        <div
+          id="moj-event-admin-list"
+          class="flex-1 overflow-y-auto min-h-0 space-y-3 pr-1 pb-2"
+        ></div>
+
+        <div
+          class="flex flex-col-reverse sm:flex-row flex-wrap gap-2 justify-end pt-4 mt-4 border-t border-zinc-700/80 shrink-0"
+        >
+          <button
+            type="button"
+            onclick="mojEventAdminGenerate()"
+            class="btn-admin flex-1 sm:flex-none inline-flex items-center justify-center"
+          >
+            <i class="fa-solid fa-table mr-2"></i>
+            Generuj
+          </button>
+          <button
+            type="button"
+            onclick="mojEventAdminSave()"
+            class="btn-admin flex-1 sm:flex-none inline-flex items-center justify-center"
+          >
+            <i class="fa-solid fa-save mr-2"></i>
+            Zapisz
+          </button>
+        </div>
       </div>
     </div>
 
@@ -9138,6 +9222,268 @@
         if (pastEl) pastEl.textContent = past;
         if (pinnedEl) pinnedEl.textContent = pinned;
       }
+
+      const MOJ_EVENT_COLLECTION = "mojEventParticipants";
+
+      function mojEventAttrEscape(s) {
+        return String(s ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/"/g, "&quot;")
+          .replace(/</g, "&lt;");
+      }
+
+      function closeMojEventAdminModal() {
+        const modal = document.getElementById("moj-event-admin-modal");
+        if (modal) modal.classList.add("hidden");
+        document.body.style.overflow = "";
+      }
+      window.closeMojEventAdminModal = closeMojEventAdminModal;
+
+      window.openMojEventAdminModal = async function openMojEventAdminModal() {
+        const modal = document.getElementById("moj-event-admin-modal");
+        if (!modal) return;
+        modal.classList.remove("hidden");
+        document.body.style.overflow = "hidden";
+        await mojEventAdminReloadList();
+      };
+
+      async function mojEventAdminReloadList() {
+        const listEl = document.getElementById("moj-event-admin-list");
+        const loadingEl = document.getElementById("moj-event-admin-loading");
+        const emptyEl = document.getElementById("moj-event-admin-empty");
+        if (!listEl || !db) return;
+        if (loadingEl) loadingEl.classList.remove("hidden");
+        if (emptyEl) emptyEl.classList.add("hidden");
+        listEl.innerHTML = "";
+
+        try {
+          const q = query(
+            collection(db, MOJ_EVENT_COLLECTION),
+            orderBy("createdAt", "desc")
+          );
+          const snap = await getDocs(q);
+          const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+          if (loadingEl) loadingEl.classList.add("hidden");
+
+          if (rows.length === 0) {
+            if (emptyEl) emptyEl.classList.remove("hidden");
+            return;
+          }
+
+          listEl.innerHTML = rows.map((r) => mojEventAdminRowHtml(r)).join("");
+          mojEventAdminBindRowUi(listEl);
+        } catch (e) {
+          console.error("mojEventAdminReloadList:", e);
+          if (loadingEl) loadingEl.classList.add("hidden");
+          showNotification("Nie udało się wczytać listy Moj Event.", "error");
+        }
+      }
+
+      function mojEventAdminRowHtml(r) {
+        const done = r.zatwierdzono === true;
+        const imie = r.imie ?? "";
+        const nazwisko = r.nazwisko ?? "";
+        const ulica = r.ulica ?? "";
+        const numerBudynku = r.numerBudynku ?? "";
+        const numerLokalu = r.numerLokalu ?? "";
+        const miejscowosc = r.miejscowosc ?? "";
+        const rowClass = done
+          ? "border-2 border-green-500/90 bg-zinc-900/40 opacity-70"
+          : "border border-zinc-600 bg-zinc-800/40";
+
+        return `
+          <div data-moj-participant-id="${mojEventAttrEscape(r.id)}" class="moj-ev-row rounded-xl p-3 sm:p-4 ${rowClass} transition-colors">
+            <div class="flex gap-2 sm:gap-3 items-start">
+              <label class="flex items-center pt-2 shrink-0 cursor-pointer select-none" title="Oznacz jako uzupełnione w dokumentacji">
+                <input type="checkbox" class="moj-ev-done w-4 h-4 rounded border-zinc-600 text-coyote focus:ring-coyote bg-zinc-800" ${done ? "checked" : ""} />
+              </label>
+              <div class="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 moj-ev-fields">
+                <input type="text" class="moj-ev-imie w-full px-2 py-1.5 rounded bg-zinc-950 border border-zinc-700 text-sm text-white" placeholder="Imię" value="${mojEventAttrEscape(imie)}" ${done ? "disabled" : ""} />
+                <input type="text" class="moj-ev-nazwisko w-full px-2 py-1.5 rounded bg-zinc-950 border border-zinc-700 text-sm text-white" placeholder="Nazwisko" value="${mojEventAttrEscape(nazwisko)}" ${done ? "disabled" : ""} />
+                <input type="text" class="moj-ev-ulica w-full px-2 py-1.5 rounded bg-zinc-950 border border-zinc-700 text-sm text-white" placeholder="Ulica" value="${mojEventAttrEscape(ulica)}" ${done ? "disabled" : ""} />
+                <input type="text" class="moj-ev-numerBudynku w-full px-2 py-1.5 rounded bg-zinc-950 border border-zinc-700 text-sm text-white" placeholder="Nr budynku" value="${mojEventAttrEscape(numerBudynku)}" ${done ? "disabled" : ""} />
+                <input type="text" class="moj-ev-numerLokalu w-full px-2 py-1.5 rounded bg-zinc-950 border border-zinc-700 text-sm text-white" placeholder="Nr lokalu (opcjonalnie)" value="${mojEventAttrEscape(numerLokalu)}" ${done ? "disabled" : ""} />
+                <input type="text" class="moj-ev-miejscowosc w-full px-2 py-1.5 rounded bg-zinc-950 border border-zinc-700 text-sm text-white" placeholder="Miejscowość" value="${mojEventAttrEscape(miejscowosc)}" ${done ? "disabled" : ""} />
+              </div>
+              <button type="button" class="moj-ev-del shrink-0 p-2 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-red-950/40 border border-transparent hover:border-red-900/50 transition" title="Usuń osobę" aria-label="Usuń">
+                <i class="fa-solid fa-trash" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      function mojEventAdminApplyRowLockedState(rowEl, locked) {
+        rowEl.classList.toggle("border-2", locked);
+        rowEl.classList.toggle("border-green-500/90", locked);
+        rowEl.classList.toggle("border", !locked);
+        rowEl.classList.toggle("border-zinc-600", !locked);
+        rowEl.classList.toggle("bg-zinc-900/40", locked);
+        rowEl.classList.toggle("bg-zinc-800/40", !locked);
+        rowEl.classList.toggle("opacity-70", locked);
+        rowEl.querySelectorAll(".moj-ev-fields input").forEach((inp) => {
+          inp.disabled = locked;
+        });
+      }
+
+      function mojEventAdminBindRowUi(container) {
+        container.querySelectorAll(".moj-ev-row").forEach((rowEl) => {
+          const cb = rowEl.querySelector(".moj-ev-done");
+          if (cb) {
+            mojEventAdminApplyRowLockedState(rowEl, cb.checked);
+            cb.addEventListener("change", () => {
+              mojEventAdminApplyRowLockedState(rowEl, cb.checked);
+            });
+          }
+          const delBtn = rowEl.querySelector(".moj-ev-del");
+          if (delBtn) {
+            delBtn.addEventListener("click", () => {
+              const id = rowEl.getAttribute("data-moj-participant-id");
+              if (id) window.mojEventAdminDeleteRow(id);
+            });
+          }
+        });
+      }
+
+      window.mojEventAdminDeleteRow = async function mojEventAdminDeleteRow(id) {
+        if (!id || !db) return;
+        if (!confirm("Usunąć tę osobę z listy? Tej operacji nie można cofnąć.")) return;
+        try {
+          await deleteDoc(doc(db, MOJ_EVENT_COLLECTION, id));
+          showNotification("Usunięto wpis.", "success");
+          await mojEventAdminReloadList();
+        } catch (e) {
+          console.error(e);
+          showNotification("Nie udało się usunąć wpisu.", "error");
+        }
+      };
+
+      window.mojEventAdminClearAll = async function mojEventAdminClearAll() {
+        if (!db) return;
+        if (!confirm("Wyczyścić całą listę zgłoszeń Moj Event? Wszystkie wpisy zostaną trwale usunięte.")) return;
+        try {
+          const snap = await getDocs(collection(db, MOJ_EVENT_COLLECTION));
+          if (snap.empty) {
+            showNotification("Lista jest już pusta.", "success");
+            await mojEventAdminReloadList();
+            return;
+          }
+          const ids = snap.docs.map((d) => d.id);
+          for (let i = 0; i < ids.length; i += 400) {
+            const batch = writeBatch(db);
+            ids.slice(i, i + 400).forEach((pid) => {
+              batch.delete(doc(db, MOJ_EVENT_COLLECTION, pid));
+            });
+            await batch.commit();
+          }
+          showNotification("Lista wyczyszczona.", "success");
+          await mojEventAdminReloadList();
+        } catch (e) {
+          console.error(e);
+          showNotification("Nie udało się wyczyścić listy.", "error");
+        }
+      };
+
+      function mojEventAdminReadRowPayload(rowEl) {
+        const id = rowEl.getAttribute("data-moj-participant-id");
+        const zatwierdzono = rowEl.querySelector(".moj-ev-done")?.checked === true;
+        return {
+          id,
+          imie: rowEl.querySelector(".moj-ev-imie")?.value?.trim() || "",
+          nazwisko: rowEl.querySelector(".moj-ev-nazwisko")?.value?.trim() || "",
+          ulica: rowEl.querySelector(".moj-ev-ulica")?.value?.trim() || "",
+          numerBudynku: rowEl.querySelector(".moj-ev-numerBudynku")?.value?.trim() || "",
+          numerLokalu: rowEl.querySelector(".moj-ev-numerLokalu")?.value?.trim() || "",
+          miejscowosc: rowEl.querySelector(".moj-ev-miejscowosc")?.value?.trim() || "",
+          zatwierdzono,
+        };
+      }
+
+      window.mojEventAdminGenerate = function mojEventAdminGenerate() {
+        const listEl = document.getElementById("moj-event-admin-list");
+        if (!listEl) return;
+        const rows = [...listEl.querySelectorAll(".moj-ev-row")];
+        const picked = rows.filter((row) => row.querySelector(".moj-ev-done")?.checked);
+        if (picked.length === 0) {
+          showNotification("Zaznacz co najmniej jedną osobę (checkbox), aby wygenerować tabelę.", "error");
+          return;
+        }
+        const header = ["Imię", "Nazwisko", "Ulica", "Nr budynku", "Nr lokalu", "Miejscowość"];
+        const lines = [header.join("\t")];
+        picked.forEach((rowEl) => {
+          const p = mojEventAdminReadRowPayload(rowEl);
+          lines.push(
+            [p.imie, p.nazwisko, p.ulica, p.numerBudynku, p.numerLokalu, p.miejscowosc]
+              .map((cell) => String(cell).replace(/\t/g, " ").replace(/\r?\n/g, " "))
+              .join("\t")
+          );
+        });
+        const tsv = lines.join("\n");
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(tsv).then(
+            () => showNotification("Skopiowano tabelę (TSV) — wklej do Excela lub Arkuszy.", "success"),
+            () => mojEventAdminShowTsvFallback(tsv)
+          );
+        } else {
+          mojEventAdminShowTsvFallback(tsv);
+        }
+      };
+
+      function mojEventAdminShowTsvFallback(tsv) {
+        const w = window.open("", "_blank");
+        if (w) {
+          w.document.write(
+            "<pre style='font-family:monospace;padding:1rem;background:#111;color:#eee;white-space:pre-wrap'>" +
+              tsv.replace(/</g, "&lt;") +
+              "</pre>"
+          );
+          w.document.close();
+          showNotification("Otwarto podgląd tekstu — zaznacz i skopiuj (Ctrl/Cmd+A).", "success");
+        } else {
+          showNotification("Nie udało się skopiować automatycznie — sprawdź uprawnienia schowka.", "error");
+        }
+      }
+
+      window.mojEventAdminSave = async function mojEventAdminSave() {
+        const listEl = document.getElementById("moj-event-admin-list");
+        if (!listEl || !db) return;
+        const rows = [...listEl.querySelectorAll(".moj-ev-row")];
+        if (rows.length === 0) {
+          showNotification("Brak wpisów do zapisania.", "error");
+          return;
+        }
+        const payloads = rows.map((row) => mojEventAdminReadRowPayload(row));
+        for (const p of payloads) {
+          if (!p.imie || !p.nazwisko || !p.ulica || !p.numerBudynku || !p.miejscowosc) {
+            showNotification("Uzupełnij wymagane pola (imię, nazwisko, adres) we wszystkich wierszach.", "error");
+            return;
+          }
+        }
+        try {
+          for (let i = 0; i < payloads.length; i += 400) {
+            const batch = writeBatch(db);
+            payloads.slice(i, i + 400).forEach((p) => {
+              const ref = doc(db, MOJ_EVENT_COLLECTION, p.id);
+              batch.update(ref, {
+                imie: p.imie,
+                nazwisko: p.nazwisko,
+                ulica: p.ulica,
+                numerBudynku: p.numerBudynku,
+                numerLokalu: p.numerLokalu,
+                miejscowosc: p.miejscowosc,
+                zatwierdzono: p.zatwierdzono,
+              });
+            });
+            await batch.commit();
+          }
+          showNotification("Zapisano zmiany.", "success");
+          await mojEventAdminReloadList();
+        } catch (e) {
+          console.error(e);
+          showNotification("Błąd zapisu. Sprawdź uprawnienia i połączenie.", "error");
+        }
+      };
 
       // Funkcja otwierająca modal do dodawania/edycji wydarzenia
       window.addNewEvent = () => {

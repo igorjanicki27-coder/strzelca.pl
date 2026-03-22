@@ -228,6 +228,9 @@
                 transition: transform 0.18s cubic-bezier(0.22, 0.61, 0.36, 1);
                 will-change: transform;
             }
+            #training-track.carousel-track--single {
+                justify-content: center;
+            }
             .training-card {
                 flex: 0 0 calc((100% - 40px) / 3);
                 min-width: 0;
@@ -236,6 +239,12 @@
                 background: rgba(17, 17, 17, 0.72);
                 backdrop-filter: blur(6px);
                 -webkit-backdrop-filter: blur(6px);
+            }
+            .training-card.carousel-status-message {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: clamp(140px, 24vh, 220px);
             }
             .training-card .training-img-container img {
                 background: rgba(8, 8, 8, 0.55);
@@ -422,9 +431,9 @@
                 >STRZELCA.PL</a
             > |
             <a
-                href="?cookies=1"
+                href="certyfikaty.html"
                 class="hover:text-zinc-500 transition ml-4"
-                >Ustawienia cookies</a
+                >Rejestr certyfikatów</a
             >
         </footer>
 
@@ -445,6 +454,10 @@
             import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
             import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
             import {
+                initNewsletterOptInFromEmptyCarousels,
+                buildEmptyCarouselArticleHtml,
+            } from "https://strzelca.pl/empty-carousel-newsletter.mjs?v=2026-03-22-1";
+            import {
                 initializeFirestore,
                 getFirestore,
                 collection,
@@ -454,6 +467,8 @@
                 query,
                 orderBy,
                 where,
+                updateDoc,
+                setDoc,
             } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
             
@@ -518,6 +533,15 @@ const firebaseConfig = {
             } catch (e) {
                 console.warn("SSO ensure failed (ignored):", e?.message || e);
             }
+
+            initNewsletterOptInFromEmptyCarousels({
+                auth,
+                db,
+                doc,
+                getDoc,
+                setDoc,
+                updateDoc,
+            });
 
             void (async () => {
                 try {
@@ -759,11 +783,10 @@ const firebaseConfig = {
                 trainingPendingMoves = 0;
 
                 if (trainingItems.length === 0) {
-                    track.innerHTML = `
-                        <article class="card-dark training-card p-8 text-center w-full">
-                            <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs">Brak szkoleń wystawionych do sprzedaży</p>
-                        </article>
-                    `;
+                    track.classList.remove("carousel-track--single");
+                    track.innerHTML = buildEmptyCarouselArticleHtml(
+                        "card-dark training-card carousel-status-message p-8 w-full",
+                    );
                     trainingLoopEnabled = false;
                     prevBtn.disabled = true;
                     nextBtn.disabled = true;
@@ -775,6 +798,7 @@ const firebaseConfig = {
                 if (!preservePosition) {
                     track.innerHTML = trainingItems.map((item) => buildTrainingCard(item)).join("");
                 }
+                track.classList.toggle("carousel-track--single", trainingItems.length === 1);
                 const visibleCards = getVisibleTrainingCardsCount();
                 trainingLoopEnabled = trainingItems.length > visibleCards;
                 prevBtn.disabled = !trainingLoopEnabled;
@@ -893,8 +917,8 @@ const firebaseConfig = {
                 const track = document.getElementById("training-track");
                 if (track) {
                     track.innerHTML = `
-                        <article class="card-dark training-card p-8 text-center w-full">
-                            <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs">Ładowanie szkoleń...</p>
+                        <article class="card-dark training-card carousel-status-message p-8 w-full">
+                            <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs w-full text-center">Ładowanie ...</p>
                         </article>
                     `;
                 }
@@ -1172,7 +1196,7 @@ const firebaseConfig = {
     ></script>
     <script
       type="module"
-      src="https://strzelca.pl/messages-widget.mjs?v=2026-03-22-1"
+      src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-6"
     ></script>
   </body>
 </html>

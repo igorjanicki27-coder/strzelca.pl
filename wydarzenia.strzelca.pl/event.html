@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://strzelca.pl/consent.js?v=2026-02-06-1"></script>
+    <meta name="description" content="Zgłoszenie uczestników wydarzenia — dane do dokumentacji strzelnicy STRZELCA.PL">
+    <meta name="robots" content="noindex, nofollow">
+
+    <link rel="icon" type="image/svg+xml" href="https://strzelca.pl/ikona.svg">
+    <title>Zgłoszenie — wydarzenie | STRZELCA.PL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              coyote: "#C19A6B",
+              "coyote-dark": "#9a7a55",
+              "coyote-light": "#d4b896",
+            },
+          },
+        },
+      };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
+    <style>
+        :root {
+            --coyote: #C19A6B;
+        }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: #0a0a0a;
+            background-image:
+                var(--strzelca-bg-vignette),
+                linear-gradient(rgba(10,10,10,0.22) 0%, rgba(10,10,10,0.55) 55%, rgba(10,10,10,0.9) 100%),
+                url('https://strzelca.pl/tlo.png');
+            background-size: cover, cover, cover;
+            background-position: center;
+            color: #e5e5e5;
+            min-height: 100dvh;
+            margin: 0;
+        }
+        .coyote-text {
+            color: var(--coyote);
+            font-family: 'Orbitron', sans-serif;
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="min-h-dvh flex flex-col items-center px-4 py-10 pb-16">
+        <header class="w-full max-w-2xl mb-8 text-center">
+            <a href="https://wydarzenia.strzelca.pl/" class="text-zinc-500 hover:text-coyote text-sm transition inline-flex items-center gap-2 mb-4">
+                <i class="fa-solid fa-arrow-left-long"></i> Wróć do wydarzeń
+            </a>
+            <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                Zgłoszenie uczestników<span class="coyote-text">.</span>
+            </h1>
+            <p class="text-zinc-400 text-sm mt-2">Wydarzenie — dane do dokumentacji strzelnicy</p>
+        </header>
+
+        <main class="w-full max-w-2xl">
+            <div class="rounded-2xl border border-zinc-700/80 bg-zinc-900/70 backdrop-blur-md p-6 sm:p-8 shadow-xl">
+                <form id="event-reg-form" class="space-y-6">
+                    <div>
+                        <label for="liczba-osob" class="block text-sm font-medium text-zinc-300 mb-2">Liczba osób</label>
+                        <select id="liczba-osob" name="liczba-osob" required
+                            class="w-full rounded-lg bg-zinc-950 border border-zinc-600 text-white px-3 py-2.5 focus:ring-2 focus:ring-coyote focus:border-coyote outline-none transition">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                            <option value="9">9</option>
+                            <option value="10">10</option>
+                            <option value="11">11</option>
+                            <option value="12">12</option>
+                            <option value="13">13</option>
+                            <option value="14">14</option>
+                            <option value="15">15</option>
+                        </select>
+                    </div>
+
+                    <div id="osoby-container" class="space-y-4"></div>
+
+                    <div class="border-t border-zinc-700/80 pt-6 space-y-4">
+                        <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-location-dot text-coyote"></i> Adres
+                        </h2>
+                        <p class="text-xs text-zinc-500 leading-relaxed">
+                            Ten sam adres zostanie przypisany do każdej z wymienionych osób w zgłoszeniu.
+                        </p>
+                        <div>
+                            <label for="ulica" class="block text-sm font-medium text-zinc-300 mb-1.5">Ulica</label>
+                            <input type="text" id="ulica" name="ulica" required maxlength="150" autocomplete="street-address"
+                                class="w-full rounded-lg bg-zinc-950 border border-zinc-600 text-white px-3 py-2.5 focus:ring-2 focus:ring-coyote outline-none" />
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="numer-budynku" class="block text-sm font-medium text-zinc-300 mb-1.5">Numer budynku</label>
+                                <input type="text" id="numer-budynku" name="numer-budynku" required maxlength="30" autocomplete="address-line2"
+                                    class="w-full rounded-lg bg-zinc-950 border border-zinc-600 text-white px-3 py-2.5 focus:ring-2 focus:ring-coyote outline-none" />
+                            </div>
+                            <div>
+                                <label for="numer-lokalu" class="block text-sm font-medium text-zinc-300 mb-1.5">Numer lokalu <span class="text-zinc-500 font-normal">(opcjonalnie)</span></label>
+                                <input type="text" id="numer-lokalu" name="numer-lokalu" maxlength="30"
+                                    class="w-full rounded-lg bg-zinc-950 border border-zinc-600 text-white px-3 py-2.5 focus:ring-2 focus:ring-coyote outline-none" />
+                            </div>
+                        </div>
+                        <div>
+                            <label for="miejscowosc" class="block text-sm font-medium text-zinc-300 mb-1.5">Miejscowość</label>
+                            <input type="text" id="miejscowosc" name="miejscowosc" required maxlength="100" autocomplete="address-level2"
+                                class="w-full rounded-lg bg-zinc-950 border border-zinc-600 text-white px-3 py-2.5 focus:ring-2 focus:ring-coyote outline-none" />
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg border border-coyote/30 bg-coyote/5 p-4 text-sm text-zinc-300 leading-relaxed">
+                        <i class="fa-solid fa-circle-info text-coyote mr-2"></i>
+                        <strong class="text-zinc-200">Informacja:</strong> zbieramy powyższe dane, ponieważ są potrzebne do uzupełnienia dokumentacji strzelnicy zgodnie z obowiązującymi wymaganiami.
+                    </div>
+
+                    <p id="form-msg" class="text-sm min-h-[1.25rem]" role="status" aria-live="polite"></p>
+                    <p id="rate-limit-status" class="text-xs text-zinc-500 leading-relaxed mb-3" aria-live="polite"></p>
+
+                    <button type="submit" id="btn-submit"
+                        class="w-full py-3 rounded-xl bg-coyote hover:bg-coyote-dark text-black font-bold tracking-wide transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        Wyślij zgłoszenie
+                    </button>
+                </form>
+            </div>
+        </main>
+
+        <footer class="mt-12 text-center text-zinc-600 text-xs">
+            <a href="https://strzelca.pl" class="hover:text-zinc-400">STRZELCA.PL</a>
+        </footer>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { initializeFirestore, getFirestore, collection, doc, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        async function getFirebaseApiKey() {
+            const cachedKey = localStorage.getItem("firebase_web_api_key");
+            if (cachedKey) return cachedKey;
+            const urls = ["https://strzelca.pl/api/firebase-config", "/api/firebase-config"];
+            for (const url of urls) {
+                try {
+                    const res = await fetch(url, {
+                        cache: "force-cache",
+                        credentials: url.startsWith("http") ? "omit" : "same-origin",
+                    });
+                    if (!res.ok) continue;
+                    const data = await res.json().catch(() => null);
+                    if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
+                        localStorage.setItem("firebase_web_api_key", data.apiKey);
+                        return data.apiKey;
+                    }
+                } catch (_) {}
+            }
+            throw new Error("Nie udało się pobrać konfiguracji Firebase.");
+        }
+
+        const apiKey = await getFirebaseApiKey();
+        const firebaseConfig = {
+            apiKey,
+            authDomain: "strzelca-pl.firebaseapp.com",
+            projectId: "strzelca-pl",
+            storageBucket: "strzelca-pl.appspot.com",
+            messagingSenderId: "511362047688",
+            appId: "1:511362047688:web:9b82c0a4d19c1a3a878ffd",
+        };
+
+        const app = initializeApp(firebaseConfig);
+        let db;
+        try {
+            db = initializeFirestore(app, {
+                experimentalAutoDetectLongPolling: true,
+                useFetchStreams: true,
+            });
+        } catch (e) {
+            if (e?.code === "failed-precondition" || String(e?.message || "").includes("already been called")) {
+                db = getFirestore(app);
+            } else {
+                throw e;
+            }
+        }
+
+        const COL = "mojEventParticipants";
+        const osobyContainer = document.getElementById("osoby-container");
+        const liczbaSelect = document.getElementById("liczba-osob");
+        const form = document.getElementById("event-reg-form");
+        const msg = document.getElementById("form-msg");
+        const btnSubmit = document.getElementById("btn-submit");
+        const rateLimitStatusEl = document.getElementById("rate-limit-status");
+
+        const RATE_KEYS = { count: "mojEvent_reg_session_count", lastAt: "mojEvent_reg_last_submit_ms" };
+        const MAX_FORMS_PER_SESSION = 5;
+        const MIN_MS_BETWEEN_SUBMITS = 5 * 60 * 1000;
+        let rateLimitCooldownTimer = null;
+
+        function getSessionSubmitCount() {
+            const n = parseInt(sessionStorage.getItem(RATE_KEYS.count) || "0", 10);
+            return Number.isFinite(n) && n >= 0 ? n : 0;
+        }
+
+        function getLastSubmitMs() {
+            const t = parseInt(sessionStorage.getItem(RATE_KEYS.lastAt) || "0", 10);
+            return Number.isFinite(t) && t > 0 ? t : 0;
+        }
+
+        function canSubmitByClientLimit() {
+            const count = getSessionSubmitCount();
+            if (count >= MAX_FORMS_PER_SESSION) {
+                return {
+                    ok: false,
+                    reason: "session_cap",
+                    waitMs: 0,
+                };
+            }
+            const last = getLastSubmitMs();
+            if (last > 0) {
+                const elapsed = Date.now() - last;
+                if (elapsed < MIN_MS_BETWEEN_SUBMITS) {
+                    return {
+                        ok: false,
+                        reason: "cooldown",
+                        waitMs: MIN_MS_BETWEEN_SUBMITS - elapsed,
+                    };
+                }
+            }
+            return { ok: true, reason: null, waitMs: 0 };
+        }
+
+        function recordSuccessfulClientSubmit() {
+            sessionStorage.setItem(RATE_KEYS.count, String(getSessionSubmitCount() + 1));
+            sessionStorage.setItem(RATE_KEYS.lastAt, String(Date.now()));
+        }
+
+        function formatCooldown(waitMs) {
+            const sec = Math.max(1, Math.ceil(waitMs / 1000));
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            return m > 0 ? `${m} min ${String(s).padStart(2, "0")} s` : `${s} s`;
+        }
+
+        function applyClientRateLimitUI() {
+            if (rateLimitCooldownTimer) {
+                clearTimeout(rateLimitCooldownTimer);
+                rateLimitCooldownTimer = null;
+            }
+
+            const gate = canSubmitByClientLimit();
+            const count = getSessionSubmitCount();
+            const left = Math.max(0, MAX_FORMS_PER_SESSION - count);
+
+            if (gate.ok) {
+                btnSubmit.disabled = false;
+                if (rateLimitStatusEl) {
+                    if (count === 0) {
+                        rateLimitStatusEl.textContent =
+                            "Limit: jedno zgłoszenie co 5 minut, maksymalnie 5 zgłoszeń w tej sesji przeglądarki (karta).";
+                    } else {
+                        rateLimitStatusEl.textContent = `W tej sesji wykorzystano ${count} z ${MAX_FORMS_PER_SESSION} zgłoszeń. Możesz jeszcze ${left}. Między wysłaniami: 5 minut przerwy.`;
+                    }
+                }
+                return;
+            }
+
+            btnSubmit.disabled = true;
+            if (rateLimitStatusEl) {
+                if (gate.reason === "session_cap") {
+                    rateLimitStatusEl.textContent =
+                        "Osiągnięto limit 5 zgłoszeń w tej sesji. Zamknij kartę lub otwórz stronę w nowej karcie, aby wysłać kolejne (limit nadal tylko po stronie przeglądarki).";
+                } else {
+                    rateLimitStatusEl.textContent = `Przerwa między zgłoszeniami: poczekaj jeszcze ${formatCooldown(gate.waitMs)}.`;
+                    rateLimitCooldownTimer = setTimeout(
+                        () => applyClientRateLimitUI(),
+                        Math.min(gate.waitMs + 250, MIN_MS_BETWEEN_SUBMITS + 1000)
+                    );
+                }
+            }
+        }
+
+        function renderOsobyFields(n) {
+            osobyContainer.innerHTML = "";
+            for (let i = 1; i <= n; i++) {
+                const block = document.createElement("div");
+                block.className = "rounded-xl border border-zinc-700/60 bg-zinc-950/50 p-4 space-y-3";
+                block.innerHTML = `
+                    <div class="text-xs font-semibold uppercase tracking-wider text-coyote">Osoba ${i}</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm text-zinc-300 mb-1" for="imie-${i}">Imię</label>
+                            <input type="text" id="imie-${i}" name="imie-${i}" required maxlength="100" autocomplete="given-name"
+                                class="w-full rounded-lg bg-zinc-900 border border-zinc-600 text-white px-3 py-2 focus:ring-2 focus:ring-coyote outline-none" />
+                        </div>
+                        <div>
+                            <label class="block text-sm text-zinc-300 mb-1" for="nazwisko-${i}">Nazwisko</label>
+                            <input type="text" id="nazwisko-${i}" name="nazwisko-${i}" required maxlength="100" autocomplete="family-name"
+                                class="w-full rounded-lg bg-zinc-900 border border-zinc-600 text-white px-3 py-2 focus:ring-2 focus:ring-coyote outline-none" />
+                        </div>
+                    </div>
+                `;
+                osobyContainer.appendChild(block);
+            }
+        }
+
+        liczbaSelect.addEventListener("change", () => {
+            renderOsobyFields(Number(liczbaSelect.value) || 1);
+        });
+        renderOsobyFields(1);
+        applyClientRateLimitUI();
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            msg.textContent = "";
+            msg.className = "text-sm min-h-[1.25rem]";
+
+            const gate = canSubmitByClientLimit();
+            if (!gate.ok) {
+                if (gate.reason === "session_cap") {
+                    msg.textContent = "Osiągnięto limit zgłoszeń w tej sesji przeglądarki.";
+                } else {
+                    msg.textContent = `Poczekaj ${formatCooldown(gate.waitMs)} przed kolejnym zgłoszeniem.`;
+                }
+                msg.classList.add("text-amber-400");
+                applyClientRateLimitUI();
+                return;
+            }
+
+            const n = Number(liczbaSelect.value) || 1;
+            const ulica = document.getElementById("ulica").value.trim();
+            const numerBudynku = document.getElementById("numer-budynku").value.trim();
+            const numerLokalu = document.getElementById("numer-lokalu").value.trim();
+            const miejscowosc = document.getElementById("miejscowosc").value.trim();
+
+            if (!ulica || !numerBudynku || !miejscowosc) {
+                msg.textContent = "Uzupełnij wymagane pola adresu.";
+                msg.classList.add("text-red-400");
+                return;
+            }
+
+            const osoby = [];
+            for (let i = 1; i <= n; i++) {
+                const imie = document.getElementById(`imie-${i}`)?.value?.trim() || "";
+                const nazwisko = document.getElementById(`nazwisko-${i}`)?.value?.trim() || "";
+                if (!imie || !nazwisko) {
+                    msg.textContent = `Uzupełnij imię i nazwisko osoby ${i}.`;
+                    msg.classList.add("text-red-400");
+                    return;
+                }
+                osoby.push({ imie, nazwisko });
+            }
+
+            btnSubmit.disabled = true;
+            try {
+                const batch = writeBatch(db);
+                const ts = Timestamp.now();
+                for (const o of osoby) {
+                    const ref = doc(collection(db, COL));
+                    batch.set(ref, {
+                        imie: o.imie,
+                        nazwisko: o.nazwisko,
+                        ulica,
+                        numerBudynku,
+                        numerLokalu,
+                        miejscowosc,
+                        zatwierdzono: false,
+                        createdAt: ts,
+                    });
+                }
+                await batch.commit();
+                recordSuccessfulClientSubmit();
+                msg.textContent = "Dziękujemy — zgłoszenie zostało zapisane.";
+                msg.classList.add("text-green-400");
+                form.reset();
+                liczbaSelect.value = "1";
+                renderOsobyFields(1);
+            } catch (err) {
+                console.error(err);
+                msg.textContent = "Nie udało się wysłać zgłoszenia. Spróbuj ponownie za chwilę lub skontaktuj się z organizatorem.";
+                msg.classList.add("text-red-400");
+            } finally {
+                applyClientRateLimitUI();
+            }
+        });
+    </script>
+</body>
+</html>

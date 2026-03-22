@@ -583,7 +583,7 @@ function makeStyles() {
       border-radius: 8px;
       background: transparent;
       color: #fff;
-      padding: 10px 6px 11px 4px;
+      padding: 10px 4px 11px 12px;
       outline: none;
       font: inherit;
       font-size: 13px;
@@ -1218,8 +1218,8 @@ async function main() {
   sendBtn.title = "Wyślij wiadomość";
   sendBtn.innerHTML = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>`;
 
-  composerBar.appendChild(attachBtn);
   composerBar.appendChild(ta);
+  composerBar.appendChild(attachBtn);
   composerBar.appendChild(sendBtn);
   composer.appendChild(pendingAttach);
   composer.appendChild(composerBar);

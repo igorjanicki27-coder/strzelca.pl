@@ -87,6 +87,9 @@
             transition: transform 0.18s cubic-bezier(0.22, 0.61, 0.36, 1);
             will-change: transform;
         }
+        #charity-track.carousel-track--single {
+            justify-content: center;
+        }
         .charity-card {
             flex: 0 0 calc((100% - 40px) / 3);
             min-width: 0;
@@ -108,6 +111,10 @@
             flex-direction: column;
             padding: 1rem;
             gap: 0.65rem;
+        }
+        .charity-card-inner.charity-status-only {
+            justify-content: center;
+            align-items: center;
         }
         /* Ten sam „rząd” co data w akcjach — stała wysokość, żeby kafelki się zgadzały */
         .charity-card-meta-row {
@@ -354,8 +361,8 @@
                 <div class="carousel-viewport">
                     <div id="charity-track">
                         <article class="card-dark charity-card">
-                            <div class="charity-card-inner text-center">
-                                <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs">Ładowanie akcji...</p>
+                            <div class="charity-card-inner text-center charity-status-only w-full">
+                                <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs w-full text-center">Ładowanie ...</p>
                             </div>
                         </article>
                     </div>
@@ -504,7 +511,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { initializeFirestore, doc, setDoc, getDoc, getDocs, collection, deleteDoc, query, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { initializeFirestore, getFirestore, doc, setDoc, getDoc, getDocs, collection, deleteDoc, query, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-03-21-1";
         import {
@@ -513,6 +520,10 @@
         } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
         import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
         import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
+        import {
+            initNewsletterOptInFromEmptyCarousels,
+            buildEmptyCarouselArticleHtml,
+        } from "https://strzelca.pl/empty-carousel-newsletter.mjs?v=2026-03-22-1";
 
         
       async function getFirebaseApiKey() {
@@ -550,10 +561,19 @@ const firebaseConfig = {
         };
 
         const app = initializeApp(firebaseConfig);
-        const db = initializeFirestore(app, {
-            experimentalAutoDetectLongPolling: true,
-            useFetchStreams: true,
-        });
+        let db;
+        try {
+            db = initializeFirestore(app, {
+                experimentalAutoDetectLongPolling: true,
+                useFetchStreams: true,
+            });
+        } catch (e) {
+            if (e?.code === "failed-precondition" || String(e?.message || "").includes("already been called")) {
+                db = getFirestore(app);
+            } else {
+                throw e;
+            }
+        }
         const auth = getAuth(app);
 
         // Ustaw trwałość sesji na browserLocalPersistence dla wszystkich subdomen
@@ -565,6 +585,15 @@ const firebaseConfig = {
         } catch (e) {
             console.warn("SSO ensure failed (ignored):", e?.message || e);
         }
+
+        initNewsletterOptInFromEmptyCarousels({
+            auth,
+            db,
+            doc,
+            getDoc,
+            setDoc,
+            updateDoc,
+        });
 
         void (async () => {
             try {
@@ -1092,7 +1121,16 @@ const firebaseConfig = {
             charityPendingMoves = 0;
 
             const cardsHtml = [buildPinnedDonateCard(), ...publicCharityItems.map((item) => buildCharityCard(item))];
+            if (publicCharityItems.length === 0) {
+                cardsHtml.push(
+                    buildEmptyCarouselArticleHtml(
+                        'card-dark charity-card carousel-status-message p-6 md:p-8 w-full',
+                    ),
+                );
+            }
             track.innerHTML = cardsHtml.join('');
+            const cardCount = cardsHtml.length;
+            track.classList.toggle('carousel-track--single', cardCount === 1);
             track.style.transition = 'none';
             track.style.transform = 'translateX(0)';
             void track.offsetHeight;
@@ -1671,7 +1709,7 @@ const firebaseConfig = {
     ></script>
     <script
       type="module"
-      src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-5"
+      src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-6"
     ></script>
   </body>
 </html>

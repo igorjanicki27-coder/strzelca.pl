@@ -478,6 +478,12 @@
             justify-content: space-between;
             cursor: pointer;
         }
+        .event-carousel-card.carousel-status-message {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            cursor: default;
+        }
 
         .events-carousel-arrow {
             width: 2.45rem;
@@ -797,6 +803,14 @@
             transition: transform 0.18s cubic-bezier(0.22, 0.61, 0.36, 1);
             will-change: transform;
         }
+        #events-track.carousel-track--single {
+            justify-content: center;
+        }
+        #events-track .event-carousel-card.event-carousel-empty-wide {
+            flex: 1 1 100%;
+            max-width: 100%;
+            cursor: default;
+        }
         .event-carousel-card {
             flex: 0 0 calc((100% - 40px) / 3);
             min-width: 0;
@@ -1107,8 +1121,8 @@
                     </button>
                     <div class="carousel-viewport">
                         <div id="events-track">
-                            <article class="card-dark event-carousel-card">
-                                <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs">Ładowanie wydarzeń...</p>
+                            <article class="card-dark event-carousel-card carousel-status-message">
+                                <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs w-full">Ładowanie ...</p>
                             </article>
                         </div>
                     </div>
@@ -1186,7 +1200,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { initializeFirestore, collection, query, orderBy, getDocs, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { initializeFirestore, getFirestore, collection, query, orderBy, getDocs, where, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-03-21-1";
         import {
@@ -1195,6 +1209,10 @@
         } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
         import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
         import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
+        import {
+            initNewsletterOptInFromEmptyCarousels,
+            buildEmptyCarouselArticleHtml,
+        } from "https://strzelca.pl/empty-carousel-newsletter.mjs?v=2026-03-22-1";
 
         
       async function getFirebaseApiKey() {
@@ -1238,10 +1256,19 @@ const firebaseConfig = {
         };
 
         const app = initializeApp(firebaseConfig);
-        const db = initializeFirestore(app, {
-            experimentalAutoDetectLongPolling: true,
-            useFetchStreams: true,
-        });
+        let db;
+        try {
+            db = initializeFirestore(app, {
+                experimentalAutoDetectLongPolling: true,
+                useFetchStreams: true,
+            });
+        } catch (e) {
+            if (e?.code === "failed-precondition" || String(e?.message || "").includes("already been called")) {
+                db = getFirestore(app);
+            } else {
+                throw e;
+            }
+        }
         const auth = getAuth(app);
 
         // Ustaw trwałość sesji na browserLocalPersistence dla wszystkich subdomen
@@ -1253,6 +1280,15 @@ const firebaseConfig = {
         } catch (e) {
             console.warn("SSO ensure failed (ignored):", e?.message || e);
         }
+
+        initNewsletterOptInFromEmptyCarousels({
+            auth,
+            db,
+            doc,
+            getDoc,
+            setDoc,
+            updateDoc,
+        });
 
         void (async () => {
             try {
@@ -1721,9 +1757,10 @@ const firebaseConfig = {
             try {
                 const track = document.getElementById('events-track');
                 if (!track) return;
+                track.classList.remove('carousel-track--single');
                 const msg = (err && (err.message || String(err))) || 'Nieznany błąd';
                 track.innerHTML = `
-                    <article class="card-dark event-carousel-card text-center">
+                    <article class="card-dark event-carousel-card carousel-status-message">
                         <p class="text-red-500 font-bold mb-2">${label || 'Błąd aplikacji'}</p>
                         <p class="text-sm text-zinc-500 break-words">${msg}</p>
                     </article>
@@ -1861,8 +1898,9 @@ const firebaseConfig = {
                 
                 const track = document.getElementById('events-track');
                 if (track) {
+                    track.classList.remove('carousel-track--single');
                     track.innerHTML = `
-                        <article class="card-dark event-carousel-card text-center">
+                        <article class="card-dark event-carousel-card carousel-status-message">
                             <p class="text-red-500 font-bold mb-2">${errorMessage}</p>
                             <p class="text-sm text-zinc-500">${error.message || 'Nieznany błąd'}</p>
                         </article>
@@ -2057,11 +2095,10 @@ const firebaseConfig = {
             eventPendingMoves = 0;
 
             if (filteredEvents.length === 0) {
-                track.innerHTML = `
-                    <article class="card-dark event-carousel-card text-center">
-                        <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs">Brak wydarzeń do wyświetlenia</p>
-                    </article>
-                `;
+                track.classList.remove('carousel-track--single');
+                track.innerHTML = buildEmptyCarouselArticleHtml(
+                    'card-dark event-carousel-card carousel-status-message event-carousel-empty-wide',
+                );
                 updateEventsCarouselControls();
                 return;
             }
@@ -2108,6 +2145,8 @@ const firebaseConfig = {
                     </article>
                 `;
             }).join('');
+
+            track.classList.toggle('carousel-track--single', sortedEvents.length === 1);
 
             track.querySelectorAll('.event-carousel-card[data-event-id]').forEach((cardEl) => {
                 cardEl.addEventListener('click', () => {
@@ -2427,7 +2466,7 @@ const firebaseConfig = {
     ></script>
     <script
       type="module"
-      src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-5"
+      src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-6"
     ></script>
   </body>
 </html>

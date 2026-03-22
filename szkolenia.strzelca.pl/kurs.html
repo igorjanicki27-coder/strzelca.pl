@@ -290,9 +290,9 @@
                 >STRZELCA.PL</a
             > |
             <a
-                href="?cookies=1"
+                href="certyfikaty.html"
                 class="hover:text-zinc-500 transition ml-4"
-                >Ustawienia cookies</a
+                >Rejestr certyfikatów</a
             >
         </footer>
 
@@ -348,7 +348,8 @@
                 orderBy,
                 where,
                 setDoc,
-                serverTimestamp
+                serverTimestamp,
+                runTransaction,
             } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
             async function getFirebaseApiKey() {
@@ -779,8 +780,76 @@
                     alert("Błąd podczas generowania certyfikatu.");
                 }
             };
+
+            /** Fragment kursu do numeru certyfikatu (tylko A–Z, 0–9, _) — zgodnie z regułami Firestore. */
+            function courseSlugFromTitle(title) {
+                let t = (title || "KURS").trim().toUpperCase();
+                t = t.normalize("NFD").replace(/\p{M}/gu, "");
+                t = t.replace(/Ł/g, "L").replace(/ł/g, "L");
+                t = t.replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+                return (t || "KURS").slice(0, 100);
+            }
+
+            /** Rejestracja w Firestore + stały numer dla użytkownika i kursu. */
+            async function ensureCertificateIssued(recipientName) {
+                const certId = `${currentTrainingId}_${currentUser.uid}`;
+                const certRef = doc(db, "publicTrainingCertificates", certId);
+                const existing = await getDoc(certRef);
+                if (existing.exists()) {
+                    const d = existing.data();
+                    return {
+                        certificateNumber: d.certificateNumber,
+                        issuedAtDate: d.issuedAt?.toDate?.() || new Date(),
+                    };
+                }
+                const courseSlug = courseSlugFromTitle(trainingTitle);
+                const counterRef = doc(db, "trainingCertificateCounters", currentTrainingId);
+                await runTransaction(db, async (tx) => {
+                    const cSnap = await tx.get(certRef);
+                    if (cSnap.exists()) return;
+                    const counterSnap = await tx.get(counterRef);
+                    const last = counterSnap.exists() ? (counterSnap.data().lastSerial || 0) : 0;
+                    const serial = last + 1;
+                    const certificateNumber = `STRZELCA.PL/${courseSlug}/${serial}`;
+                    tx.set(counterRef, { lastSerial: serial }, { merge: true });
+                    tx.set(certRef, {
+                        certificateNumber,
+                        courseSlug,
+                        courseTitle: trainingTitle,
+                        serialNumber: serial,
+                        trainingId: currentTrainingId,
+                        recipientName,
+                        userId: currentUser.uid,
+                        issuedAt: serverTimestamp(),
+                    });
+                });
+                const snap = await getDoc(certRef);
+                if (!snap.exists()) throw new Error("Brak rekordu certyfikatu po zapisie");
+                const d = snap.data();
+                return {
+                    certificateNumber: d.certificateNumber,
+                    issuedAtDate: d.issuedAt?.toDate?.() || new Date(),
+                };
+            }
+
+            async function drawVerificationQr(ctx, x, y, size) {
+                const verifyUrl = new URL("certyfikaty.html", window.location.href).href;
+                const { default: QRCode } = await import("https://esm.sh/qrcode@1.5.3");
+                const qrCanvas = document.createElement("canvas");
+                await new Promise((resolve, reject) => {
+                    QRCode.toCanvas(
+                        qrCanvas,
+                        verifyUrl,
+                        { width: size, margin: 1, color: { dark: "#0a0a0a", light: "#ffffff" } },
+                        (err) => (err ? reject(err) : resolve())
+                    );
+                });
+                ctx.drawImage(qrCanvas, x, y, size, size);
+            }
             
             async function generateCertificate(userName) {
+                const { certificateNumber, issuedAtDate } = await ensureCertificateIssued(userName);
+
                 // Utwórz canvas dla certyfikatu - większa rozdzielczość dla lepszej jakości
                 const canvas = document.createElement('canvas');
                 const scale = 2; // Skala dla lepszej jakości
@@ -841,18 +910,33 @@
                 // Nazwa kursu - większa i złota
                 ctx.fillStyle = '#c19a6b';
                 ctx.font = 'bold 42px Inter, sans-serif';
-                ctx.fillText(trainingTitle, 700, 620);
-                
-                // Data - lepsze formatowanie
-                const date = new Date();
-                const dateStr = date.toLocaleDateString('pl-PL', { 
+                ctx.fillText(trainingTitle, 700, 612);
+
+                // Numer certyfikatu (STRZELCA.PL / NAZWA_KURSU / NR)
+                const numParts = certificateNumber.split("/");
+                ctx.fillStyle = '#c19a6b';
+                ctx.font = 'bold 20px Inter, sans-serif';
+                let ny = 648;
+                if (numParts.length >= 3) {
+                    ctx.fillText(numParts[0], 700, ny);
+                    ny += 28;
+                    ctx.fillText(numParts[1], 700, ny);
+                    ny += 28;
+                    ctx.fillText(numParts[2], 700, ny);
+                } else {
+                    ctx.fillText(certificateNumber, 700, ny);
+                    ny += 28;
+                }
+
+                // Data wystawienia (z rejestru)
+                const dateStr = issuedAtDate.toLocaleDateString('pl-PL', { 
                     year: 'numeric', 
                     month: 'long', 
                     day: 'numeric' 
                 });
                 ctx.fillStyle = '#e5e5e5';
                 ctx.font = '24px Inter, sans-serif';
-                ctx.fillText(dateStr, 700, 720);
+                ctx.fillText(dateStr, 700, 722);
                 
                 // Podpis STRZELCA.PL na dole - podwójna linia
                 // Pierwsza linia (cieńsza)
@@ -875,6 +959,19 @@
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 32px Orbitron, sans-serif';
                 ctx.fillText('STRZELCA.PL', 700, 920);
+
+                // QR na wierzchu (ten sam URL na wszystkich certyfikatach → rejestr)
+                const qrSize = 100;
+                const qrX = 1300 - 20 - qrSize;
+                const qrY = 820;
+                await drawVerificationQr(ctx, qrX, qrY, qrSize);
+                ctx.fillStyle = '#a1a1aa';
+                ctx.font = '10px Inter, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText('Weryfikacja', qrX + qrSize, qrY - 4);
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
                 
                 // Konwertuj canvas do obrazu i pobierz
                 canvas.toBlob((blob) => {
@@ -888,6 +985,8 @@
                     URL.revokeObjectURL(url);
                 }, 'image/png');
             }
+
+            window.generateCertificate = window.downloadCertificate;
             
             window.finishLesson = async (lessonId, index) => {
                 if (!currentUser) return;
@@ -1053,6 +1152,6 @@
             });
         </script>
         <script type="module" src="https://strzelca.pl/auth-widget.mjs?v=2026-03-21-2"></script>
-        <script type="module" src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-5"></script>
+        <script type="module" src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-6"></script>
     </body>
 </html>

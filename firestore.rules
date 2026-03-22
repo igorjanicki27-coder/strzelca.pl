@@ -294,6 +294,28 @@ service cloud.firestore {
       allow create, update, delete: if isAdminOrSuperAdmin();
     }
 
+    // Zgłoszenia na stronę event.html (dokumentacja strzelnicy) — zapis publiczny, odczyt/edycja tylko admin
+    match /mojEventParticipants/{participantId} {
+      allow create: if
+        request.resource.data.keys().hasOnly(['imie', 'nazwisko', 'ulica', 'numerBudynku', 'numerLokalu', 'miejscowosc', 'zatwierdzono', 'createdAt']) &&
+        request.resource.data.imie is string &&
+        request.resource.data.imie.size() >= 1 && request.resource.data.imie.size() <= 100 &&
+        request.resource.data.nazwisko is string &&
+        request.resource.data.nazwisko.size() >= 1 && request.resource.data.nazwisko.size() <= 100 &&
+        request.resource.data.ulica is string &&
+        request.resource.data.ulica.size() >= 1 && request.resource.data.ulica.size() <= 150 &&
+        request.resource.data.numerBudynku is string &&
+        request.resource.data.numerBudynku.size() >= 1 && request.resource.data.numerBudynku.size() <= 30 &&
+        request.resource.data.numerLokalu is string &&
+        request.resource.data.numerLokalu.size() <= 30 &&
+        request.resource.data.miejscowosc is string &&
+        request.resource.data.miejscowosc.size() >= 1 && request.resource.data.miejscowosc.size() <= 100 &&
+        request.resource.data.zatwierdzono == false &&
+        request.resource.data.createdAt is timestamp;
+
+      allow read, update, delete: if isAdminOrSuperAdmin();
+    }
+
     // Wpis bloga — odczyt publiczny (strona + zapytania listowe w panelu). Wymaga wdrożenia: firebase deploy --only firestore:rules
     match /blogPosts/{postId} {
       allow get, list: if true;
@@ -324,6 +346,61 @@ service cloud.firestore {
       
       // Zapis: tylko admin
       allow create, update, delete: if isAdminOrSuperAdmin();
+    }
+
+    // Liczniki numerów certyfikatów szkoleniowych (tylko +1 na kurs; zapis w transakcji z publicTrainingCertificates)
+    match /trainingCertificateCounters/{trainingId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() &&
+        request.resource.data.keys().hasOnly(['lastSerial']) &&
+        request.resource.data.lastSerial is int &&
+        request.resource.data.lastSerial == 1;
+      allow update: if isAuthenticated() &&
+        request.resource.data.keys().hasOnly(['lastSerial']) &&
+        resource.data.lastSerial is int &&
+        request.resource.data.lastSerial == resource.data.lastSerial + 1;
+      allow delete: if false;
+    }
+
+    // Publiczny rejestr certyfikatów (weryfikacja + lista na certyfikaty.html)
+    match /publicTrainingCertificates/{certId} {
+      allow get, list: if true;
+
+      allow create: if isAuthenticated() &&
+        certId == request.resource.data.trainingId + '_' + request.auth.uid &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.keys().hasOnly([
+          'certificateNumber',
+          'courseSlug',
+          'courseTitle',
+          'serialNumber',
+          'trainingId',
+          'recipientName',
+          'userId',
+          'issuedAt',
+        ]) &&
+        request.resource.data.trainingId is string &&
+        request.resource.data.trainingId.size() >= 4 &&
+        request.resource.data.trainingId.size() <= 128 &&
+        request.resource.data.serialNumber is int &&
+        request.resource.data.serialNumber >= 1 &&
+        request.resource.data.serialNumber < 10000000 &&
+        request.resource.data.recipientName is string &&
+        request.resource.data.recipientName.size() >= 1 &&
+        request.resource.data.recipientName.size() <= 200 &&
+        request.resource.data.courseTitle is string &&
+        request.resource.data.courseTitle.size() >= 1 &&
+        request.resource.data.courseTitle.size() <= 300 &&
+        request.resource.data.courseSlug is string &&
+        request.resource.data.courseSlug.size() >= 1 &&
+        request.resource.data.courseSlug.size() <= 120 &&
+        request.resource.data.certificateNumber is string &&
+        request.resource.data.certificateNumber.size() >= 16 &&
+        request.resource.data.certificateNumber.size() <= 500 &&
+        request.resource.data.certificateNumber.matches('^STRZELCA\\.PL/[A-Z0-9_]+/[1-9][0-9]{0,6}$') &&
+        request.resource.data.issuedAt == request.time;
+
+      allow update, delete: if false;
     }
 
     match /courseProgress/{progressId} {

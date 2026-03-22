@@ -189,15 +189,6 @@
             outline-offset: 1px;
         }
 
-        #return-claim-pdf-result-modal button:focus {
-            outline: none;
-            box-shadow: none;
-        }
-        #return-claim-pdf-result-modal button:focus-visible {
-            outline: 2px solid var(--coyote);
-            outline-offset: 2px;
-        }
-
         /* html2canvas musi „widzieć” element w viewport (poza ekranem często daje biały PDF).
            Przezroczystość 0.02 potrafi dać pusty zrzut — na czas generowania dodajemy
            .return-claim-pdf-root--capture-active (opacity: 1). */
@@ -227,26 +218,6 @@
     </style>
     <!-- Wspólne poprawki responsywności -->
     <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-22-1" />
-    <style>
-        /* Podgląd PDF: flex + iframe/embed z height:auto psuje wbudowany viewer (miganie → biała kartka).
-           Kontener ma realną wysokość; embed/iframe wypełnia go przez position:absolute. */
-        #rc-pdf-preview-wrap {
-            position: relative;
-            flex: 1 1 0%;
-            min-height: min(60dvh, 520px);
-            min-width: 0;
-            width: 100%;
-            background: #09090b;
-        }
-        #rc-pdf-preview-embed[data-strzelca-pdf-preview] {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            max-width: none;
-            border: 0;
-        }
-    </style>
     <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/documents-catalog-shared.mjs?v=2026-03-22-3" crossorigin />
@@ -810,51 +781,6 @@
         style="padding:12mm;background:#fafafa;color:#18181b;font-family:Inter,system-ui,sans-serif;font-size:10.5pt;line-height:1.45;color-scheme:light;"
     ></div>
 
-    <!-- Modal: podgląd PDF + pobieranie (bez nowej karty) -->
-    <div
-        id="return-claim-pdf-result-modal"
-        class="fixed inset-0 z-[10001] hidden"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="rc-pdf-result-title"
-        aria-hidden="true"
-    >
-        <div id="rc-pdf-result-overlay" class="absolute inset-0 bg-black/85 backdrop-blur-sm z-0"></div>
-        <div
-            class="relative z-10 mx-auto my-3 md:my-6 w-[96vw] max-w-3xl h-[min(90dvh,880px)] flex flex-col rounded-2xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden"
-        >
-            <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-zinc-800 shrink-0">
-                <h2 id="rc-pdf-result-title" class="text-white font-bold text-base pr-2">Twój dokument PDF</h2>
-                <div class="flex items-center gap-1 shrink-0">
-                    <a
-                        id="rc-pdf-download-link"
-                        href="#"
-                        download
-                        class="doc-catalog-btn border-0 text-sm px-4 py-2 inline-flex items-center gap-2"
-                    >
-                        <i class="fas fa-download" aria-hidden="true"></i> Pobierz
-                    </a>
-                    <button
-                        type="button"
-                        id="rc-pdf-result-close"
-                        class="text-zinc-400 hover:text-white transition p-2 rounded-lg"
-                        aria-label="Zamknij"
-                    >
-                        <i class="fas fa-times text-xl" aria-hidden="true"></i>
-                    </button>
-                </div>
-            </div>
-            <div id="rc-pdf-preview-wrap" class="bg-zinc-950">
-                <embed
-                    id="rc-pdf-preview-embed"
-                    type="application/pdf"
-                    data-strzelca-pdf-preview
-                    title="Podgląd wygenerowanego PDF"
-                />
-            </div>
-        </div>
-    </div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <script>
@@ -1354,79 +1280,46 @@ const firebaseConfig = {
             const nazwiskoInput = document.getElementById("rc-nazwisko");
             if (!modal || !form || !pdfRoot) return;
 
-            const pdfResultModal = document.getElementById("return-claim-pdf-result-modal");
-            const pdfPreviewEmbed = document.getElementById("rc-pdf-preview-embed");
-            const pdfDownloadLink = document.getElementById("rc-pdf-download-link");
-            const pdfResultOverlay = document.getElementById("rc-pdf-result-overlay");
-            const pdfResultCloseBtn = document.getElementById("rc-pdf-result-close");
-
-            let rcPdfBlobUrl = null;
-
-            function closePdfResultModal() {
-                if (rcPdfBlobUrl) {
-                    URL.revokeObjectURL(rcPdfBlobUrl);
-                    rcPdfBlobUrl = null;
+            /** Pobranie PDF bez modala / iframe (unika problemów wbudowanego viewer). */
+            function triggerReturnClaimPdfDownload(blob, filename) {
+                const name = String(filename || "strzelca-zwrot-reklamacja.pdf").trim() || "strzelca-zwrot-reklamacja.pdf";
+                let b = blob;
+                if (!b.type || b.type === "application/octet-stream" || b.type === "") {
+                    b = b.slice(0, b.size, "application/pdf");
                 }
-                if (pdfPreviewEmbed) {
-                    pdfPreviewEmbed.onload = null;
-                    pdfPreviewEmbed.removeAttribute("src");
+                const url = URL.createObjectURL(b);
+                const revokeLater = () => {
+                    try {
+                        URL.revokeObjectURL(url);
+                    } catch (_) {
+                        /* ignore */
+                    }
+                };
+                const ua = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
+                const iOS =
+                    /iPad|iPhone|iPod/i.test(ua) ||
+                    (typeof navigator !== "undefined" &&
+                        navigator.platform === "MacIntel" &&
+                        (navigator.maxTouchPoints || 0) > 1);
+                if (iOS) {
+                    const w = window.open(url, "_blank", "noopener,noreferrer");
+                    if (!w) {
+                        alert(
+                            "Nie udało się otworzyć PDF. Zezwól na wyskakujące okienka dla tej strony albo użyj przeglądarki na komputerze.",
+                        );
+                    }
+                    window.setTimeout(revokeLater, 300_000);
+                    return;
                 }
-                if (pdfDownloadLink) {
-                    pdfDownloadLink.removeAttribute("href");
-                    pdfDownloadLink.removeAttribute("download");
-                }
-                if (pdfResultModal) {
-                    pdfResultModal.classList.add("hidden");
-                    pdfResultModal.setAttribute("aria-hidden", "true");
-                }
-                document.body.classList.remove("overflow-hidden");
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = name;
+                a.rel = "noopener noreferrer";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.setTimeout(revokeLater, 120_000);
             }
-
-            function openPdfResultModal(blob, filename) {
-                const prevUrl = rcPdfBlobUrl;
-                let pdfBlob = blob;
-                if (
-                    !pdfBlob.type ||
-                    pdfBlob.type === "application/octet-stream" ||
-                    pdfBlob.type === ""
-                ) {
-                    pdfBlob = pdfBlob.slice(0, pdfBlob.size, "application/pdf");
-                }
-                const nextUrl = URL.createObjectURL(pdfBlob);
-                rcPdfBlobUrl = nextUrl;
-                if (pdfDownloadLink) {
-                    pdfDownloadLink.href = nextUrl;
-                    pdfDownloadLink.setAttribute("download", filename || "strzelca-protokol.pdf");
-                }
-                if (pdfResultModal) {
-                    pdfResultModal.classList.remove("hidden");
-                    pdfResultModal.setAttribute("aria-hidden", "false");
-                }
-                document.body.classList.add("overflow-hidden");
-                /* Najpierw layout modala (embed ma niezerowy rozmiar), potem src — inaczej viewer PDF w Chromium gubi treść. */
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        if (!pdfPreviewEmbed) return;
-                        if (prevUrl && prevUrl !== nextUrl) {
-                            pdfPreviewEmbed.addEventListener(
-                                "load",
-                                () => {
-                                    try {
-                                        URL.revokeObjectURL(prevUrl);
-                                    } catch (_) {
-                                        /* ignore */
-                                    }
-                                },
-                                { once: true },
-                            );
-                        }
-                        pdfPreviewEmbed.src = nextUrl;
-                    });
-                });
-            }
-
-            pdfResultOverlay?.addEventListener("click", closePdfResultModal);
-            pdfResultCloseBtn?.addEventListener("click", closePdfResultModal);
 
             let rcFormPopulateGeneration = 0;
 
@@ -1852,14 +1745,13 @@ const firebaseConfig = {
                     filename: pdfFilename,
                     image: { type: "jpeg", quality: 0.92 },
                     html2canvas: {
-                        scale: 1.65,
+                        scale: 1.5,
                         useCORS: true,
                         logging: false,
                         backgroundColor: "#fafafa",
                         scrollX: 0,
                         scrollY: 0,
                         allowTaint: false,
-                        letterRendering: true,
                         onclone(clonedDoc) {
                             try {
                                 if (!clonedDoc?.getElementById) return;
@@ -1911,7 +1803,7 @@ const firebaseConfig = {
                         powod: typ === "zwrot" ? powod : "",
                     }).catch(() => {});
                     closeReturnClaimForm();
-                    openPdfResultModal(blob, pdfFilename);
+                    triggerReturnClaimPdfDownload(blob, pdfFilename);
                     pdfRoot.innerHTML = "";
                 } catch (e) {
                     console.error(e);
@@ -1939,16 +1831,11 @@ const firebaseConfig = {
 
             document.addEventListener("keydown", (e) => {
                 if (e.key !== "Escape") return;
-                if (pdfResultModal && !pdfResultModal.classList.contains("hidden")) {
-                    closePdfResultModal();
-                    return;
-                }
                 if (modal && !modal.classList.contains("hidden")) closeReturnClaimForm();
             });
 
             window.openReturnClaimForm = openReturnClaimForm;
             window.closeReturnClaimForm = closeReturnClaimForm;
-            window.closeReturnClaimPdfResultModal = closePdfResultModal;
         }
 
         initReturnClaimForm(auth, db);
@@ -2204,7 +2091,7 @@ const firebaseConfig = {
     ></script>
     <script
       type="module"
-      src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-5"
+      src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-6"
     ></script>
   </body>
 </html>
