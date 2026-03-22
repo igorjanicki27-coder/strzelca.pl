@@ -301,7 +301,7 @@ function renderLoggedIn(root, { avatarUrl, displayName }) {
   try {
     if (!window.__strzelcaMessagesWidgetBootstrap) {
       window.__strzelcaMessagesWidgetBootstrap = true;
-      import("https://strzelca.pl/messages-widget.mjs?v=2026-03-22-1").catch(() => {});
+      import("https://strzelca.pl/messages-widget.mjs?v=2026-03-22-2").catch(() => {});
     }
   } catch {
     // ignore

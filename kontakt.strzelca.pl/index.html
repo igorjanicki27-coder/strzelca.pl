@@ -434,7 +434,7 @@
     </div>
 
     <footer class="w-full py-10 text-center text-zinc-700 text-[10px] uppercase font-bold tracking-[0.4em] bg-transparent" role="contentinfo">
-      <a href="reg-zam.html" class="hover:text-zinc-500 transition">Regulamin zamówień i zwrotów</a> |
+      <a href="https://dokumenty.strzelca.pl/#zwrot-reklamacja" class="hover:text-zinc-500 transition" rel="noopener noreferrer">Formularz zwrotu/reklamacji</a> |
       <a href="https://strzelca.pl" class="hover:text-zinc-500 transition ml-4">STRZELCA.PL</a> |
       <a href="?cookies=1" class="hover:text-zinc-500 transition ml-4">Ustawienia cookies</a>
     </footer>
@@ -586,16 +586,20 @@
       window.openContactForm = function () {
         if (window.currentUser) {
           var tries = 0;
-          var maxTries = 40;
+          var maxTries = 100;
           var delayMs = 100;
           function tryOpenChat() {
-            if (typeof window.__strzelcaMessagesOpenSupport === 'function') {
-              window.__strzelcaMessagesOpenSupport();
-              return;
-            }
-            if (typeof window.__strzelcaMessagesOpen === 'function') {
-              window.__strzelcaMessagesOpen();
-              return;
+            try {
+              if (typeof window.__strzelcaMessagesOpenSupport === 'function') {
+                window.__strzelcaMessagesOpenSupport();
+                return;
+              }
+              if (typeof window.__strzelcaMessagesOpen === 'function') {
+                window.__strzelcaMessagesOpen();
+                return;
+              }
+            } catch (e) {
+              console.warn('openContactForm: widget open failed', e);
             }
             var widgetHost = document.getElementById('strzelca-messages-widget');
             var fab = widgetHost && widgetHost.shadowRoot && widgetHost.shadowRoot.querySelector('.btn');
@@ -608,7 +612,7 @@
               setTimeout(tryOpenChat, delayMs);
               return;
             }
-            window.location.href = 'https://konto.strzelca.pl/profil.html#messages';
+            window.location.assign('https://konto.strzelca.pl/profil.html#messages');
           }
           tryOpenChat();
           return;
@@ -689,6 +693,10 @@
 
       await setPersistence(auth, browserLocalPersistence);
       try { await ensureFirebaseSSO(auth); } catch (e) { console.warn("SSO ensure failed:", e?.message || e); }
+      try {
+        await auth.authStateReady();
+      } catch (_) {}
+      window.currentUser = auth.currentUser;
 
       void (async () => {
         try {
@@ -898,6 +906,6 @@
       });
     </script>
     <script type="module" src="https://strzelca.pl/auth-widget.mjs?v=2026-03-21-2"></script>
-    <script type="module" src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-5"></script>
+    <script type="module" src="https://strzelca.pl/messages-widget.mjs?v=2026-03-22-2"></script>
   </body>
 </html>

@@ -226,7 +226,17 @@
         }
     </style>
     <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-22-1" />
+    <style>
+        /* Po shared.css: iframe PDF w flex — globalne `iframe { height:auto }` psuje wbudowany viewer (biała kartka). */
+        #rc-pdf-preview-iframe[data-strzelca-pdf-preview] {
+            flex: 1 1 0%;
+            min-height: 0;
+            width: 100%;
+            align-self: stretch;
+            max-width: none;
+        }
+    </style>
     <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/documents-catalog-shared.mjs?v=2026-03-22-3" crossorigin />
@@ -826,6 +836,7 @@
             </div>
             <iframe
                 id="rc-pdf-preview-iframe"
+                data-strzelca-pdf-preview
                 class="flex-1 w-full min-h-[min(60dvh,520px)] bg-zinc-950 border-0"
                 title="Podgląd wygenerowanego PDF"
             ></iframe>
@@ -1338,13 +1349,21 @@ const firebaseConfig = {
             const pdfResultCloseBtn = document.getElementById("rc-pdf-result-close");
 
             let rcPdfBlobUrl = null;
+            let rcPdfRevokePrevTimer = null;
 
             function closePdfResultModal() {
+                if (rcPdfRevokePrevTimer != null) {
+                    clearTimeout(rcPdfRevokePrevTimer);
+                    rcPdfRevokePrevTimer = null;
+                }
                 if (rcPdfBlobUrl) {
                     URL.revokeObjectURL(rcPdfBlobUrl);
                     rcPdfBlobUrl = null;
                 }
-                if (pdfPreviewIframe) pdfPreviewIframe.src = "about:blank";
+                if (pdfPreviewIframe) {
+                    pdfPreviewIframe.onload = null;
+                    pdfPreviewIframe.src = "about:blank";
+                }
                 if (pdfDownloadLink) {
                     pdfDownloadLink.removeAttribute("href");
                     pdfDownloadLink.removeAttribute("download");
@@ -1357,13 +1376,50 @@ const firebaseConfig = {
             }
 
             function openPdfResultModal(blob, filename) {
-                closePdfResultModal();
-                rcPdfBlobUrl = URL.createObjectURL(blob);
+                if (rcPdfRevokePrevTimer != null) {
+                    clearTimeout(rcPdfRevokePrevTimer);
+                    rcPdfRevokePrevTimer = null;
+                }
+                const prevUrl = rcPdfBlobUrl;
+                let pdfBlob = blob;
+                if (
+                    !pdfBlob.type ||
+                    pdfBlob.type === "application/octet-stream" ||
+                    pdfBlob.type === ""
+                ) {
+                    pdfBlob = pdfBlob.slice(0, pdfBlob.size, "application/pdf");
+                }
+                const nextUrl = URL.createObjectURL(pdfBlob);
+                rcPdfBlobUrl = nextUrl;
                 if (pdfDownloadLink) {
-                    pdfDownloadLink.href = rcPdfBlobUrl;
+                    pdfDownloadLink.href = nextUrl;
                     pdfDownloadLink.setAttribute("download", filename || "strzelca-protokol.pdf");
                 }
-                if (pdfPreviewIframe) pdfPreviewIframe.src = rcPdfBlobUrl;
+                if (pdfPreviewIframe) {
+                    const revokePrev = () => {
+                        if (prevUrl && prevUrl !== nextUrl) {
+                            try {
+                                URL.revokeObjectURL(prevUrl);
+                            } catch (_) {
+                                /* ignore */
+                            }
+                        }
+                    };
+                    pdfPreviewIframe.onload = () => {
+                        if (rcPdfRevokePrevTimer != null) {
+                            clearTimeout(rcPdfRevokePrevTimer);
+                            rcPdfRevokePrevTimer = null;
+                        }
+                        revokePrev();
+                        pdfPreviewIframe.onload = null;
+                    };
+                    pdfPreviewIframe.src = nextUrl;
+                    /* Gdy onload nie poleci (np. viewer PDF), i tak odłóż revoke starego bloba */
+                    rcPdfRevokePrevTimer = window.setTimeout(() => {
+                        rcPdfRevokePrevTimer = null;
+                        revokePrev();
+                    }, 2500);
+                }
                 if (pdfResultModal) {
                     pdfResultModal.classList.remove("hidden");
                     pdfResultModal.setAttribute("aria-hidden", "false");
@@ -1901,6 +1957,20 @@ const firebaseConfig = {
         }
 
         initReturnClaimForm(auth, db);
+
+        function maybeOpenReturnClaimFormFromHash() {
+            if (window.location.hash !== "#zwrot-reklamacja") return;
+            if (typeof window.openReturnClaimForm !== "function") return;
+            requestAnimationFrame(() => {
+                try {
+                    void window.openReturnClaimForm();
+                } catch (_) {
+                    /* ignore */
+                }
+            });
+        }
+        maybeOpenReturnClaimFormFromHash();
+        window.addEventListener("hashchange", maybeOpenReturnClaimFormFromHash);
 
         async function loadDocumentsCatalogFromFirestore() {
             const grid = document.getElementById("documents-catalog-grid");

@@ -9147,7 +9147,7 @@
         const normalizedCategory = event ? normalizeEventCategory(event.category) : "inne";
 
         const modalHtml = `
-          <div id="event-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeEventFormModal')">
+          <div id="event-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
               <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold coyote-text">${event ? "Edytuj wydarzenie" : "Dodaj nowe wydarzenie"}</h2>
@@ -9736,7 +9736,7 @@
         charityImages = charity ? [...(charity.images || (charity.image ? [{url: charity.image, order: 0}] : []))] : [];
 
         const modalHtml = `
-          <div id="charity-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeCharityFormModal')">
+          <div id="charity-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
               <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold coyote-text">${charity ? "Edytuj akcję charytatywną" : "Dodaj nową akcję charytatywną"}</h2>
@@ -10339,7 +10339,7 @@
         if (existing) existing.remove();
 
         const modalHtml = `
-          <div id="pinned-donations-form-modal" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closePinnedDonationsModal')">
+          <div id="pinned-donations-form-modal" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
               <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold coyote-text">Stały kafelek: dobrowolne wpłaty</h2>
@@ -10734,7 +10734,6 @@
               </div>
             </div>
           </div>`;
-          modal.onclick = () => modal.remove();
           const d = modal.querySelector("#bazar-edit-desc");
           const im = modal.querySelector("#bazar-edit-imgs");
           if (d) d.value = o.description || "";
@@ -14634,7 +14633,7 @@
         syncBlogPostImagesFromPost(post);
 
         const modalHtml = `
-          <div id="blog-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeBlogModal')">
+          <div id="blog-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
               <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold coyote-text">${modalTitle}</h2>
@@ -18589,11 +18588,26 @@
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
-                  <label class="block text-sm font-medium mb-2">Użytkownik (ID)</label>
-                  <input type="text" id="order-userId" class="w-full" placeholder="ID użytkownika (opcjonalne)">
-                  <button type="button" onclick="searchUser()" class="mt-2 btn-admin text-xs px-3 py-1">
-                    <i class="fa-solid fa-search mr-1"></i> Szukaj użytkownika
-                  </button>
+                  <label class="block text-sm font-medium mb-2" for="order-user-nickname">Nick zamawiającego</label>
+                  <div class="relative">
+                    <input
+                      type="text"
+                      id="order-user-nickname"
+                      class="w-full pr-11"
+                      placeholder="Nick (opcjonalnie)"
+                      autocomplete="off"
+                    />
+                    <input type="hidden" id="order-userId" value="" />
+                    <button
+                      type="button"
+                      onclick="searchUser()"
+                      class="absolute right-1.5 top-1/2 -translate-y-1/2 w-9 h-9 inline-flex items-center justify-center rounded-md bg-zinc-700 hover:bg-zinc-600 text-zinc-200 border border-zinc-600 transition shrink-0"
+                      title="Szukaj użytkownika"
+                      aria-label="Szukaj użytkownika"
+                    >
+                      <i class="fa-solid fa-search text-sm" aria-hidden="true"></i>
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label class="block text-sm font-medium mb-2">Email (jeśli brak konta)</label>
@@ -18659,7 +18673,26 @@
 
         // Wypełnij formularz jeśli edycja
         if (isEdit) {
-          document.getElementById('order-userId').value = currentEditingOrder.userId || '';
+          const uid = currentEditingOrder.userId || '';
+          document.getElementById('order-userId').value = uid;
+          const nickInput = document.getElementById('order-user-nickname');
+          if (nickInput) nickInput.value = '';
+          if (uid && nickInput) {
+            (async () => {
+              try {
+                const userDoc = await getDoc(doc(db, 'userProfiles', uid));
+                if (userDoc.exists()) {
+                  const d = userDoc.data();
+                  nickInput.value = (d.displayName || d.email || '').trim();
+                } else {
+                  nickInput.value = (currentEditingOrder.email || '').trim();
+                }
+              } catch (e) {
+                console.warn('Order form: nie udało się wczytać nicku użytkownika', e);
+                nickInput.value = (currentEditingOrder.email || '').trim();
+              }
+            })();
+          }
           document.getElementById('order-email').value = currentEditingOrder.email || '';
           document.getElementById('order-details').value = currentEditingOrder.orderDetails || '';
           document.getElementById('order-notes').value = currentEditingOrder.notes || '';
@@ -18931,15 +18964,61 @@
         customerDataEditMode = false;
       };
 
+      /** Nick w formularzu → UID do zapisu w zamówieniu (Firestore przechowuje userId). */
+      async function resolveOrderUserIdFromForm() {
+        const nickEl = document.getElementById('order-user-nickname');
+        const uidEl = document.getElementById('order-userId');
+        const nick = (nickEl?.value || '').trim();
+        const storedUid = (uidEl?.value || '').trim();
+        if (!nick) return null;
+        const nickLower = nick.toLowerCase();
+        if (storedUid) {
+          try {
+            const userDoc = await getDoc(doc(db, 'userProfiles', storedUid));
+            if (userDoc.exists()) {
+              const d = userDoc.data();
+              const dn = (d.displayName || '').trim().toLowerCase();
+              const em = (d.email || '').trim().toLowerCase();
+              if (dn === nickLower || em === nickLower) return storedUid;
+            }
+          } catch (e) {
+            console.warn('resolveOrderUserIdFromForm: profil po UID', e);
+          }
+        }
+        const usersSnapshot = await getDocs(query(collection(db, 'userProfiles'), limit(200)));
+        const matches = [];
+        usersSnapshot.forEach((docSnap) => {
+          const userData = docSnap.data();
+          const dn = (userData.displayName || '').trim().toLowerCase();
+          const em = (userData.email || '').trim().toLowerCase();
+          if (dn === nickLower || em === nickLower) matches.push(docSnap.id);
+        });
+        if (matches.length === 1) return matches[0];
+        if (matches.length === 0) {
+          throw new Error(
+            'Nie znaleziono użytkownika o podanym nicku. Użyj ikony lupy i wybierz konto z listy.',
+          );
+        }
+        throw new Error('Znaleziono więcej niż jedno konto z tym nickiem — wybierz użytkownika przez wyszukiwarkę.');
+      }
+
       // Zapisywanie zamówienia
       window.saveOrder = async function(event) {
         event.preventDefault();
 
         try {
+          let resolvedUserId = null;
+          try {
+            resolvedUserId = await resolveOrderUserIdFromForm();
+          } catch (resolveErr) {
+            showNotification(resolveErr.message || 'Nie udało się dopasować użytkownika', 'error');
+            return;
+          }
+
           const formData = {
             orderDetails: document.getElementById('order-details').value,
             notes: document.getElementById('order-notes').value,
-            userId: document.getElementById('order-userId').value || null,
+            userId: resolvedUserId,
             email: document.getElementById('order-email').value || null,
             parcelLocker: document.getElementById('order-parcelLocker').value,
             phone: document.getElementById('order-phone').value,
@@ -19148,7 +19227,7 @@
                   type="text"
                   id="user-search-input"
                   class="w-full"
-                  placeholder="Wpisz nazwę użytkownika lub email..."
+                  placeholder="Wpisz nick lub email..."
                   autocomplete="off"
                 />
               </div>
@@ -19156,7 +19235,7 @@
               <div id="user-search-results" class="space-y-2 max-h-96 overflow-y-auto">
                 <div class="text-center text-zinc-400 py-8">
                   <i class="fa-solid fa-search text-3xl mb-3"></i>
-                  <p>Wpisz nazwę użytkownika lub email, aby rozpocząć wyszukiwanie</p>
+                  <p>Wpisz nick lub email, aby rozpocząć wyszukiwanie</p>
                 </div>
               </div>
             </div>
@@ -19313,6 +19392,7 @@
 
           // Wypełnij pola formularza zamówienia
           const userIdInput = document.getElementById('order-userId');
+          const nicknameInput = document.getElementById('order-user-nickname');
           const emailInput = document.getElementById('order-email');
           const phoneInput = document.getElementById('order-phone');
           const parcelLockerInput = document.getElementById('order-parcelLocker');
@@ -19322,6 +19402,7 @@
           const addressCityInput = document.getElementById('order-address-city');
 
           if (userIdInput) userIdInput.value = userId;
+          if (nicknameInput) nicknameInput.value = (userData.displayName || userEmail || '').trim();
           if (emailInput) emailInput.value = userEmail || '';
           if (phoneInput) phoneInput.value = decryptedPhone;
           if (parcelLockerInput) parcelLockerInput.value = decryptedParcelLocker;
@@ -19693,7 +19774,7 @@
     </div>
 
     <!-- Modal formularza produktu -->
-    <div id="product-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeProductForm')">
+    <div id="product-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
       <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold coyote-text" id="product-form-title">Dodaj produkt</h2>
@@ -19770,7 +19851,7 @@
     </div>
 
     <!-- Modal formularza publicznych informacji szkolenia -->
-    <div id="training-public-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeTrainingPublicForm')">
+    <div id="training-public-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
       <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold coyote-text" id="training-public-form-title">Dodaj szkolenie</h2>
@@ -19864,7 +19945,7 @@
     </div>
 
     <!-- Modal dostępu do szkolenia (widoczność + lista użytkowników) -->
-    <div id="training-access-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeTrainingAccessModal')">
+    <div id="training-access-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
       <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold coyote-text" id="training-access-modal-title">Dostęp</h2>
@@ -19932,7 +20013,7 @@
     </div>
 
     <!-- Modal formularza treści właściwej szkolenia -->
-    <div id="training-content-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeTrainingContentForm')">
+    <div id="training-content-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
       <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold coyote-text" id="training-content-form-title">Treść właściwa kursu</h2>
@@ -19974,7 +20055,7 @@
     </div>
 
     <!-- Modal formularza lekcji -->
-    <div id="lesson-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeLessonForm')">
+    <div id="lesson-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
       <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold coyote-text" id="lesson-form-title">Dodaj lekcję</h2>
@@ -20054,7 +20135,7 @@
     </div>
 
     <!-- Modal wyboru użytkowników do szkoleń -->
-    <div id="training-user-dialog" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl" onmousedown="adminModalBackdropMouseDown(event)" onmouseup="adminModalBackdropMouseUp(event, 'closeTrainingUserDialog')">
+    <div id="training-user-dialog" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
       <div class="admin-card max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold coyote-text">Dodaj użytkowników do szkolenia</h2>

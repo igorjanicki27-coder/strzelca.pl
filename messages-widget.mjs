@@ -1028,23 +1028,22 @@ async function main() {
   const auth = getAuth(app);
   await setPersistence(auth, browserLocalPersistence).catch(() => {});
 
-  // ensure user (best-effort)
-  const waitForAuth = () =>
-    new Promise((resolve) => {
-      const unsub = onAuthStateChanged(auth, (u) => {
-        unsub();
-        resolve(u || null);
-      });
-    });
+  // Nie używamy pierwszego wywołania onAuthStateChanged jako „prawdy” — bywa null zanim
+  // persistence/SSO dokończą pracę; wtedy widget wracał wcześnie i nigdy nie montował UI.
+  try {
+    await auth.authStateReady();
+  } catch {}
 
-  let user = auth.currentUser || (await waitForAuth());
+  let user = auth.currentUser;
   if (!user) {
-    // Jeśli nie mamy usera, spróbuj SSO (cookie -> custom token) dla tej instancji auth.
     try {
       const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-03-21-1");
       await ensureFirebaseSSO(auth);
     } catch {}
-    user = auth.currentUser || (await waitForAuth());
+    try {
+      await auth.authStateReady();
+    } catch {}
+    user = auth.currentUser;
   }
   if (!user) {
     // Często na subdomenach (np. kontakt.strzelca.pl) ten moduł startuje równolegle z auth-widget /
@@ -2425,9 +2424,15 @@ if (typeof window !== "undefined") {
     window.__strzelcaMessagesWidgetLoaded = true;
     if (typeof document !== "undefined") {
       if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", main, { once: true });
+        document.addEventListener(
+          "DOMContentLoaded",
+          () => {
+            main().catch((e) => console.warn("messages-widget:", e?.message || e));
+          },
+          { once: true }
+        );
       } else {
-        main();
+        main().catch((e) => console.warn("messages-widget:", e?.message || e));
       }
     }
   }
