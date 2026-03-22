@@ -19004,6 +19004,72 @@
         throw new Error('Znaleziono więcej niż jedno konto z tym nickiem — wybierz użytkownika przez wyszukiwarkę.');
       }
 
+      /** Modal: powód anulowania (Promise — string lub null przy anulowaniu okna). */
+      window.requestOrderCancellationReason = function () {
+        return new Promise((resolve) => {
+          let modal = document.getElementById('order-cancellation-reason-modal');
+          if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'order-cancellation-reason-modal';
+            modal.className =
+              'fixed inset-0 z-[60] hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl';
+            document.body.appendChild(modal);
+          }
+
+          const finish = (value) => {
+            modal.classList.add('hidden');
+            modal.onclick = null;
+            document.removeEventListener('keydown', onKey);
+            resolve(value);
+          };
+
+          const onKey = (e) => {
+            if (e.key === 'Escape') finish(null);
+          };
+          document.addEventListener('keydown', onKey);
+
+          modal.onclick = (e) => {
+            if (e.target.id === 'order-cancellation-reason-modal') finish(null);
+          };
+
+          modal.innerHTML = `
+            <div class="admin-card max-w-lg w-full" onclick="event.stopPropagation()">
+              <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold coyote-text">Powód anulowania</h2>
+                <button type="button" class="text-zinc-400 hover:text-white" id="order-cancellation-reason-close" aria-label="Zamknij">
+                  <i class="fa-solid fa-times text-xl"></i>
+                </button>
+              </div>
+              <p class="text-sm text-zinc-400 mb-3">Podaj powód anulowania zamówienia — zostanie zapisany i może trafić do wiadomości e-mail do klienta.</p>
+              <textarea
+                id="order-cancellation-reason-input"
+                class="w-full min-h-[120px] rounded border border-zinc-600 bg-zinc-900/80 p-3 text-sm text-white placeholder-zinc-500"
+                placeholder="Np. brak płatności, brak towaru na stanie…"
+                rows="5"
+              ></textarea>
+              <div class="flex justify-end gap-3 mt-5">
+                <button type="button" class="btn-secondary px-5 py-2" id="order-cancellation-reason-cancel">Anuluj</button>
+                <button type="button" class="btn-admin px-5 py-2" id="order-cancellation-reason-confirm">Zapisz powód</button>
+              </div>
+            </div>
+          `;
+
+          modal.querySelector('#order-cancellation-reason-close').onclick = () => finish(null);
+          modal.querySelector('#order-cancellation-reason-cancel').onclick = () => finish(null);
+          modal.querySelector('#order-cancellation-reason-confirm').onclick = () => {
+            const ta = document.getElementById('order-cancellation-reason-input');
+            finish(ta ? ta.value : '');
+          };
+
+          modal.classList.remove('hidden');
+          const ta = document.getElementById('order-cancellation-reason-input');
+          if (ta) {
+            ta.value = '';
+            ta.focus();
+          }
+        });
+      };
+
       // Zapisywanie zamówienia
       window.saveOrder = async function(event) {
         event.preventDefault();
@@ -19036,8 +19102,10 @@
             status: document.getElementById('order-status').value,
           };
 
+          const isEdit = !!currentEditingOrder;
+          const status = formData.status;
+
           // Sprawdź czy faktura jest wymagana dla statusu "zakonczone"
-          const status = document.getElementById('order-status').value;
           const invoiceFile = document.getElementById('order-invoice').files[0];
           const existingInvoice = currentEditingOrder?.invoiceFile;
 
@@ -19045,6 +19113,25 @@
             alert('Faktura jest wymagana dla statusu "Zakończone".\n\nProszę dodać fakturę przed zmianą statusu.');
             return;
           }
+
+          let cancellationReasonForApi = null;
+          if (status === 'anulowane') {
+            if (!isEdit || currentEditingOrder.status !== 'anulowane') {
+              const reasonRaw = await window.requestOrderCancellationReason();
+              if (reasonRaw === null) {
+                return;
+              }
+              const trimmed = (reasonRaw || '').trim();
+              if (!trimmed) {
+                showNotification('Podaj powód anulowania zamówienia.', 'error');
+                return;
+              }
+              cancellationReasonForApi = trimmed;
+            } else {
+              cancellationReasonForApi = (currentEditingOrder.cancellationReason || '').trim();
+            }
+          }
+          formData.cancellationReason = status === 'anulowane' ? cancellationReasonForApi : null;
 
           // Upload faktury jeśli jest
           let invoiceUrl = existingInvoice || null;
@@ -19104,7 +19191,6 @@
             }
           }
 
-          const isEdit = !!currentEditingOrder;
           const url = `/api/orders`;
           const method = isEdit ? 'PUT' : 'POST';
 
@@ -19472,6 +19558,7 @@
             "order_status_realizacja",
             "order_status_wyslane",
             "order_status_zakonczone",
+            "order_status_anulowane",
           ],
         },
         {

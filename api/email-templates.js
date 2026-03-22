@@ -196,6 +196,31 @@ const defaultTemplates = {
 </html>`,
     variables: ['orderNumber', 'updatedAt', 'orderDetails', 'total', 'invoiceFile']
   },
+  'order_status_anulowane': {
+    name: 'Status: Anulowane',
+    subject: 'Zamówienie {{orderNumber}} zostało anulowane - strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #c19a6b;">Zamówienie zostało anulowane</h2>
+  <p>Dzień dobry,</p>
+  <p>Twoje zamówienie <strong>{{orderNumber}}</strong> zostało anulowane.</p>
+  {{#if cancellationReason}}
+  <p><strong>Powód anulowania:</strong> {{cancellationReason}}</p>
+  {{/if}}
+  <h3>Szczegóły zamówienia:</h3>
+  <ul>
+    <li><strong>Numer zamówienia:</strong> {{orderNumber}}</li>
+    <li><strong>Status:</strong> Anulowane</li>
+    <li><strong>Data aktualizacji:</strong> {{updatedAt}}</li>
+    <li><strong>Zamówienie:</strong> {{orderDetails}}</li>
+    <li><strong>Wartość:</strong> {{total}} zł</li>
+  </ul>
+  <p>Jeśli masz pytania, skontaktuj się z nami przez system wiadomości lub mailowo: kontakt@strzelca.pl</p>
+  <p>Pozdrawiamy,<br>Zespół strzelca.pl</p>
+</body>
+</html>`,
+    variables: ['orderNumber', 'cancellationReason', 'updatedAt', 'orderDetails', 'total']
+  },
   'contact_form_auto_reply': {
     name: 'Automatyczna odpowiedź - Formularz kontaktowy',
     subject: 'Dziękujemy za wiadomość - strzelca.pl',

@@ -203,10 +203,17 @@ async function sendOrderEmail(order, eventType, oldStatus = null) {
           html: `<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;"><h2 style="color: #c19a6b;">Zamówienie zostało utworzone</h2><p>Dzień dobry,</p><p>Twoje zamówienie <strong>{{orderNumber}}</strong> zostało utworzone.</p><h3>Szczegóły zamówienia:</h3><ul><li><strong>Numer zamówienia:</strong> {{orderNumber}}</li><li><strong>Status:</strong> {{status}}</li><li><strong>Data utworzenia:</strong> {{createdAt}}</li><li><strong>Zamówienie:</strong> {{orderDetails}}</li>{{#if notes}}<li><strong>Uwagi:</strong> {{notes}}</li>{{/if}}<li><strong>Wartość:</strong> {{total}} zł</li></ul><p>Jeśli masz pytania, skontaktuj się z nami przez system wiadomości lub mailowo: kontakt@strzelca.pl</p><p>Pozdrawiamy,<br>Zespół strzelca.pl</p></body></html>`
         };
       } else if (eventType === 'status_changed') {
-        template = {
-          subject: `Status zamówienia {{orderNumber}} został zmieniony - strzelca.pl`,
-          html: `<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;"><h2 style="color: #c19a6b;">Status zamówienia został zmieniony</h2><p>Dzień dobry,</p><p>Status Twojego zamówienia <strong>{{orderNumber}}</strong> został zmieniony na <strong>{{status}}</strong>.</p><h3>Szczegóły zamówienia:</h3><ul><li><strong>Numer zamówienia:</strong> {{orderNumber}}</li><li><strong>Status:</strong> {{status}}</li><li><strong>Data aktualizacji:</strong> {{updatedAt}}</li><li><strong>Zamówienie:</strong> {{orderDetails}}</li><li><strong>Wartość:</strong> {{total}} zł</li></ul>{{#if invoiceFile}}<p><strong>Faktura:</strong> <a href="{{invoiceFile}}">Pobierz fakturę</a></p>{{/if}}<p>Jeśli masz pytania, skontaktuj się z nami przez system wiadomości lub mailowo: kontakt@strzelca.pl</p><p>Pozdrawiamy,<br>Zespół strzelca.pl</p></body></html>`
-        };
+        if (order.status === 'anulowane') {
+          template = {
+            subject: `Zamówienie {{orderNumber}} zostało anulowane - strzelca.pl`,
+            html: `<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;"><h2 style="color: #c19a6b;">Zamówienie zostało anulowane</h2><p>Dzień dobry,</p><p>Twoje zamówienie <strong>{{orderNumber}}</strong> zostało anulowane.</p>{{#if cancellationReason}}<p><strong>Powód:</strong> {{cancellationReason}}</p>{{/if}}<h3>Szczegóły zamówienia:</h3><ul><li><strong>Numer zamówienia:</strong> {{orderNumber}}</li><li><strong>Status:</strong> {{status}}</li><li><strong>Data aktualizacji:</strong> {{updatedAt}}</li><li><strong>Zamówienie:</strong> {{orderDetails}}</li><li><strong>Wartość:</strong> {{total}} zł</li></ul><p>Jeśli masz pytania, skontaktuj się z nami przez system wiadomości lub mailowo: kontakt@strzelca.pl</p><p>Pozdrawiamy,<br>Zespół strzelca.pl</p></body></html>`,
+          };
+        } else {
+          template = {
+            subject: `Status zamówienia {{orderNumber}} został zmieniony - strzelca.pl`,
+            html: `<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;"><h2 style="color: #c19a6b;">Status zamówienia został zmieniony</h2><p>Dzień dobry,</p><p>Status Twojego zamówienia <strong>{{orderNumber}}</strong> został zmieniony na <strong>{{status}}</strong>.</p><h3>Szczegóły zamówienia:</h3><ul><li><strong>Numer zamówienia:</strong> {{orderNumber}}</li><li><strong>Status:</strong> {{status}}</li><li><strong>Data aktualizacji:</strong> {{updatedAt}}</li><li><strong>Zamówienie:</strong> {{orderDetails}}</li><li><strong>Wartość:</strong> {{total}} zł</li></ul>{{#if invoiceFile}}<p><strong>Faktura:</strong> <a href="{{invoiceFile}}">Pobierz fakturę</a></p>{{/if}}<p>Jeśli masz pytania, skontaktuj się z nami przez system wiadomości lub mailowo: kontakt@strzelca.pl</p><p>Pozdrawiamy,<br>Zespół strzelca.pl</p></body></html>`,
+          };
+        }
       }
     }
 
@@ -221,7 +228,8 @@ async function sendOrderEmail(order, eventType, oldStatus = null) {
       orderDetails: order.orderDetails || '',
       notes: order.notes || '',
       total: (order.total || 0).toFixed(2),
-      invoiceFile: order.invoiceFile || ''
+      invoiceFile: order.invoiceFile || '',
+      cancellationReason: order.cancellationReason || '',
     };
 
     // Zamień zmienne w szablonie
@@ -308,7 +316,8 @@ function getStatusName(status) {
     zlozone: 'Złożone',
     realizacja: 'W realizacji',
     wyslane: 'Wysłane',
-    zakonczone: 'Zakończone'
+    zakonczone: 'Zakończone',
+    anulowane: 'Anulowane',
   };
   return names[status] || status;
 }
@@ -510,12 +519,25 @@ module.exports = async (req, res) => {
         parcelLocker,
         address,
         phone,
-        invoiceFile
+        invoiceFile,
+        cancellationReason,
       } = body;
 
       if (!orderDetails || !orderDetails.trim()) {
         res.status(400).json({ success: false, error: 'Order details are required' });
         return;
+      }
+
+      if (status === 'anulowane') {
+        const cr =
+          typeof cancellationReason === 'string' ? cancellationReason.trim() : '';
+        if (!cr) {
+          res.status(400).json({
+            success: false,
+            error: 'Podaj powód anulowania zamówienia',
+          });
+          return;
+        }
       }
 
       // Oblicz razem
@@ -545,6 +567,11 @@ module.exports = async (req, res) => {
         updatedAt: now,
         createdBy: sessionUser.uid,
       };
+
+      if (status === 'anulowane') {
+        orderData.cancellationReason =
+          typeof cancellationReason === 'string' ? cancellationReason.trim() : '';
+      }
 
       const orderRef = await db.collection('orders').add(orderData);
 
@@ -603,7 +630,8 @@ module.exports = async (req, res) => {
         parcelLocker,
         address,
         phone,
-        invoiceFile
+        invoiceFile,
+        cancellationReason,
       } = body;
 
       const updateData = {
@@ -617,6 +645,27 @@ module.exports = async (req, res) => {
       if (additionalCosts !== undefined) updateData.additionalCosts = parseFloat(additionalCosts) || 0;
       if (status !== undefined) {
         updateData.status = status;
+        const prevStatus = orderDoc.data().status;
+        const crIn =
+          typeof cancellationReason === 'string' ? cancellationReason.trim() : '';
+
+        if (status === 'anulowane') {
+          if (prevStatus !== 'anulowane') {
+            if (!crIn) {
+              res.status(400).json({
+                success: false,
+                error: 'Podaj powód anulowania zamówienia',
+              });
+              return;
+            }
+            updateData.cancellationReason = crIn;
+          } else if (crIn) {
+            updateData.cancellationReason = crIn;
+          }
+        } else {
+          updateData.cancellationReason = admin.firestore.FieldValue.delete();
+        }
+
         // Jeśli status zmienia się na "zakonczone", wymagaj faktury
         if (status === 'zakonczone') {
           // Sprawdź czy faktura istnieje w kolekcji invoices lub została przesłana
