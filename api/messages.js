@@ -176,6 +176,18 @@ async function isAdminOrSuperAdmin(uid) {
   }
 }
 
+/** Całkowite usuwanie wątków (DELETE /api/messages*) — tylko z panelu admina (nagłówek jak przy innych akcjach panelu). */
+function requireAdminPanelForMessageDelete(req, res) {
+  if (req.headers['x-admin-panel'] !== 'true') {
+    res.status(403).json({
+      success: false,
+      error: 'Usuwanie wiadomości jest dozwolone tylko z panelu administracji',
+    });
+    return false;
+  }
+  return true;
+}
+
 async function getDisplayNameForUid(uid) {
   if (!uid) return null;
   try {
@@ -1009,6 +1021,7 @@ async function handleDeleteMessages(req, res, db, { query, requesterUid, request
     if (!requesterIsAdmin) {
       return res.status(403).json({ success: false, error: 'Forbidden - admin only' });
     }
+    if (!requireAdminPanelForMessageDelete(req, res)) return;
 
     const senderId = query.senderId;
     const recipientId = query.recipientId || 'admin';
@@ -1112,6 +1125,67 @@ async function handleDeleteMessages(req, res, db, { query, requesterUid, request
         
         console.log('handleDeleteMessages: Deleted', snapshot2.size, 'messages (admin -> user)');
       }
+
+      // Skrzynka Pomocy (user ↔ admin): dopnij brakujące warianty zapisu + usuń metadane konwersacji,
+      // żeby u użytkownika w /api/messages/thread i w panelu zniknęła cała rozmowa.
+      if (recipientId === 'admin' && senderId && senderId !== 'admin' && senderId !== 'anonymous') {
+        const userUid = senderId;
+        const batchSize = 500;
+
+        // Odpowiedzi zapisane z senderId = rzeczywisty UID admina (np. stary widżet bez X-Admin-Panel)
+        const adminUidSet = new Set([SUPERADMIN_UID]);
+        try {
+          const profSnap = await dbInstance.collection('userProfiles').where('role', '==', 'admin').get();
+          profSnap.forEach((d) => {
+            if (d.id) adminUidSet.add(d.id);
+          });
+        } catch (e) {
+          console.warn('handleDeleteMessages: lista profili admin —', e?.message || e);
+        }
+
+        for (const adminUid of adminUidSet) {
+          if (!adminUid || adminUid === userUid) continue;
+          try {
+            const snapAdm = await dbInstance
+              .collection('messages')
+              .where('senderId', '==', adminUid)
+              .where('recipientId', '==', userUid)
+              .get();
+            if (snapAdm.empty) continue;
+            const docs = snapAdm.docs;
+            for (let i = 0; i < docs.length; i += batchSize) {
+              const batch = dbInstance.batch();
+              const batchDocs = docs.slice(i, i + batchSize);
+              batchDocs.forEach((doc) => batch.delete(doc.ref));
+              await batch.commit();
+              deletedCount += batchDocs.length;
+            }
+            console.log(
+              'handleDeleteMessages: Deleted',
+              snapAdm.size,
+              'messages (admin UID -> user)',
+              adminUid,
+            );
+          } catch (e) {
+            console.warn('handleDeleteMessages: admin UID sweep failed for', adminUid, e?.message || e);
+          }
+        }
+
+        // Dokument konwersacji (grupowanie / piny) — bez tego część UI trzyma „martwy” wątek
+        try {
+          const convId = [userUid, 'admin'].sort().join('_');
+          await dbInstance.collection('conversations').doc(convId).delete();
+          console.log('handleDeleteMessages: Deleted conversations/', convId);
+        } catch (e) {
+          console.warn('handleDeleteMessages: conversations sorted id —', e?.message || e);
+        }
+        try {
+          await dbInstance.collection('conversations').doc(userUid).delete();
+          console.log('handleDeleteMessages: Deleted legacy conversations/', userUid);
+        } catch (e) {
+          /* brak dokumentu */
+        }
+      }
     }
     
     console.log('handleDeleteMessages: Total deleted:', deletedCount);
@@ -1137,6 +1211,7 @@ async function handleDeleteAdminMessages(req, res, db, { requesterUid, requester
     if (!requesterIsAdmin) {
       return res.status(403).json({ success: false, error: 'Forbidden - admin only' });
     }
+    if (!requireAdminPanelForMessageDelete(req, res)) return;
 
     console.log('handleDeleteAdminMessages: Deleting all messages from Administrator');
 

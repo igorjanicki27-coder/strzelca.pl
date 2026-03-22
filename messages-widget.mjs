@@ -486,6 +486,18 @@ function makeStyles() {
     }
     .bubbleRow { display: flex; }
     .bubbleRow.me { justify-content: flex-end; }
+    .msgUnreadDivider {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      padding: 6px 0 4px;
+      flex-shrink: 0;
+    }
+    .msgUnreadDivider-inner {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent);
+    }
     .bubble {
       max-width: min(640px, 74%);
       border-radius: 14px;
@@ -1425,7 +1437,26 @@ async function main() {
       return;
     }
 
-    for (const m of items) {
+    const peerId = state.selectedPeerId;
+    let firstNewIdx = -1;
+    if (peerId && items.length) {
+      firstNewIdx = items.findIndex(
+        (m) => m && m.senderId === peerId && m.isRead !== true,
+      );
+    }
+
+    items.forEach((m, index) => {
+      if (index === firstNewIdx && firstNewIdx >= 0) {
+        const div = document.createElement("div");
+        div.className = "msgUnreadDivider";
+        div.setAttribute("role", "separator");
+        div.setAttribute("aria-label", "Nowe wiadomości");
+        const inner = document.createElement("div");
+        inner.className = "msgUnreadDivider-inner";
+        div.appendChild(inner);
+        msgs.appendChild(div);
+      }
+
       const isMe = m.senderId === uid;
       const row = document.createElement("div");
       row.className = `bubbleRow ${isMe ? "me" : ""}`;
@@ -1462,7 +1493,7 @@ async function main() {
       b.appendChild(meta);
       row.appendChild(b);
       msgs.appendChild(row);
-    }
+    });
     queueMicrotask(() => scrollToBottom(msgs));
   }
 

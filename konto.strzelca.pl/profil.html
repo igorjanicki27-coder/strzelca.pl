@@ -931,9 +931,10 @@
         }
       });
 
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
       import {
         initializeFirestore,
+        getFirestore,
         doc,
         getDoc,
         updateDoc,
@@ -1033,11 +1034,26 @@
             measurementId: "G-9EJ2R3JPVD",
           };
 
-          const app = initializeApp(firebaseConfig);
-          const db = initializeFirestore(app, {
-            experimentalAutoDetectLongPolling: true,
-            useFetchStreams: true,
-          });
+          // Ten sam zestaw opcji co auth-init.mjs / auth-widget / messages-widget — inaczej
+          // przy równoległym ładowaniu widgetów drugie initializeFirestore rzuca failed-precondition.
+          const existingApps = getApps();
+          const app = existingApps.length
+            ? existingApps[0]
+            : initializeApp(firebaseConfig);
+
+          let db;
+          try {
+            db = initializeFirestore(app, {
+              experimentalForceLongPolling: true,
+              useFetchStreams: false,
+            });
+          } catch (initErr) {
+            if (initErr?.code === "failed-precondition") {
+              db = getFirestore(app);
+            } else {
+              throw initErr;
+            }
+          }
           const auth = getAuth(app);
 
           // Ustaw trwałość sesji na LOCAL dla wszystkich stron wymagających logowania

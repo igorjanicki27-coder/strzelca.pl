@@ -757,7 +757,7 @@ const firebaseConfig = {
                 if (item.hasAccess) {
                     buttonHtml = `<button onclick="event.stopPropagation(); window.location.href='https://szkolenia.strzelca.pl/kurs.html?id=${item.id}'" aria-label="Rozpocznij kurs ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Rozpocznij kurs</button>`;
                 } else {
-                    buttonHtml = `<button onclick="event.stopPropagation(); window.handleOfferInquiry(decodeURIComponent('${encodedTitle}'), ${item.price || 0})" aria-label="Zapytaj o ofertę szkolenia ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Zapytaj o ofertę</button>`;
+                    buttonHtml = `<button onclick="event.stopPropagation(); window.handleOfferInquiry(decodeURIComponent('${encodedTitle}'), ${item.price || 0})" aria-label="Zapytaj o ofertę szkolenia ${item.title}" class="w-full py-3 md:py-4 bg-zinc-600 text-zinc-100 text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-zinc-500 transition">Zapytaj o ofertę</button>`;
                 }
 
                 return `
@@ -962,7 +962,7 @@ const firebaseConfig = {
                             }
                         }
                         const rows = Array.isArray(trainingRows) ? trainingRows : [];
-                        trainingItems = rows.map((row) => {
+                        trainingItems = rows.map((row, listIndex) => {
                             const hasUserAccess = user && userAccessList.includes(row.id);
                             const hasAccess = row.available === true || hasUserAccess;
                             return {
@@ -971,8 +971,14 @@ const firebaseConfig = {
                                 price: row.price,
                                 img: row.img,
                                 hasAccess,
+                                _adminListIndex: listIndex,
                             };
                         });
+                        trainingItems.sort((a, b) => {
+                            if (a.hasAccess !== b.hasAccess) return a.hasAccess ? -1 : 1;
+                            return a._adminListIndex - b._adminListIndex;
+                        });
+                        trainingItems = trainingItems.map(({ _adminListIndex, ...rest }) => rest);
                         renderTrainingCarousel(false);
                         return;
                     } catch (error) {
@@ -1030,7 +1036,7 @@ const firebaseConfig = {
                         Rozpocznij kurs
                     </button>`;
                 } else {
-                    buttonHtml = `<button type="button" onclick="window.handleOfferInquiry(decodeURIComponent('${encodedTitle}'), ${t.price || 0})" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition flex items-center justify-center gap-2">
+                    buttonHtml = `<button type="button" onclick="window.handleOfferInquiry(decodeURIComponent('${encodedTitle}'), ${t.price || 0})" class="bg-zinc-600 text-zinc-100 px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-zinc-500 transition flex items-center justify-center gap-2">
                         <i class="fas fa-envelope"></i>
                         Zapytaj o ofertę
                     </button>`;

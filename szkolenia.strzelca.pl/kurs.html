@@ -516,7 +516,27 @@
                     if (user) {
                         await checkAccessAndLoadCourse();
                     } else {
-                        document.body.innerHTML = '<div class="container mx-auto px-6 py-20 text-center"><h1 class="text-2xl font-bold text-red-400 mb-4">Wymagane logowanie</h1><p class="text-zinc-400 mb-4">Musisz być zalogowany, aby przeglądać kurs.</p><a href="https://konto.strzelca.pl/login.html?redirect=' + encodeURIComponent(window.location.href) + '" class="text-coyote hover:underline">Zaloguj się</a></div>';
+                        const loginHref =
+                            "https://konto.strzelca.pl/login.html?redirect=" +
+                            encodeURIComponent(window.location.href);
+                        document.body.innerHTML = `
+<div class="min-h-[100dvh] min-h-screen flex flex-col">
+    <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative shrink-0" role="navigation" aria-label="Nawigacja główna">
+        <a href="https://szkolenia.strzelca.pl/" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl z-[60]" aria-label="Powrót do listy szkoleń">
+            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        </a>
+        <div class="container mx-auto px-6 flex justify-center items-center">
+            <div class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400">
+                SZKOLENIA.<span class="coyote-text">STRZELCA</span>.PL
+            </div>
+        </div>
+    </nav>
+    <div class="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
+        <h1 class="text-2xl md:text-3xl font-bold text-red-400 mb-4 font-[Orbitron] tracking-tight">Wymagane logowanie</h1>
+        <p class="text-white mb-8 max-w-lg leading-relaxed">Tylko zalogowani użytkownicy mają możliwość uczestniczenia w szkoleniach.</p>
+        <a href="${loginHref}" class="inline-flex items-center justify-center px-8 py-3 rounded-lg font-semibold bg-[var(--coyote)] text-white hover:text-green-400 transition-colors duration-200 shadow-lg">Zaloguj się</a>
+    </div>
+</div>`;
                     }
                 });
             }
@@ -832,158 +852,110 @@
                 };
             }
 
-            async function drawVerificationQr(ctx, x, y, size) {
-                const verifyUrl = new URL("certyfikaty.html", window.location.href).href;
-                const { default: QRCode } = await import("https://esm.sh/qrcode@1.5.3");
-                const qrCanvas = document.createElement("canvas");
-                await new Promise((resolve, reject) => {
-                    QRCode.toCanvas(
-                        qrCanvas,
-                        verifyUrl,
-                        { width: size, margin: 1, color: { dark: "#0a0a0a", light: "#ffffff" } },
-                        (err) => (err ? reject(err) : resolve())
-                    );
-                });
-                ctx.drawImage(qrCanvas, x, y, size, size);
+            function escapeCertHtml(s) {
+                return String(s)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;");
             }
-            
+
+            function waitImages(root) {
+                const imgs = [...root.querySelectorAll("img")];
+                return Promise.all(
+                    imgs.map((img) =>
+                        img.complete
+                            ? Promise.resolve()
+                            : new Promise((res) => {
+                                  img.onload = img.onerror = res;
+                              })
+                    )
+                );
+            }
+
+            /** PNG z szablonu HTML + tła (Generowanie certyfikatu/). */
             async function generateCertificate(userName) {
                 const { certificateNumber, issuedAtDate } = await ensureCertificateIssued(userName);
+                const baseUrl = new URL("Generowanie certyfikatu/", window.location.href).href;
+                const tplUrl = new URL("certyfikat.html", baseUrl).href;
+                const res = await fetch(tplUrl, { cache: "no-store" });
+                if (!res.ok) throw new Error("Nie udało się wczytać szablonu certyfikatu");
+                let html = await res.text();
+                html = html.replace(/href="styles\.css"/i, `href="${baseUrl}styles.css"`);
+                html = html.replace(/src="assets\//g, `src="${baseUrl}assets/`);
 
-                // Utwórz canvas dla certyfikatu - większa rozdzielczość dla lepszej jakości
-                const canvas = document.createElement('canvas');
-                const scale = 2; // Skala dla lepszej jakości
-                canvas.width = 1400 * scale;
-                canvas.height = 1000 * scale;
-                const ctx = canvas.getContext('2d');
-                ctx.scale(scale, scale);
-                
-                // Tło - prawie czarne
-                ctx.fillStyle = '#0a0a0a';
-                ctx.fillRect(0, 0, 1400, 1000);
-                
-                // Zewnętrzna ramka - gruba, złota
-                ctx.strokeStyle = '#c19a6b';
-                ctx.lineWidth = 12;
-                ctx.strokeRect(50, 50, 1300, 900);
-                
-                // Wewnętrzna ramka - cienka, złota
-                ctx.strokeStyle = '#c19a6b';
-                ctx.lineWidth = 3;
-                ctx.strokeRect(100, 100, 1200, 800);
-                
-                // Logo/tytuł STRZELCA.PL na górze
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 40px Orbitron, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('STRZELCA.PL', 700, 180);
-                
-                // Linia dekoracyjna pod logo
-                ctx.strokeStyle = '#c19a6b';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(500, 210);
-                ctx.lineTo(900, 210);
-                ctx.stroke();
-                
-                // Tekst "CERTIFIKAT" - większy i bardziej wyróżniony
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 72px Orbitron, sans-serif';
-                ctx.fillText('CERTIFIKAT', 700, 300);
-                
-                // Tekst "Niniejszym potwierdzamy, że"
-                ctx.fillStyle = '#e5e5e5';
-                ctx.font = '28px Inter, sans-serif';
-                ctx.fillText('Niniejszym potwierdzamy, że', 700, 400);
-                
-                // Imię i nazwisko użytkownika - większe i złote
-                ctx.fillStyle = '#c19a6b';
-                ctx.font = 'bold 48px Inter, sans-serif';
-                ctx.fillText(userName, 700, 480);
-                
-                // Tekst "ukończył(a) kurs"
-                ctx.fillStyle = '#e5e5e5';
-                ctx.font = '28px Inter, sans-serif';
-                ctx.fillText('ukończył(a) kurs', 700, 550);
-                
-                // Nazwa kursu - większa i złota
-                ctx.fillStyle = '#c19a6b';
-                ctx.font = 'bold 42px Inter, sans-serif';
-                ctx.fillText(trainingTitle, 700, 612);
-
-                // Numer certyfikatu (STRZELCA.PL / NAZWA_KURSU / NR)
-                const numParts = certificateNumber.split("/");
-                ctx.fillStyle = '#c19a6b';
-                ctx.font = 'bold 20px Inter, sans-serif';
-                let ny = 648;
-                if (numParts.length >= 3) {
-                    ctx.fillText(numParts[0], 700, ny);
-                    ny += 28;
-                    ctx.fillText(numParts[1], 700, ny);
-                    ny += 28;
-                    ctx.fillText(numParts[2], 700, ny);
-                } else {
-                    ctx.fillText(certificateNumber, 700, ny);
-                    ny += 28;
-                }
-
-                // Data wystawienia (z rejestru)
-                const dateStr = issuedAtDate.toLocaleDateString('pl-PL', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
+                const verifyUrl = new URL("certyfikaty.html", window.location.href).href;
+                const { default: QRCode } = await import("https://esm.sh/qrcode@1.5.3");
+                const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
+                    width: 240,
+                    margin: 1,
+                    color: { dark: "#1a1510", light: "#ffffff" },
                 });
-                ctx.fillStyle = '#e5e5e5';
-                ctx.font = '24px Inter, sans-serif';
-                ctx.fillText(dateStr, 700, 722);
-                
-                // Podpis STRZELCA.PL na dole - podwójna linia
-                // Pierwsza linia (cieńsza)
-                ctx.strokeStyle = '#c19a6b';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(450, 850);
-                ctx.lineTo(950, 850);
-                ctx.stroke();
-                
-                // Druga linia (grubsza)
-                ctx.strokeStyle = '#c19a6b';
-                ctx.lineWidth = 4;
-                ctx.beginPath();
-                ctx.moveTo(450, 860);
-                ctx.lineTo(950, 860);
-                ctx.stroke();
-                
-                // Logo STRZELCA.PL na dole
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 32px Orbitron, sans-serif';
-                ctx.fillText('STRZELCA.PL', 700, 920);
+                const dateStr = issuedAtDate.toLocaleDateString("pl-PL", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                });
+                html = html
+                    .replace(/\{\{USER_NAME\}\}/g, escapeCertHtml(userName))
+                    .replace(/\{\{COURSE_TITLE\}\}/g, escapeCertHtml(trainingTitle))
+                    .replace(/\{\{CERTIFICATE_NUMBER\}\}/g, escapeCertHtml(certificateNumber))
+                    .replace(/\{\{ISSUE_DATE\}\}/g, escapeCertHtml(dateStr))
+                    .replace(/\{\{QR_DATA_URI\}\}/g, qrDataUrl);
 
-                // QR na wierzchu (ten sam URL na wszystkich certyfikatach → rejestr)
-                const qrSize = 100;
-                const qrX = 1300 - 20 - qrSize;
-                const qrY = 820;
-                await drawVerificationQr(ctx, qrX, qrY, qrSize);
-                ctx.fillStyle = '#a1a1aa';
-                ctx.font = '10px Inter, sans-serif';
-                ctx.textAlign = 'right';
-                ctx.textBaseline = 'bottom';
-                ctx.fillText('Weryfikacja', qrX + qrSize, qrY - 4);
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                
-                // Konwertuj canvas do obrazu i pobierz
-                canvas.toBlob((blob) => {
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `Certyfikat_${trainingTitle.replace(/[^a-z0-9]/gi, '_')}_${userName.replace(/[^a-z0-9]/gi, '_')}.png`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                }, 'image/png');
+                const parsed = new DOMParser().parseFromString(html, "text/html");
+                const linkEl = parsed.querySelector('link[rel="stylesheet"]');
+                let appendedLink = null;
+                if (linkEl?.href) {
+                    appendedLink = linkEl.cloneNode(true);
+                    document.head.appendChild(appendedLink);
+                }
+                const wrap = parsed.querySelector(".page-wrap.cert-page");
+                if (!wrap) throw new Error("Nieprawidłowy szablon certyfikatu");
+
+                const mount = document.createElement("div");
+                mount.id = "strzelca-cert-temp-export";
+                mount.setAttribute("aria-hidden", "true");
+                mount.style.cssText =
+                    "position:fixed;left:-20000px;top:0;width:auto;height:auto;overflow:hidden;visibility:hidden;pointer-events:none;";
+                mount.appendChild(wrap);
+                document.body.appendChild(mount);
+
+                try {
+                    const fontWait =
+                        typeof document.fonts !== "undefined" && document.fonts.ready
+                            ? document.fonts.ready.catch(() => {})
+                            : Promise.resolve();
+                    await Promise.all([
+                        fontWait,
+                        waitImages(mount),
+                        new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
+                    ]);
+                    const { default: html2canvas } = await import("https://esm.sh/html2canvas@1.4.1?target=es2022");
+                    const certEl = mount.querySelector(".certificate");
+                    if (!certEl) throw new Error("Brak .certificate w szablonie");
+                    const canvas = await html2canvas(certEl, {
+                        scale: 2,
+                        useCORS: true,
+                        allowTaint: false,
+                        backgroundColor: null,
+                        logging: false,
+                    });
+                    canvas.toBlob((blob) => {
+                        if (!blob) return;
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `Certyfikat_${trainingTitle.replace(/[^a-z0-9]/gi, "_")}_${userName.replace(/[^a-z0-9]/gi, "_")}.png`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    }, "image/png");
+                } finally {
+                    mount.remove();
+                    if (appendedLink?.parentNode) appendedLink.remove();
+                }
             }
 
             window.generateCertificate = window.downloadCertificate;

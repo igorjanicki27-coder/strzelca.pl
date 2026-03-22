@@ -47,6 +47,9 @@
             color: var(--coyote);
             font-family: 'Orbitron', sans-serif;
         }
+        body.modal-open {
+            overflow: hidden;
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -86,38 +89,12 @@
                         </select>
                     </div>
 
-                    <div id="osoby-container" class="space-y-4"></div>
+                    <p class="text-xs text-zinc-500 leading-relaxed -mt-2">
+                        Dla każdej osoby kliknij kartę, uzupełnij dane w oknie i zapisz. Ramka stanie się <span class="text-green-400/90">zielona</span>.
+                        Wyślij zgłoszenie dopiero, gdy <strong class="text-zinc-400">wszystkie</strong> karty są zielone. Numer lokalu jest opcjonalny.
+                    </p>
 
-                    <div class="border-t border-zinc-700/80 pt-6 space-y-4">
-                        <h2 class="text-lg font-semibold text-white flex items-center gap-2">
-                            <i class="fa-solid fa-location-dot text-coyote"></i> Adres
-                        </h2>
-                        <p class="text-xs text-zinc-500 leading-relaxed">
-                            Ten sam adres zostanie przypisany do każdej z wymienionych osób w zgłoszeniu.
-                        </p>
-                        <div>
-                            <label for="ulica" class="block text-sm font-medium text-zinc-300 mb-1.5">Ulica</label>
-                            <input type="text" id="ulica" name="ulica" required maxlength="150" autocomplete="street-address"
-                                class="w-full rounded-lg bg-zinc-950 border border-zinc-600 text-white px-3 py-2.5 focus:ring-2 focus:ring-coyote outline-none" />
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label for="numer-budynku" class="block text-sm font-medium text-zinc-300 mb-1.5">Numer budynku</label>
-                                <input type="text" id="numer-budynku" name="numer-budynku" required maxlength="30" autocomplete="address-line2"
-                                    class="w-full rounded-lg bg-zinc-950 border border-zinc-600 text-white px-3 py-2.5 focus:ring-2 focus:ring-coyote outline-none" />
-                            </div>
-                            <div>
-                                <label for="numer-lokalu" class="block text-sm font-medium text-zinc-300 mb-1.5">Numer lokalu <span class="text-zinc-500 font-normal">(opcjonalnie)</span></label>
-                                <input type="text" id="numer-lokalu" name="numer-lokalu" maxlength="30"
-                                    class="w-full rounded-lg bg-zinc-950 border border-zinc-600 text-white px-3 py-2.5 focus:ring-2 focus:ring-coyote outline-none" />
-                            </div>
-                        </div>
-                        <div>
-                            <label for="miejscowosc" class="block text-sm font-medium text-zinc-300 mb-1.5">Miejscowość</label>
-                            <input type="text" id="miejscowosc" name="miejscowosc" required maxlength="100" autocomplete="address-level2"
-                                class="w-full rounded-lg bg-zinc-950 border border-zinc-600 text-white px-3 py-2.5 focus:ring-2 focus:ring-coyote outline-none" />
-                        </div>
-                    </div>
+                    <div id="osoby-container" class="space-y-3"></div>
 
                     <div class="rounded-lg border border-coyote/30 bg-coyote/5 p-4 text-sm text-zinc-300 leading-relaxed">
                         <i class="fa-solid fa-circle-info text-coyote mr-2"></i>
@@ -125,7 +102,8 @@
                     </div>
 
                     <p id="form-msg" class="text-sm min-h-[1.25rem]" role="status" aria-live="polite"></p>
-                    <p id="rate-limit-status" class="text-xs text-zinc-500 leading-relaxed mb-3" aria-live="polite"></p>
+                    <p id="rate-limit-status" class="text-xs text-zinc-500 leading-relaxed mb-1" aria-live="polite"></p>
+                    <p id="submit-readiness-hint" class="text-xs text-amber-400/90 leading-relaxed mb-3 min-h-[2.5rem]" aria-live="polite"></p>
 
                     <button type="submit" id="btn-submit"
                         class="w-full py-3 rounded-xl bg-coyote hover:bg-coyote-dark text-black font-bold tracking-wide transition disabled:opacity-50 disabled:cursor-not-allowed">
@@ -138,6 +116,63 @@
         <footer class="mt-12 text-center text-zinc-600 text-xs">
             <a href="https://strzelca.pl" class="hover:text-zinc-400">STRZELCA.PL</a>
         </footer>
+    </div>
+
+    <!-- Modal: dane jednej osoby (poza &lt;form&gt;, żeby uniknąć zagnieżdżonych formularzy) -->
+    <div id="person-modal" class="fixed inset-0 z-[100] hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="person-modal-title">
+        <div class="w-full sm:max-w-lg max-h-[min(92dvh,640px)] sm:rounded-2xl rounded-t-2xl border border-zinc-600 bg-zinc-900 shadow-2xl flex flex-col overflow-hidden" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-zinc-700 shrink-0">
+                <h2 id="person-modal-title" class="text-lg font-semibold text-white">Uczestnik</h2>
+                <button type="button" id="person-modal-close" class="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition" aria-label="Zamknij">
+                    <i class="fa-solid fa-times text-xl" aria-hidden="true"></i>
+                </button>
+            </div>
+            <div class="overflow-y-auto flex-1 min-h-0 px-4 py-4 space-y-4">
+                <p id="person-modal-msg" class="text-sm min-h-[1.25rem] text-red-400" role="status"></p>
+                <div>
+                    <label class="block text-sm text-zinc-300 mb-1" for="modal-imie">Imię</label>
+                    <input type="text" id="modal-imie" maxlength="100" autocomplete="given-name"
+                        class="w-full rounded-lg bg-zinc-950 border border-zinc-600 text-white px-3 py-2.5 focus:ring-2 focus:ring-coyote outline-none" />
+                </div>
+                <div>
+                    <label class="block text-sm text-zinc-300 mb-1" for="modal-nazwisko">Nazwisko</label>
+                    <input type="text" id="modal-nazwisko" maxlength="100" autocomplete="family-name"
+                        class="w-full rounded-lg bg-zinc-950 border border-zinc-600 text-white px-3 py-2.5 focus:ring-2 focus:ring-coyote outline-none" />
+                </div>
+                <div class="border-t border-zinc-700/80 pt-4 space-y-3">
+                    <h3 class="text-sm font-semibold text-coyote flex items-center gap-2">
+                        <i class="fa-solid fa-location-dot"></i> Adres tej osoby
+                    </h3>
+                    <div>
+                        <label class="block text-sm text-zinc-300 mb-1" for="modal-ulica">Ulica</label>
+                        <input type="text" id="modal-ulica" maxlength="150" autocomplete="street-address"
+                            class="w-full rounded-lg bg-zinc-950 border border-zinc-600 text-white px-3 py-2.5 focus:ring-2 focus:ring-coyote outline-none" />
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm text-zinc-300 mb-1" for="modal-numer-budynku">Numer budynku</label>
+                            <input type="text" id="modal-numer-budynku" maxlength="30"
+                                class="w-full rounded-lg bg-zinc-950 border border-zinc-600 text-white px-3 py-2.5 focus:ring-2 focus:ring-coyote outline-none" />
+                        </div>
+                        <div>
+                            <label class="block text-sm text-zinc-300 mb-1" for="modal-numer-lokalu">Nr lokalu <span class="text-zinc-500 font-normal">(opcjonalnie)</span></label>
+                            <input type="text" id="modal-numer-lokalu" maxlength="30"
+                                class="w-full rounded-lg bg-zinc-950 border border-zinc-600 text-white px-3 py-2.5 focus:ring-2 focus:ring-coyote outline-none" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-zinc-300 mb-1" for="modal-miejscowosc">Miejscowość</label>
+                        <input type="text" id="modal-miejscowosc" maxlength="100" autocomplete="address-level2"
+                            class="w-full rounded-lg bg-zinc-950 border border-zinc-600 text-white px-3 py-2.5 focus:ring-2 focus:ring-coyote outline-none" />
+                    </div>
+                </div>
+            </div>
+            <div class="px-4 py-3 border-t border-zinc-700 shrink-0">
+                <button type="button" id="person-modal-save" class="w-full py-3 rounded-xl bg-coyote hover:bg-coyote-dark text-black font-bold tracking-wide transition">
+                    Zapisz
+                </button>
+            </div>
+        </div>
     </div>
 
     <script type="module">
@@ -197,6 +232,23 @@
         const msg = document.getElementById("form-msg");
         const btnSubmit = document.getElementById("btn-submit");
         const rateLimitStatusEl = document.getElementById("rate-limit-status");
+        const submitReadinessHintEl = document.getElementById("submit-readiness-hint");
+
+        const personModal = document.getElementById("person-modal");
+        const personModalTitle = document.getElementById("person-modal-title");
+        const personModalMsg = document.getElementById("person-modal-msg");
+        const personModalClose = document.getElementById("person-modal-close");
+        const personModalSave = document.getElementById("person-modal-save");
+        const modalImie = document.getElementById("modal-imie");
+        const modalNazwisko = document.getElementById("modal-nazwisko");
+        const modalUlica = document.getElementById("modal-ulica");
+        const modalNumerBudynku = document.getElementById("modal-numer-budynku");
+        const modalNumerLokalu = document.getElementById("modal-numer-lokalu");
+        const modalMiejscowosc = document.getElementById("modal-miejscowosc");
+
+        /** @type {Record<string, { imie: string, nazwisko: string, ulica: string, numerBudynku: string, numerLokalu: string, miejscowosc: string }>} */
+        let participantSlots = {};
+        let editingPersonIndex = null;
 
         const RATE_KEYS = { count: "mojEvent_reg_session_count", lastAt: "mojEvent_reg_last_submit_ms" };
         const MAX_FORMS_PER_SESSION = 5;
@@ -216,21 +268,13 @@
         function canSubmitByClientLimit() {
             const count = getSessionSubmitCount();
             if (count >= MAX_FORMS_PER_SESSION) {
-                return {
-                    ok: false,
-                    reason: "session_cap",
-                    waitMs: 0,
-                };
+                return { ok: false, reason: "session_cap", waitMs: 0 };
             }
             const last = getLastSubmitMs();
             if (last > 0) {
                 const elapsed = Date.now() - last;
                 if (elapsed < MIN_MS_BETWEEN_SUBMITS) {
-                    return {
-                        ok: false,
-                        reason: "cooldown",
-                        waitMs: MIN_MS_BETWEEN_SUBMITS - elapsed,
-                    };
+                    return { ok: false, reason: "cooldown", waitMs: MIN_MS_BETWEEN_SUBMITS - elapsed };
                 }
             }
             return { ok: true, reason: null, waitMs: 0 };
@@ -248,6 +292,54 @@
             return m > 0 ? `${m} min ${String(s).padStart(2, "0")} s` : `${s} s`;
         }
 
+        function isSlotComplete(s) {
+            if (!s || typeof s !== "object") return false;
+            const imie = (s.imie || "").trim();
+            const nazwisko = (s.nazwisko || "").trim();
+            const ulica = (s.ulica || "").trim();
+            const numerBudynku = (s.numerBudynku || "").trim();
+            const miejscowosc = (s.miejscowosc || "").trim();
+            return !!(imie && nazwisko && ulica && numerBudynku && miejscowosc);
+        }
+
+        function allParticipantsReady(n) {
+            for (let i = 1; i <= n; i++) {
+                if (!isSlotComplete(participantSlots[String(i)])) return false;
+            }
+            return true;
+        }
+
+        function updateSubmitReadinessHint(n) {
+            if (!submitReadinessHintEl) return;
+            const gate = canSubmitByClientLimit();
+            if (!gate.ok) {
+                submitReadinessHintEl.textContent = "";
+                return;
+            }
+            if (allParticipantsReady(n)) {
+                submitReadinessHintEl.textContent = "Wszystkie osoby mają zapisane dane — możesz wysłać zgłoszenie.";
+                submitReadinessHintEl.className = "text-xs text-green-400/90 leading-relaxed mb-3 min-h-[2.5rem]";
+                return;
+            }
+            let missing = 0;
+            for (let i = 1; i <= n; i++) {
+                if (!isSlotComplete(participantSlots[String(i)])) missing++;
+            }
+            submitReadinessHintEl.textContent = `Brakuje jeszcze ${missing} ${missing === 1 ? "osoby" : "osób"} — kliknij szare karty i zapisz dane w oknie.`;
+            submitReadinessHintEl.className = "text-xs text-amber-400/90 leading-relaxed mb-3 min-h-[2.5rem]";
+        }
+
+        function syncSubmitButtonState() {
+            const n = Number(liczbaSelect?.value) || 1;
+            const gate = canSubmitByClientLimit();
+            updateSubmitReadinessHint(n);
+            if (!gate.ok) {
+                btnSubmit.disabled = true;
+                return;
+            }
+            btnSubmit.disabled = !allParticipantsReady(n);
+        }
+
         function applyClientRateLimitUI() {
             if (rateLimitCooldownTimer) {
                 clearTimeout(rateLimitCooldownTimer);
@@ -258,62 +350,145 @@
             const count = getSessionSubmitCount();
             const left = Math.max(0, MAX_FORMS_PER_SESSION - count);
 
-            if (gate.ok) {
-                btnSubmit.disabled = false;
-                if (rateLimitStatusEl) {
-                    if (count === 0) {
-                        rateLimitStatusEl.textContent =
-                            "Limit: jedno zgłoszenie co 5 minut, maksymalnie 5 zgłoszeń w tej sesji przeglądarki (karta).";
-                    } else {
-                        rateLimitStatusEl.textContent = `W tej sesji wykorzystano ${count} z ${MAX_FORMS_PER_SESSION} zgłoszeń. Możesz jeszcze ${left}. Między wysłaniami: 5 minut przerwy.`;
-                    }
-                }
-                return;
-            }
-
-            btnSubmit.disabled = true;
             if (rateLimitStatusEl) {
                 if (gate.reason === "session_cap") {
                     rateLimitStatusEl.textContent =
                         "Osiągnięto limit 5 zgłoszeń w tej sesji. Zamknij kartę lub otwórz stronę w nowej karcie, aby wysłać kolejne (limit nadal tylko po stronie przeglądarki).";
-                } else {
+                } else if (gate.reason === "cooldown") {
                     rateLimitStatusEl.textContent = `Przerwa między zgłoszeniami: poczekaj jeszcze ${formatCooldown(gate.waitMs)}.`;
                     rateLimitCooldownTimer = setTimeout(
                         () => applyClientRateLimitUI(),
                         Math.min(gate.waitMs + 250, MIN_MS_BETWEEN_SUBMITS + 1000)
                     );
+                } else if (count === 0) {
+                    rateLimitStatusEl.textContent =
+                        "Limit: jedno zgłoszenie co 5 minut, maksymalnie 5 zgłoszeń w tej sesji przeglądarki (karta).";
+                } else {
+                    rateLimitStatusEl.textContent = `W tej sesji wykorzystano ${count} z ${MAX_FORMS_PER_SESSION} zgłoszeń. Możesz jeszcze ${left}. Między wysłaniami: 5 minut przerwy.`;
                 }
             }
+
+            syncSubmitButtonState();
         }
 
-        function renderOsobyFields(n) {
+        function renderOsobyList(n) {
             osobyContainer.innerHTML = "";
             for (let i = 1; i <= n; i++) {
-                const block = document.createElement("div");
-                block.className = "rounded-xl border border-zinc-700/60 bg-zinc-950/50 p-4 space-y-3";
-                block.innerHTML = `
-                    <div class="text-xs font-semibold uppercase tracking-wider text-coyote">Osoba ${i}</div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-sm text-zinc-300 mb-1" for="imie-${i}">Imię</label>
-                            <input type="text" id="imie-${i}" name="imie-${i}" required maxlength="100" autocomplete="given-name"
-                                class="w-full rounded-lg bg-zinc-900 border border-zinc-600 text-white px-3 py-2 focus:ring-2 focus:ring-coyote outline-none" />
-                        </div>
-                        <div>
-                            <label class="block text-sm text-zinc-300 mb-1" for="nazwisko-${i}">Nazwisko</label>
-                            <input type="text" id="nazwisko-${i}" name="nazwisko-${i}" required maxlength="100" autocomplete="family-name"
-                                class="w-full rounded-lg bg-zinc-900 border border-zinc-600 text-white px-3 py-2 focus:ring-2 focus:ring-coyote outline-none" />
-                        </div>
+                const slot = participantSlots[String(i)];
+                const complete = isSlotComplete(slot);
+                const displayName = complete
+                    ? `${(slot.imie || "").trim()} ${(slot.nazwisko || "").trim()}`.trim()
+                    : "";
+                const borderClass = complete
+                    ? "border-2 border-green-500/90 bg-green-950/25 shadow-[0_0_0_1px_rgba(34,197,94,0.15)]"
+                    : "border border-zinc-600/90 bg-zinc-950/50 hover:border-coyote/50";
+
+                const card = document.createElement("button");
+                card.type = "button";
+                card.dataset.index = String(i);
+                card.className =
+                    `person-card w-full text-left rounded-xl p-4 transition ${borderClass} focus:outline-none focus:ring-2 focus:ring-coyote/80 focus:ring-offset-2 focus:ring-offset-zinc-900`;
+                card.innerHTML = `
+                    <div class="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1">Osoba ${i}</div>
+                    <div class="person-card-name text-base ${complete ? "text-white font-semibold" : "text-zinc-500 italic"}">
+                        ${complete ? escapeHtml(displayName) : "Imię i nazwisko — kliknij, aby uzupełnić dane"}
+                    </div>
+                    <div class="text-[11px] text-zinc-500 mt-2 flex items-center gap-1">
+                        <i class="fa-solid fa-pen-to-square text-coyote/80 text-[10px]" aria-hidden="true"></i>
+                        ${complete ? "Kliknij, aby edytować" : "Otwiera okno z danymi i adresem"}
                     </div>
                 `;
-                osobyContainer.appendChild(block);
+                card.addEventListener("click", () => openPersonModal(i));
+                osobyContainer.appendChild(card);
             }
         }
 
-        liczbaSelect.addEventListener("change", () => {
-            renderOsobyFields(Number(liczbaSelect.value) || 1);
+        function escapeHtml(text) {
+            const d = document.createElement("div");
+            d.textContent = text;
+            return d.innerHTML;
+        }
+
+        function openPersonModal(index) {
+            editingPersonIndex = index;
+            personModalMsg.textContent = "";
+            const slot = participantSlots[String(index)] || {};
+            modalImie.value = slot.imie || "";
+            modalNazwisko.value = slot.nazwisko || "";
+            modalUlica.value = slot.ulica || "";
+            modalNumerBudynku.value = slot.numerBudynku || "";
+            modalNumerLokalu.value = slot.numerLokalu || "";
+            modalMiejscowosc.value = slot.miejscowosc || "";
+            personModalTitle.textContent = `Uczestnik ${index}`;
+            personModal.classList.remove("hidden");
+            document.body.classList.add("modal-open");
+            modalImie.focus();
+        }
+
+        function closePersonModal() {
+            editingPersonIndex = null;
+            personModal.classList.add("hidden");
+            personModalMsg.textContent = "";
+            document.body.classList.remove("modal-open");
+        }
+
+        function savePersonModal() {
+            personModalMsg.textContent = "";
+            const imie = modalImie.value.trim();
+            const nazwisko = modalNazwisko.value.trim();
+            const ulica = modalUlica.value.trim();
+            const numerBudynku = modalNumerBudynku.value.trim();
+            const numerLokalu = modalNumerLokalu.value.trim();
+            const miejscowosc = modalMiejscowosc.value.trim();
+
+            if (!imie || !nazwisko) {
+                personModalMsg.textContent = "Podaj imię i nazwisko.";
+                return;
+            }
+            if (!ulica || !numerBudynku || !miejscowosc) {
+                personModalMsg.textContent = "Uzupełnij ulicę, numer budynku i miejscowość (numer lokalu może pozostać pusty).";
+                return;
+            }
+
+            const idx = editingPersonIndex;
+            if (idx == null) return;
+
+            participantSlots[String(idx)] = {
+                imie,
+                nazwisko,
+                ulica,
+                numerBudynku,
+                numerLokalu,
+                miejscowosc,
+            };
+
+            const n = Number(liczbaSelect.value) || 1;
+            renderOsobyList(n);
+            syncSubmitButtonState();
+            closePersonModal();
+        }
+
+        personModalClose.addEventListener("click", closePersonModal);
+        personModalSave.addEventListener("click", savePersonModal);
+        personModal.addEventListener("click", (e) => {
+            if (e.target === personModal) closePersonModal();
         });
-        renderOsobyFields(1);
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && !personModal.classList.contains("hidden")) {
+                closePersonModal();
+            }
+        });
+
+        liczbaSelect.addEventListener("change", () => {
+            const n = Number(liczbaSelect.value) || 1;
+            Object.keys(participantSlots).forEach((k) => {
+                if (parseInt(k, 10) > n) delete participantSlots[k];
+            });
+            renderOsobyList(n);
+            syncSubmitButtonState();
+        });
+
+        renderOsobyList(1);
         applyClientRateLimitUI();
 
         form.addEventListener("submit", async (e) => {
@@ -334,27 +509,16 @@
             }
 
             const n = Number(liczbaSelect.value) || 1;
-            const ulica = document.getElementById("ulica").value.trim();
-            const numerBudynku = document.getElementById("numer-budynku").value.trim();
-            const numerLokalu = document.getElementById("numer-lokalu").value.trim();
-            const miejscowosc = document.getElementById("miejscowosc").value.trim();
-
-            if (!ulica || !numerBudynku || !miejscowosc) {
-                msg.textContent = "Uzupełnij wymagane pola adresu.";
-                msg.classList.add("text-red-400");
+            if (!allParticipantsReady(n)) {
+                msg.textContent = "Uzupełnij i zapisz dane każdej osoby (wszystkie karty muszą być zielone).";
+                msg.classList.add("text-amber-400");
+                syncSubmitButtonState();
                 return;
             }
 
             const osoby = [];
             for (let i = 1; i <= n; i++) {
-                const imie = document.getElementById(`imie-${i}`)?.value?.trim() || "";
-                const nazwisko = document.getElementById(`nazwisko-${i}`)?.value?.trim() || "";
-                if (!imie || !nazwisko) {
-                    msg.textContent = `Uzupełnij imię i nazwisko osoby ${i}.`;
-                    msg.classList.add("text-red-400");
-                    return;
-                }
-                osoby.push({ imie, nazwisko });
+                osoby.push(participantSlots[String(i)]);
             }
 
             btnSubmit.disabled = true;
@@ -366,10 +530,10 @@
                     batch.set(ref, {
                         imie: o.imie,
                         nazwisko: o.nazwisko,
-                        ulica,
-                        numerBudynku,
-                        numerLokalu,
-                        miejscowosc,
+                        ulica: o.ulica,
+                        numerBudynku: o.numerBudynku,
+                        numerLokalu: o.numerLokalu,
+                        miejscowosc: o.miejscowosc,
                         zatwierdzono: false,
                         createdAt: ts,
                     });
@@ -380,7 +544,8 @@
                 msg.classList.add("text-green-400");
                 form.reset();
                 liczbaSelect.value = "1";
-                renderOsobyFields(1);
+                participantSlots = {};
+                renderOsobyList(1);
             } catch (err) {
                 console.error(err);
                 msg.textContent = "Nie udało się wysłać zgłoszenia. Spróbuj ponownie za chwilę lub skontaktuj się z organizatorem.";

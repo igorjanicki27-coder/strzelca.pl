@@ -778,7 +778,7 @@
         id="return-claim-pdf-root"
         aria-hidden="true"
         class="return-claim-pdf-root--capture"
-        style="padding:12mm;background:#fafafa;color:#18181b;font-family:Inter,system-ui,sans-serif;font-size:10.5pt;line-height:1.45;color-scheme:light;"
+        style="padding:0;background:transparent;color:#18181b;color-scheme:light;"
     ></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -1618,11 +1618,83 @@ const firebaseConfig = {
                 }
             }
 
-            function pdfRow(label, valueHtml) {
-                return `<div class="rc-pdf-field" style="margin-bottom:11px;padding-bottom:10px;border-bottom:1px solid #e4e4e7;page-break-inside:auto;">
-                    <div style="font-weight:700;color:#3f3f46;font-size:9.5pt;margin-bottom:5px;letter-spacing:0.02em;">${label}</div>
-                    <div style="color:#18181b;font-size:10.25pt;line-height:1.5;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;">${valueHtml}</div>
-                </div>`;
+            let rcPdfStylesheetPromise = null;
+            function ensureReturnClaimPdfStylesheet() {
+                if (rcPdfStylesheetPromise) return rcPdfStylesheetPromise;
+                rcPdfStylesheetPromise = new Promise((resolve) => {
+                    const id = "strzelca-rc-pdf-form-styles";
+                    if (document.getElementById(id)) {
+                        resolve();
+                        return;
+                    }
+                    const formBase = new URL("Generowanie formularza/", window.location.href).href;
+                    const link = document.createElement("link");
+                    link.id = id;
+                    link.rel = "stylesheet";
+                    link.href = `${formBase}styles.css`;
+                    link.onload = link.onerror = () => resolve();
+                    document.head.appendChild(link);
+                });
+                return rcPdfStylesheetPromise;
+            }
+
+            function waitReturnClaimPdfImages(root) {
+                const imgs = [...root.querySelectorAll("img")];
+                return Promise.all(
+                    imgs.map((img) =>
+                        img.complete
+                            ? Promise.resolve()
+                            : new Promise((res) => {
+                                  img.onload = img.onerror = res;
+                              })
+                    )
+                );
+            }
+
+            async function buildReturnClaimPdfRootInnerHtml(opts) {
+                await ensureReturnClaimPdfStylesheet();
+                const formBase = new URL("Generowanie formularza/", window.location.href).href;
+                const res = await fetch(`${formBase}formularz.html`, { cache: "no-store" });
+                if (!res.ok) throw new Error("HTTP " + res.status);
+                let raw = await res.text();
+                raw = raw.replace(/href="styles\.css"/i, `href="${formBase}styles.css"`);
+                raw = raw.replace(/src="assets\//g, `src="${formBase}assets/`);
+                const ch = (v) => (v ? "checked" : "");
+                const {
+                    typ,
+                    generatedAt,
+                    imie,
+                    nazwisko,
+                    zam,
+                    faktura,
+                    kontoTekst,
+                    opisHtml,
+                    powodHtml,
+                    zadanie,
+                    dodatkoweHtml,
+                } = opts;
+                raw = raw
+                    .replace(/\{\{GENERATED_AT\}\}/g, esc(generatedAt))
+                    .replace(/\{\{CHK_ZWROT\}\}/g, ch(typ === "zwrot"))
+                    .replace(/\{\{CHK_REK\}\}/g, ch(typ === "reklamacja"))
+                    .replace(/\{\{FIRST_NAME\}\}/g, esc(imie))
+                    .replace(/\{\{LAST_NAME\}\}/g, esc(nazwisko))
+                    .replace(/\{\{ORDER_NUMBER\}\}/g, esc(zam))
+                    .replace(/\{\{INVOICE_NUMBER\}\}/g, esc(faktura))
+                    .replace(/\{\{ACCOUNT_INFO\}\}/g, esc(kontoTekst))
+                    .replace(/\{\{DEFECT_DESCRIPTION\}\}/g, opisHtml)
+                    .replace(/\{\{RETURN_REASON\}\}/g, powodHtml)
+                    .replace(/\{\{ADDITIONAL_INFO\}\}/g, dodatkoweHtml)
+                    .replace(/\{\{CHK_ZAD_WYMIANA\}\}/g, ch(zadanie === "Wymiana"))
+                    .replace(/\{\{CHK_ZAD_NAPRAWA\}\}/g, ch(zadanie === "Naprawa"))
+                    .replace(/\{\{CHK_ZAD_ZWROT\}\}/g, ch(zadanie === "Zwrot środków"))
+                    .replace(/\{\{CHK_ZAD_OBNIZKA\}\}/g, ch(zadanie === "Obniżenie ceny"))
+                    .replace(/\{\{CHK_ZAD_ODSTAPIENIE\}\}/g, ch(zadanie === "Odstąpienie od umowy"));
+                const doc = new DOMParser().parseFromString(raw, "text/html");
+                const wrap = doc.querySelector(".page-wrap.form-page");
+                if (!wrap) throw new Error("Nieprawidłowy szablon formularza PDF");
+                wrap.id = "rc-pdf-inner";
+                return wrap.outerHTML;
             }
 
             async function logReturnFormActivityToStrzelca(fields) {
@@ -1701,43 +1773,31 @@ const firebaseConfig = {
 
                 const u = authRef && authRef.currentUser;
                 const generatedAt = new Date().toLocaleString("pl-PL", { dateStyle: "long", timeStyle: "short" });
-                const typLabel = typ === "reklamacja" ? "Reklamacja" : "Zwrot (odstąpienie od umowy)";
 
-                const nick = u ? esc(u.displayName || (u.email ? u.email.split("@")[0] : "")) : "";
-                const em = u ? esc(u.email || "") : "";
-                const kontoHtml = u
-                    ? `Zalogowano\nNazwa wyświetlana: ${nick}\nE-mail: ${em}`
+                const nickRaw = u ? u.displayName || (u.email ? u.email.split("@")[0] : "") : "";
+                const emRaw = u ? u.email || "" : "";
+                const kontoTekst = u
+                    ? `Zalogowano\nNazwa wyświetlana: ${nickRaw}\nE-mail: ${emRaw}`
                     : "Nie zalogowano — zgłoszenie jako gość.";
-
-                const coyote = "#C19A6B";
-                const dark = "#0a0a0a";
-                const foot = `Do formularza należy dołączyć dowód zakupu i przesłać go poprzez system wiadomości do Pomocy STRZELCA.PL lub na skrzynkę e-mail w ciągu 14 dni od otrzymania produktu.\n\nE-mail: kontakt@strzelca.pl`;
 
                 const opisHtml = typ === "reklamacja" ? esc(opis) : "— (pole dotyczy wyłącznie reklamacji)";
                 const powodHtml = typ === "zwrot" ? esc(powod) : "— (pole dotyczy wyłącznie zwrotu)";
                 const dodatkoweHtml = dodatkowe ? esc(dodatkowe) : "—";
 
-                pdfRoot.innerHTML = `
-                    <div id="rc-pdf-inner" style="box-sizing:border-box;width:100%;max-width:210mm;margin:0 auto;">
-                    <div style="background:${coyote};color:${dark};padding:14px 16px;text-align:center;font-weight:700;font-size:13pt;letter-spacing:0.06em;page-break-after:avoid;">STRZELCA.PL</div>
-                    <div style="margin:14px 0 10px;text-align:center;font-size:11pt;font-weight:700;color:${dark};">Formularz odstąpienia od umowy — zwrot / reklamacja</div>
-                    <div style="text-align:center;font-size:9pt;color:#52525b;margin-bottom:14px;">Wygenerowano: ${esc(generatedAt)}</div>
-                    <div style="background:#fff;border:1px solid #d4d4d8;border-radius:10px;padding:14px 16px;">
-                        ${pdfRow("Rodzaj zgłoszenia", esc(typLabel))}
-                        ${pdfRow("Imię", esc(imie))}
-                        ${pdfRow("Nazwisko", esc(nazwisko))}
-                        ${pdfRow("Numer zamówienia", esc(zam))}
-                        ${pdfRow("Numer faktury / rachunku", esc(faktura))}
-                        ${pdfRow("Identyfikacja konta w serwisie", kontoHtml)}
-                        ${pdfRow("Opis wady", opisHtml)}
-                        ${pdfRow("Powód zwrotu", powodHtml)}
-                        ${pdfRow("Żądanie", esc(zadanie))}
-                        ${pdfRow("Dodatkowe informacje / uwagi", dodatkoweHtml)}
-                    </div>
-                    <div style="margin-top:14px;padding:12px 14px;background:#fafafa;border:1px solid #C19A6B;border-radius:8px;font-size:9.25pt;color:#3f3f46;line-height:1.55;white-space:pre-wrap;">${esc(foot)}</div>
-                    <div style="margin-top:10px;text-align:center;font-size:8pt;color:#a1a1aa;">dokumenty.strzelca.pl</div>
-                    </div>
-                `;
+                pdfRoot.innerHTML = await buildReturnClaimPdfRootInnerHtml({
+                    typ,
+                    generatedAt,
+                    imie,
+                    nazwisko,
+                    zam,
+                    faktura,
+                    kontoTekst,
+                    opisHtml,
+                    powodHtml,
+                    zadanie,
+                    dodatkoweHtml,
+                });
+                await waitReturnClaimPdfImages(pdfRoot);
 
                 const pdfFilename = `strzelca-zwrot-reklamacja-${Date.now()}.pdf`;
                 const opt = {
@@ -1748,7 +1808,7 @@ const firebaseConfig = {
                         scale: 1.5,
                         useCORS: true,
                         logging: false,
-                        backgroundColor: "#fafafa",
+                        backgroundColor: null,
                         scrollX: 0,
                         scrollY: 0,
                         allowTaint: false,
@@ -1758,7 +1818,7 @@ const firebaseConfig = {
                                 const node = clonedDoc.getElementById("return-claim-pdf-root");
                                 if (node?.style) {
                                     node.style.cssText =
-                                        "position:relative;left:0;top:0;opacity:1;z-index:0;box-sizing:border-box;width:210mm;max-width:100%;height:auto;min-height:0;max-height:none;overflow:visible;background:#fafafa;color:#18181b;padding:10mm;color-scheme:light;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none;-webkit-forced-color-adjust:none;";
+                                        "position:relative;left:0;top:0;opacity:1;z-index:0;box-sizing:border-box;width:210mm;max-width:100%;height:auto;min-height:0;max-height:none;overflow:visible;background:transparent;color:#18181b;padding:0;color-scheme:light;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none;-webkit-forced-color-adjust:none;";
                                 }
                                 const inner = clonedDoc.getElementById("rc-pdf-inner");
                                 if (inner?.style) {
