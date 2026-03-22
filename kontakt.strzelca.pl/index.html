@@ -331,8 +331,8 @@
         <div class="carousel-viewport">
           <div id="contact-track">
 
-            <!-- Karta: Formularz kontaktowy -->
-            <div class="contact-card" onclick="window.openContactForm()" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.openContactForm();}" aria-label="Formularz kontaktowy">
+            <!-- Karta: Formularz kontaktowy (klik przez listener — pewniejsze na iOS / przy overlay) -->
+            <div class="contact-card" id="strzelca-contact-form-tile" role="button" tabindex="0" aria-label="Formularz kontaktowy">
               <p class="contact-card-type">Wiadomość</p>
               <div class="contact-divider"></div>
               <div class="contact-icon" style="color: var(--coyote);">
@@ -583,8 +583,34 @@
       // Modal i pomocnicze
       window.toggleUserMenu = function () { document.getElementById('user-menu')?.classList.toggle('hidden'); };
 
+      function strzelcaMessagesPanelIsOpen() {
+        try {
+          var host = document.getElementById('strzelca-messages-widget');
+          var panel = host && host.shadowRoot && host.shadowRoot.querySelector('.panel');
+          return !!(panel && String(panel.style.display || '') === 'block');
+        } catch (e) {
+          return false;
+        }
+      }
+
       window.openContactForm = function () {
         if (window.currentUser) {
+          var profilMessages = 'https://konto.strzelca.pl/profil.html#messages';
+          var fallbackNavTimer = null;
+          var panelPollTimer = null;
+          function clearContactChatTimers() {
+            if (fallbackNavTimer) clearTimeout(fallbackNavTimer);
+            if (panelPollTimer) clearInterval(panelPollTimer);
+            fallbackNavTimer = null;
+            panelPollTimer = null;
+          }
+          panelPollTimer = setInterval(function () {
+            if (strzelcaMessagesPanelIsOpen()) clearContactChatTimers();
+          }, 120);
+          fallbackNavTimer = setTimeout(function () {
+            clearContactChatTimers();
+            if (!strzelcaMessagesPanelIsOpen()) window.location.assign(profilMessages);
+          }, 8000);
           var tries = 0;
           var maxTries = 100;
           var delayMs = 100;
@@ -612,7 +638,8 @@
               setTimeout(tryOpenChat, delayMs);
               return;
             }
-            window.location.assign('https://konto.strzelca.pl/profil.html#messages');
+            clearContactChatTimers();
+            window.location.assign(profilMessages);
           }
           tryOpenChat();
           return;
@@ -623,6 +650,32 @@
         document.getElementById('logged-user-message')?.classList.add('hidden');
         modal.classList.remove('hidden');
       };
+
+      function strzelcaBindContactFormTile() {
+        var tile = document.getElementById('strzelca-contact-form-tile');
+        if (!tile || tile.dataset.strzelcaBound === '1') return;
+        tile.dataset.strzelcaBound = '1';
+        tile.addEventListener(
+          'click',
+          function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            window.openContactForm();
+          },
+          { passive: false }
+        );
+        tile.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            window.openContactForm();
+          }
+        });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', strzelcaBindContactFormTile);
+      } else {
+        strzelcaBindContactFormTile();
+      }
 
       window.closeContactForm = function () { document.getElementById('contact-form-modal')?.classList.add('hidden'); };
 
@@ -906,6 +959,6 @@
       });
     </script>
     <script type="module" src="https://strzelca.pl/auth-widget.mjs?v=2026-03-21-2"></script>
-    <script type="module" src="https://strzelca.pl/messages-widget.mjs?v=2026-03-22-2"></script>
+    <script type="module" src="https://strzelca.pl/messages-widget.mjs?v=2026-03-22-3"></script>
   </body>
 </html>

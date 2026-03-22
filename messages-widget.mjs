@@ -245,6 +245,12 @@ function getApiUrl(path) {
 }
 
 async function getFirebaseApiKey() {
+  try {
+    const cached = localStorage.getItem("firebase_web_api_key");
+    if (cached && typeof cached === "string" && cached.length > 10) return cached;
+  } catch {
+    // ignore
+  }
   const isMain = (window.location?.hostname || "") === "strzelca.pl";
   const urls = isMain
     ? ["/api/firebase-config", "https://strzelca.pl/api/firebase-config"]
@@ -258,7 +264,14 @@ async function getFirebaseApiKey() {
       });
       if (!res.ok) continue;
       const data = await res.json().catch(() => null);
-      if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) return data.apiKey;
+      if (data && typeof data.apiKey === "string" && data.apiKey.length > 10) {
+        try {
+          localStorage.setItem("firebase_web_api_key", data.apiKey);
+        } catch {
+          // ignore
+        }
+        return data.apiKey;
+      }
     } catch {
       // ignore
     }

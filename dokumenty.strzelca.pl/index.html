@@ -228,13 +228,23 @@
     <!-- Wspólne poprawki responsywności -->
     <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-22-1" />
     <style>
-        /* Po shared.css: iframe PDF w flex — globalne `iframe { height:auto }` psuje wbudowany viewer (biała kartka). */
-        #rc-pdf-preview-iframe[data-strzelca-pdf-preview] {
+        /* Podgląd PDF: flex + iframe/embed z height:auto psuje wbudowany viewer (miganie → biała kartka).
+           Kontener ma realną wysokość; embed/iframe wypełnia go przez position:absolute. */
+        #rc-pdf-preview-wrap {
+            position: relative;
             flex: 1 1 0%;
-            min-height: 0;
+            min-height: min(60dvh, 520px);
+            min-width: 0;
             width: 100%;
-            align-self: stretch;
+            background: #09090b;
+        }
+        #rc-pdf-preview-embed[data-strzelca-pdf-preview] {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
             max-width: none;
+            border: 0;
         }
     </style>
     <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
@@ -752,11 +762,11 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
                             <label for="rc-zamowienie" class="block text-xs font-medium text-zinc-400 mb-1">Numer zamówienia *</label>
-                            <input id="rc-zamowienie" name="rc-zamowienie" type="text" required autocomplete="off" class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-1.5 text-sm" />
+                            <input id="rc-zamowienie" name="rc-zamowienie" type="text" required autocomplete="off" class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-1.5 text-sm read-only:bg-zinc-900/90 read-only:text-zinc-400 read-only:cursor-default" />
                         </div>
                         <div>
                             <label for="rc-faktura" class="block text-xs font-medium text-zinc-400 mb-1">Numer faktury / rachunku *</label>
-                            <input id="rc-faktura" name="rc-faktura" type="text" required autocomplete="off" class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-1.5 text-sm" />
+                            <input id="rc-faktura" name="rc-faktura" type="text" required autocomplete="off" class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-1.5 text-sm read-only:bg-zinc-900/90 read-only:text-zinc-400 read-only:cursor-default" />
                         </div>
                     </div>
                     <div id="rc-wrap-opis" class="hidden">
@@ -834,12 +844,14 @@
                     </button>
                 </div>
             </div>
-            <iframe
-                id="rc-pdf-preview-iframe"
-                data-strzelca-pdf-preview
-                class="flex-1 w-full min-h-[min(60dvh,520px)] bg-zinc-950 border-0"
-                title="Podgląd wygenerowanego PDF"
-            ></iframe>
+            <div id="rc-pdf-preview-wrap" class="bg-zinc-950">
+                <embed
+                    id="rc-pdf-preview-embed"
+                    type="application/pdf"
+                    data-strzelca-pdf-preview
+                    title="Podgląd wygenerowanego PDF"
+                />
+            </div>
         </div>
     </div>
 
@@ -1343,26 +1355,21 @@ const firebaseConfig = {
             if (!modal || !form || !pdfRoot) return;
 
             const pdfResultModal = document.getElementById("return-claim-pdf-result-modal");
-            const pdfPreviewIframe = document.getElementById("rc-pdf-preview-iframe");
+            const pdfPreviewEmbed = document.getElementById("rc-pdf-preview-embed");
             const pdfDownloadLink = document.getElementById("rc-pdf-download-link");
             const pdfResultOverlay = document.getElementById("rc-pdf-result-overlay");
             const pdfResultCloseBtn = document.getElementById("rc-pdf-result-close");
 
             let rcPdfBlobUrl = null;
-            let rcPdfRevokePrevTimer = null;
 
             function closePdfResultModal() {
-                if (rcPdfRevokePrevTimer != null) {
-                    clearTimeout(rcPdfRevokePrevTimer);
-                    rcPdfRevokePrevTimer = null;
-                }
                 if (rcPdfBlobUrl) {
                     URL.revokeObjectURL(rcPdfBlobUrl);
                     rcPdfBlobUrl = null;
                 }
-                if (pdfPreviewIframe) {
-                    pdfPreviewIframe.onload = null;
-                    pdfPreviewIframe.src = "about:blank";
+                if (pdfPreviewEmbed) {
+                    pdfPreviewEmbed.onload = null;
+                    pdfPreviewEmbed.removeAttribute("src");
                 }
                 if (pdfDownloadLink) {
                     pdfDownloadLink.removeAttribute("href");
@@ -1376,10 +1383,6 @@ const firebaseConfig = {
             }
 
             function openPdfResultModal(blob, filename) {
-                if (rcPdfRevokePrevTimer != null) {
-                    clearTimeout(rcPdfRevokePrevTimer);
-                    rcPdfRevokePrevTimer = null;
-                }
                 const prevUrl = rcPdfBlobUrl;
                 let pdfBlob = blob;
                 if (
@@ -1395,43 +1398,35 @@ const firebaseConfig = {
                     pdfDownloadLink.href = nextUrl;
                     pdfDownloadLink.setAttribute("download", filename || "strzelca-protokol.pdf");
                 }
-                if (pdfPreviewIframe) {
-                    const revokePrev = () => {
-                        if (prevUrl && prevUrl !== nextUrl) {
-                            try {
-                                URL.revokeObjectURL(prevUrl);
-                            } catch (_) {
-                                /* ignore */
-                            }
-                        }
-                    };
-                    pdfPreviewIframe.onload = () => {
-                        if (rcPdfRevokePrevTimer != null) {
-                            clearTimeout(rcPdfRevokePrevTimer);
-                            rcPdfRevokePrevTimer = null;
-                        }
-                        revokePrev();
-                        pdfPreviewIframe.onload = null;
-                    };
-                    pdfPreviewIframe.src = nextUrl;
-                    /* Gdy onload nie poleci (np. viewer PDF), i tak odłóż revoke starego bloba */
-                    rcPdfRevokePrevTimer = window.setTimeout(() => {
-                        rcPdfRevokePrevTimer = null;
-                        revokePrev();
-                    }, 2500);
-                }
                 if (pdfResultModal) {
                     pdfResultModal.classList.remove("hidden");
                     pdfResultModal.setAttribute("aria-hidden", "false");
                 }
                 document.body.classList.add("overflow-hidden");
+                /* Najpierw layout modala (embed ma niezerowy rozmiar), potem src — inaczej viewer PDF w Chromium gubi treść. */
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        if (!pdfPreviewEmbed) return;
+                        if (prevUrl && prevUrl !== nextUrl) {
+                            pdfPreviewEmbed.addEventListener(
+                                "load",
+                                () => {
+                                    try {
+                                        URL.revokeObjectURL(prevUrl);
+                                    } catch (_) {
+                                        /* ignore */
+                                    }
+                                },
+                                { once: true },
+                            );
+                        }
+                        pdfPreviewEmbed.src = nextUrl;
+                    });
+                });
             }
 
             pdfResultOverlay?.addEventListener("click", closePdfResultModal);
             pdfResultCloseBtn?.addEventListener("click", closePdfResultModal);
-
-            /** @type {Map<string, { invoiceDocumentLabel: string }>} */
-            const rcOrderMetaByNumber = new Map();
 
             let rcFormPopulateGeneration = 0;
 
@@ -1580,7 +1575,6 @@ const firebaseConfig = {
             }
 
             function resetOrderPickUi() {
-                rcOrderMetaByNumber.clear();
                 const statusEl = document.getElementById("rc-orders-status");
                 if (orderSelect) {
                     orderSelect.innerHTML =
@@ -1597,8 +1591,13 @@ const firebaseConfig = {
                     zamowienieInput.readOnly = false;
                     zamowienieInput.value = "";
                 }
-                if (fakturaInput) fakturaInput.value = "";
+                if (fakturaInput) {
+                    fakturaInput.readOnly = false;
+                    fakturaInput.value = "";
+                }
             }
+
+            const RC_FAKTURA_Z_ZAMOWIENIA = "Załączona do zamówienia";
 
             function onOrderSelectChange() {
                 if (!orderSelect || !zamowienieInput || !fakturaInput) return;
@@ -1606,13 +1605,14 @@ const firebaseConfig = {
                 if (!v) {
                     zamowienieInput.readOnly = false;
                     zamowienieInput.value = "";
+                    fakturaInput.readOnly = false;
                     fakturaInput.value = "";
                     return;
                 }
                 zamowienieInput.value = v;
                 zamowienieInput.readOnly = true;
-                const meta = rcOrderMetaByNumber.get(v);
-                fakturaInput.value = meta?.invoiceDocumentLabel || "";
+                fakturaInput.readOnly = true;
+                fakturaInput.value = RC_FAKTURA_Z_ZAMOWIENIA;
             }
 
             function updateRcTypeFields() {
@@ -1672,11 +1672,6 @@ const firebaseConfig = {
                         for (const o of orders) {
                             const num = String(o.orderNumber || "").trim();
                             if (!num) continue;
-                            rcOrderMetaByNumber.set(num, {
-                                invoiceDocumentLabel: o.invoiceDocumentLabel
-                                    ? String(o.invoiceDocumentLabel).trim()
-                                    : "",
-                            });
                             const opt = document.createElement("option");
                             opt.value = num;
                             opt.textContent = num;
