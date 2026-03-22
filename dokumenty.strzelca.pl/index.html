@@ -187,6 +187,15 @@
             outline-offset: 1px;
         }
 
+        #return-claim-pdf-result-modal button:focus {
+            outline: none;
+            box-shadow: none;
+        }
+        #return-claim-pdf-result-modal button:focus-visible {
+            outline: 2px solid var(--coyote);
+            outline-offset: 2px;
+        }
+
         /* html2canvas musi „widzieć” element: poza ekranem często daje biały PDF */
         .return-claim-pdf-root--capture {
             position: fixed;
@@ -207,7 +216,8 @@
     <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
     <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
-    <link rel="modulepreload" href="https://strzelca.pl/documents-catalog-shared.mjs?v=2026-03-22-2" crossorigin />
+    <link rel="modulepreload" href="https://strzelca.pl/documents-catalog-shared.mjs?v=2026-03-22-3" crossorigin />
+    <link rel="modulepreload" href="https://strzelca.pl/regulamin-txt-render.mjs?v=2026-03-22-3" crossorigin />
 </head>
 <body>
     <!-- Panel użytkownika -->
@@ -594,6 +604,27 @@
                 </div>
             </div>
 
+            <!-- Regulamin witryny (treść z regulamin-witryny.txt — modal / #regulamin-witryny) -->
+            <div class="accordion-item hidden" aria-hidden="true">
+                <div class="accordion-header" onclick="toggleAccordion('regulamin-witryny')">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-file-lines text-coyote text-xl"></i>
+                        <span class="font-bold text-lg">Regulamin witryny</span>
+                    </div>
+                    <i class="fas fa-chevron-down accordion-icon"></i>
+                </div>
+                <div id="regulamin-witryny" class="accordion-content">
+                    <div class="accordion-body p-0">
+                        <div id="regulamin-witryny-dynamic" class="px-5 md:px-8 py-6 min-h-[100px]">
+                            <p class="text-zinc-500 text-sm">Treść wczytuje się po otwarciu okna dialogowego.</p>
+                        </div>
+                        <p class="text-zinc-500 text-xs px-5 md:px-8 pb-6 pt-0 border-t border-zinc-800">
+                            STRZELCA.PL — dokumenty i regulaminy · dokumenty.strzelca.pl
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Kotwica #wzory-dokumentow — treść listy jest w #documents-catalog powyżej -->
             <div class="accordion-item hidden" aria-hidden="true">
                 <div class="accordion-header" onclick="toggleAccordion('wzory-dokumentow')">
@@ -656,6 +687,14 @@
                     </button>
                 </div>
                 <form id="return-claim-form" class="space-y-3">
+                    <div
+                        id="rc-rate-limit-notice"
+                        class="hidden rounded-lg border border-red-500/50 bg-red-950/90 text-red-100 text-sm px-3 py-2.5 leading-snug"
+                        role="alert"
+                        aria-live="polite"
+                    >
+                        <span id="rc-rate-limit-msg"></span>
+                    </div>
                     <fieldset class="border-0 p-0 m-0">
                         <legend class="sr-only">Rodzaj zgłoszenia</legend>
                         <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
@@ -682,6 +721,7 @@
                     </div>
                     <div id="rc-wrap-order-pick" class="hidden">
                         <label for="rc-zamowienie-select" class="block text-xs font-medium text-zinc-400 mb-1">Zamówienie z konta</label>
+                        <p id="rc-orders-status" class="hidden text-xs text-zinc-500 mb-1.5" aria-live="polite"></p>
                         <select id="rc-zamowienie-select" class="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-100 px-3 py-1.5 text-sm">
                             <option value="">— wybierz lub wpisz ręcznie —</option>
                         </select>
@@ -751,8 +791,8 @@
             class="relative z-10 mx-auto my-3 md:my-6 w-[96vw] max-w-3xl h-[min(90dvh,880px)] flex flex-col rounded-2xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden"
         >
             <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-zinc-800 shrink-0">
-                <h2 id="rc-pdf-result-title" class="text-white font-bold text-base pr-2">Twój protokół PDF</h2>
-                <div class="flex items-center gap-2 shrink-0">
+                <h2 id="rc-pdf-result-title" class="text-white font-bold text-base pr-2">Twój dokument PDF</h2>
+                <div class="flex items-center gap-1 shrink-0">
                     <a
                         id="rc-pdf-download-link"
                         href="#"
@@ -764,20 +804,18 @@
                     <button
                         type="button"
                         id="rc-pdf-result-close"
-                        class="doc-catalog-btn doc-catalog-btn--ghost text-sm px-4 py-2"
+                        class="text-zinc-400 hover:text-white transition p-2 rounded-lg"
+                        aria-label="Zamknij"
                     >
-                        Zamknij
+                        <i class="fas fa-times text-xl" aria-hidden="true"></i>
                     </button>
                 </div>
             </div>
             <iframe
                 id="rc-pdf-preview-iframe"
-                class="flex-1 w-full min-h-[240px] bg-zinc-950 border-0"
+                class="flex-1 w-full min-h-[min(60dvh,520px)] bg-zinc-950 border-0"
                 title="Podgląd wygenerowanego PDF"
             ></iframe>
-            <p class="text-zinc-500 text-xs px-4 py-2 border-t border-zinc-800 shrink-0">
-                Jeśli podgląd jest pusty (ograniczenia przeglądarki), plik i tak zapiszesz przyciskiem „Pobierz”.
-            </p>
         </div>
     </div>
 
@@ -786,11 +824,59 @@
     <script>
         // Dokumenty (te sekcje otwieramy w modalu)
         const DOC_TITLES = {
+            "regulamin-witryny": "Regulamin witryny",
             "polityka-prywatnosci-platformy": "Polityka Prywatności Platformy",
             "polityka-prywatnosci": "Polityka Prywatności Sklepu",
             "procedura-monitorowania": "Procedura monitorowania po wprowadzeniu do obrotu",
             "klauzula-donacji": "Klauzula Donacji",
         };
+
+        const REGULAMIN_TXT_RENDER_URL = "https://strzelca.pl/regulamin-txt-render.mjs?v=2026-03-22-3";
+        let regulaminWitrynyHtmlCache = null;
+        let regulaminWitrynyLoadPromise = null;
+
+        async function loadRegulaminWitrynyRender() {
+            if (typeof window.strzelcaRenderRegulaminTxtToHtml === "function") {
+                return window.strzelcaRenderRegulaminTxtToHtml;
+            }
+            const mod = await import(REGULAMIN_TXT_RENDER_URL);
+            const fn = mod.renderRegulaminTxtToHtml;
+            window.strzelcaRenderRegulaminTxtToHtml = fn;
+            return fn;
+        }
+
+        async function ensureRegulaminWitrynyHtmlInMount(mountEl) {
+            if (!mountEl) return;
+            if (regulaminWitrynyHtmlCache) {
+                mountEl.innerHTML = regulaminWitrynyHtmlCache;
+                return;
+            }
+            if (regulaminWitrynyLoadPromise) {
+                await regulaminWitrynyLoadPromise;
+                if (regulaminWitrynyHtmlCache) mountEl.innerHTML = regulaminWitrynyHtmlCache;
+                return;
+            }
+            mountEl.innerHTML = '<p class="text-zinc-500 text-sm">Wczytywanie regulaminu…</p>';
+            regulaminWitrynyLoadPromise = (async () => {
+                const render = await loadRegulaminWitrynyRender();
+                const txtUrl = new URL("regulamin-witryny.txt", window.location.href).href;
+                const res = await fetch(txtUrl, { credentials: "same-origin", cache: "force-cache" });
+                if (!res.ok) throw new Error("HTTP " + res.status);
+                const text = await res.text();
+                regulaminWitrynyHtmlCache = render(text, { includeFooter: false });
+            })();
+            try {
+                await regulaminWitrynyLoadPromise;
+                mountEl.innerHTML = regulaminWitrynyHtmlCache || '<p class="text-red-400 text-sm">Brak treści.</p>';
+            } catch (e) {
+                console.error(e);
+                const fb = new URL("regulamin-witryny.txt", window.location.href).href.replace(/"/g, "&quot;");
+                mountEl.innerHTML =
+                    `<p class="text-red-400 text-sm">Nie udało się wczytać regulaminu. <a href="${fb}" class="coyote-text underline" target="_blank" rel="noopener noreferrer">Otwórz plik .txt</a>.</p>`;
+            } finally {
+                regulaminWitrynyLoadPromise = null;
+            }
+        }
 
         const LEGACY_REGULAMIN_HASHES = new Set([
             "regulamin-platformy",
@@ -884,6 +970,11 @@
             // Start od góry (lub przewiń do konkretnego miejsca)
             modalBody.scrollTop = 0;
 
+            if (accordionId === "regulamin-witryny") {
+                const mount = bodyEl.querySelector("#regulamin-witryny-dynamic");
+                void ensureRegulaminWitrynyHtmlInMount(mount);
+            }
+
             const scrollToId = opts && typeof opts.scrollToId === "string" ? opts.scrollToId : null;
             if (scrollToId) {
                 setTimeout(() => {
@@ -976,6 +1067,7 @@
                             const t = (row.getAttribute("data-doc-title") || "").toLowerCase();
                             return t.includes("regulamin witryny");
                         });
+                        setTimeout(() => openDocModal("regulamin-witryny"), 280);
                     }, 200);
                     if (targetId !== "regulamin-witryny") {
                         try {
@@ -1051,7 +1143,7 @@
             FALLBACK_SITE_DOCUMENTS,
             mergeSiteDocumentsWithFallback,
             normalizeFirestoreCatalogDocument,
-        } from "https://strzelca.pl/documents-catalog-shared.mjs?v=2026-03-22-2";
+        } from "https://strzelca.pl/documents-catalog-shared.mjs?v=2026-03-22-3";
         import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
 
         
@@ -1272,6 +1364,80 @@ const firebaseConfig = {
             /** @type {Map<string, { invoiceDocumentLabel: string }>} */
             const rcOrderMetaByNumber = new Map();
 
+            let rcFormPopulateGeneration = 0;
+
+            const RC_PDF_COOLDOWN_MS = 60_000;
+            const RC_PDF_LAST_STORAGE_KEY = "strzelca_return_claim_pdf_last_ts";
+            let rcPdfLastFallbackTs = 0;
+            let rcRateLimitTicker = null;
+
+            function readLastReturnClaimPdfAt() {
+                try {
+                    const v = localStorage.getItem(RC_PDF_LAST_STORAGE_KEY);
+                    const n = v ? parseInt(v, 10) : 0;
+                    if (Number.isFinite(n) && n > 0) return n;
+                } catch (_) {
+                    /* prywatna przeglądarka itd. */
+                }
+                return rcPdfLastFallbackTs;
+            }
+
+            function writeLastReturnClaimPdfAt(ts) {
+                try {
+                    localStorage.setItem(RC_PDF_LAST_STORAGE_KEY, String(ts));
+                } catch (_) {
+                    rcPdfLastFallbackTs = ts;
+                }
+            }
+
+            function getReturnClaimCooldownRemainingMs() {
+                const last = readLastReturnClaimPdfAt();
+                if (!last) return 0;
+                return Math.max(0, RC_PDF_COOLDOWN_MS - (Date.now() - last));
+            }
+
+            function stopReturnClaimRateLimitTicker() {
+                if (rcRateLimitTicker) {
+                    clearInterval(rcRateLimitTicker);
+                    rcRateLimitTicker = null;
+                }
+            }
+
+            function applyReturnClaimSubmitCooldownState() {
+                const btn = document.getElementById("return-claim-form-submit");
+                if (!btn || btn.getAttribute("aria-busy") === "true") return;
+                btn.disabled = getReturnClaimCooldownRemainingMs() > 0;
+            }
+
+            function updateReturnClaimRateLimitNotice() {
+                const box = document.getElementById("rc-rate-limit-notice");
+                const msg = document.getElementById("rc-rate-limit-msg");
+                if (!box || !msg) return;
+                const rem = getReturnClaimCooldownRemainingMs();
+                if (rem <= 0) {
+                    box.classList.add("hidden");
+                    msg.textContent = "";
+                    stopReturnClaimRateLimitTicker();
+                    applyReturnClaimSubmitCooldownState();
+                    return;
+                }
+                const sec = Math.ceil(rem / 1000);
+                msg.textContent = `Ograniczenie antyspamowe: ponowne wygenerowanie dokumentu PDF będzie możliwe za ${sec} s.`;
+                box.classList.remove("hidden");
+                applyReturnClaimSubmitCooldownState();
+            }
+
+            function ensureReturnClaimRateLimitTicker() {
+                if (getReturnClaimCooldownRemainingMs() <= 0) return;
+                if (rcRateLimitTicker) return;
+                rcRateLimitTicker = setInterval(updateReturnClaimRateLimitNotice, 1000);
+            }
+
+            function syncReturnClaimRateLimitOnFormOpen() {
+                updateReturnClaimRateLimitNotice();
+                ensureReturnClaimRateLimitTicker();
+            }
+
             function esc(s) {
                 return escapeHtml(String(s ?? ""));
             }
@@ -1300,8 +1466,19 @@ const firebaseConfig = {
                 }
             }
 
+            function fetchWithTimeout(url, options, timeoutMs) {
+                const ms = typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : 12000;
+                const ctrl = new AbortController();
+                const tid = setTimeout(() => ctrl.abort(), ms);
+                return fetch(url, { ...options, signal: ctrl.signal }).finally(() => clearTimeout(tid));
+            }
+
             async function fetchOrdersForReturnForm() {
-                const urls = ["https://strzelca.pl/api/orders", "/api/orders"];
+                const host = typeof location !== "undefined" ? location.hostname : "";
+                const onRootStrzelca = host === "strzelca.pl" || host === "www.strzelca.pl";
+                const urls = onRootStrzelca
+                    ? ["/api/orders", "https://strzelca.pl/api/orders"]
+                    : ["https://strzelca.pl/api/orders"];
                 let idToken = null;
                 try {
                     if (authRef?.currentUser) {
@@ -1314,11 +1491,15 @@ const firebaseConfig = {
                 const headers = { Authorization: `Bearer ${idToken}` };
                 for (const url of urls) {
                     try {
-                        const r = await fetch(url, {
-                            method: "GET",
-                            headers,
-                            credentials: url.startsWith("http") ? "include" : "same-origin",
-                        });
+                        const r = await fetchWithTimeout(
+                            url,
+                            {
+                                method: "GET",
+                                headers,
+                                credentials: url.startsWith("http") ? "include" : "same-origin",
+                            },
+                            12000,
+                        );
                         if (!r.ok) continue;
                         const data = await r.json().catch(() => null);
                         if (data && data.success && Array.isArray(data.data)) return data.data;
@@ -1331,10 +1512,16 @@ const firebaseConfig = {
 
             function resetOrderPickUi() {
                 rcOrderMetaByNumber.clear();
+                const statusEl = document.getElementById("rc-orders-status");
                 if (orderSelect) {
                     orderSelect.innerHTML =
                         '<option value="">— wybierz lub wpisz ręcznie —</option>';
                     orderSelect.value = "";
+                    orderSelect.disabled = false;
+                }
+                if (statusEl) {
+                    statusEl.textContent = "";
+                    statusEl.classList.add("hidden");
                 }
                 if (wrapOrderPick) wrapOrderPick.classList.add("hidden");
                 if (zamowienieInput) {
@@ -1380,6 +1567,7 @@ const firebaseConfig = {
             }
 
             function closeReturnClaimForm() {
+                stopReturnClaimRateLimitTicker();
                 if (!modal.classList.contains("hidden")) {
                     modal.classList.add("hidden");
                     modal.setAttribute("aria-hidden", "true");
@@ -1387,29 +1575,30 @@ const firebaseConfig = {
                 }
             }
 
-            async function openReturnClaimForm() {
-                form.reset();
-                resetOrderPickUi();
-                const first = form.querySelector('input[name="rc-type"][value="zwrot"]');
-                if (first) first.checked = true;
-                updateRcTypeFields();
+            async function populateReturnClaimFormUserData(user, generation) {
+                const statusEl = document.getElementById("rc-orders-status");
+                if (wrapOrderPick) wrapOrderPick.classList.remove("hidden");
+                if (orderSelect) orderSelect.disabled = true;
+                if (statusEl) {
+                    statusEl.textContent = "Ładowanie danych z konta…";
+                    statusEl.classList.remove("hidden");
+                }
 
-                const u = authRef?.currentUser;
-                if (imieInput) imieInput.value = "";
-                if (nazwiskoInput) nazwiskoInput.value = "";
-
-                if (u) {
-                    const fromProf = await tryProfileFirstLast(u.uid);
+                try {
+                    const [fromProf, orders] = await Promise.all([
+                        tryProfileFirstLast(user.uid),
+                        fetchOrdersForReturnForm(),
+                    ]);
+                    if (generation !== rcFormPopulateGeneration) return;
                     if (fromProf) {
                         if (imieInput) imieInput.value = fromProf.imie;
                         if (nazwiskoInput) nazwiskoInput.value = fromProf.nazwisko;
                     } else {
-                        const sp = splitDisplayName(u.displayName || "");
+                        const sp = splitDisplayName(user.displayName || "");
                         if (imieInput) imieInput.value = sp.imie;
                         if (nazwiskoInput) nazwiskoInput.value = sp.nazwisko;
                     }
 
-                    const orders = await fetchOrdersForReturnForm();
                     if (orders.length && orderSelect && wrapOrderPick) {
                         for (const o of orders) {
                             const num = String(o.orderNumber || "").trim();
@@ -1425,18 +1614,57 @@ const firebaseConfig = {
                             orderSelect.appendChild(opt);
                         }
                         wrapOrderPick.classList.remove("hidden");
+                    } else if (wrapOrderPick) {
+                        wrapOrderPick.classList.add("hidden");
+                    }
+                } catch (e) {
+                    console.warn("Zwrot/reklamacja: dane konta", e?.message || e);
+                    if (generation !== rcFormPopulateGeneration) return;
+                    if (wrapOrderPick) wrapOrderPick.classList.remove("hidden");
+                    if (statusEl) {
+                        statusEl.textContent =
+                            "Nie udało się wczytać listy zamówień — wpisz numer ręcznie.";
+                        statusEl.classList.remove("hidden");
+                    }
+                } finally {
+                    if (generation !== rcFormPopulateGeneration) return;
+                    if (orderSelect) orderSelect.disabled = false;
+                    if (statusEl && statusEl.textContent === "Ładowanie danych z konta…") {
+                        statusEl.textContent = "";
+                        statusEl.classList.add("hidden");
                     }
                 }
+            }
+
+            async function openReturnClaimForm() {
+                rcFormPopulateGeneration++;
+                const generation = rcFormPopulateGeneration;
+
+                form.reset();
+                resetOrderPickUi();
+                const first = form.querySelector('input[name="rc-type"][value="zwrot"]');
+                if (first) first.checked = true;
+                updateRcTypeFields();
+
+                const u = authRef?.currentUser;
+                if (imieInput) imieInput.value = "";
+                if (nazwiskoInput) nazwiskoInput.value = "";
 
                 modal.classList.remove("hidden");
                 modal.setAttribute("aria-hidden", "false");
                 document.body.classList.add("overflow-hidden");
+
+                syncReturnClaimRateLimitOnFormOpen();
+
+                if (u) {
+                    void populateReturnClaimFormUserData(u, generation);
+                }
             }
 
             function pdfRow(label, valueHtml) {
-                return `<div style="display:flex;gap:8px;margin-bottom:8px;border-bottom:1px solid #e4e4e7;padding-bottom:6px;">
-                    <div style="flex:0 0 38%;font-weight:600;color:#3f3f46;font-size:9.5pt;">${label}</div>
-                    <div style="flex:1;color:#18181b;white-space:pre-wrap;word-break:break-word;">${valueHtml}</div>
+                return `<div class="rc-pdf-field" style="margin-bottom:11px;padding-bottom:10px;border-bottom:1px solid #e4e4e7;page-break-inside:auto;">
+                    <div style="font-weight:700;color:#3f3f46;font-size:9.5pt;margin-bottom:5px;letter-spacing:0.02em;">${label}</div>
+                    <div style="color:#18181b;font-size:10.25pt;line-height:1.5;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;">${valueHtml}</div>
                 </div>`;
             }
 
@@ -1505,54 +1733,68 @@ const firebaseConfig = {
                     return;
                 }
 
+                const coolMs = getReturnClaimCooldownRemainingMs();
+                if (coolMs > 0) {
+                    updateReturnClaimRateLimitNotice();
+                    ensureReturnClaimRateLimitTicker();
+                    const notice = document.getElementById("rc-rate-limit-notice");
+                    notice?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                    return;
+                }
+
                 const u = authRef && authRef.currentUser;
                 const generatedAt = new Date().toLocaleString("pl-PL", { dateStyle: "long", timeStyle: "short" });
                 const typLabel = typ === "reklamacja" ? "Reklamacja" : "Zwrot (odstąpienie od umowy)";
 
-                let userBlock = "";
-                if (u) {
-                    const nick = esc(u.displayName || (u.email ? u.email.split("@")[0] : ""));
-                    const em = esc(u.email || "");
-                    userBlock = `<div style="margin-top:12px;padding:10px 12px;background:#f4f4f5;border-radius:8px;border-left:4px solid #C19A6B;font-size:9.5pt;">
-                        <strong>Zgłoszenie powiązane z kontem:</strong><br/>
-                        Nazwa: ${nick}<br/>E-mail: ${em}
-                    </div>`;
-                }
+                const nick = u ? esc(u.displayName || (u.email ? u.email.split("@")[0] : "")) : "";
+                const em = u ? esc(u.email || "") : "";
+                const kontoHtml = u
+                    ? `Zalogowano\nNazwa wyświetlana: ${nick}\nE-mail: ${em}`
+                    : "Nie zalogowano — zgłoszenie jako gość.";
 
                 const coyote = "#C19A6B";
                 const dark = "#0a0a0a";
                 const foot = `Do formularza należy dołączyć dowód zakupu i przesłać go poprzez system wiadomości do Pomocy STRZELCA.PL lub na skrzynkę e-mail w ciągu 14 dni od otrzymania produktu.\n\nE-mail: kontakt@strzelca.pl`;
 
+                const opisHtml = typ === "reklamacja" ? esc(opis) : "— (pole dotyczy wyłącznie reklamacji)";
+                const powodHtml = typ === "zwrot" ? esc(powod) : "— (pole dotyczy wyłącznie zwrotu)";
+                const dodatkoweHtml = dodatkowe ? esc(dodatkowe) : "—";
+
                 pdfRoot.innerHTML = `
-                    <div style="background:${coyote};color:${dark};padding:14px 16px;text-align:center;font-weight:700;font-size:13pt;letter-spacing:0.06em;">STRZELCA.PL</div>
+                    <div id="rc-pdf-inner" style="box-sizing:border-box;width:100%;max-width:210mm;margin:0 auto;">
+                    <div style="background:${coyote};color:${dark};padding:14px 16px;text-align:center;font-weight:700;font-size:13pt;letter-spacing:0.06em;page-break-after:avoid;">STRZELCA.PL</div>
                     <div style="margin:14px 0 10px;text-align:center;font-size:11pt;font-weight:700;color:${dark};">Formularz odstąpienia od umowy — zwrot / reklamacja</div>
                     <div style="text-align:center;font-size:9pt;color:#52525b;margin-bottom:14px;">Wygenerowano: ${esc(generatedAt)}</div>
-                    <div style="background:#fff;border:1px solid #d4d4d8;border-radius:10px;padding:12px 14px;">
+                    <div style="background:#fff;border:1px solid #d4d4d8;border-radius:10px;padding:14px 16px;">
                         ${pdfRow("Rodzaj zgłoszenia", esc(typLabel))}
                         ${pdfRow("Imię", esc(imie))}
                         ${pdfRow("Nazwisko", esc(nazwisko))}
                         ${pdfRow("Numer zamówienia", esc(zam))}
                         ${pdfRow("Numer faktury / rachunku", esc(faktura))}
-                        ${typ === "reklamacja" ? pdfRow("Opis wady", esc(opis)) : ""}
-                        ${typ === "zwrot" ? pdfRow("Powód zwrotu", esc(powod)) : ""}
+                        ${pdfRow("Identyfikacja konta w serwisie", kontoHtml)}
+                        ${pdfRow("Opis wady", opisHtml)}
+                        ${pdfRow("Powód zwrotu", powodHtml)}
                         ${pdfRow("Żądanie", esc(zadanie))}
-                        ${dodatkowe ? pdfRow("Dodatkowe informacje", esc(dodatkowe)) : ""}
+                        ${pdfRow("Dodatkowe informacje / uwagi", dodatkoweHtml)}
                     </div>
-                    ${userBlock}
-                    <div style="margin-top:16px;padding:12px 14px;background:#fafafa;border:1px solid #C19A6B;border-radius:8px;font-size:9pt;color:#3f3f46;line-height:1.5;white-space:pre-wrap;">${esc(foot)}</div>
+                    <div style="margin-top:14px;padding:12px 14px;background:#fafafa;border:1px solid #C19A6B;border-radius:8px;font-size:9.25pt;color:#3f3f46;line-height:1.55;white-space:pre-wrap;">${esc(foot)}</div>
                     <div style="margin-top:10px;text-align:center;font-size:8pt;color:#a1a1aa;">dokumenty.strzelca.pl</div>
+                    </div>
                 `;
 
                 const pdfFilename = `strzelca-zwrot-reklamacja-${Date.now()}.pdf`;
                 const opt = {
-                    margin: [10, 10, 10, 10],
+                    margin: [6, 6, 6, 6],
                     filename: pdfFilename,
-                    image: { type: "jpeg", quality: 0.96 },
+                    image: { type: "jpeg", quality: 0.92 },
                     html2canvas: {
-                        scale: 2,
+                        scale: 1.65,
                         useCORS: true,
                         logging: false,
                         backgroundColor: "#fafafa",
+                        scrollX: 0,
+                        scrollY: 0,
+                        allowTaint: false,
                         onclone(clonedDoc) {
                             try {
                                 const node =
@@ -1560,13 +1802,8 @@ const firebaseConfig = {
                                         ? clonedDoc.getElementById("return-claim-pdf-root")
                                         : null;
                                 if (node && node.style) {
-                                    node.style.opacity = "1";
-                                    node.style.position = "relative";
-                                    node.style.left = "0";
-                                    node.style.top = "0";
-                                    node.style.zIndex = "0";
-                                    node.style.backgroundColor = "#fafafa";
-                                    node.style.color = "#18181b";
+                                    node.style.cssText =
+                                        "position:relative;left:0;top:0;opacity:1;z-index:0;box-sizing:border-box;width:210mm;max-width:100%;height:auto;min-height:0;max-height:none;overflow:visible;background:#fafafa;color:#18181b;padding:10mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;";
                                 }
                             } catch (_) {
                                 /* ignore */
@@ -1574,7 +1811,7 @@ const firebaseConfig = {
                         },
                     },
                     jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-                    pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+                    pagebreak: { mode: ["css", "legacy"] },
                 };
 
                 const btn = document.getElementById("return-claim-form-submit");
@@ -1585,6 +1822,7 @@ const firebaseConfig = {
                     }
                     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
                     const blob = await html2pdf().set(opt).from(pdfRoot).outputPdf("blob");
+                    writeLastReturnClaimPdfAt(Date.now());
                     void logReturnFormActivityToStrzelca({
                         type: typ,
                         imie,
@@ -1604,8 +1842,8 @@ const firebaseConfig = {
                     alert("Nie udało się wygenerować pliku PDF. Spróbuj ponownie.");
                 } finally {
                     if (btn) {
-                        btn.disabled = false;
                         btn.removeAttribute("aria-busy");
+                        btn.disabled = getReturnClaimCooldownRemainingMs() > 0;
                     }
                 }
             }
@@ -1875,7 +2113,7 @@ const firebaseConfig = {
     ></script>
     <script
       type="module"
-      src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-4"
+      src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-5"
     ></script>
   </body>
 </html>

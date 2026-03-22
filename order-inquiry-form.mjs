@@ -1,12 +1,13 @@
 /**
  * Wspólny formularz zamówienia (sklep) i zapytania o ofertę (szkolenia).
- * POST → https://strzelca.pl/api/orders (cookie SSO .strzelca.pl)
+ * POST → https://strzelca.pl/api/orders (Bearer ID token + opcjonalnie cookie SSO .strzelca.pl)
  */
 
 const REGULAMIN_TXT_URL = "https://dokumenty.strzelca.pl/regulamin-witryny.txt";
 export const STRZELCA_ORDERS_API = "https://strzelca.pl/api/orders";
 
 let regulaminPlainTextCache = null;
+let regulaminRichHtmlCache = null;
 
 /** @type {null | { context: string, db: import('firebase/firestore').Firestore, auth: import('firebase/auth').Auth, regulaminCfg: { docTitle: string }, showParcel: boolean, showAddress: boolean }} */
 let pendingForm = null;
@@ -75,6 +76,14 @@ async function fetchRegulaminPlainText() {
   return regulaminPlainTextCache;
 }
 
+async function fetchRegulaminRichHtml() {
+  if (regulaminRichHtmlCache != null) return regulaminRichHtmlCache;
+  const { renderRegulaminTxtToHtml } = await import("https://strzelca.pl/regulamin-txt-render.mjs?v=2026-03-22-3");
+  const text = await fetchRegulaminPlainText();
+  regulaminRichHtmlCache = renderRegulaminTxtToHtml(text, { includeFooter: true });
+  return regulaminRichHtmlCache;
+}
+
 async function openRegulaminModal(ev, cfg) {
   if (ev) {
     ev.preventDefault();
@@ -100,7 +109,7 @@ async function openRegulaminModal(ev, cfg) {
             <i class="fa-solid fa-times text-xl" aria-hidden="true"></i>
           </button>
         </div>
-        <div id="strzelca-regulamin-body" class="p-4 md:p-6 overflow-y-auto text-sm text-zinc-300 custom-render max-w-none"></div>
+        <div id="strzelca-regulamin-body" class="p-4 md:p-6 overflow-y-auto text-sm text-zinc-300 custom-render max-w-none regulamin-modal-body"></div>
       </div>
     `;
     document.body.appendChild(modal);
@@ -113,8 +122,8 @@ async function openRegulaminModal(ev, cfg) {
   bodyEl.innerHTML = "<p class=\"text-zinc-500\">Wczytywanie regulaminu…</p>";
 
   try {
-    const text = await fetchRegulaminPlainText();
-    bodyEl.innerHTML = `<pre class="whitespace-pre-wrap text-xs text-zinc-300 font-sans leading-relaxed max-w-none">${escapeHtml(text)}</pre>`;
+    const html = await fetchRegulaminRichHtml();
+    bodyEl.innerHTML = html;
   } catch (err) {
     console.error("Regulamin:", err);
     const fb = REGULAMIN_TXT_URL.replace(/"/g, "&quot;");
@@ -463,9 +472,13 @@ function attachOrderInquiryGlobals() {
         status: "zlozone",
       };
 
+      const idToken = await user.getIdToken();
       const response = await fetch(STRZELCA_ORDERS_API, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
         credentials: "include",
         body: JSON.stringify(orderData),
       });

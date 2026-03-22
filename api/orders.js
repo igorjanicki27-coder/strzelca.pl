@@ -313,6 +313,30 @@ function getStatusName(status) {
   return names[status] || status;
 }
 
+/** Batch getAll zamiast N osobnych .get() — przy setkach zamówień poprzednia wersja przekraczała limit czasu Vercel. */
+const INVOICE_DOC_BATCH = 40;
+
+async function fetchInvoicesMetadataByOrderIds(db, orderIds) {
+  const invoicesMap = {};
+  const invoiceFileNameMap = {};
+  if (!orderIds.length) {
+    return { invoicesMap, invoiceFileNameMap };
+  }
+  for (let i = 0; i < orderIds.length; i += INVOICE_DOC_BATCH) {
+    const chunk = orderIds.slice(i, i + INVOICE_DOC_BATCH);
+    const refs = chunk.map((id) => db.collection('invoices').doc(id));
+    const snaps = await db.getAll(...refs);
+    for (const snap of snaps) {
+      const invData = snap.exists ? snap.data() : null;
+      const fileName =
+        invData && typeof invData.fileName === 'string' ? invData.fileName.trim() : '';
+      invoicesMap[snap.id] = snap.exists;
+      invoiceFileNameMap[snap.id] = fileName;
+    }
+  }
+  return { invoicesMap, invoiceFileNameMap };
+}
+
 module.exports = async (req, res) => {
   setCors(req, res, { methods: 'GET,POST,PUT,DELETE,OPTIONS' });
   
@@ -336,10 +360,53 @@ module.exports = async (req, res) => {
     // GET - lista zamówień
     if (req.method === 'GET') {
       const { status, userId } = req.query;
+
+      // Lekkie statystyki na dashboard (bez pobierania całej listy zamówień)
+      const summaryFlag = req.query.summary;
+      if (
+        isUserAdmin &&
+        (summaryFlag === '1' || summaryFlag === 'true')
+      ) {
+        const statuses = ['zlozone', 'realizacja', 'wyslane', 'zakonczone', 'anulowane'];
+        const safeCount = async (q) => {
+          try {
+            const snap = await Promise.race([
+              q.count().get(),
+              new Promise((_, rej) => setTimeout(() => rej(new Error('count-timeout')), 16000)),
+            ]);
+            return snap.data().count;
+          } catch {
+            return 0;
+          }
+        };
+        const col = db.collection('orders');
+        const countPairs = await Promise.all(
+          statuses.map(async (s) => [s, await safeCount(col.where('status', '==', s))])
+        );
+        const counts = Object.fromEntries(countPairs);
+        let total;
+        try {
+          total = (
+            await Promise.race([
+              col.count().get(),
+              new Promise((_, rej) => setTimeout(() => rej(new Error('count-timeout')), 16000)),
+            ])
+          ).data().count;
+        } catch {
+          total = statuses.reduce((acc, s) => acc + (counts[s] || 0), 0);
+        }
+        res.status(200).json({ success: true, data: { counts, total } });
+        return;
+      }
       
       try {
         let query = db.collection('orders');
         let hasWhereClause = false;
+
+        const maxOrders = Math.min(
+          Math.max(parseInt(req.query.limit, 10) || 1500, 1),
+          2500
+        );
         
         // Użytkownik nie-admin widzi tylko swoje zamówienia
         if (!isUserAdmin) {
@@ -362,34 +429,19 @@ module.exports = async (req, res) => {
         let snapshot;
         if (!hasWhereClause) {
           // Brak filtrów - można użyć orderBy
-          query = query.orderBy('createdAt', 'desc');
+          query = query.orderBy('createdAt', 'desc').limit(maxOrders);
           snapshot = await query.get();
         } else {
           // Są filtry - pobierz bez orderBy i posortuj po stronie serwera
+          query = query.limit(maxOrders);
           snapshot = await query.get();
         }
         
-        // Sprawdź które zamówienia mają faktury (batch check dla wydajności)
         const orderIds = snapshot.docs.map(doc => doc.id);
-        const invoiceChecks = await Promise.all(
-          orderIds.map(async (orderId) => {
-            try {
-              const invoiceDoc = await db.collection('invoices').doc(orderId).get();
-              const invData = invoiceDoc.exists ? invoiceDoc.data() : null;
-              const fileName = invData && typeof invData.fileName === 'string' ? invData.fileName.trim() : '';
-              return { orderId, hasInvoice: invoiceDoc.exists, invoiceFileName: fileName };
-            } catch (e) {
-              return { orderId, hasInvoice: false, invoiceFileName: '' };
-            }
-          })
+        const { invoicesMap, invoiceFileNameMap } = await fetchInvoicesMetadataByOrderIds(
+          db,
+          orderIds
         );
-        
-        const invoicesMap = {};
-        const invoiceFileNameMap = {};
-        invoiceChecks.forEach(check => {
-          invoicesMap[check.orderId] = check.hasInvoice;
-          invoiceFileNameMap[check.orderId] = check.invoiceFileName || '';
-        });
 
         let orders = snapshot.docs.map(doc => {
           const data = doc.data();

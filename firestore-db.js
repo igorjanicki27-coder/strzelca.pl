@@ -55,6 +55,25 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
+/** Ogranicza czas agregacji count() — wiszące zapytania do Firestore kończyły się 504 na Vercel. */
+function withFirestoreDeadline(promise, ms, label = 'firestore') {
+  let timer;
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label}-timeout`)), ms);
+  });
+  return Promise.race([promise.finally(() => clearTimeout(timer)), deadline]);
+}
+
+async function safeMessageCount(query, ms = 14000) {
+  try {
+    const snap = await withFirestoreDeadline(query.count().get(), ms, 'messages-count');
+    return snap.data().count;
+  } catch (e) {
+    console.warn('safeMessageCount:', e?.message || e);
+    return 0;
+  }
+}
+
 class FirestoreDatabaseManager {
   constructor() {
     this.db = db;
@@ -64,16 +83,12 @@ class FirestoreDatabaseManager {
   async initializeFirebase() {
     if (this.isInitialized) return this.db;
 
-    try {
-      // Sprawdź połączenie z Firestore
-      await this.db.listCollections();
-      console.log('Connected to Firebase Firestore.');
-      this.isInitialized = true;
-      return this.db;
-    } catch (error) {
-      console.error('Firestore initialization error:', error);
-      throw error;
-    }
+    // Nie wywołuj listCollections() przy starcie — na Vercel potrafi zawiesić żądanie
+    // do końca limitu czasu funkcji (brak odpowiedzi HTTP → 504 / „Load failed” w Safari).
+    // Admin SDK jest już zainicjalizowane przy ładowaniu modułu; pierwsze realne zapytanie
+    // i tak zweryfikuje połączenie.
+    this.isInitialized = true;
+    return this.db;
   }
 
   // =============================================================================
@@ -338,13 +353,16 @@ class FirestoreDatabaseManager {
         }
       }
 
-      let total = messages.length; // Domyślnie użyj liczby pobranych wiadomości
+      let total = messages.length;
       try {
-        const countSnapshot = await countQuery.count().get();
+        const countSnapshot = await withFirestoreDeadline(
+          countQuery.count().get(),
+          14000,
+          'getMessages-total-count'
+        );
         total = countSnapshot.data().count;
       } catch (countError) {
-        console.warn('getMessages: Error getting count, using messages length:', countError.message);
-        // Jeśli nie można pobrać count, użyj liczby pobranych wiadomości
+        console.warn('getMessages: count timeout/error, using messages length:', countError.message);
         total = messages.length;
       }
 
@@ -480,23 +498,19 @@ class FirestoreDatabaseManager {
       // pełne .get() powodowało FUNCTION_INVOCATION_TIMEOUT na Vercel).
       const base = () => db.collection('messages').where('recipientId', '==', 'admin');
 
-      const [totalSnap, pendingSnap, inProgressSnap, completedSnap, readSnap] = await Promise.all([
-        base().count().get(),
-        base().where('status', '==', 'pending').count().get(),
-        base().where('status', '==', 'in_progress').count().get(),
-        base().where('status', '==', 'completed').count().get(),
-        base().where('isRead', '==', true).count().get(),
+      const [total, pending, in_progress, completed, read] = await Promise.all([
+        safeMessageCount(base()),
+        safeMessageCount(base().where('status', '==', 'pending')),
+        safeMessageCount(base().where('status', '==', 'in_progress')),
+        safeMessageCount(base().where('status', '==', 'completed')),
+        safeMessageCount(base().where('isRead', '==', true)),
       ]);
-
-      const total = totalSnap.data().count;
-      const read = readSnap.data().count;
 
       return {
         total,
-        pending: pendingSnap.data().count,
-        in_progress: inProgressSnap.data().count,
-        completed: completedSnap.data().count,
-        // Dokumenty bez pola isRead traktujemy jak nieprzeczytane (jak wcześniej: !m.isRead)
+        pending,
+        in_progress,
+        completed,
         unread: Math.max(0, total - read),
       };
     } catch (error) {

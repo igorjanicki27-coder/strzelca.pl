@@ -498,7 +498,7 @@ function makeStyles() {
     .meta { margin-top: 6px; font-size: 11px; color: rgba(229,229,229,0.55); text-align: right; }
     .composer { 
       border-top: 1px solid rgba(255,255,255,0.10); 
-      padding: 10px; 
+      padding: 12px; 
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -506,30 +506,41 @@ function makeStyles() {
       min-height: 64px;
       box-sizing: border-box;
     }
-    .composerRow {
+    /* Jedna „kapsuła”: pole + ikony wyrównane do dołu (jak w typowych czatach) */
+    .composerBar {
       display: flex;
       flex-direction: row;
-      align-items: center;
-      gap: 8px;
-      min-height: 44px;
+      align-items: flex-end;
+      gap: 10px;
+      padding: 8px 10px 8px 12px;
+      background: rgba(0,0,0,0.42);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      box-sizing: border-box;
+      min-height: 52px;
+    }
+    .composerBar:focus-within {
+      border-color: rgba(193,154,107,0.5);
+      box-shadow: 0 0 0 1px rgba(193,154,107,0.12);
     }
     .attach {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(255,255,255,0.06);
-      color: #e5e5e5;
+      width: 42px;
+      height: 42px;
+      border-radius: 11px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.07);
+      color: #e8e8e8;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
       padding: 0;
+      box-sizing: border-box;
     }
-    .attach:hover { border-color: rgba(193,154,107,0.7); color: rgba(193,154,107,0.95); }
+    .attach:hover { border-color: rgba(193,154,107,0.65); color: rgba(193,154,107,0.98); background: rgba(255,255,255,0.09); }
     .attach:disabled { opacity: 0.45; cursor: not-allowed; }
-    .attach svg { width: 18px; height: 18px; stroke: currentColor; fill: none; }
+    .attach svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
     .pendingAttach {
       font-size: 11px;
       color: rgba(229,229,229,0.65);
@@ -552,24 +563,27 @@ function makeStyles() {
     textarea {
       flex: 1 1 auto;
       min-width: 0;
-      min-height: 44px;
+      min-height: 40px;
       max-height: 130px;
       resize: none;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(0,0,0,0.55);
+      border: none;
+      border-radius: 8px;
+      background: transparent;
       color: #fff;
-      padding: 10px 12px;
+      padding: 10px 6px 11px 4px;
       outline: none;
       font: inherit;
       font-size: 13px;
+      line-height: 1.4;
+      box-sizing: border-box;
     }
-    textarea:focus { border-color: rgba(193,154,107,0.7); }
+    textarea::placeholder { color: rgba(229,229,229,0.45); }
+    textarea:focus { outline: none; }
     .send {
       flex: 0 0 auto;
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
+      width: 42px;
+      height: 42px;
+      border-radius: 11px;
       border: none;
       background: rgba(193,154,107,0.95);
       color: #fff;
@@ -578,16 +592,18 @@ function makeStyles() {
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      transition: all 0.2s ease;
+      flex-shrink: 0;
+      box-sizing: border-box;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+      transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
     }
     .send:hover {
-      background: rgba(193,154,107,1);
-      transform: scale(1.05);
-      box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+      background: rgba(201,164,115,1);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.45);
     }
     .send:active {
-      transform: scale(0.95);
+      transform: translateY(0);
     }
     .send:disabled { 
       opacity: 0.45; 
@@ -595,8 +611,8 @@ function makeStyles() {
       transform: none;
     }
     .send svg {
-      width: 18px;
-      height: 18px;
+      width: 19px;
+      height: 19px;
       fill: currentColor;
     }
     .empty { color: rgba(229,229,229,0.70); font-size: 13px; padding: 18px; }
@@ -1037,20 +1053,20 @@ async function main() {
     const lateUnsub = onAuthStateChanged(auth, (u) => {
       if (!u) return;
       lateUnsub();
-      void mountMessagesWidgetUi(auth, app, db, u).catch((e) =>
+      void mountMessagesWidgetUi(u).catch((e) =>
         console.warn("messages-widget: opóźniony montaż", e)
       );
     });
     return;
   }
 
-  await mountMessagesWidgetUi(auth, app, db, user);
-}
+  await mountMessagesWidgetUi(user);
 
-async function mountMessagesWidgetUi(auth, app, db, user) {
-  if (document.getElementById("strzelca-messages-widget")) return;
+  /** Musi być wewnątrz main() — domyka doc/query/onSnapshot z fsMod. */
+  async function mountMessagesWidgetUi(loggedUser) {
+    if (document.getElementById("strzelca-messages-widget")) return;
 
-  const uid = user.uid;
+    const uid = loggedUser.uid;
 
   // Sprawdź czy użytkownik jest administratorem
   let isUserAdmin = false;
@@ -1165,8 +1181,8 @@ async function mountMessagesWidgetUi(auth, app, db, user) {
   pendingAttach.appendChild(pendingLabel);
   pendingAttach.appendChild(pendingRemove);
 
-  const composerRow = document.createElement("div");
-  composerRow.className = "composerRow";
+  const composerBar = document.createElement("div");
+  composerBar.className = "composerBar";
 
   const attachBtn = document.createElement("button");
   attachBtn.className = "attach";
@@ -1174,7 +1190,7 @@ async function mountMessagesWidgetUi(auth, app, db, user) {
   attachBtn.title = "Dodaj zdjęcie";
   attachBtn.setAttribute("aria-label", "Dodaj zdjęcie");
   attachBtn.innerHTML =
-    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>';
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
 
   const fileInput = document.createElement("input");
   fileInput.type = "file";
@@ -1190,11 +1206,11 @@ async function mountMessagesWidgetUi(auth, app, db, user) {
   sendBtn.title = "Wyślij wiadomość";
   sendBtn.innerHTML = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>`;
 
-  composerRow.appendChild(attachBtn);
-  composerRow.appendChild(ta);
-  composerRow.appendChild(sendBtn);
+  composerBar.appendChild(attachBtn);
+  composerBar.appendChild(ta);
+  composerBar.appendChild(sendBtn);
   composer.appendChild(pendingAttach);
-  composer.appendChild(composerRow);
+  composer.appendChild(composerBar);
   composer.appendChild(fileInput);
 
   let pendingImageAttachment = null;
@@ -1448,9 +1464,9 @@ async function mountMessagesWidgetUi(auth, app, db, user) {
       const usersSnapshot = await getDocs(usersRef);
       const matchingUsers = [];
 
-      usersSnapshot.forEach((doc) => {
-        const userData = doc.data();
-        const userId = doc.id;
+      usersSnapshot.forEach((profDoc) => {
+        const userData = profDoc.data();
+        const userId = profDoc.id;
         const displayName = (userData.displayName || "").toLowerCase();
 
         // Sprawdź czy wyszukiwany tekst pasuje do nicku
@@ -2400,6 +2416,7 @@ async function mountMessagesWidgetUi(auth, app, db, user) {
     if (!isOpen) refreshUnreadBadgeOnce().catch(() => {});
   }, 30000);
   if (isOpen) openPanel();
+}
 }
 
 if (typeof window !== "undefined") {

@@ -284,6 +284,62 @@
         border-color: var(--coyote);
       }
 
+      /* Pasek list: statystyki + filtry (wydarzenia / blog / pomoc) */
+      .admin-list-toolbar-card {
+        padding: 18px 20px;
+      }
+      .admin-list-toolbar-card:hover {
+        border-color: #262626;
+      }
+      .admin-toolbar-kpi {
+        border-radius: 10px;
+        border: 1px solid rgba(63, 63, 70, 0.85);
+        background: rgba(9, 9, 11, 0.55);
+        padding: 10px 12px;
+        text-align: center;
+        min-width: 0;
+      }
+      .admin-toolbar-apply {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        padding: 0 1rem;
+        min-height: 46px;
+        border: 2px solid #3f3f46;
+        border-radius: 8px;
+        background: #18181b;
+        color: #d4d4d8;
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+      }
+      .admin-toolbar-apply:hover {
+        border-color: var(--coyote);
+        color: var(--coyote);
+        background: rgba(193, 154, 107, 0.08);
+      }
+      .admin-toolbar-more {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 46px;
+        min-height: 46px;
+        padding: 0;
+        border: 2px solid #3f3f46;
+        border-radius: 8px;
+        background: #18181b;
+        color: #a1a1aa;
+        cursor: pointer;
+        transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+      }
+      .admin-toolbar-more:hover {
+        border-color: rgba(193, 154, 107, 0.55);
+        color: var(--coyote);
+      }
+
       /* Style dla przycisków filtrów zamówień */
       .order-filter-btn {
         padding: 10px 20px;
@@ -1509,29 +1565,33 @@
             </div>
 
             <!-- Statystyki + filtry (jedna karta) -->
-            <div class="admin-card mb-8">
+            <div class="admin-card admin-list-toolbar-card mb-8">
               <div class="flex flex-col gap-4">
                 <div
-                  class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-zinc-300 pb-3 border-b border-zinc-800/80"
+                  class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 pb-4 border-b border-zinc-800/80"
                   role="group"
                   aria-label="Statystyki wydarzeń"
                 >
-                  <span
-                    >Razem: <strong id="total-events" class="tabular-nums coyote-text">0</strong></span
-                  >
-                  <span
-                    >Nadchodzące: <strong id="upcoming-events" class="tabular-nums text-green-400">0</strong></span
-                  >
-                  <span
-                    >Przeszłe: <strong id="past-events" class="tabular-nums text-blue-400">0</strong></span
-                  >
-                  <span
-                    >Przypięte: <strong id="pinned-events" class="tabular-nums text-yellow-400">0</strong></span
-                  >
+                  <div class="admin-toolbar-kpi">
+                    <div id="total-events" class="text-lg font-bold tabular-nums coyote-text leading-tight">0</div>
+                    <div class="text-[11px] uppercase tracking-wide text-zinc-500 mt-1">Razem</div>
+                  </div>
+                  <div class="admin-toolbar-kpi">
+                    <div id="upcoming-events" class="text-lg font-bold tabular-nums text-green-400 leading-tight">0</div>
+                    <div class="text-[11px] uppercase tracking-wide text-zinc-500 mt-1">Nadchodzące</div>
+                  </div>
+                  <div class="admin-toolbar-kpi">
+                    <div id="past-events" class="text-lg font-bold tabular-nums text-blue-400 leading-tight">0</div>
+                    <div class="text-[11px] uppercase tracking-wide text-zinc-500 mt-1">Przeszłe</div>
+                  </div>
+                  <div class="admin-toolbar-kpi">
+                    <div id="pinned-events" class="text-lg font-bold tabular-nums text-yellow-400 leading-tight">0</div>
+                    <div class="text-[11px] uppercase tracking-wide text-zinc-500 mt-1">Przypięte</div>
+                  </div>
                 </div>
-                <div class="flex flex-wrap items-end gap-3">
-                  <div class="grow min-w-[180px] max-w-md">
-                    <label class="block text-sm font-medium mb-2" for="events-status-filter">Status</label>
+                <div class="flex flex-wrap items-end gap-2 sm:gap-3">
+                  <div class="w-full min-w-0 sm:flex-1 sm:min-w-[14rem]">
+                    <label class="block text-xs font-medium text-zinc-400 mb-1.5" for="events-status-filter">Status</label>
                     <select id="events-status-filter" class="w-full">
                       <option value="all">Wszystkie</option>
                       <option value="upcoming">Nadchodzące</option>
@@ -1539,22 +1599,24 @@
                       <option value="pinned">Przypięte</option>
                     </select>
                   </div>
-                  <button type="button" onclick="applyEventsFilters()" class="btn-admin shrink-0 px-6">
-                    <i class="fa-solid fa-filter mr-2"></i>
-                    Filtruj
-                  </button>
-                  <button
-                    type="button"
-                    id="events-more-filters-toggle"
-                    class="shrink-0 flex items-center justify-center w-12 h-12 rounded-lg border border-zinc-700 text-zinc-400 hover:text-coyote hover:border-coyote/60 transition-colors"
-                    onclick="toggleEventsMoreFilters()"
-                    aria-expanded="false"
-                    aria-controls="events-more-filters"
-                    aria-label="Więcej filtrów"
-                    title="Więcej opcji filtrowania"
-                  >
-                    <i class="fa-solid fa-sliders" aria-hidden="true"></i>
-                  </button>
+                  <div class="flex shrink-0 gap-2">
+                    <button type="button" onclick="applyEventsFilters()" class="admin-toolbar-apply">
+                      <i class="fa-solid fa-filter text-sm opacity-80" aria-hidden="true"></i>
+                      Filtruj
+                    </button>
+                    <button
+                      type="button"
+                      id="events-more-filters-toggle"
+                      class="admin-toolbar-more"
+                      onclick="toggleEventsMoreFilters()"
+                      aria-expanded="false"
+                      aria-controls="events-more-filters"
+                      aria-label="Więcej filtrów"
+                      title="Więcej opcji filtrowania"
+                    >
+                      <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+                    </button>
+                  </div>
                 </div>
                 <div id="events-more-filters" class="hidden pt-3 border-t border-zinc-800/80">
                   <p class="text-xs text-zinc-500 mb-3">Kategoria, sortowanie i opcje widoku</p>
@@ -1621,47 +1683,52 @@
               Zarządzanie Pomocą Charytatywną
           </h1>
 
-          <div class="admin-card mb-8">
+          <div class="admin-card admin-list-toolbar-card mb-8">
             <div class="flex flex-col gap-4">
               <div
-                class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-zinc-300 pb-3 border-b border-zinc-800/80"
+                class="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3 pb-4 border-b border-zinc-800/80"
                 role="group"
                 aria-label="Statystyki akcji Pomoc"
               >
-                <span
-                  >Aktywne: <strong id="charity-count-active" class="tabular-nums text-green-400">0</strong></span
-                >
-                <span
-                  >Zakończone: <strong id="charity-count-ended" class="tabular-nums text-zinc-400">0</strong></span
-                >
-                <span
-                  >Razem: <strong id="charity-count-total" class="tabular-nums coyote-text">0</strong></span
-                >
+                <div class="admin-toolbar-kpi">
+                  <div id="charity-count-active" class="text-lg font-bold tabular-nums text-green-400 leading-tight">0</div>
+                  <div class="text-[11px] uppercase tracking-wide text-zinc-500 mt-1">Aktywne</div>
+                </div>
+                <div class="admin-toolbar-kpi">
+                  <div id="charity-count-ended" class="text-lg font-bold tabular-nums text-zinc-400 leading-tight">0</div>
+                  <div class="text-[11px] uppercase tracking-wide text-zinc-500 mt-1">Zakończone</div>
+                </div>
+                <div class="admin-toolbar-kpi col-span-2 md:col-span-1">
+                  <div id="charity-count-total" class="text-lg font-bold tabular-nums coyote-text leading-tight">0</div>
+                  <div class="text-[11px] uppercase tracking-wide text-zinc-500 mt-1">Razem</div>
+                </div>
               </div>
-              <div class="flex flex-wrap items-end gap-3">
-                <div class="grow min-w-[200px] max-w-md">
-                  <label class="block text-sm font-medium mb-2" for="charity-list-view">Widok listy</label>
+              <div class="flex flex-wrap items-end gap-2 sm:gap-3">
+                <div class="w-full min-w-0 sm:flex-1 sm:min-w-[16rem]">
+                  <label class="block text-xs font-medium text-zinc-400 mb-1.5" for="charity-list-view">Widok listy</label>
                   <select id="charity-list-view" class="w-full">
                     <option value="upcoming">Tylko bieżące (bez zakończonych)</option>
                     <option value="all">Wszystkie (wraz z zakończonymi)</option>
                   </select>
                 </div>
-                <button type="button" onclick="applyCharityListFilter()" class="btn-admin shrink-0 px-6">
-                  <i class="fa-solid fa-filter mr-2"></i>
-                  Filtruj
-                </button>
-                <button
-                  type="button"
-                  id="charity-more-filters-toggle"
-                  class="shrink-0 flex items-center justify-center w-12 h-12 rounded-lg border border-zinc-700 text-zinc-400 hover:text-coyote hover:border-coyote/60 transition-colors"
-                  onclick="toggleCharityMoreFilters()"
-                  aria-expanded="false"
-                  aria-controls="charity-more-filters"
-                  aria-label="Więcej informacji o widoku"
-                  title="Szczegóły widoku listy"
-                >
-                  <i class="fa-solid fa-sliders" aria-hidden="true"></i>
-                </button>
+                <div class="flex shrink-0 gap-2">
+                  <button type="button" onclick="applyCharityListFilter()" class="admin-toolbar-apply">
+                    <i class="fa-solid fa-filter text-sm opacity-80" aria-hidden="true"></i>
+                    Filtruj
+                  </button>
+                  <button
+                    type="button"
+                    id="charity-more-filters-toggle"
+                    class="admin-toolbar-more"
+                    onclick="toggleCharityMoreFilters()"
+                    aria-expanded="false"
+                    aria-controls="charity-more-filters"
+                    aria-label="Więcej informacji o widoku"
+                    title="Szczegóły widoku listy"
+                  >
+                    <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+                  </button>
+                </div>
               </div>
               <div id="charity-more-filters" class="hidden pt-3 border-t border-zinc-800/80">
                 <p class="text-sm text-zinc-400 leading-relaxed">
@@ -1827,6 +1894,7 @@
                     </button>
                     <button
                       type="button"
+                      id="newsletter-send-btn"
                       onclick="sendNewsletter()"
                       class="btn-admin w-full bg-gradient-to-r from-coyote to-coyote/80 hover:from-coyote/90 hover:to-coyote sm:col-span-2 lg:col-span-2"
                     >
@@ -2148,29 +2216,33 @@
               </div>
             </div>
 
-            <div class="admin-card mb-8">
+            <div class="admin-card admin-list-toolbar-card mb-8">
               <div class="flex flex-col gap-4">
                 <div
-                  class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-zinc-300 pb-3 border-b border-zinc-800/80"
+                  class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 pb-4 border-b border-zinc-800/80"
                   role="group"
                   aria-label="Statystyki bloga"
                 >
-                  <span
-                    >Wszystkich: <strong id="total-blog-posts" class="tabular-nums coyote-text">0</strong></span
-                  >
-                  <span
-                    >Opublikowane: <strong id="blog-published-count" class="tabular-nums text-green-400">0</strong></span
-                  >
-                  <span
-                    >Szkice: <strong id="blog-drafts-count" class="tabular-nums text-yellow-400">0</strong></span
-                  >
-                  <span
-                    >Archiwum: <strong id="blog-archived-count" class="tabular-nums text-zinc-400">0</strong></span
-                  >
+                  <div class="admin-toolbar-kpi">
+                    <div id="total-blog-posts" class="text-lg font-bold tabular-nums coyote-text leading-tight">0</div>
+                    <div class="text-[11px] uppercase tracking-wide text-zinc-500 mt-1">Wszystkich</div>
+                  </div>
+                  <div class="admin-toolbar-kpi">
+                    <div id="blog-published-count" class="text-lg font-bold tabular-nums text-green-400 leading-tight">0</div>
+                    <div class="text-[11px] uppercase tracking-wide text-zinc-500 mt-1">Opublikowane</div>
+                  </div>
+                  <div class="admin-toolbar-kpi">
+                    <div id="blog-drafts-count" class="text-lg font-bold tabular-nums text-yellow-400 leading-tight">0</div>
+                    <div class="text-[11px] uppercase tracking-wide text-zinc-500 mt-1">Szkice</div>
+                  </div>
+                  <div class="admin-toolbar-kpi">
+                    <div id="blog-archived-count" class="text-lg font-bold tabular-nums text-zinc-400 leading-tight">0</div>
+                    <div class="text-[11px] uppercase tracking-wide text-zinc-500 mt-1">Archiwum</div>
+                  </div>
                 </div>
-                <div class="flex flex-wrap items-end gap-3">
-                  <div class="grow min-w-[180px] max-w-md">
-                    <label class="block text-sm font-medium mb-2" for="blog-status-filter">Status</label>
+                <div class="flex flex-wrap items-end gap-2 sm:gap-3">
+                  <div class="w-full min-w-0 sm:flex-1 sm:min-w-[14rem]">
+                    <label class="block text-xs font-medium text-zinc-400 mb-1.5" for="blog-status-filter">Status</label>
                     <select id="blog-status-filter" class="w-full">
                       <option value="all">Wszystkie</option>
                       <option value="published">Opublikowane</option>
@@ -2178,22 +2250,24 @@
                       <option value="archived">Zarchiwizowane</option>
                     </select>
                   </div>
-                  <button type="button" onclick="applyBlogFilters()" class="btn-admin shrink-0 px-6">
-                    <i class="fa-solid fa-filter mr-2"></i>
-                    Filtruj
-                  </button>
-                  <button
-                    type="button"
-                    id="blog-more-filters-toggle"
-                    class="shrink-0 flex items-center justify-center w-12 h-12 rounded-lg border border-zinc-700 text-zinc-400 hover:text-coyote hover:border-coyote/60 transition-colors"
-                    onclick="toggleBlogMoreFilters()"
-                    aria-expanded="false"
-                    aria-controls="blog-more-filters"
-                    aria-label="Więcej filtrów"
-                    title="Więcej opcji filtrowania"
-                  >
-                    <i class="fa-solid fa-sliders" aria-hidden="true"></i>
-                  </button>
+                  <div class="flex shrink-0 gap-2">
+                    <button type="button" onclick="applyBlogFilters()" class="admin-toolbar-apply">
+                      <i class="fa-solid fa-filter text-sm opacity-80" aria-hidden="true"></i>
+                      Filtruj
+                    </button>
+                    <button
+                      type="button"
+                      id="blog-more-filters-toggle"
+                      class="admin-toolbar-more"
+                      onclick="toggleBlogMoreFilters()"
+                      aria-expanded="false"
+                      aria-controls="blog-more-filters"
+                      aria-label="Więcej filtrów"
+                      title="Więcej opcji filtrowania"
+                    >
+                      <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+                    </button>
+                  </div>
                 </div>
                 <div id="blog-more-filters" class="hidden pt-3 border-t border-zinc-800/80">
                   <p class="text-xs text-zinc-500 mb-3">Kategoria i sortowanie</p>
@@ -2247,17 +2321,7 @@
               Zarządzanie Dokumentami
             </h1>
 
-            <div class="flex flex-wrap gap-4 justify-between items-center mb-8">
-              <p class="text-zinc-400 max-w-2xl">
-                Ta zakładka pokazuje <strong class="text-zinc-300">tę samą listę i kolejność</strong> co
-                <code class="text-zinc-500">dokumenty.strzelca.pl</code> (szablon + Firestore). Przy otwarciu dopisywane są
-                wyłącznie brakujące pozycje ze wspólnego szablonu — bez osobnego importu.
-                <strong class="text-zinc-300">Tekst</strong> = treść w oknie modalnym (np. polityki — HTML w
-                <code class="text-zinc-500">dokumenty.strzelca.pl/index.html</code>),
-                <strong class="text-zinc-300">Plik</strong> = m.in. <code class="text-zinc-500">pdf/</code> lub
-                <code class="text-zinc-500">regulamin-witryny.txt</code>,
-                <strong class="text-zinc-300">Formularz</strong> = logika w kodzie strony. Regulamin witryny edytujesz w repozytorium jako plik tekstowy; tutaj kolejność, tytuł i krótki opis.
-              </p>
+            <div class="flex flex-wrap gap-4 justify-end items-center mb-8">
               <div class="flex flex-wrap gap-2">
                 <button type="button" onclick="addNewDocument()" class="btn-admin">
                   <i class="fa-solid fa-plus mr-2"></i>
@@ -2355,10 +2419,6 @@
             <!-- Lista dokumentów -->
             <div class="admin-card">
               <h3 class="text-xl font-bold mb-4">Kolejność na stronie dokumentów</h3>
-              <p class="text-sm text-zinc-500 mb-4">
-                Kolekcja <code class="text-zinc-400">documents</code>. Widok jest scalany tak jak na stronie publicznej; ↑ ↓ przepisują
-                pole <code class="text-zinc-400">order</code> dla całej widocznej kolejności (jak kolejność szkoleń w panelu).
-              </p>
 
               <div id="documents-list" class="space-y-4">
                 <!-- Dokumenty będą ładowane dynamicznie -->
@@ -3242,7 +3302,7 @@
         normalizeFirestoreCatalogDocument,
         normDocPath,
         catalogFileUrlForFirestore,
-      } from "https://strzelca.pl/documents-catalog-shared.mjs?v=2026-03-22-2";
+      } from "https://strzelca.pl/documents-catalog-shared.mjs?v=2026-03-22-3";
 
       
       async function getFirebaseApiKey() {
@@ -3948,8 +4008,17 @@
         }, 5000);
       }
 
+      function escapeNotificationText(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
       // System powiadomień
       function showNotification(message, type = "success") {
+        const safeMessage = escapeNotificationText(message);
         // Usuń istniejące powiadomienia
         const existingNotifications = document.querySelectorAll('.notification-toast');
         existingNotifications.forEach(n => n.remove());
@@ -3977,7 +4046,7 @@
         notification.innerHTML = `
           <div class="flex items-center gap-3">
             <i class="fa-solid ${icons[type] || icons.success} text-xl"></i>
-            <span class="flex-1">${message}</span>
+            <span class="flex-1">${safeMessage}</span>
             <button onclick="this.closest('.notification-toast').remove()" class="text-white hover:text-zinc-200 transition">
               <i class="fa-solid fa-times"></i>
             </button>
@@ -4670,6 +4739,14 @@
             { value: "TRAINING_CREATED", text: "Dodanie szkolenia" },
             { value: "TRAINING_UPDATED", text: "Edycja szkolenia" },
             { value: "TRAINING_DELETED", text: "Usunięcie szkolenia" },
+          ],
+        },
+        {
+          label: "Administrator — blog",
+          options: [
+            { value: "BLOG_CREATED", text: "Dodanie wpisu na blogu" },
+            { value: "BLOG_UPDATED", text: "Edycja wpisu na blogu" },
+            { value: "BLOG_DELETED", text: "Usunięcie wpisu z blogu" },
           ],
         },
         {
@@ -5824,24 +5901,73 @@
         loadNewsletterSubscribers();
       };
 
+      /**
+       * GET/PUT /api/email-templates — na strzelca.pl używa względnej ścieżki;
+       * na innych hostach (np. poddomena) najpierw kanoniczny origin produkcyjny (CORS + cookie .strzelca.pl).
+       */
+      async function fetchEmailTemplatesApi(method = "GET", bodyObject = null) {
+        let authToken = null;
+        try {
+          if (typeof auth !== "undefined" && auth?.currentUser) {
+            authToken = await auth.currentUser.getIdToken();
+          }
+        } catch (_) {}
+
+        const headers = { "X-Admin-Panel": "true" };
+        if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
+        if (bodyObject != null) headers["Content-Type"] = "application/json";
+
+        let urls;
+        try {
+          const h = typeof location !== "undefined" ? location.hostname : "";
+          if (h === "strzelca.pl") {
+            urls = ["/api/email-templates"];
+          } else if (h === "localhost" || h === "127.0.0.1") {
+            urls = ["/api/email-templates", "https://strzelca.pl/api/email-templates"];
+          } else {
+            urls = ["https://strzelca.pl/api/email-templates", "/api/email-templates"];
+          }
+        } catch (_) {
+          urls = ["/api/email-templates", "https://strzelca.pl/api/email-templates"];
+        }
+
+        let lastErr = null;
+        for (const url of urls) {
+          try {
+            const response = await fetch(url, {
+              method,
+              headers,
+              credentials: "include",
+              body: bodyObject != null ? JSON.stringify(bodyObject) : undefined,
+            });
+            const text = await response.text();
+            let data = null;
+            if (text) {
+              try {
+                data = JSON.parse(text);
+              } catch {
+                throw new Error(
+                  response.ok
+                    ? "Serwer zwrócił odpowiedź inną niż JSON."
+                    : `Błąd HTTP ${response.status} — nie udało się odczytać odpowiedzi.`,
+                );
+              }
+            }
+            if (!response.ok || data == null || data.success !== true) {
+              throw new Error((data && data.error) || `HTTP ${response.status}`);
+            }
+            return data;
+          } catch (e) {
+            lastErr = e;
+          }
+        }
+        throw lastErr || new Error("Brak połączenia z API szablonów e-mail.");
+      }
+
       // Funkcje związane z newsletterem
       window.applyNewsletterEmailShellTemplate = async function () {
         try {
-          let authToken = null;
-          try {
-            if (typeof auth !== "undefined" && auth?.currentUser) {
-              authToken = await auth.currentUser.getIdToken();
-            }
-          } catch (_) {}
-          const headers = { "X-Admin-Panel": "true" };
-          if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
-          const response = await fetch("/api/email-templates", {
-            method: "GET",
-            headers,
-            credentials: "include",
-          });
-          const data = await response.json();
-          if (!data.success) throw new Error(data.error || "Błąd API");
+          const data = await fetchEmailTemplatesApi("GET");
           const tpl = data.data?.newsletter_broadcast;
           if (!tpl?.html) {
             showNotification(
@@ -5854,7 +5980,8 @@
           if (subjEl && tpl.subject) subjEl.value = tpl.subject;
           const inner =
             "<p>Wpisz tutaj treść newslettera (nagłówki, akapity, linki). Przy wysyłce zostanie wstawiona do otoczki strzelca.pl.</p>";
-          const html = tpl.html.includes("{{newsletterBody}}")
+          const hasBodySlot = /\{\{\s*newsletterBody\s*\}\}/.test(tpl.html);
+          const html = hasBodySlot
             ? tpl.html.replace(/\{\{\s*newsletterBody\s*\}\}/g, inner)
             : tpl.html;
           const editor = document.getElementById("newsletter-editor");
@@ -6094,6 +6221,26 @@
       };
 
       window.sendNewsletter = async function() {
+        const sendBtn = document.getElementById("newsletter-send-btn");
+        const setSendBusy = (busy) => {
+          if (!sendBtn) return;
+          if (busy) {
+            if (!sendBtn.dataset.prevNewsletterSendHtml) {
+              sendBtn.dataset.prevNewsletterSendHtml = sendBtn.innerHTML;
+            }
+            sendBtn.disabled = true;
+            sendBtn.classList.add("opacity-70", "cursor-not-allowed", "pointer-events-none");
+            sendBtn.innerHTML =
+              '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Wysyłanie…';
+          } else {
+            sendBtn.disabled = false;
+            sendBtn.classList.remove("opacity-70", "cursor-not-allowed", "pointer-events-none");
+            if (sendBtn.dataset.prevNewsletterSendHtml) {
+              sendBtn.innerHTML = sendBtn.dataset.prevNewsletterSendHtml;
+            }
+          }
+        };
+
         try {
           const subject = document.getElementById("newsletter-subject")?.value || "";
           const content = document.getElementById("newsletter-editor")?.innerHTML || "";
@@ -6119,99 +6266,115 @@
             return;
           }
 
-          // Pobierz listę subskrybentów
-          const usersSnapshot = await getDocs(collection(db, "userProfiles"));
-          const subscribers = [];
-          usersSnapshot.forEach((doc) => {
-            const userData = doc.data();
-            if (userData.newsletter === true || userData.newsletter === "true" || userData.newsletter === 1) {
-              subscribers.push({
-                id: doc.id,
-                email: userData.email,
-                displayName: userData.displayName || userData.email,
-              });
-            }
-          });
-
-          if (subscribers.length === 0) {
-            showNotification("Brak subskrybentów newslettera.", "error");
-            return;
-          }
-
-          // Pobierz dane administratora z profilu
-          let adminName = 'Administrator';
-          let adminEmail = currentUser?.email || 'admin@strzelca.pl';
-          
-          if (currentUser?.uid) {
-            try {
-              const adminProfile = await getDoc(doc(db, 'userProfiles', currentUser.uid));
-              if (adminProfile.exists()) {
-                const adminData = adminProfile.data();
-                adminName = adminData.displayName || adminData.email || 'Administrator';
-                adminEmail = adminData.email || adminEmail;
-              }
-            } catch (e) {
-              console.warn('Could not fetch admin profile:', e);
-            }
-          }
-
-          // Wyślij newsletter przez API endpoint (zamiast bezpośredniego zapisu do Firestore)
-          const newsletterPayload = {
-            subject: subject,
-            content: content,
-            subscribers: subscribers.map(s => s.email),
-            subscriberCount: subscribers.length,
-            senderName: adminName,
-            senderEmail: adminEmail,
-            sentBy: currentUser.uid,
-          };
+          setSendBusy(true);
+          showNotification("Wysyłanie newslettera — proszę czekać…", "info");
 
           try {
-            const res = await fetch('/api/newsletter', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify(newsletterPayload),
+            // Pobierz listę subskrybentów
+            const usersSnapshot = await getDocs(collection(db, "userProfiles"));
+            const subscribers = [];
+            usersSnapshot.forEach((doc) => {
+              const userData = doc.data();
+              if (userData.newsletter === true || userData.newsletter === "true" || userData.newsletter === 1) {
+                subscribers.push({
+                  id: doc.id,
+                  email: userData.email,
+                  displayName: userData.displayName || userData.email,
+                });
+              }
             });
 
-            const data = await res.json().catch(() => null);
-            if (!res.ok || !data?.success) {
-              throw new Error(data?.error || `HTTP ${res.status}`);
+            if (subscribers.length === 0) {
+              showNotification("Brak subskrybentów newslettera — nic nie wysłano.", "error");
+              return;
             }
 
-            showNotification(`Newsletter został dodany do kolejki wysyłki do ${subscribers.length} subskrybentów.`, "success");
-          } catch (apiError) {
-            // Fallback: spróbuj zapisać bezpośrednio do Firestore (może nie mieć uprawnień)
-            console.warn('API endpoint failed, trying Firestore fallback:', apiError);
-            try {
-              const newsletterData = {
-                subject: subject,
-                content: content,
-                subscribers: subscribers.map(s => s.email),
-                subscriberCount: subscribers.length,
-                sentAt: serverTimestamp(),
-                sentBy: currentUser.uid,
-                sentByEmail: adminEmail,
-                senderName: adminName,
-                senderEmail: adminEmail,
-                status: "pending",
-              };
+            // Pobierz dane administratora z profilu
+            let adminName = 'Administrator';
+            let adminEmail = currentUser?.email || 'admin@strzelca.pl';
 
-              await addDoc(collection(db, "newsletterQueue"), newsletterData);
-              showNotification(`Newsletter został dodany do kolejki wysyłki do ${subscribers.length} subskrybentów.`, "success");
-            } catch (firestoreError) {
-              if (firestoreError.code === 'permission-denied') {
-                throw new Error('Brak uprawnień do zapisu newslettera. Skontaktuj się z administratorem systemu.');
-              } else {
-                throw new Error(`Błąd podczas wysyłania newslettera: ${apiError.message || firestoreError.message}`);
+            if (currentUser?.uid) {
+              try {
+                const adminProfile = await getDoc(doc(db, 'userProfiles', currentUser.uid));
+                if (adminProfile.exists()) {
+                  const adminData = adminProfile.data();
+                  adminName = adminData.displayName || adminData.email || 'Administrator';
+                  adminEmail = adminData.email || adminEmail;
+                }
+              } catch (e) {
+                console.warn('Could not fetch admin profile:', e);
               }
             }
-          }
 
-          // Opcjonalnie: wyczyść edytor
-          if (confirm("Czy chcesz wyczyścić edytor newslettera?")) {
-            document.getElementById("newsletter-subject").value = "";
-            document.getElementById("newsletter-editor").innerHTML = "";
+            const newsletterPayload = {
+              subject: subject,
+              content: content,
+              subscribers: subscribers.map(s => s.email),
+              subscriberCount: subscribers.length,
+              senderName: adminName,
+              senderEmail: adminEmail,
+              sentBy: currentUser.uid,
+            };
+
+            let queueId = null;
+            try {
+              const res = await fetch('/api/newsletter', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(newsletterPayload),
+              });
+
+              const data = await res.json().catch(() => null);
+              if (!res.ok || !data?.success) {
+                throw new Error(data?.error || `Serwer zwrócił błąd (HTTP ${res.status}).`);
+              }
+              queueId = data.data?.id || null;
+            } catch (apiError) {
+              console.warn('API endpoint failed, trying Firestore fallback:', apiError);
+              try {
+                const newsletterData = {
+                  subject: subject,
+                  content: content,
+                  subscribers: subscribers.map(s => s.email),
+                  subscriberCount: subscribers.length,
+                  sentAt: serverTimestamp(),
+                  sentBy: currentUser.uid,
+                  sentByEmail: adminEmail,
+                  senderName: adminName,
+                  senderEmail: adminEmail,
+                  status: "pending",
+                };
+
+                const queueRef = await addDoc(collection(db, "newsletterQueue"), newsletterData);
+                queueId = queueRef.id;
+              } catch (firestoreError) {
+                if (firestoreError.code === 'permission-denied') {
+                  throw new Error('Brak uprawnień do zapisu newslettera. Skontaktuj się z administratorem systemu.');
+                }
+                throw new Error(
+                  firestoreError.message ||
+                    apiError.message ||
+                    'Nie udało się dodać newslettera do kolejki (API ani Firestore).'
+                );
+              }
+            }
+
+            const okDetail = queueId ? ` ID wpisu: ${queueId}.` : "";
+            showNotification(
+              `Sukces: newsletter trafił do kolejki wysyłki (${subscribers.length} odbiorców).${okDetail} Wysyłka nastąpi w tle.`,
+              "success"
+            );
+
+            // Opóźnij drugi dialog — w przeciwnym razie natywny confirm zasłania toast z sukcesem
+            setTimeout(() => {
+              if (confirm("Czy chcesz wyczyścić edytor newslettera?")) {
+                document.getElementById("newsletter-subject").value = "";
+                document.getElementById("newsletter-editor").innerHTML = "";
+              }
+            }, 500);
+          } finally {
+            setSendBusy(false);
           }
         } catch (error) {
           console.error("Error sending newsletter:", error);
@@ -6231,7 +6394,10 @@
           } catch (logErr) {
             console.warn("Nie udało się zapisać logu błędu newslettera:", logErr);
           }
-          showNotification("Błąd podczas wysyłania newslettera.", "error");
+          showNotification(
+            "Nie udało się wysłać newslettera: " + (error.message || String(error)),
+            "error"
+          );
         }
       };
 
@@ -12100,6 +12266,9 @@
           "EVENT_CREATED": "Utworzone wydarzenie",
           "EVENT_UPDATED": "Zmienione wydarzenie",
           "EVENT_DELETED": "Usunięte wydarzenie",
+          "BLOG_CREATED": "Dodanie wpisu na blogu",
+          "BLOG_UPDATED": "Edycja wpisu na blogu",
+          "BLOG_DELETED": "Usunięcie wpisu z blogu",
           "TRAINING_CREATED": "Dodanie szkolenia",
           "TRAINING_UPDATED": "Edycja szkolenia",
           "TRAINING_DELETED": "Usunięcie szkolenia",
@@ -12446,6 +12615,21 @@
             description = `Usunięto wydarzenie`;
             content = eventDetails.eventTitle || eventDetails.title || "Wydarzenie";
             details = `${userDisplayName} usunął wydarzenie „${content}”`;
+            break;
+          case "BLOG_CREATED":
+            description = `${userDisplayName} dodał wpis na blogu`;
+            content = eventDetails.postTitle || eventDetails.title || "Wpis";
+            details = `Administrator ${userDisplayName} dodał wpis „${content}”${eventDetails.category ? `. Kategoria: ${eventDetails.category}` : ""}${eventDetails.status ? `. Status: ${eventDetails.status}` : ""}`;
+            break;
+          case "BLOG_UPDATED":
+            description = `${userDisplayName} zaktualizował wpis na blogu`;
+            content = eventDetails.postTitle || eventDetails.title || "Wpis";
+            details = `Administrator ${userDisplayName} zaktualizował wpis „${content}”${eventDetails.category ? `. Kategoria: ${eventDetails.category}` : ""}${eventDetails.status ? `. Status: ${eventDetails.status}` : ""}`;
+            break;
+          case "BLOG_DELETED":
+            description = `${userDisplayName} usunął wpis z blogu`;
+            content = eventDetails.postTitle || eventDetails.title || "Wpis";
+            details = `Administrator ${userDisplayName} usunął wpis „${content}”`;
             break;
           case "TRAINING_CREATED":
             description = `${userDisplayName} dodał szkolenie`;
@@ -12819,7 +13003,7 @@
             headers['Authorization'] = `Bearer ${authToken}`;
           }
 
-          const response = await fetch('/api/orders', {
+          const response = await fetch('/api/orders?summary=1', {
             method: 'GET',
             headers,
             credentials: 'include',
@@ -12834,24 +13018,23 @@
             throw new Error(data.error || 'Failed to load orders');
           }
 
-          const orders = data.data || [];
-          
+          const payload = data.data || {};
+          const c = payload.counts || {};
           const stats = {
-            zlozone: 0,
-            realizacja: 0,
-            wyslane: 0,
-            zakonczone: 0,
-            anulowane: 0,
-            total: orders.length
+            zlozone: c.zlozone || 0,
+            realizacja: c.realizacja || 0,
+            wyslane: c.wyslane || 0,
+            zakonczone: c.zakonczone || 0,
+            anulowane: c.anulowane || 0,
+            total:
+              typeof payload.total === 'number'
+                ? payload.total
+                : (c.zlozone || 0) +
+                  (c.realizacja || 0) +
+                  (c.wyslane || 0) +
+                  (c.zakonczone || 0) +
+                  (c.anulowane || 0),
           };
-
-          orders.forEach(order => {
-            if (order.status === 'zlozone') stats.zlozone++;
-            else if (order.status === 'realizacja') stats.realizacja++;
-            else if (order.status === 'wyslane') stats.wyslane++;
-            else if (order.status === 'zakonczone') stats.zakonczone++;
-            else if (order.status === 'anulowane') stats.anulowane++;
-          });
 
           document.getElementById('orders-zlozone').textContent = stats.zlozone;
           document.getElementById('orders-realizacja').textContent = stats.realizacja;
@@ -12865,6 +13048,7 @@
           document.getElementById('orders-realizacja').textContent = '0';
           document.getElementById('orders-wyslane').textContent = '0';
           document.getElementById('orders-zakonczone').textContent = '0';
+          document.getElementById('orders-anulowane').textContent = '0';
           document.getElementById('orders-total').textContent = '0';
         }
       }
@@ -14563,10 +14747,23 @@
         };
 
         try {
+          const blogActorUid = getActivityLogActorUid();
           if (id) {
             await setDoc(doc(db, "blogPosts", id), postData, { merge: true });
             showNotification("Wpis zaktualizowany pomyślnie", "success");
-            logActivity("BLOG_UPDATED", `Zaktualizowano wpis bloga: ${postData.title}`);
+            if (blogActorUid) {
+              const okLog = await logActivity(blogActorUid, "BLOG_UPDATED", {
+                postTitle: postData.title,
+                postId: id,
+                status: postData.status,
+                category: postData.category,
+              });
+              if (!okLog) {
+                showNotification("Uwaga: nie udało się dodać wpisu do dziennika aktywności.", "warning");
+              }
+            } else {
+              console.warn("[Blog] Brak auth.currentUser.uid — pominięto log BLOG_UPDATED");
+            }
           } else {
             sortBlogPostsByListOrder(blogPostsList);
             let maxOrder = -1;
@@ -14582,7 +14779,19 @@
             const newDocRef = doc(collection(db, "blogPosts"));
             await setDoc(newDocRef, postData);
             showNotification("Nowy wpis dodany pomyślnie", "success");
-            logActivity("BLOG_CREATED", `Dodano wpis na bloga: ${postData.title}`);
+            if (blogActorUid) {
+              const okLog = await logActivity(blogActorUid, "BLOG_CREATED", {
+                postTitle: postData.title,
+                postId: newDocRef.id,
+                status: postData.status,
+                category: postData.category,
+              });
+              if (!okLog) {
+                showNotification("Uwaga: nie udało się dodać wpisu do dziennika aktywności.", "warning");
+              }
+            } else {
+              console.warn("[Blog] Brak auth.currentUser.uid — pominięto log BLOG_CREATED");
+            }
           }
 
           await bumpPublicListCacheVersion("blogPosts");
@@ -14617,10 +14826,25 @@
           return;
         }
 
+        const post = blogPostsList.find((p) => p.id === postId);
+        const postTitle = post?.title?.trim() || "Bez tytułu";
+
         try {
           await deleteDoc(doc(db, "blogPosts", postId));
           await bumpPublicListCacheVersion("blogPosts");
           showNotification("Wpis został usunięty.", "success");
+          const delActor = getActivityLogActorUid();
+          if (delActor) {
+            const okLog = await logActivity(delActor, "BLOG_DELETED", {
+              postTitle,
+              postId,
+            });
+            if (!okLog) {
+              showNotification("Uwaga: nie udało się dodać wpisu do dziennika aktywności.", "warning");
+            }
+          } else {
+            console.warn("[Blog] Brak auth.currentUser.uid — pominięto log BLOG_DELETED");
+          }
           await loadBlogPosts();
         } catch (error) {
           console.error("Error deleting blog post:", error);
@@ -18040,6 +18264,7 @@
           if (status && status !== 'all') {
             queryParams.append('status', status);
           }
+          queryParams.append('limit', '2500');
 
           const headers = {
             'X-Admin-Panel': 'true'
@@ -19170,38 +19395,7 @@
             </div>
           `;
 
-          // Pobierz Firebase Auth token
-          let authToken = null;
-          try {
-            if (auth && auth.currentUser) {
-              authToken = await auth.currentUser.getIdToken();
-            }
-          } catch (tokenError) {
-            console.error('Failed to get Firebase Auth token:', tokenError);
-          }
-
-          const headers = {
-            'X-Admin-Panel': 'true'
-          };
-          if (authToken) {
-            headers['Authorization'] = `Bearer ${authToken}`;
-          }
-
-          const response = await fetch('/api/email-templates', {
-            method: 'GET',
-            headers,
-            credentials: 'include',
-          });
-
-          if (!response.ok) {
-            throw new Error('Failed to load templates');
-          }
-
-          const data = await response.json();
-          if (!data.success) {
-            throw new Error(data.error || 'Failed to load templates');
-          }
-
+          const data = await fetchEmailTemplatesApi("GET");
           const templates = data.data || {};
           renderTemplatesList(templates);
         } catch (error) {
@@ -19268,34 +19462,7 @@
       // Edycja szablonu
       window.editTemplate = async function(templateId) {
         try {
-          // Pobierz Firebase Auth token
-          let authToken = null;
-          try {
-            if (auth && auth.currentUser) {
-              authToken = await auth.currentUser.getIdToken();
-            }
-          } catch (tokenError) {
-            console.error('Failed to get Firebase Auth token:', tokenError);
-          }
-
-          const headers = {
-            'X-Admin-Panel': 'true'
-          };
-          if (authToken) {
-            headers['Authorization'] = `Bearer ${authToken}`;
-          }
-
-          const response = await fetch('/api/email-templates', {
-            method: 'GET',
-            headers,
-            credentials: 'include',
-          });
-
-          const data = await response.json();
-          if (!data.success) {
-            throw new Error(data.error || 'Failed to load template');
-          }
-
+          const data = await fetchEmailTemplatesApi("GET");
           const template = data.data[templateId];
           if (!template) {
             showNotification('Szablon nie znaleziony', 'error');
@@ -19400,41 +19567,12 @@
           const subject = document.getElementById('template-subject').value;
           const html = document.getElementById('template-html').value;
 
-          // Pobierz Firebase Auth token
-          let authToken = null;
-          try {
-            if (auth && auth.currentUser) {
-              authToken = await auth.currentUser.getIdToken();
-            }
-          } catch (tokenError) {
-            console.error('Failed to get Firebase Auth token:', tokenError);
-          }
-
-          const headers = {
-            'Content-Type': 'application/json',
-            'X-Admin-Panel': 'true'
-          };
-          if (authToken) {
-            headers['Authorization'] = `Bearer ${authToken}`;
-          }
-
-          const response = await fetch('/api/email-templates', {
-            method: 'PUT',
-            headers,
-            credentials: 'include',
-            body: JSON.stringify({
-              id: templateId,
-              name,
-              subject,
-              html,
-            }),
+          await fetchEmailTemplatesApi("PUT", {
+            id: templateId,
+            name,
+            subject,
+            html,
           });
-
-          const data = await response.json();
-          
-          if (!data.success) {
-            throw new Error(data.error || 'Failed to save template');
-          }
 
           showNotification('Szablon zapisany', 'success');
           closeTemplateModal();
@@ -19480,17 +19618,17 @@
 
         <!-- Pole odpowiedzi -->
         <div class="flex flex-col gap-2 mt-4">
-          <div class="flex flex-row items-center gap-2">
+          <div class="flex flex-row items-end gap-2.5 rounded-2xl border border-zinc-600/80 bg-zinc-900/80 pl-3 pr-2 py-2 focus-within:border-coyote/60 focus-within:ring-1 focus-within:ring-coyote/20">
             <textarea
               id="chat-reply-input"
               placeholder="Napisz odpowiedź..."
-              class="flex-1 min-w-0 min-h-[80px] max-h-[160px] bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-3 text-white placeholder-zinc-400 focus:outline-none focus:border-coyote resize-none"
-              rows="4"
+              class="flex-1 min-w-0 min-h-[72px] max-h-[160px] bg-transparent border-0 rounded-lg px-2 py-2 text-white placeholder-zinc-500 focus:outline-none focus:ring-0 resize-none"
+              rows="3"
             ></textarea>
-            <button 
+            <button
               type="button"
-              onclick="sendChatReply()" 
-              class="flex-shrink-0 self-center w-10 h-10 flex items-center justify-center bg-coyote hover:bg-coyote/90 text-white rounded-lg transition-all shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+              onclick="sendChatReply()"
+              class="flex-shrink-0 mb-0.5 w-11 h-11 flex items-center justify-center rounded-[11px] bg-coyote hover:bg-coyote/90 text-white shadow-md hover:shadow-lg hover:-translate-y-px active:translate-y-0 transition-all"
               title="Wyślij wiadomość">
               <i class="fa-solid fa-paper-plane text-sm"></i>
             </button>

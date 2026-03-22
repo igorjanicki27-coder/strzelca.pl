@@ -5,10 +5,9 @@
 
 export const FALLBACK_SITE_DOCUMENTS = [
   {
-    kind: "file",
-    url: "regulamin-witryny.txt",
+    kind: "modal",
+    modalTarget: "regulamin-witryny",
     title: "Regulamin witryny",
-    description: "Jeden dokument tekstowy: wszystkie wcześniejsze regulaminy + regulamin zamówień.",
     icon: "fa-file-lines",
     order: -1,
   },
@@ -126,8 +125,32 @@ export function mergeSiteDocumentsWithFallback(dbItems) {
     "regulamin-szkolen",
   ]);
 
+  const REGULAMIN_WITRYNY_PATH = normDocPath("regulamin-witryny.txt");
+
   for (const fb of FALLBACK_SITE_DOCUMENTS) {
     if (fb.kind === "modal") {
+      if (fb.modalTarget === "regulamin-witryny") {
+        const modalHit = findDbModal("regulamin-witryny");
+        const fileHit = findDbFile("regulamin-witryny.txt");
+        if (modalHit) {
+          merged.push(modalHit);
+          consumed.add(modalHit);
+          if (fileHit) consumed.add(fileHit);
+        } else if (fileHit) {
+          merged.push({
+            kind: "modal",
+            modalTarget: "regulamin-witryny",
+            title: fileHit.title || fb.title,
+            description: fileHit.description || "",
+            icon: fileHit.icon || fb.icon,
+            order: typeof fileHit.order === "number" ? fileHit.order : fb.order,
+          });
+          consumed.add(fileHit);
+        } else {
+          merged.push({ ...fb });
+        }
+        continue;
+      }
       const hit = findDbModal(fb.modalTarget);
       if (hit) {
         merged.push(hit);
@@ -156,6 +179,9 @@ export function mergeSiteDocumentsWithFallback(dbItems) {
   }
 
   const extras = dbItems.filter((i) => !consumed.has(i));
+  const hasRegulaminWitrynyModal = merged.some(
+    (m) => m.kind === "modal" && String(m.modalTarget || "").trim() === "regulamin-witryny",
+  );
   const MODAL_LEGACY_FILE_PATHS = [
     { modalTarget: "procedura-monitorowania", path: "pdf/procedura-monitorowania.html" },
     { modalTarget: "klauzula-donacji", path: "pdf/klauzula-donacji.html" },
@@ -164,6 +190,7 @@ export function mergeSiteDocumentsWithFallback(dbItems) {
     if (i.kind === "modal" && DEPRECATED_MODAL_TARGETS.has(String(i.modalTarget || "").trim())) return false;
     if (i.kind === "file") {
       const p = normDocPath(i.url);
+      if (hasRegulaminWitrynyModal && p === REGULAMIN_WITRYNY_PATH) return false;
       if (DEPRECATED_FILE_PATHS.has(p)) return false;
       for (const { modalTarget, path } of MODAL_LEGACY_FILE_PATHS) {
         const hasModal = merged.some((m) => m.kind === "modal" && m.modalTarget === modalTarget);

@@ -1185,22 +1185,18 @@
             } catch (e) { alert('Blad: ' + (e.message || 'Nie udalo sie zmienic statusu')); }
         };
 
-        function escapeRegulaminText(s) {
-            return String(s)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
-        }
-
         window.openRegulationModal = async () => {
             const txtUrl = 'https://dokumenty.strzelca.pl/regulamin-witryny.txt';
             try {
                 const res = await fetch(txtUrl, { credentials: 'omit', cache: 'force-cache' });
                 const raw = res.ok ? await res.text() : '';
-                const contentHTML = raw
-                    ? `<pre class="text-sm text-zinc-300 whitespace-pre-wrap font-sans leading-relaxed">${escapeRegulaminText(raw)}</pre>`
-                    : `<div class="p-6 text-center text-zinc-400"><p>Treść regulaminu niedostępna.</p><a href="${txtUrl}" target="_blank" rel="noopener noreferrer" class="text-[#C19A6B] hover:underline">Otwórz plik tekstowy</a></div>`;
+                let contentHTML = '';
+                if (raw) {
+                    const { renderRegulaminTxtToHtml } = await import('https://strzelca.pl/regulamin-txt-render.mjs?v=2026-03-22-3');
+                    contentHTML = renderRegulaminTxtToHtml(raw, { includeFooter: true });
+                } else {
+                    contentHTML = `<div class="p-6 text-center text-zinc-400"><p>Treść regulaminu niedostępna.</p><a href="${txtUrl}" target="_blank" rel="noopener noreferrer" class="text-[#C19A6B] hover:underline">Otwórz plik tekstowy</a></div>`;
+                }
 
                 const overlay = document.createElement('div');
                 overlay.id = 'regulation-modal';
@@ -1326,6 +1322,6 @@
         await openOfferFromSlugParam();
     </script>
     <script type="module" src="https://strzelca.pl/auth-widget.mjs?v=2026-03-21-2"></script>
-    <script type="module" src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-4"></script>
+    <script type="module" src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-5"></script>
 </body>
 </html>

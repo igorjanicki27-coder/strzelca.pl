@@ -54,7 +54,7 @@
         <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
         <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
         <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
-        <link rel="modulepreload" href="https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-6" crossorigin />
+        <link rel="modulepreload" href="https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-7" crossorigin />
         <style>
             :root {
                 --coyote: #c19a6b;
@@ -141,6 +141,65 @@
             }
             .details-scroll-area::-webkit-scrollbar-thumb:hover {
                 background: var(--coyote);
+            }
+
+            /* Galeria szczegółów — te same style co w sklepie (Tailwind resetuje przyciski bez tych reguł) */
+            .product-gallery {
+                position: relative;
+                width: 100%;
+                height: 400px;
+                background: #080808;
+                border-radius: 12px;
+                overflow: hidden;
+                margin-bottom: 20px;
+            }
+            .product-gallery img {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+            }
+            .gallery-nav {
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                background: rgba(0, 0, 0, 0.7);
+                color: white;
+                border: none;
+                padding: 12px 16px;
+                cursor: pointer;
+                font-size: 18px;
+                z-index: 10;
+                transition: background 0.3s;
+            }
+            .gallery-nav:hover {
+                background: rgba(193, 154, 107, 0.9);
+            }
+            .gallery-nav.prev {
+                left: 10px;
+            }
+            .gallery-nav.next {
+                right: 10px;
+            }
+            .gallery-nav:disabled {
+                opacity: 0.3;
+                cursor: not-allowed;
+            }
+            .gallery-counter {
+                position: absolute;
+                bottom: 15px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+
+            /* Odstęp między galerią a opisem w modalu (shared.css na mobile wymusza mały margin na .product-gallery) */
+            #details-modal-panel .product-gallery.training-details-gallery {
+                margin-bottom: clamp(1.25rem, 4vw, 2rem) !important;
             }
 
             #training {
@@ -382,7 +441,7 @@
                 getHeaderProfileFromCache,
                 setHeaderProfileCache,
             } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
-            import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-6";
+            import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-7";
             import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
             import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
             import {
@@ -957,7 +1016,7 @@ const firebaseConfig = {
                     ? `<div class="mb-5 text-left border-t border-zinc-800 pt-5">
                         <p class="text-xs text-zinc-400 leading-relaxed">
                             Decydując się na zakup szkolenia, akceptujesz
-                            <a href="https://dokumenty.strzelca.pl/regulamin-witryny.txt" target="_blank" rel="noopener noreferrer" class="text-[#C19A6B] hover:underline">Regulamin witryny</a>.
+                            <a href="https://dokumenty.strzelca.pl/regulamin-witryny.txt" target="_blank" rel="noopener noreferrer" class="text-inherit hover:text-coyote transition-colors">regulamin witryny</a>.
                         </p>
                     </div>`
                     : "";
@@ -984,7 +1043,7 @@ const firebaseConfig = {
                 let galleryHTML = '';
                 if (images.length > 0) {
                     galleryHTML = `
-                        <div class="product-gallery" id="product-gallery">
+                        <div class="product-gallery training-details-gallery" id="product-gallery">
                             <img id="gallery-main-img" src="${images[0]}" alt="${t.title}" />
                             ${images.length > 1 ? `
                                 <button class="gallery-nav prev" onclick="changeGalleryImage(-1, ${images.length})" id="gallery-prev" style="opacity: 0.3; cursor: not-allowed;">
@@ -1113,7 +1172,7 @@ const firebaseConfig = {
     ></script>
     <script
       type="module"
-      src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-4"
+      src="https://strzelca.pl/messages-widget.mjs?v=2026-03-22-1"
     ></script>
   </body>
 </html>
