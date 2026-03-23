@@ -1128,7 +1128,8 @@ async function handleDeleteMessages(req, res, db, { query, requesterUid, request
 
       // Skrzynka Pomocy (user ↔ admin): dopnij brakujące warianty zapisu + usuń metadane konwersacji,
       // żeby u użytkownika w /api/messages/thread i w panelu zniknęła cała rozmowa.
-      if (recipientId === 'admin' && senderId && senderId !== 'admin' && senderId !== 'anonymous') {
+      // Metadane konwersacji (pin itd.) — także dla gościa anonymous, żeby nie zostawał „martwy” wątek
+      if (recipientId === 'admin' && senderId && senderId !== 'admin') {
         const userUid = senderId;
         const batchSize = 500;
 

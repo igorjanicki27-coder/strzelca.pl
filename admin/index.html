@@ -1576,8 +1576,8 @@
 
             <div class="flex justify-between items-center mb-8">
               <p class="text-zinc-400">
-                Zarządzaj wydarzeniami na stronie. Dodawaj nowe wydarzenia z datą
-                i godziną, pozycjonuj je i przypinaj ważne.
+                Zarządzaj wydarzeniami: data rozpoczęcia, data zakończenia (status „zakończone” i przycisk zapisów),
+                opcjonalnie termin zamknięcia zapisów. Przypinaj ważne wydarzenia.
               </p>
               <button onclick="addNewEvent()" class="btn-admin">
                 <i class="fa-solid fa-plus mr-2"></i>
@@ -6474,11 +6474,20 @@
 
               const data = await res.json().catch(() => null);
               if (!res.ok || !data?.success) {
-                throw new Error(data?.error || `Serwer zwrócił błąd (HTTP ${res.status}).`);
+                const err = new Error(data?.error || `Serwer zwrócił błąd (HTTP ${res.status}).`);
+                err.fromApi = true;
+                err.httpStatus = res.status;
+                err.code = data?.code || null;
+                throw err;
               }
               queueId = data.data?.id || null;
             } catch (apiError) {
-              console.warn('API endpoint failed, trying Firestore fallback:', apiError);
+              const shouldTryFirestoreFallback =
+                !apiError?.fromApi || apiError?.httpStatus === 404 || apiError?.httpStatus === 405;
+              if (!shouldTryFirestoreFallback) {
+                throw apiError;
+              }
+              console.warn('API endpoint unavailable, trying Firestore fallback:', apiError);
               try {
                 const newsletterData = {
                   subject: subject,
@@ -9095,8 +9104,8 @@
 
       // Usuwanie konwersacji "Pomoc STRZELCA.PL" (kolekcja messages) przez API z potwierdzeniem
       window.deleteSupportConversation = async (userId, label = '') => {
-        // Walidacja: nie można usunąć konwersacji z "anonymous", ale można usunąć wiadomości systemowe od "admin"
-        if (!userId || userId === 'anonymous') {
+        // anonymous = gość (formularz kontaktowy) — dozwolone; pusty identyfikator zablokuj
+        if (!userId) {
           console.error('deleteSupportConversation: Invalid userId:', userId);
           showNotification('Nie można usunąć tej konwersacji', 'error');
           return;
@@ -9228,13 +9237,32 @@
         try {
           const q = query(collection(db, "events"), orderBy("date", "desc"));
           const snapshot = await getDocs(q);
-          eventsList = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            dateObj: doc.data().date?.toDate ? doc.data().date.toDate() : new Date(doc.data().date),
-            category: normalizeEventCategory(doc.data().category),
-            location: doc.data().location || "",
-          }));
+          eventsList = snapshot.docs.map((doc) => {
+            const d = doc.data();
+            const dateObj = d.date?.toDate ? d.date.toDate() : new Date(d.date);
+            let endDateObj = null;
+            if (d.endDate) {
+              endDateObj = d.endDate?.toDate ? d.endDate.toDate() : new Date(d.endDate);
+              if (isNaN(endDateObj.getTime())) endDateObj = null;
+            }
+            let registrationDeadlineObj = null;
+            if (d.registrationDeadline) {
+              registrationDeadlineObj = d.registrationDeadline?.toDate
+                ? d.registrationDeadline.toDate()
+                : new Date(d.registrationDeadline);
+              if (isNaN(registrationDeadlineObj.getTime())) registrationDeadlineObj = null;
+            }
+            return {
+              id: doc.id,
+              ...d,
+              dateObj,
+              endDateObj,
+              registrationDeadlineEnabled: d.registrationDeadlineEnabled === true,
+              registrationDeadlineObj,
+              category: normalizeEventCategory(d.category),
+              location: d.location || "",
+            };
+          });
 
           renderEventsList();
           updateEventsStats();
@@ -9262,18 +9290,20 @@
         let filtered = [...eventsList];
         const now = new Date();
 
+        const eventEndMs = (e) => (e.endDateObj || e.dateObj).getTime();
+
         if (statusFilter !== "all") {
           if (statusFilter === "upcoming") {
-            filtered = filtered.filter((e) => e.dateObj >= now);
+            filtered = filtered.filter((e) => eventEndMs(e) >= now.getTime());
           } else if (statusFilter === "past") {
-            filtered = filtered.filter((e) => e.dateObj < now);
+            filtered = filtered.filter((e) => eventEndMs(e) < now.getTime());
           } else if (statusFilter === "pinned") {
             filtered = filtered.filter((e) => e.pinned);
           }
         }
 
         if (!showCompleted && statusFilter !== "past") {
-          filtered = filtered.filter((e) => e.dateObj >= now);
+          filtered = filtered.filter((e) => eventEndMs(e) >= now.getTime());
         }
 
         if (categoryFilter !== "all") {
@@ -9317,7 +9347,8 @@
         const eventsHtml = filtered
           .map((event) => {
             const eventDate = event.dateObj || new Date(event.date);
-            const isPast = eventDate < new Date();
+            const effectiveEnd = event.endDateObj || eventDate;
+            const isPast = effectiveEnd < new Date();
             const isPinned = event.pinned || false;
             const category = normalizeEventCategory(event.category);
 
@@ -9362,8 +9393,9 @@
       function updateEventsStats() {
         const total = eventsList.length;
         const now = new Date();
-        const upcoming = eventsList.filter((e) => e.dateObj >= now).length;
-        const past = eventsList.filter((e) => e.dateObj < now).length;
+        const nowMs = now.getTime();
+        const upcoming = eventsList.filter((e) => (e.endDateObj || e.dateObj).getTime() >= nowMs).length;
+        const past = eventsList.filter((e) => (e.endDateObj || e.dateObj).getTime() < nowMs).length;
         const pinned = eventsList.filter((e) => e.pinned).length;
 
         const totalEl = document.getElementById("total-events");
@@ -9425,13 +9457,38 @@
             return;
           }
 
-          listEl.innerHTML = rows.map((r) => mojEventAdminRowHtml(r)).join("");
+          const parts = [];
+          for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
+            if (i > 0 && mojEventAdminGroupKeyMs(r) !== mojEventAdminGroupKeyMs(rows[i - 1])) {
+              parts.push(`
+                <div class="moj-ev-submission-sep my-5 flex items-center gap-3 select-none" role="separator" aria-label="Kolejne zgłoszenie z formularza">
+                  <div class="flex-1 h-px bg-gradient-to-r from-transparent via-zinc-500/60 to-transparent"></div>
+                  <span class="text-[10px] uppercase tracking-[0.2em] text-zinc-500 shrink-0 px-1">—</span>
+                  <div class="flex-1 h-px bg-gradient-to-r from-transparent via-zinc-500/60 to-transparent"></div>
+                </div>
+              `);
+            }
+            parts.push(mojEventAdminRowHtml(r));
+          }
+          listEl.innerHTML = parts.join("");
           mojEventAdminBindRowUi(listEl);
         } catch (e) {
           console.error("mojEventAdminReloadList:", e);
           if (loadingEl) loadingEl.classList.add("hidden");
           showNotification("Nie udało się wczytać listy Moj Event.", "error");
         }
+      }
+
+      /** Ten sam czas zapisu = jedno wysłanie formularza (wszystkie osoby z jednego batcha). */
+      function mojEventAdminGroupKeyMs(r) {
+        const ca = r.createdAt;
+        if (ca == null) return 0;
+        if (typeof ca.toMillis === "function") return ca.toMillis();
+        if (typeof ca.seconds === "number") {
+          return ca.seconds * 1000 + Math.floor((ca.nanoseconds || 0) / 1e6);
+        }
+        return 0;
       }
 
       function mojEventAdminRowHtml(r) {
@@ -9442,12 +9499,13 @@
         const numerBudynku = r.numerBudynku ?? "";
         const numerLokalu = r.numerLokalu ?? "";
         const miejscowosc = r.miejscowosc ?? "";
+        const groupMs = mojEventAdminGroupKeyMs(r);
         const rowClass = done
           ? "border-2 border-green-500/90 bg-zinc-900/40 opacity-70"
           : "border border-zinc-600 bg-zinc-800/40";
 
         return `
-          <div data-moj-participant-id="${mojEventAttrEscape(r.id)}" class="moj-ev-row rounded-xl p-3 sm:p-4 ${rowClass} transition-colors">
+          <div data-moj-participant-id="${mojEventAttrEscape(r.id)}" data-moj-group-ms="${groupMs}" class="moj-ev-row rounded-xl p-3 sm:p-4 ${rowClass} transition-colors">
             <div class="flex gap-2 sm:gap-3 items-start">
               <label class="flex items-center pt-2 shrink-0 cursor-pointer select-none" title="Oznacz jako uzupełnione w dokumentacji">
                 <input type="checkbox" class="moj-ev-done w-4 h-4 rounded border-zinc-600 text-coyote focus:ring-coyote bg-zinc-800" ${done ? "checked" : ""} />
@@ -9591,7 +9649,13 @@
           return;
         }
         const lines = [];
+        let prevGroupMs = null;
         picked.forEach((rowEl) => {
+          const ms = parseInt(rowEl.getAttribute("data-moj-group-ms") || "0", 10);
+          if (prevGroupMs !== null && ms !== prevGroupMs) {
+            lines.push("");
+          }
+          prevGroupMs = ms;
           const p = mojEventAdminReadRowPayload(rowEl);
           const col1 = mojEventAdminQuotedPasteField(mojEventAdminFullNameCell(p));
           const col2 = mojEventAdminQuotedPasteField(mojEventAdminMiejsceZamieszkaniaCell(p));
@@ -9602,7 +9666,7 @@
           navigator.clipboard.writeText(tsv).then(
             () =>
               showNotification(
-                "Skopiowano listę (TSV): dwie kolumny danych, bez nagłówka — wklej do Excela lub Arkuszy.",
+                "Skopiowano listę (TSV): dwie kolumny, bez nagłówka; pusta linia oddziela kolejne zgłoszenia z formularza.",
                 "success"
               ),
             () => mojEventAdminShowTsvFallback(tsv)
@@ -9702,7 +9766,7 @@
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium mb-2">Data i godzina *</label>
+                  <label class="block text-sm font-medium mb-2">Data i godzina rozpoczęcia *</label>
                   <input
                     type="datetime-local"
                     id="event-date"
@@ -9710,6 +9774,39 @@
                     required
                     class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
                   />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">Data i godzina zakończenia wydarzenia *</label>
+                  <input
+                    type="datetime-local"
+                    id="event-end-date"
+                    value="${event ? formatDateTimeForInput(event.endDateObj || event.dateObj) : ""}"
+                    required
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                  />
+                  <p class="text-xs text-zinc-500 mt-1">Po tym momencie wydarzenie jest zakończone (widok publiczny, filtr „zakończone”, przycisk „Weź udział”).</p>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="event-registration-deadline-enabled"
+                    ${event && event.registrationDeadlineEnabled ? "checked" : ""}
+                    class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote"
+                  />
+                  <label for="event-registration-deadline-enabled" class="text-sm cursor-pointer select-none">Ustal termin zamknięcia zapisów</label>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium mb-2">Data zakończenia zapisów</label>
+                  <input
+                    type="datetime-local"
+                    id="event-registration-deadline"
+                    value="${event && event.registrationDeadlineEnabled && event.registrationDeadlineObj ? formatDateTimeForInput(event.registrationDeadlineObj) : ""}"
+                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  <p class="text-xs text-zinc-500 mt-1">Aktywne po zaznaczeniu pola powyżej. Do końca wydarzenia przycisk pokaże „Zapisy zamknięte”, potem „Wydarzenie zakończone”.</p>
                 </div>
 
                 <div>
@@ -9801,6 +9898,21 @@
 
         document.body.insertAdjacentHTML("beforeend", modalHtml);
 
+        const regDeadlineCb = document.getElementById("event-registration-deadline-enabled");
+        const regDeadlineInp = document.getElementById("event-registration-deadline");
+        const syncEventRegistrationDeadlineField = () => {
+          if (!regDeadlineCb || !regDeadlineInp) return;
+          const on = regDeadlineCb.checked;
+          regDeadlineInp.disabled = !on;
+          if (!on) {
+            regDeadlineInp.removeAttribute("required");
+          } else {
+            regDeadlineInp.setAttribute("required", "");
+          }
+        };
+        regDeadlineCb?.addEventListener("change", syncEventRegistrationDeadlineField);
+        syncEventRegistrationDeadlineField();
+
         // Dodaj obsługę formularza
         const form = document.getElementById("event-form");
         if (form) {
@@ -9849,6 +9961,11 @@
         const eventId = (document.getElementById("event-id").value || "").trim();
         const title = document.getElementById("event-title").value.trim();
         const dateTime = document.getElementById("event-date").value;
+        const endDateTime = document.getElementById("event-end-date")?.value || "";
+        const registrationDeadlineEnabled =
+          document.getElementById("event-registration-deadline-enabled")?.checked === true;
+        const registrationDeadlineRaw =
+          document.getElementById("event-registration-deadline")?.value || "";
         const category = normalizeEventCategory(document.getElementById("event-category").value);
         const location = document.getElementById("event-location")?.value.trim() || "";
         const participationUrl = document.getElementById("event-participation-url")?.value.trim() || "";
@@ -9856,16 +9973,41 @@
         const pinned = document.getElementById("event-pinned").checked;
         const published = document.getElementById("event-published").checked;
 
-        if (!title || !dateTime) {
+        if (!title || !dateTime || !endDateTime) {
           showNotification("Wypełnij wszystkie wymagane pola.", "error");
+          return;
+        }
+
+        if (registrationDeadlineEnabled && !registrationDeadlineRaw.trim()) {
+          showNotification("Podaj datę zakończenia zapisów lub odznacz opcję.", "error");
           return;
         }
 
         try {
           const eventDate = new Date(dateTime);
+          const endDate = new Date(endDateTime);
+          if (isNaN(endDate.getTime())) {
+            showNotification("Niepoprawna data zakończenia wydarzenia.", "error");
+            return;
+          }
+          if (endDate.getTime() < eventDate.getTime()) {
+            showNotification("Data zakończenia nie może być wcześniejsza niż rozpoczęcie.", "error");
+            return;
+          }
+          let registrationDeadline = null;
+          if (registrationDeadlineEnabled) {
+            registrationDeadline = new Date(registrationDeadlineRaw);
+            if (isNaN(registrationDeadline.getTime())) {
+              showNotification("Niepoprawna data zakończenia zapisów.", "error");
+              return;
+            }
+          }
           const eventData = {
             title,
             date: eventDate,
+            endDate,
+            registrationDeadlineEnabled,
+            registrationDeadline,
             category,
             location,
             participationUrl: participationUrl || "",
@@ -9891,6 +10033,9 @@
           const eventLogDetails = {
             eventTitle: title,
             eventDate: eventDate.toISOString(),
+            eventEndDate: endDate.toISOString(),
+            registrationDeadlineEnabled,
+            registrationDeadline: registrationDeadline ? registrationDeadline.toISOString() : null,
             category,
             location: location || null,
             pinned,
@@ -17389,11 +17534,16 @@
               userId = participants.find(id => id !== 'admin' && id !== 'anonymous') || null;
             }
 
+            // Gość (kontakt bez konta): jedyny identyfikator rozmówcy to "anonymous" — bez tego UI przekazuje null → wątek pusty, brak usuwania
+            if (!userId && participants.includes('anonymous')) {
+              userId = 'anonymous';
+            }
+
             conversations[conversationKey] = {
               participants: participants,
               senderName: senderName,
               senderEmail: senderEmail, // Użyj e-mail z profilu, jeśli nie ma w wiadomości
-            senderId: userId, // Użyj userId (nie admin, nie anonymous) dla spójności z pinConversation
+            senderId: userId, // UID użytkownika lub "anonymous" (gość); spójne z pinConversation / thread API
               senderAvatar: userAvatarsMap[userId] || null, // Avatar użytkownika
               lastMessage: msg,
               messages: [],
@@ -17540,7 +17690,7 @@
 
           // Jeśli userId jest null, nie pokazuj przycisków przypinania/usuwania
           // Wyjątek: pozwól na usuwanie wiadomości od "Administrator" (może być wiadomość systemowa/testowa)
-          const canPinOrDelete = conversation.senderId && conversation.senderId !== 'admin' && conversation.senderId !== 'anonymous';
+          const canPinOrDelete = conversation.senderId && conversation.senderId !== 'admin';
           const canDeleteAdminMessage = conversation.senderName === 'Administrator' || (conversation.senderId === 'admin' && conversation.senderName);
 
           return `
@@ -17640,6 +17790,12 @@
       // Funkcja otwierania czatu - upewnij się, że jest dostępna globalnie
       window.openMessageChat = async function openMessageChat(userId, userName, userEmail) {
         if (typeof window.clearChatReplyAttachment === "function") window.clearChatReplyAttachment();
+        const uidRaw = userId != null ? String(userId).trim() : '';
+        if (uidRaw === 'null' || uidRaw === 'undefined' || uidRaw === '') {
+          userId = 'anonymous';
+        } else {
+          userId = uidRaw;
+        }
         currentConversationUser = { id: userId, name: userName, email: userEmail };
 
         // Zablokuj scrollowanie strony w tle
@@ -17729,7 +17885,7 @@
           console.log('toggleConversationPin: Called with userId:', userId, 'currentlyPinned:', currentlyPinned);
 
           // Walidacja: nie można przypiąć konwersacji z "admin"
-          if (!userId || userId === 'admin' || userId === 'anonymous') {
+          if (!userId || userId === 'admin') {
             console.error('toggleConversationPin: Invalid userId:', userId);
             showNotification('Nie można przypiąć tej konwersacji', 'error');
             return;
@@ -17947,6 +18103,7 @@
 
       // Funkcja zamykania modalu czatu - nadpisuje globalną wersję z pełną funkcjonalnością
       window.closeChatModal = function closeChatModal() {
+        if (typeof window.closeChatImageLightbox === "function") window.closeChatImageLightbox();
         const modal = document.getElementById('chat-modal');
         if (modal) {
           modal.classList.add('hidden');
@@ -17991,6 +18148,13 @@
       async function loadConversationMessages(userId) {
         const messagesContainer = document.getElementById('chat-messages');
         messagesContainer.innerHTML = '<div class="text-center text-zinc-500 py-8"><i class="fa-solid fa-spinner fa-spin"></i> Ładowanie...</div>';
+
+        const uidRaw = userId != null ? String(userId).trim() : '';
+        if (uidRaw === 'null' || uidRaw === 'undefined' || uidRaw === '') {
+          userId = 'anonymous';
+        } else {
+          userId = uidRaw;
+        }
 
         try {
           // Pobierz Firebase Auth token (żeby API rozpoznało admina) + nagłówek X-Admin-Panel
@@ -18064,7 +18228,7 @@
             if (!allowedImgMime.has(mime)) return '';
             const b64 = att.dataBase64.replace(/\s/g, '');
             if (!b64 || b64.length > 1400000) return '';
-            return `<div class="mb-2"><img class="max-w-full max-h-64 rounded-lg object-contain bg-black/25" src="data:${mime};base64,${b64}" alt="Załącznik" loading="lazy" referrerpolicy="no-referrer"/></div>`;
+            return `<div class="mb-2"><img class="chat-msg-zoomable max-w-full max-h-64 rounded-lg object-contain bg-black/25 cursor-zoom-in" src="data:${mime};base64,${b64}" alt="Załącznik — kliknij, aby powiększyć" title="Kliknij, aby otworzyć podgląd" loading="lazy" referrerpolicy="no-referrer"/></div>`;
           }
 
           // Znajdź punkt zmiany statusu z completed na in_progress
@@ -18353,6 +18517,59 @@
         document.getElementById("chat-attachment-input")?.click();
       };
 
+      async function processAdminChatImageFile(f) {
+        if (!f) return;
+        const wrap = document.getElementById("chat-attachment-preview-wrap");
+        const prev = document.getElementById("chat-attachment-preview");
+        const progRow = document.getElementById("chat-attachment-progress-row");
+        const progBar = document.getElementById("chat-attachment-progress-bar");
+        const progLabel = document.getElementById("chat-attachment-progress-label");
+        let objUrl = null;
+        try {
+          if (wrap) wrap.classList.remove("hidden");
+          if (progRow) progRow.classList.remove("hidden");
+          if (progBar) progBar.style.width = "6%";
+          if (progLabel) progLabel.textContent = "Wczytywanie podglądu…";
+          objUrl = URL.createObjectURL(f);
+          if (prev) {
+            prev.innerHTML = `<img src="${objUrl}" class="w-full h-full object-cover" alt="" style="max-width:100%;max-height:100%;display:block" />`;
+          }
+          if (progBar) progBar.style.width = "12%";
+          const att = await compressImageFileForChatReply(f, (p) => {
+            if (progBar) progBar.style.width = `${10 + Math.round(p * 88)}%`;
+            if (progLabel) {
+              if (p < 0.25) progLabel.textContent = "Wczytywanie obrazu…";
+              else if (p < 0.55) progLabel.textContent = "Optymalizacja rozmiaru…";
+              else if (p < 0.92) progLabel.textContent = "Kompresja…";
+              else progLabel.textContent = "Finalizowanie…";
+            }
+          });
+          chatReplyPendingImage = att;
+          if (progBar) progBar.style.width = "100%";
+          if (progLabel) progLabel.textContent = "Gotowe do wysłania.";
+          if (objUrl) {
+            URL.revokeObjectURL(objUrl);
+            objUrl = null;
+          }
+          if (prev) {
+            prev.innerHTML = `<img src="data:${att.mimeType};base64,${att.dataBase64}" class="w-full h-full object-cover" alt="" style="max-width:100%;max-height:100%;display:block" />`;
+          }
+          setTimeout(() => {
+            if (progRow) progRow.classList.add("hidden");
+            if (progBar) progBar.style.width = "0%";
+          }, 450);
+        } catch (err) {
+          chatReplyPendingImage = null;
+          if (wrap) wrap.classList.add("hidden");
+          if (prev) prev.innerHTML = "";
+          if (progRow) progRow.classList.add("hidden");
+          if (progBar) progBar.style.width = "0%";
+          showNotification(err?.message || "Nie udało się dodać zdjęcia", "error");
+        } finally {
+          if (objUrl) URL.revokeObjectURL(objUrl);
+        }
+      }
+
       function bindAdminChatAttachmentInput() {
         const chatAttInp = document.getElementById("chat-attachment-input");
         if (!chatAttInp || chatAttInp._strzelcaChatAttBound) return;
@@ -18360,67 +18577,186 @@
         chatAttInp.addEventListener("change", async function () {
           const f = this.files && this.files[0];
           if (!f) return;
-          const wrap = document.getElementById("chat-attachment-preview-wrap");
-          const prev = document.getElementById("chat-attachment-preview");
-          const progRow = document.getElementById("chat-attachment-progress-row");
-          const progBar = document.getElementById("chat-attachment-progress-bar");
-          const progLabel = document.getElementById("chat-attachment-progress-label");
-          let objUrl = null;
           try {
-            if (wrap) wrap.classList.remove("hidden");
-            if (progRow) progRow.classList.remove("hidden");
-            if (progBar) progBar.style.width = "6%";
-            if (progLabel) progLabel.textContent = "Wczytywanie podglądu…";
-            objUrl = URL.createObjectURL(f);
-            if (prev) {
-              prev.innerHTML = `<img src="${objUrl}" class="max-h-14 max-w-[120px] rounded object-cover border border-zinc-600/50" alt="" />`;
-            }
-            if (progBar) progBar.style.width = "12%";
-            const att = await compressImageFileForChatReply(f, (p) => {
-              if (progBar) progBar.style.width = `${10 + Math.round(p * 88)}%`;
-              if (progLabel) {
-                if (p < 0.25) progLabel.textContent = "Wczytywanie obrazu…";
-                else if (p < 0.55) progLabel.textContent = "Optymalizacja rozmiaru…";
-                else if (p < 0.92) progLabel.textContent = "Kompresja…";
-                else progLabel.textContent = "Finalizowanie…";
-              }
-            });
-            chatReplyPendingImage = att;
-            if (progBar) progBar.style.width = "100%";
-            if (progLabel) progLabel.textContent = "Gotowe do wysłania.";
-            if (objUrl) {
-              URL.revokeObjectURL(objUrl);
-              objUrl = null;
-            }
-            if (prev) {
-              prev.innerHTML = `<img src="data:${att.mimeType};base64,${att.dataBase64}" class="max-h-14 max-w-[120px] rounded object-cover border border-zinc-600/50" alt="" />`;
-            }
-            setTimeout(() => {
-              if (progRow) progRow.classList.add("hidden");
-              if (progBar) progBar.style.width = "0%";
-            }, 450);
-          } catch (err) {
-            chatReplyPendingImage = null;
-            if (wrap) wrap.classList.add("hidden");
-            if (prev) prev.innerHTML = "";
-            if (progRow) progRow.classList.add("hidden");
-            if (progBar) progBar.style.width = "0%";
-            showNotification(err?.message || "Nie udało się dodać zdjęcia", "error");
+            await processAdminChatImageFile(f);
           } finally {
             this.value = "";
-            if (objUrl) URL.revokeObjectURL(objUrl);
           }
         });
       }
 
+      function bindAdminChatReplyPaste() {
+        const ta = document.getElementById("chat-reply-input");
+        if (!ta || ta._strzelcaChatPasteBound) return;
+        ta._strzelcaChatPasteBound = true;
+        ta.addEventListener("paste", async (e) => {
+          const cd = e.clipboardData;
+          if (!cd || !cd.items || !cd.items.length) return;
+          let file = null;
+          for (let i = 0; i < cd.items.length; i++) {
+            const it = cd.items[i];
+            if (it.kind === "file" && typeof it.type === "string" && it.type.startsWith("image/")) {
+              file = it.getAsFile();
+              break;
+            }
+          }
+          if (!file) return;
+          e.preventDefault();
+          await processAdminChatImageFile(file);
+        });
+      }
+
       function scheduleAdminChatAttachmentInit() {
-        if (document.readyState === "loading") {
-          document.addEventListener("DOMContentLoaded", bindAdminChatAttachmentInput, { once: true });
-        } else {
+        const run = () => {
           bindAdminChatAttachmentInput();
+          bindAdminChatReplyPaste();
+        };
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", run, { once: true });
+        } else {
+          run();
         }
       }
       scheduleAdminChatAttachmentInit();
+
+      // Podgląd zdjęć z czatu: klik w obrazek → modal; kółko myszy oraz +/- = zoom (Esc / puste tło = zamknij)
+      (function initAdminChatImageLightbox() {
+        let lbScale = 1;
+        let lbWheel = null;
+        let lbKey = null;
+        const LB_MIN = 0.25;
+        const LB_MAX = 5;
+
+        function applyLbScale() {
+          const img = document.getElementById("chat-img-lb-img");
+          const pctEl = document.getElementById("chat-img-lb-zoom-pct");
+          if (img) img.style.transform = "scale(" + lbScale + ")";
+          if (pctEl) pctEl.textContent = Math.round(lbScale * 100) + "%";
+        }
+
+        function restoreBodyScrollAfterLb() {
+          const cm = document.getElementById("chat-modal");
+          if (cm && !cm.classList.contains("hidden")) {
+            document.body.style.overflow = "hidden";
+          } else {
+            document.body.style.overflow = "";
+            document.body.style.paddingRight = "";
+          }
+        }
+
+        window.closeChatImageLightbox = function closeChatImageLightbox() {
+          const overlay = document.getElementById("chat-image-lightbox");
+          const scrollEl = document.getElementById("chat-img-lb-scroll");
+          const img = document.getElementById("chat-img-lb-img");
+          if (!overlay) return;
+          overlay.classList.add("hidden");
+          if (scrollEl && lbWheel) {
+            scrollEl.removeEventListener("wheel", lbWheel);
+            lbWheel = null;
+          }
+          if (lbKey) {
+            document.removeEventListener("keydown", lbKey);
+            lbKey = null;
+          }
+          if (img) {
+            img.removeAttribute("src");
+            img.style.transform = "";
+          }
+          lbScale = 1;
+          restoreBodyScrollAfterLb();
+        };
+
+        window.openChatImageLightbox = function openChatImageLightbox(src) {
+          if (!src || typeof src !== "string") return;
+          const overlay = document.getElementById("chat-image-lightbox");
+          const img = document.getElementById("chat-img-lb-img");
+          const scrollEl = document.getElementById("chat-img-lb-scroll");
+          if (!overlay || !img || !scrollEl) return;
+          if (!overlay.classList.contains("hidden")) {
+            window.closeChatImageLightbox();
+          }
+          img.src = src;
+          lbScale = 1;
+          applyLbScale();
+          overlay.classList.remove("hidden");
+          scrollEl.scrollTop = 0;
+          scrollEl.scrollLeft = 0;
+
+          lbWheel = function (e) {
+            e.preventDefault();
+            const factor = e.deltaY > 0 ? 0.92 : 1.08;
+            lbScale = Math.min(LB_MAX, Math.max(LB_MIN, lbScale * factor));
+            applyLbScale();
+          };
+          scrollEl.addEventListener("wheel", lbWheel, { passive: false });
+
+          lbKey = function (e) {
+            if (e.key === "Escape") window.closeChatImageLightbox();
+          };
+          document.addEventListener("keydown", lbKey);
+        };
+
+        function bindLbUiOnce() {
+          const minus = document.getElementById("chat-img-lb-minus");
+          const plus = document.getElementById("chat-img-lb-plus");
+          const reset = document.getElementById("chat-img-lb-reset");
+          const closeB = document.getElementById("chat-img-lb-close");
+          const scrollEl = document.getElementById("chat-img-lb-scroll");
+          const img = document.getElementById("chat-img-lb-img");
+          const host = document.getElementById("chat-image-lightbox");
+          if (!host || host._chatLbUiBound) return;
+          host._chatLbUiBound = true;
+          minus.addEventListener("click", () => {
+            lbScale = Math.min(LB_MAX, Math.max(LB_MIN, lbScale / 1.2));
+            applyLbScale();
+          });
+          plus.addEventListener("click", () => {
+            lbScale = Math.min(LB_MAX, Math.max(LB_MIN, lbScale * 1.2));
+            applyLbScale();
+          });
+          reset.addEventListener("click", () => {
+            lbScale = 1;
+            applyLbScale();
+            if (scrollEl) {
+              scrollEl.scrollTop = 0;
+              scrollEl.scrollLeft = 0;
+            }
+          });
+          closeB.addEventListener("click", () => window.closeChatImageLightbox());
+          scrollEl.addEventListener("click", (e) => {
+            if (e.target === scrollEl) window.closeChatImageLightbox();
+          });
+          img.addEventListener("click", (e) => e.stopPropagation());
+          img.addEventListener("dblclick", () => {
+            lbScale = 1;
+            applyLbScale();
+          });
+        }
+
+        function bindChatModalImageClick() {
+          const chatModal = document.getElementById("chat-modal");
+          const msgBox = document.getElementById("chat-messages");
+          if (!chatModal || !msgBox || chatModal._chatImgClickBound) return;
+          chatModal._chatImgClickBound = true;
+          chatModal.addEventListener("click", function (e) {
+            const t = e.target;
+            if (!t || t.tagName !== "IMG" || !t.classList.contains("chat-msg-zoomable")) return;
+            if (!msgBox.contains(t)) return;
+            e.stopPropagation();
+            window.openChatImageLightbox(t.src);
+          });
+        }
+
+        function runLbInit() {
+          bindLbUiOnce();
+          bindChatModalImageClick();
+        }
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", runLbInit, { once: true });
+        } else {
+          runLbInit();
+        }
+      })();
 
       // Funkcja wysyłania odpowiedzi - dostępna globalnie dla onclick
       window.sendChatReply = async function sendChatReply() {
@@ -20620,7 +20956,7 @@
         <div id="chat-attachment-preview-wrap" class="hidden mt-4 mb-0 rounded-xl border border-zinc-600/60 bg-zinc-800/40 px-3 py-2 flex flex-col gap-2">
           <div class="flex items-center gap-3">
             <span class="text-xs text-zinc-400 shrink-0"><i class="fa-solid fa-image mr-1"></i>Załącznik</span>
-            <div id="chat-attachment-preview" class="flex-1 min-w-0 flex items-center gap-2 text-xs text-zinc-300 min-h-[40px]"></div>
+            <div id="chat-attachment-preview" class="shrink-0 w-12 h-12 overflow-hidden rounded-lg border border-zinc-600/50 bg-zinc-900/40 flex items-center justify-center"></div>
             <button type="button" onclick="clearChatReplyAttachment()" class="text-zinc-400 hover:text-white p-1.5 rounded-lg hover:bg-zinc-700/80 shrink-0" title="Usuń załącznik" aria-label="Usuń załącznik">
               <i class="fa-solid fa-xmark"></i>
             </button>
@@ -20659,6 +20995,23 @@
           </div>
           <p class="text-[11px] text-zinc-500 px-1">Załącznik: obraz JPG, PNG lub WebP; przed wysłaniem jest kompresowany (limit ok. 720 KB).</p>
         </div>
+      </div>
+    </div>
+
+    <!-- Pełnoekranowy podgląd zdjęcia z czatu (klik w miniaturę wiadomości) -->
+    <div id="chat-image-lightbox" class="fixed inset-0 z-[70] hidden" role="dialog" aria-modal="true" aria-label="Podgląd zdjęcia">
+      <div id="chat-img-lb-backdrop" class="absolute inset-0 z-0 bg-black/92" aria-hidden="true"></div>
+      <div class="absolute top-0 left-0 right-0 z-30 flex justify-end p-3 pointer-events-none">
+        <div class="pointer-events-auto flex flex-wrap items-center gap-2 rounded-xl bg-zinc-900/95 border border-zinc-600/80 px-2 py-2 shadow-lg">
+          <span id="chat-img-lb-zoom-pct" class="text-xs text-zinc-400 tabular-nums min-w-[2.75rem] text-center">100%</span>
+          <button type="button" id="chat-img-lb-minus" class="w-10 h-10 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white text-xl font-bold leading-none border border-zinc-600" title="Oddal">−</button>
+          <button type="button" id="chat-img-lb-reset" class="px-3 h-10 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-sm border border-zinc-600" title="Domyślny rozmiar">Reset</button>
+          <button type="button" id="chat-img-lb-plus" class="w-10 h-10 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white text-xl font-bold leading-none border border-zinc-600" title="Przybliż">+</button>
+          <button type="button" id="chat-img-lb-close" class="w-10 h-10 rounded-lg bg-zinc-800 hover:bg-red-900/50 text-white text-xl font-bold leading-none border border-zinc-600" title="Zamknij (Esc)">×</button>
+        </div>
+      </div>
+      <div id="chat-img-lb-scroll" class="absolute inset-0 z-10 overflow-auto flex items-center justify-center p-6 pt-16">
+        <img id="chat-img-lb-img" src="" alt="Powiększone zdjęcie" class="max-w-full max-h-[85vh] w-auto h-auto object-contain select-none transition-transform duration-150 ease-out" style="transform-origin:center center" draggable="false" />
       </div>
     </div>
 

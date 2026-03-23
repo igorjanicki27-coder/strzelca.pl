@@ -30,6 +30,30 @@ function createTransporter() {
   });
 }
 
+function getSmtpConfigStatus() {
+  const host = String(process.env.SMTP_HOST || 'ssl0.ovh.net').trim();
+  const user = String(process.env.SMTP_USER || 'kontakt@strzelca.pl').trim();
+  const pass = String(process.env.SMTP_PASSWORD || '');
+  return {
+    configured: Boolean(pass.trim()),
+    host,
+    user,
+    passwordPresent: pass.trim().length > 0,
+  };
+}
+
+function assertSmtpConfigured() {
+  const status = getSmtpConfigStatus();
+  if (!status.configured) {
+    const err = new Error(
+      'SMTP nie skonfigurowany: ustaw SMTP_PASSWORD (i ewent. SMTP_HOST/SMTP_USER) w zmiennych środowiska Vercel.',
+    );
+    err.code = 'SMTP_NOT_CONFIGURED';
+    throw err;
+  }
+  return status;
+}
+
 async function sendTransactionalEmail(opts) {
   const {
     to,
@@ -44,11 +68,7 @@ async function sendTransactionalEmail(opts) {
   if (!to || !subject || !html) {
     throw new Error('sendTransactionalEmail: brak to, subject lub html');
   }
-  if (!String(process.env.SMTP_PASSWORD || '').trim()) {
-    throw new Error(
-      'SMTP nie skonfigurowany: ustaw SMTP_PASSWORD (i ewent. SMTP_HOST/SMTP_USER) w zmiennych środowiska Vercel.',
-    );
-  }
+  assertSmtpConfigured();
   const transporter = createTransporter();
   const smtpUser = process.env.SMTP_USER || 'kontakt@strzelca.pl';
   const name = String(fromDisplayName || 'Strzelca.pl').replace(/"/g, "'");
@@ -78,4 +98,6 @@ async function sendTransactionalEmail(opts) {
 module.exports = {
   replaceTemplateVariables,
   sendTransactionalEmail,
+  getSmtpConfigStatus,
+  assertSmtpConfigured,
 };

@@ -575,6 +575,27 @@
         .event-participate-btn:hover .event-participate-heart {
             color: #4ade80;
         }
+        .event-participate-btn.event-participate-btn--locked,
+        .event-participate-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            pointer-events: none;
+            background: #3f3f46;
+            border-color: #52525b;
+        }
+        .event-participate-btn.event-participate-btn--locked:hover,
+        .event-participate-btn:disabled:hover {
+            background: #3f3f46;
+            border-color: #52525b;
+        }
+        .event-participate-btn.event-participate-btn--locked .event-participate-label,
+        .event-participate-btn:disabled .event-participate-label {
+            color: #ef4444;
+        }
+        .event-participate-btn.event-participate-btn--locked:hover .event-participate-label,
+        .event-participate-btn:disabled:hover .event-participate-label {
+            color: #ef4444;
+        }
 
         .events-empty-card {
             width: 100%;
@@ -1703,36 +1724,65 @@ const firebaseConfig = {
             return `<p class="whitespace-pre-wrap">${escapeHtml(s)}</p>`;
         }
 
-        function isEventCompleted(event, now = new Date()) {
-            const date = event?.dateObj instanceof Date ? event.dateObj : new Date(event?.dateObj || event?.date || 0);
-            return date < now;
+        function coerceFirestoreDateValue(x) {
+            if (x == null) return null;
+            if (x instanceof Date) return isNaN(x.getTime()) ? null : x;
+            if (typeof x.toDate === 'function') {
+                try {
+                    const d = x.toDate();
+                    return d instanceof Date && !isNaN(d.getTime()) ? d : null;
+                } catch (_) {
+                    return null;
+                }
+            }
+            if (typeof x === 'string' || typeof x === 'number') {
+                const d = new Date(x);
+                return isNaN(d.getTime()) ? null : d;
+            }
+            if (typeof x === 'object' && typeof x.seconds === 'number') {
+                const d = new Date(x.seconds * 1000 + (x.nanoseconds || 0) / 1e6);
+                return isNaN(d.getTime()) ? null : d;
+            }
+            return null;
         }
 
         /** Po cache IDB / starym formacie dateObj może być stringiem — zawsze zwracamy Date lub null. */
         function resolveEventDateObj(ev) {
             if (!ev || typeof ev !== 'object') return null;
-            const tryCoerce = (x) => {
-                if (x == null) return null;
-                if (x instanceof Date) return isNaN(x.getTime()) ? null : x;
-                if (typeof x.toDate === 'function') {
-                    try {
-                        const d = x.toDate();
-                        return d instanceof Date && !isNaN(d.getTime()) ? d : null;
-                    } catch (_) {
-                        return null;
-                    }
-                }
-                if (typeof x === 'string' || typeof x === 'number') {
-                    const d = new Date(x);
-                    return isNaN(d.getTime()) ? null : d;
-                }
-                if (typeof x === 'object' && typeof x.seconds === 'number') {
-                    const d = new Date(x.seconds * 1000 + (x.nanoseconds || 0) / 1e6);
-                    return isNaN(d.getTime()) ? null : d;
-                }
-                return null;
-            };
-            return tryCoerce(ev.dateObj) || tryCoerce(ev.date);
+            return coerceFirestoreDateValue(ev.dateObj) || coerceFirestoreDateValue(ev.date);
+        }
+
+        /** Koniec wydarzenia: jawne `endDate` albo — dla starych wpisów — data rozpoczęcia. */
+        function resolveEventEndDateObj(ev) {
+            if (!ev || typeof ev !== 'object') return null;
+            return coerceFirestoreDateValue(ev.endDate) || resolveEventDateObj(ev);
+        }
+
+        function resolveRegistrationDeadlineObj(ev) {
+            if (!ev || ev.registrationDeadlineEnabled !== true) return null;
+            return coerceFirestoreDateValue(ev.registrationDeadline);
+        }
+
+        function isEventCompleted(event, now = new Date()) {
+            const end = resolveEventEndDateObj(event);
+            if (!end) return false;
+            return end < now;
+        }
+
+        function isEventRegistrationClosed(event, now = new Date()) {
+            const d = resolveRegistrationDeadlineObj(event);
+            if (!d) return false;
+            return now >= d;
+        }
+
+        function getEventParticipateButtonState(event, now = new Date()) {
+            if (isEventCompleted(event, now)) {
+                return { label: 'Wydarzenie zakończone', disabled: true, lockedClass: true };
+            }
+            if (isEventRegistrationClosed(event, now)) {
+                return { label: 'Zapisy zamknięte', disabled: true, lockedClass: true };
+            }
+            return { label: 'Weź udział', disabled: false, lockedClass: false };
         }
 
         function resolveFilterSource(sourceHint = 'auto') {
@@ -1876,16 +1926,17 @@ const firebaseConfig = {
                                             return;
                                         }
                                         if (isNaN(dateObj.getTime())) return;
-                                        built.push({
+                                        const row = {
                                             id: docSnap.id,
                                             ...event,
                                             dateObj: dateObj,
-                                            status: isEventCompleted({ dateObj }) ? 'completed' : 'active',
                                             category: normalizeEventCategory(event.category),
                                             pinned: event.pinned || false,
                                             location: event.location || '',
                                             participationUrl: (event.participationUrl && String(event.participationUrl).trim()) || ''
-                                        });
+                                        };
+                                        row.status = isEventCompleted(row) ? 'completed' : 'active';
+                                        built.push(row);
                                     }
                                 });
                                 return built;
@@ -1899,10 +1950,10 @@ const firebaseConfig = {
                                     console.warn('Wydarzenie bez poprawnej daty, pomijam:', ev?.id);
                                     return null;
                                 }
+                                const merged = { ...ev, dateObj };
                                 return {
-                                    ...ev,
-                                    dateObj,
-                                    status: isEventCompleted({ dateObj }) ? 'completed' : 'active',
+                                    ...merged,
+                                    status: isEventCompleted(merged) ? 'completed' : 'active',
                                 };
                             })
                             .filter(Boolean);
@@ -2144,6 +2195,9 @@ const firebaseConfig = {
             });
             const isPast = isEventCompleted(event, now);
             const isPinned = !!event.pinned;
+            const part = getEventParticipateButtonState(event, now);
+            const partLockedClass = part.lockedClass ? ' event-participate-btn--locked' : '';
+            const partDisabledAttr = part.disabled ? ' disabled aria-disabled="true"' : '';
 
             return `
                     <article class="card-dark event-carousel-card ${isPinned ? 'event-pinned' : ''} ${isPast ? 'event-completed opacity-70' : ''}" data-event-id="${encodeURIComponent(event.id)}">
@@ -2157,8 +2211,8 @@ const firebaseConfig = {
                             ${safeLocation ? `<p class="event-meta-row"><i class="fa-solid fa-location-dot text-coyote/80 mr-1"></i>${safeLocation}</p>` : ''}
                         </div>
                         <div class="mt-3 pt-2 border-t border-zinc-700/50">
-                            <button type="button" data-participate-event-id="${encodeURIComponent(event.id)}" class="event-participate-btn w-full font-bold text-sm tracking-widest py-3 px-4 rounded-lg uppercase flex items-center justify-center gap-2 transition-all duration-300">
-                                <span class="event-participate-label transition-colors">Weź udział</span>
+                            <button type="button" data-participate-event-id="${encodeURIComponent(event.id)}" class="event-participate-btn w-full font-bold text-sm tracking-widest py-3 px-4 rounded-lg uppercase flex items-center justify-center gap-2 transition-all duration-300${partLockedClass}"${partDisabledAttr}>
+                                <span class="event-participate-label transition-colors">${escapeHtml(part.label)}</span>
                             </button>
                         </div>
                     </article>
@@ -2176,6 +2230,7 @@ const firebaseConfig = {
             track.querySelectorAll('[data-participate-event-id]').forEach((btn) => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
+                    if (btn.disabled) return;
                     const id = decodeURIComponent(btn.getAttribute('data-participate-event-id') || '');
                     const ev = allEvents.find((x) => x.id === id);
                     if (ev) handleEventParticipateClick(ev);
@@ -2405,6 +2460,8 @@ const firebaseConfig = {
 
         function handleEventParticipateClick(ev) {
             if (!ev) return;
+            const now = new Date();
+            if (getEventParticipateButtonState(ev, now).disabled) return;
             const url = (ev.participationUrl || '').trim();
             if (url) {
                 if (openEventParticipationUrl(url)) return;
@@ -2482,13 +2539,16 @@ const firebaseConfig = {
 
             const wrap = document.getElementById('modal-participate-wrap');
             if (wrap) {
+                const part = getEventParticipateButtonState(event, new Date());
+                const lockedClass = part.lockedClass ? ' event-participate-btn--locked' : '';
+                const dis = part.disabled ? ' disabled aria-disabled="true"' : '';
                 wrap.innerHTML = `
-                    <button type="button" class="event-participate-btn font-bold text-sm tracking-widest py-3 px-8 md:px-10 rounded-lg uppercase inline-flex items-center justify-center gap-2 transition-all duration-300">
-                        <span class="event-participate-label transition-colors">Weź udział</span>
+                    <button type="button" class="event-participate-btn font-bold text-sm tracking-widest py-3 px-8 md:px-10 rounded-lg uppercase inline-flex items-center justify-center gap-2 transition-all duration-300${lockedClass}"${dis}>
+                        <span class="event-participate-label transition-colors">${escapeHtml(part.label)}</span>
                     </button>
                 `;
                 const pb = wrap.querySelector('button');
-                if (pb) {
+                if (pb && !part.disabled) {
                     pb.addEventListener('click', (e) => {
                         e.preventDefault();
                         handleEventParticipateClick(event);

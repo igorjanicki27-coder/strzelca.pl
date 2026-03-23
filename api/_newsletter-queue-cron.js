@@ -225,6 +225,7 @@ async function handleNewsletterQueueCron(req, res) {
     let sentFail = 0;
     /** Po błędzie SMTP nie przesuwaj kolejki — w poprzedniej logice cała partia była „zużywana” mimo 0 dostarczeń. */
     let nextSubscriberIndex = startIndex;
+    let lastError = '';
 
     for (let i = startIndex; i < endIndex; i++) {
       const to = emails[i];
@@ -242,6 +243,7 @@ async function handleNewsletterQueueCron(req, res) {
         nextSubscriberIndex = i + 1;
       } catch (e) {
         sentFail++;
+        lastError = String(e?.message || e || '').substring(0, 800);
         console.error('newsletter-queue-cron: send failed', {
           jobId: docRef.id,
           index: i,
@@ -260,6 +262,12 @@ async function handleNewsletterQueueCron(req, res) {
       ...(done ? { completedAt: ts } : {}),
       lastBatchSentOk: sentOk,
       lastBatchSentFail: sentFail,
+      ...(lastError
+        ? {
+            lastError,
+            lastErrorAt: ts,
+          }
+        : {}),
     });
 
     return res.status(200).json({
@@ -270,6 +278,7 @@ async function handleNewsletterQueueCron(req, res) {
       progressedTo: nextSubscriberIndex,
       total: emails.length,
       completed: done,
+      ...(lastError ? { lastError } : {}),
     });
   } catch (e) {
     console.error('newsletter-queue-cron:', e);

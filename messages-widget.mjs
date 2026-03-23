@@ -548,6 +548,90 @@ function makeStyles() {
       margin-bottom: 6px;
       object-fit: contain;
       background: rgba(0,0,0,0.25);
+      cursor: zoom-in;
+    }
+    .imgLightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 2147483647;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    .imgLightbox.open { display: block; }
+    .imgLightboxBackdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 0;
+      pointer-events: none;
+    }
+    .imgLightboxToolbar {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      left: 10px;
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+      z-index: 20;
+      pointer-events: none;
+    }
+    .imgLightboxToolbarInner {
+      pointer-events: auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(18,18,18,0.96);
+      border: 1px solid rgba(255,255,255,0.14);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .imgLightboxPct {
+      font-size: 11px;
+      color: rgba(229,229,229,0.6);
+      min-width: 2.75rem;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+    .imgLightboxBtn {
+      min-width: 40px;
+      height: 40px;
+      padding: 0 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(40,40,40,0.95);
+      color: #fff;
+      font-size: 18px;
+      font-weight: 800;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .imgLightboxBtn:hover { border-color: rgba(193,154,107,0.75); }
+    .imgLightboxBtnSm { font-size: 12px; font-weight: 700; }
+    .imgLightboxViewport {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      overflow: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 56px 14px 20px;
+      box-sizing: border-box;
+    }
+    .imgLightboxImg {
+      max-width: 100%;
+      max-height: min(85vh, 900px);
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      transform-origin: center center;
+      transition: transform 0.15s ease-out;
+      user-select: none;
+      -webkit-user-select: none;
     }
     .bubbleText { word-wrap: break-word; white-space: pre-wrap; }
     .meta { margin-top: 6px; font-size: 11px; color: rgba(229,229,229,0.55); text-align: right; }
@@ -1362,6 +1446,130 @@ async function main() {
   wrap.appendChild(btn);
   shadow.appendChild(wrap);
 
+  const imgLightboxEl = document.createElement("div");
+  imgLightboxEl.className = "imgLightbox";
+  imgLightboxEl.setAttribute("role", "dialog");
+  imgLightboxEl.setAttribute("aria-modal", "true");
+  imgLightboxEl.setAttribute("aria-label", "Podgląd zdjęcia");
+  const imgLbBackdrop = document.createElement("div");
+  imgLbBackdrop.className = "imgLightboxBackdrop";
+  const imgLbToolbar = document.createElement("div");
+  imgLbToolbar.className = "imgLightboxToolbar";
+  const imgLbToolbarInner = document.createElement("div");
+  imgLbToolbarInner.className = "imgLightboxToolbarInner";
+  const imgLbPct = document.createElement("span");
+  imgLbPct.className = "imgLightboxPct";
+  imgLbPct.textContent = "100%";
+  function mkImgLbBtn(label, extraClass, title) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "imgLightboxBtn" + (extraClass ? ` ${extraClass}` : "");
+    b.textContent = label;
+    b.title = title;
+    return b;
+  }
+  const imgLbMinus = mkImgLbBtn("−", "", "Oddal");
+  const imgLbReset = mkImgLbBtn("Reset", "imgLightboxBtnSm", "Domyślny rozmiar");
+  const imgLbPlus = mkImgLbBtn("+", "", "Przybliż");
+  const imgLbClose = mkImgLbBtn("×", "", "Zamknij (Esc)");
+  imgLbToolbarInner.appendChild(imgLbPct);
+  imgLbToolbarInner.appendChild(imgLbMinus);
+  imgLbToolbarInner.appendChild(imgLbReset);
+  imgLbToolbarInner.appendChild(imgLbPlus);
+  imgLbToolbarInner.appendChild(imgLbClose);
+  imgLbToolbar.appendChild(imgLbToolbarInner);
+  const imgLbViewport = document.createElement("div");
+  imgLbViewport.className = "imgLightboxViewport";
+  const imgLbImg = document.createElement("img");
+  imgLbImg.className = "imgLightboxImg";
+  imgLbImg.alt = "Powiększone zdjęcie";
+  imgLbImg.draggable = false;
+  imgLbViewport.appendChild(imgLbImg);
+  imgLightboxEl.appendChild(imgLbBackdrop);
+  imgLightboxEl.appendChild(imgLbToolbar);
+  imgLightboxEl.appendChild(imgLbViewport);
+  shadow.appendChild(imgLightboxEl);
+
+  let imgLbScale = 1;
+  let imgLbWheel = null;
+  let imgLbKey = null;
+  const IMG_LB_MIN = 0.25;
+  const IMG_LB_MAX = 5;
+
+  function applyWidgetImgLbScale() {
+    imgLbImg.style.transform = `scale(${imgLbScale})`;
+    imgLbPct.textContent = `${Math.round(imgLbScale * 100)}%`;
+  }
+
+  function closeWidgetImageLightbox() {
+    imgLightboxEl.classList.remove("open");
+    if (imgLbWheel) {
+      imgLbViewport.removeEventListener("wheel", imgLbWheel);
+      imgLbWheel = null;
+    }
+    if (imgLbKey) {
+      document.removeEventListener("keydown", imgLbKey);
+      imgLbKey = null;
+    }
+    imgLbImg.removeAttribute("src");
+    imgLbImg.style.transform = "";
+    imgLbScale = 1;
+  }
+
+  function openWidgetImageLightbox(src) {
+    if (!src) return;
+    if (imgLightboxEl.classList.contains("open")) closeWidgetImageLightbox();
+    imgLbImg.src = src;
+    imgLbScale = 1;
+    applyWidgetImgLbScale();
+    imgLbViewport.scrollTop = 0;
+    imgLbViewport.scrollLeft = 0;
+    imgLightboxEl.classList.add("open");
+    imgLbWheel = (e) => {
+      e.preventDefault();
+      const factor = e.deltaY > 0 ? 0.92 : 1.08;
+      imgLbScale = Math.min(IMG_LB_MAX, Math.max(IMG_LB_MIN, imgLbScale * factor));
+      applyWidgetImgLbScale();
+    };
+    imgLbViewport.addEventListener("wheel", imgLbWheel, { passive: false });
+    imgLbKey = (e) => {
+      if (e.key === "Escape") closeWidgetImageLightbox();
+    };
+    document.addEventListener("keydown", imgLbKey);
+  }
+
+  imgLbMinus.addEventListener("click", () => {
+    imgLbScale = Math.min(IMG_LB_MAX, Math.max(IMG_LB_MIN, imgLbScale / 1.2));
+    applyWidgetImgLbScale();
+  });
+  imgLbPlus.addEventListener("click", () => {
+    imgLbScale = Math.min(IMG_LB_MAX, Math.max(IMG_LB_MIN, imgLbScale * 1.2));
+    applyWidgetImgLbScale();
+  });
+  imgLbReset.addEventListener("click", () => {
+    imgLbScale = 1;
+    applyWidgetImgLbScale();
+    imgLbViewport.scrollTop = 0;
+    imgLbViewport.scrollLeft = 0;
+  });
+  imgLbClose.addEventListener("click", () => closeWidgetImageLightbox());
+  imgLbViewport.addEventListener("click", (e) => {
+    if (e.target === imgLbViewport) closeWidgetImageLightbox();
+  });
+  imgLbImg.addEventListener("click", (e) => e.stopPropagation());
+  imgLbImg.addEventListener("dblclick", () => {
+    imgLbScale = 1;
+    applyWidgetImgLbScale();
+  });
+
+  msgs.addEventListener("click", (e) => {
+    const t = e.target;
+    if (t && t.classList && t.classList.contains("bubbleImg")) {
+      e.preventDefault();
+      openWidgetImageLightbox(t.src);
+    }
+  });
+
   // State + subscriptions
   let isOpen = getStoredOpen();
   let convUnsub = null;
@@ -1742,6 +1950,7 @@ async function main() {
         const img = document.createElement("img");
         img.className = "bubbleImg";
         img.alt = "Załącznik graficzny";
+        img.title = "Kliknij, aby powiększyć";
         img.loading = "lazy";
         img.decoding = "async";
         img.referrerPolicy = "no-referrer";
@@ -2733,6 +2942,7 @@ async function main() {
   };
 
   function closePanel() {
+    closeWidgetImageLightbox();
     isOpen = false;
     setStoredOpen(false);
     panel.style.display = "none";

@@ -12,7 +12,7 @@ const {
   readJsonBody,
   getSessionUser,
 } = require('./_sso-utils');
-const { replaceTemplateVariables } = require('./_transactional-mail');
+const { replaceTemplateVariables, assertSmtpConfigured } = require('./_transactional-mail');
 const { logEmailDeliveryFailure } = require('./_activity-email-log');
 
 let dbManager = null;
@@ -114,6 +114,18 @@ async function handlePostNewsletter(req, res, firestoreDb, requesterUid) {
       return res.status(400).json({
         success: false,
         error: 'Subscribers list is required and must not be empty'
+      });
+    }
+
+    // Nie zapisuj zadania do kolejki, jeśli SMTP nie jest skonfigurowane:
+    // bez tego użytkownik widzi "dodano do kolejki", a wysyłka nigdy nie ruszy.
+    try {
+      assertSmtpConfigured();
+    } catch (smtpErr) {
+      return res.status(503).json({
+        success: false,
+        error: smtpErr?.message || 'SMTP nie skonfigurowany na serwerze',
+        code: smtpErr?.code || 'SMTP_NOT_CONFIGURED',
       });
     }
 

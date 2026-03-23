@@ -24,6 +24,15 @@ Upewnij się, że wszystkie poniższe zmienne są ustawione zarówno w środowis
 ### Google Analytics
 - **GA_PROPERTY_ID** - ID właściwości Google Analytics (wymagany przez `/api/ga-stats`)
 
+### SMTP (wymagane do wysyłki maili i newslettera)
+- **SMTP_PASSWORD** - hasło do skrzynki SMTP (wymagane)
+- **SMTP_USER** - login / adres nadawcy SMTP (domyślnie: `kontakt@strzelca.pl`)
+- **SMTP_HOST** - host SMTP (domyślnie: `ssl0.ovh.net`)
+- **SMTP_PORT** - port SMTP (domyślnie: `465`)
+- **SMTP_SECURE** - `true`/`false` (dla portu `465` i tak traktowane jako TLS)
+
+Brak `SMTP_PASSWORD` powoduje, że newsletter może trafić do kolejki, ale wysyłka się nie powiedzie (cron zapisze błąd).
+
 ### SSO (Single Sign-On) - Opcjonalne (mają wartości domyślne)
 - **SSO_COOKIE_NAME** - Nazwa ciasteczka SSO (domyślnie: `__session`)
 - **SSO_COOKIE_DOMAIN** - Domena ciasteczka SSO (domyślnie: `.strzelca.pl`)
@@ -71,6 +80,18 @@ To znaczy, że **w runtime tej funkcji** żadna z nazw sekretu nie ma niepustej 
 **Implementacja `/api/bazar-cron-expire`:** sekrety są czytane z `process.env` **dynamicznym kluczem w pętli** (nie `process.env.CRON_SECRET` na sztywno), żeby uniknąć sytuacji, w której bundler Vercel podstawia pustą wartość w czasie buildu i w produkcji zmienna „znika” mimo ustawień w panelu.
 
 **Gdy Vercel w ogóle nie wstrzykuje zmiennych do funkcji** (np. Custom Environment, polityka zespołu): ustaw sekret w **Firestore** — dokument `serverSecrets/bazarCronExpire`, pole string **`cronSecret`** (ta sama wartość co w `Authorization: Bearer …`). Odczyt jest po stronie serwera (**Admin SDK**), reguły `firestore.rules` blokują dostęp z aplikacji klienckiej. Wdróż reguły: `firebase deploy --only firestore:rules`. Pole `diag.cronSecretSource` w odpowiedzi API wskaże `env` albo `firestore`.
+
+### Newsletter — cron przetwarzania kolejki
+- Endpoint: **`/api/newsletter-cron-process`** (zdefiniowany w `vercel.json` jako cron co 5 min)
+- Wymaga sekretu crona jak wyżej: preferowane **`CRON_SECRET`** dla Vercel Cron (nagłówek `Authorization: Bearer ...`)
+- Alternatywnie można użyć `STRZELCA_BAZAR_EXPIRE_SECRET` / `BAZAR_CRON_SECRET` i zewnętrznego harmonogramu z własnym nagłówkiem
+
+Szybka diagnostyka:
+1. Dodaj newsletter i zapamiętaj `ID wpisu`.
+2. Sprawdź dokument `newsletterQueue/<ID>` w Firestore:
+   - `status=completed` -> cron i SMTP działają
+   - `status=processing` + `lastError` -> zobacz przyczynę (np. SMTP)
+   - `status=pending` długo -> cron nie dochodzi lub nie ma autoryzacji
 
 
 ### Dziennik aktywności — szyfrowanie szczegółów rejestracji (`USER_CREATED`)
