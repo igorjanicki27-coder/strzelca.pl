@@ -74,6 +74,40 @@ async function safeMessageCount(query, ms = 14000) {
   }
 }
 
+/** Timestamp do zapisu wiadomości — bez wyjątków przy Invalid Date (zły string / obiekt z klienta). */
+function firestoreTimestampFromMessageInput(raw) {
+  const fallback = () => admin.firestore.Timestamp.fromDate(new Date());
+  if (raw == null || raw === '') return fallback();
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    const d = new Date(raw);
+    return Number.isFinite(d.getTime()) ? admin.firestore.Timestamp.fromDate(d) : fallback();
+  }
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    const asNum = Number(trimmed);
+    if (trimmed !== '' && Number.isFinite(asNum) && String(asNum) === trimmed) {
+      const d = new Date(asNum);
+      return Number.isFinite(d.getTime()) ? admin.firestore.Timestamp.fromDate(d) : fallback();
+    }
+    const d = new Date(trimmed);
+    return Number.isFinite(d.getTime()) ? admin.firestore.Timestamp.fromDate(d) : fallback();
+  }
+  if (typeof raw === 'object' && raw !== null && typeof raw.toDate === 'function') {
+    try {
+      const d = raw.toDate();
+      return Number.isFinite(d.getTime()) ? admin.firestore.Timestamp.fromDate(d) : fallback();
+    } catch (_) {
+      return fallback();
+    }
+  }
+  const d = new Date(raw);
+  return Number.isFinite(d.getTime()) ? admin.firestore.Timestamp.fromDate(d) : fallback();
+}
+
+function omitUndefinedShallow(obj) {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
+}
+
 class FirestoreDatabaseManager {
   constructor() {
     this.db = db;
@@ -91,6 +125,28 @@ class FirestoreDatabaseManager {
     return this.db;
   }
 
+  async bumpSupportInboxUnread(recipientId, delta, latestText = null) {
+    if (!recipientId || recipientId === 'admin') return;
+    if (!Number.isFinite(delta) || delta === 0) return;
+
+    const db = await this.initializeFirebase();
+    const inboxRef = db.collection('userInboxes').doc(String(recipientId));
+
+    await db.runTransaction(async (tx) => {
+      const inboxSnap = await tx.get(inboxRef);
+      const current = inboxSnap.exists ? (Number(inboxSnap.data()?.supportUnread || 0) || 0) : 0;
+      const next = Math.max(0, current + delta);
+      const patch = {
+        supportUnread: next,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+      if (typeof latestText === 'string') {
+        patch.supportLastText = latestText.slice(0, 140);
+      }
+      tx.set(inboxRef, patch, { merge: true });
+    });
+  }
+
   // =============================================================================
   // MESSAGES METHODS (zastępują SQLite messages table)
   // =============================================================================
@@ -99,17 +155,31 @@ class FirestoreDatabaseManager {
     try {
       const db = await this.initializeFirebase();
 
-      const message = {
-        content: messageData.content,
+      const meta =
+        messageData.metadata &&
+        typeof messageData.metadata === 'object' &&
+        !Array.isArray(messageData.metadata)
+          ? messageData.metadata
+          : {};
+
+      const message = omitUndefinedShallow({
+        content: String(messageData.content ?? ''),
         senderId: messageData.senderId || 'anonymous',
-        senderName: messageData.senderName,
+        senderName: (() => {
+          const n = messageData.senderName != null ? String(messageData.senderName).trim() : '';
+          return n.length > 0 ? n : 'Gość';
+        })(),
         recipientId: messageData.recipientId || 'admin',
         status: messageData.status || 'pending',
         categoryId: messageData.categoryId || 'general',
         isRead: false,
-        timestamp: admin.firestore.Timestamp.fromDate(new Date(messageData.timestamp || Date.now())),
-        metadata: messageData.metadata || {}
-      };
+        timestamp: firestoreTimestampFromMessageInput(
+          messageData.timestamp != null && messageData.timestamp !== ''
+            ? messageData.timestamp
+            : Date.now(),
+        ),
+        metadata: meta,
+      });
 
       if (
         messageData.imageAttachment &&
@@ -141,12 +211,16 @@ class FirestoreDatabaseManager {
         console.log('addMessage: Message added successfully with ID:', messageId, 'to collection: messages');
         
         // Weryfikuj, czy wiadomość rzeczywiście została zapisana
-        const verifyRef = db.collection('messages').doc(messageId);
-        const verifySnap = await verifyRef.get();
-        if (verifySnap.exists) {
-          console.log('addMessage: Verification - message exists in Firestore');
-        } else {
-          console.error('addMessage: Verification FAILED - message does not exist in Firestore!');
+        try {
+          const verifyRef = db.collection('messages').doc(messageId);
+          const verifySnap = await verifyRef.get();
+          if (verifySnap.exists) {
+            console.log('addMessage: Verification - message exists in Firestore');
+          } else {
+            console.error('addMessage: Verification FAILED - message does not exist in Firestore!');
+          }
+        } catch (verifyErr) {
+          console.warn('addMessage: Verification read failed (non-critical):', verifyErr?.message || verifyErr);
         }
       } catch (addError) {
         console.error('addMessage: Error adding message to Firestore:', addError);
@@ -159,6 +233,17 @@ class FirestoreDatabaseManager {
       } catch (convError) {
         console.warn('addMessage: Error updating conversation (non-critical):', convError);
         // Nie rzucamy błędu - wiadomość została zapisana, to jest tylko dodatkowa funkcjonalność
+      }
+
+      // Lekki licznik unread dla widżetu usera (support -> user).
+      // Aktualizujemy wyłącznie gdy nadawcą jest admin/support, a odbiorcą konkretny użytkownik.
+      if (message.senderId === 'admin' && message.recipientId && message.recipientId !== 'admin') {
+        const preview = (message.content || '').toString().trim() || 'Nowa wiadomość';
+        try {
+          await this.bumpSupportInboxUnread(message.recipientId, 1, preview);
+        } catch (inboxErr) {
+          console.warn('addMessage: support inbox bump failed (non-critical):', inboxErr?.message || inboxErr);
+        }
       }
 
       return {
@@ -422,8 +507,45 @@ class FirestoreDatabaseManager {
   async markAsRead(id) {
     try {
       const db = await this.initializeFirebase();
-      await db.collection('messages').doc(id).update({ isRead: true });
-      return true;
+      const msgRef = db.collection('messages').doc(id);
+      let exists = false;
+
+      await db.runTransaction(async (tx) => {
+        const msgSnap = await tx.get(msgRef);
+        if (!msgSnap.exists) return;
+        exists = true;
+
+        const data = msgSnap.data() || {};
+        const wasUnread = data.isRead !== true;
+        const isSupportToUser =
+          data.senderId === 'admin' &&
+          typeof data.recipientId === 'string' &&
+          data.recipientId &&
+          data.recipientId !== 'admin';
+
+        let inboxRef = null;
+        let inboxCurrent = 0;
+        if (wasUnread && isSupportToUser) {
+          inboxRef = db.collection('userInboxes').doc(data.recipientId);
+          const inboxSnap = await tx.get(inboxRef);
+          inboxCurrent = inboxSnap.exists ? (Number(inboxSnap.data()?.supportUnread || 0) || 0) : 0;
+        }
+
+        tx.update(msgRef, { isRead: true });
+
+        if (inboxRef) {
+          tx.set(
+            inboxRef,
+            {
+              supportUnread: Math.max(0, inboxCurrent - 1),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+        }
+      });
+
+      return exists;
     } catch (error) {
       console.error('Error marking message as read:', error);
       throw error;
@@ -433,8 +555,46 @@ class FirestoreDatabaseManager {
   async markAsUnread(id) {
     try {
       const db = await this.initializeFirebase();
-      await db.collection('messages').doc(id).update({ isRead: false });
-      return true;
+      const msgRef = db.collection('messages').doc(id);
+      let exists = false;
+
+      await db.runTransaction(async (tx) => {
+        const msgSnap = await tx.get(msgRef);
+        if (!msgSnap.exists) return;
+        exists = true;
+
+        const data = msgSnap.data() || {};
+        const wasRead = data.isRead === true;
+        const isSupportToUser =
+          data.senderId === 'admin' &&
+          typeof data.recipientId === 'string' &&
+          data.recipientId &&
+          data.recipientId !== 'admin';
+
+        let inboxRef = null;
+        let inboxCurrent = 0;
+        if (wasRead && isSupportToUser) {
+          inboxRef = db.collection('userInboxes').doc(data.recipientId);
+          const inboxSnap = await tx.get(inboxRef);
+          inboxCurrent = inboxSnap.exists ? (Number(inboxSnap.data()?.supportUnread || 0) || 0) : 0;
+        }
+
+        tx.update(msgRef, { isRead: false });
+
+        if (inboxRef) {
+          tx.set(
+            inboxRef,
+            {
+              supportUnread: inboxCurrent + 1,
+              supportLastText: (data.content || '').toString().slice(0, 140),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+        }
+      });
+
+      return exists;
     } catch (error) {
       console.error('Error marking message as unread:', error);
       throw error;
@@ -460,6 +620,14 @@ class FirestoreDatabaseManager {
         batch.update(doc.ref, { isRead: true });
       });
       await batch.commit();
+
+      if (senderId === 'admin' && recipientId && recipientId !== 'admin') {
+        try {
+          await this.bumpSupportInboxUnread(recipientId, -snapshot.size);
+        } catch (inboxErr) {
+          console.warn('markConversationAsRead: support inbox adjust failed (non-critical):', inboxErr?.message || inboxErr);
+        }
+      }
       
       return { updated: snapshot.size };
     } catch (error) {
@@ -487,6 +655,14 @@ class FirestoreDatabaseManager {
         batch.update(doc.ref, { isRead: false });
       });
       await batch.commit();
+
+      if (senderId === 'admin' && recipientId && recipientId !== 'admin') {
+        try {
+          await this.bumpSupportInboxUnread(recipientId, snapshot.size);
+        } catch (inboxErr) {
+          console.warn('markConversationAsUnread: support inbox adjust failed (non-critical):', inboxErr?.message || inboxErr);
+        }
+      }
       
       return { updated: snapshot.size };
     } catch (error) {
@@ -554,11 +730,11 @@ class FirestoreDatabaseManager {
   // =============================================================================
 
   async updateConversation(userId, categoryId, lastMessage = null) {
+    let conversationId = userId;
     try {
       const db = await this.initializeFirebase();
       // Użyj conversationId zamiast userId dla spójności z pinConversation/unpinConversation
       // Jeśli lastMessage ma recipientId, użyj go do utworzenia conversationId
-      let conversationId = userId;
       if (lastMessage && lastMessage.recipientId) {
         const participants = [userId, lastMessage.recipientId].filter(id => id).sort();
         conversationId = participants.join('_');
@@ -580,8 +756,9 @@ class FirestoreDatabaseManager {
         };
 
         if (lastMessage) {
+          const lmText = lastMessage.content != null ? String(lastMessage.content) : '';
           updateData.lastMessage = {
-            content: lastMessage.content,
+            content: lmText,
             timestamp: lastMessage.timestamp || admin.firestore.FieldValue.serverTimestamp()
           };
         }
@@ -605,8 +782,9 @@ class FirestoreDatabaseManager {
         };
 
         if (lastMessage) {
+          const lmText = lastMessage.content != null ? String(lastMessage.content) : '';
           conversationData.lastMessage = {
-            content: lastMessage.content,
+            content: lmText,
             timestamp: lastMessage.timestamp || admin.firestore.FieldValue.serverTimestamp()
           };
         }
@@ -620,7 +798,7 @@ class FirestoreDatabaseManager {
         message: error.message,
         code: error.code,
         userId,
-        conversationId: conversationId || userId,
+        conversationId,
         categoryId
       });
       // Nie rzucaj błędu - to nie powinno blokować zapisywania wiadomości

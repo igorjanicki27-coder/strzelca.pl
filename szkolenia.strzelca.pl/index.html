@@ -51,10 +51,10 @@
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
         />
         <!-- Wspólne poprawki responsywności -->
-        <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-23-1" />
+        <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-24-1" />
         <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
         <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
-        <link rel="modulepreload" href="https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-9" crossorigin />
+        <link rel="modulepreload" href="https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-10" crossorigin />
         <style>
             :root {
                 --coyote: #c19a6b;
@@ -453,10 +453,10 @@
                 getHeaderProfileFromCache,
                 setHeaderProfileCache,
             } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
-            import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-9";
+            import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-10";
             import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
             import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
-            import { syncCarouselDotsNav } from "https://strzelca.pl/carousel-dots.mjs?v=2026-03-23-1";
+            import { syncCarouselDotsNav } from "https://strzelca.pl/carousel-dots.mjs?v=2026-03-24-1";
             import {
                 initNewsletterOptInFromEmptyCarousels,
                 buildEmptyCarouselArticleHtml,
@@ -551,9 +551,9 @@ const firebaseConfig = {
                 try {
                     const [{ initActivityTracker }, { initUserStatusMonitor }, { initVisitTracker }] =
                         await Promise.all([
-                            import("https://strzelca.pl/activity-tracker.mjs?v=2026-03-21-2"),
+                            import("https://strzelca.pl/activity-tracker.mjs?v=2026-03-23-1"),
                             import("https://strzelca.pl/user-status-monitor.mjs?v=2026-02-06-1"),
-                            import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2"),
+                            import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-23-1"),
                         ]);
                     await Promise.all([
                         initActivityTracker(auth, db),
@@ -741,10 +741,11 @@ const firebaseConfig = {
             function syncTrainingCarouselDots() {
                 const dots = document.getElementById("training-carousel-dots");
                 const n = trainingItems.length;
-                syncCarouselDotsNav(dots, n, trainingCarouselLeftIndex, (idx) => window.goToTrainingCarousel(idx));
+                syncCarouselDotsNav(dots, n, trainingCarouselLeftIndex, (idx) => window.goToTrainingCarousel(idx), trainingLoopEnabled);
             }
 
             window.goToTrainingCarousel = (idx) => {
+                if (!trainingLoopEnabled) return;
                 const n = trainingItems.length;
                 if (n <= 1 || idx < 0 || idx >= n || idx === trainingCarouselLeftIndex) return;
                 const track = document.getElementById("training-track");
@@ -1250,7 +1251,7 @@ const firebaseConfig = {
     ></script>
     <script
       type="module"
-      src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-6"
+      src="https://strzelca.pl/messages-widget.mjs?v=2026-03-23-1"
     ></script>
   </body>
 </html>

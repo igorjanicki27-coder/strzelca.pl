@@ -1366,7 +1366,19 @@ async function main() {
   let isOpen = getStoredOpen();
   let convUnsub = null;
   let threadUnsub = null;
-  let badgeTimer = null;
+  let supportBadgeUnsub = null;
+  let supportThreadUnsubs = [];
+  let supportReadDebounceTimer = null;
+  let supportReadInFlight = false;
+  const conversationReadInFlight = new Set();
+  const BADGE_LEADER_RENEW_MS = 15 * 1000;
+  const BADGE_LEASE_MS = 45 * 1000;
+  const BADGE_LEADER_LOCK_KEY = `strzelca_messages_badge_leader_v1_${uid}`;
+  const BADGE_CACHE_KEY = `strzelca_messages_badge_cache_v1_${uid}`;
+  const BADGE_TAB_ID = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  let badgeLeadershipInterval = null;
+  let badgePagehideHandler = null;
+  let badgeStorageHandler = null;
   let previousUnreadTotal = 0; // Śledzenie poprzedniej liczby nieprzeczytanych wiadomości
 
   let state = {
@@ -1379,6 +1391,167 @@ async function main() {
     supportLastText: "Pomoc / zgłoszenia",
     supportUnread: 0,
   };
+
+  function applyUnreadBadge() {
+    const totalUnreadWithSupport =
+      (Number(state.unreadTotal || 0) || 0) + (Number(state.supportUnread || 0) || 0);
+    setBadgeEl(badge, totalUnreadWithSupport);
+    if (totalUnreadWithSupport > previousUnreadTotal && previousUnreadTotal >= 0) {
+      playMessageSound();
+    }
+    previousUnreadTotal = totalUnreadWithSupport;
+    try {
+      localStorage.setItem(
+        BADGE_CACHE_KEY,
+        JSON.stringify({
+          unreadTotal: Number(state.unreadTotal || 0) || 0,
+          supportUnread: Number(state.supportUnread || 0) || 0,
+          supportLastText: typeof state.supportLastText === "string" ? state.supportLastText.slice(0, 70) : "",
+          total: totalUnreadWithSupport,
+          ts: Date.now(),
+        }),
+      );
+    } catch {
+      // ignore
+    }
+  }
+
+  function readBadgeCache() {
+    try {
+      const raw = localStorage.getItem(BADGE_CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  function applyBadgeCache(payload) {
+    if (!payload || typeof payload !== "object") return;
+    if (typeof payload.unreadTotal === "number") state.unreadTotal = payload.unreadTotal;
+    if (typeof payload.supportUnread === "number") state.supportUnread = payload.supportUnread;
+    if (typeof payload.supportLastText === "string" && payload.supportLastText.trim()) {
+      state.supportLastText = payload.supportLastText.slice(0, 70);
+    }
+    const totalUnreadWithSupport =
+      (Number(state.unreadTotal || 0) || 0) + (Number(state.supportUnread || 0) || 0);
+    setBadgeEl(badge, totalUnreadWithSupport);
+    previousUnreadTotal = totalUnreadWithSupport;
+    renderList();
+  }
+
+  function readBadgeLeaderLease() {
+    try {
+      const raw = localStorage.getItem(BADGE_LEADER_LOCK_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return null;
+      if (typeof parsed.tabId !== "string" || typeof parsed.expiresAt !== "number") return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeBadgeLeaderLease(expiresAt) {
+    try {
+      localStorage.setItem(
+        BADGE_LEADER_LOCK_KEY,
+        JSON.stringify({
+          tabId: BADGE_TAB_ID,
+          expiresAt,
+        }),
+      );
+    } catch {
+      // ignore
+    }
+  }
+
+  function renewBadgeLeadership() {
+    const lease = readBadgeLeaderLease();
+    const now = Date.now();
+    if (!lease || lease.expiresAt <= now || lease.tabId === BADGE_TAB_ID) {
+      writeBadgeLeaderLease(now + BADGE_LEASE_MS);
+      return true;
+    }
+    return false;
+  }
+
+  function releaseBadgeLeadership() {
+    try {
+      const lease = readBadgeLeaderLease();
+      if (lease?.tabId === BADGE_TAB_ID) {
+        localStorage.removeItem(BADGE_LEADER_LOCK_KEY);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  function stopPassiveRealtimeSubscriptions() {
+    if (convUnsub) {
+      convUnsub();
+      convUnsub = null;
+    }
+    if (supportBadgeUnsub) {
+      supportBadgeUnsub();
+      supportBadgeUnsub = null;
+    }
+  }
+
+  function ensurePassiveRealtimeSubscriptions() {
+    if (isOpen) {
+      if (!convUnsub) subscribeConversations();
+      if (!supportBadgeUnsub) subscribeSupportBadgeListener();
+      return;
+    }
+
+    const isLeader = renewBadgeLeadership();
+    if (!isLeader) {
+      stopPassiveRealtimeSubscriptions();
+      return;
+    }
+    if (!convUnsub) subscribeConversations();
+    if (!supportBadgeUnsub) subscribeSupportBadgeListener();
+  }
+
+  function startBadgeLeadershipLoop() {
+    if (badgeLeadershipInterval) {
+      clearInterval(badgeLeadershipInterval);
+      badgeLeadershipInterval = null;
+    }
+    if (badgePagehideHandler) {
+      window.removeEventListener("pagehide", badgePagehideHandler);
+      badgePagehideHandler = null;
+    }
+    if (badgeStorageHandler) {
+      window.removeEventListener("storage", badgeStorageHandler);
+      badgeStorageHandler = null;
+    }
+
+    applyBadgeCache(readBadgeCache());
+    ensurePassiveRealtimeSubscriptions();
+    badgeLeadershipInterval = setInterval(() => {
+      ensurePassiveRealtimeSubscriptions();
+    }, BADGE_LEADER_RENEW_MS);
+
+    badgePagehideHandler = () => {
+      releaseBadgeLeadership();
+    };
+    window.addEventListener("pagehide", badgePagehideHandler);
+
+    badgeStorageHandler = (ev) => {
+      if (ev.key !== BADGE_CACHE_KEY || !ev.newValue) return;
+      try {
+        applyBadgeCache(JSON.parse(ev.newValue));
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener("storage", badgeStorageHandler);
+  }
 
   function renderAvatar(el, name, avatarUrl) {
     el.innerHTML = "";
@@ -1642,26 +1815,21 @@ async function main() {
     }
   }
 
-  async function markConversationRead({ conversationId, peerId }) {
+  async function markConversationRead({ conversationId, unreadDocs = [], unreadHint = 0 }) {
+    if (!conversationId) return;
+    if (conversationReadInFlight.has(conversationId)) return;
+    const docsToMark = Array.isArray(unreadDocs) ? unreadDocs : [];
+    const shouldZeroCounter = docsToMark.length > 0 || (Number(unreadHint || 0) || 0) > 0;
+    if (!shouldZeroCounter) return;
+
+    conversationReadInFlight.add(conversationId);
     try {
       const convRef = doc(db, "privateConversations", conversationId);
-      // Zakładamy, że dokument konwersacji istnieje (ensureConversation robi to wcześniej),
-      // więc nie musimy go czytać w transakcji (czytanie nieistniejącego doca powodowało permission-denied).
       await setDoc(convRef, { unreadCounts: { [uid]: 0 } }, { merge: true });
 
-      // batch set isRead = true for up to 200 - używamy conversationId dla spójności
-      const mSnap = await getDocs(
-        query(
-          collection(db, "privateMessages"),
-          where("conversationId", "==", conversationId),
-          where("senderId", "==", peerId),
-          where("isRead", "==", false),
-          limit(200)
-        )
-      );
-      if (!mSnap.empty) {
+      if (docsToMark.length > 0) {
         const batch = writeBatch(db);
-        mSnap.docs.forEach((d) => batch.update(d.ref, { isRead: true }));
+        docsToMark.forEach((d) => batch.update(d.ref, { isRead: true }));
         await batch.commit();
       }
     } catch (e) {
@@ -1674,6 +1842,8 @@ async function main() {
         return;
       }
       console.warn("markConversationRead failed:", msg || e);
+    } finally {
+      conversationReadInFlight.delete(conversationId);
     }
   }
 
@@ -1801,19 +1971,7 @@ async function main() {
 
         state.conversations = list;
         state.unreadTotal = totalUnread;
-        
-        // Dodaj nieprzeczytane wiadomości support do całkowitej liczby
-        const supportUnread = Number(state.supportUnread || 0) || 0;
-        const totalUnreadWithSupport = totalUnread + supportUnread;
-        
-        setBadgeEl(badge, totalUnreadWithSupport);
-        
-        // Odtwórz dźwięk jeśli liczba nieprzeczytanych wiadomości wzrosła
-        if (totalUnreadWithSupport > previousUnreadTotal && previousUnreadTotal >= 0) {
-          playMessageSound();
-        }
-        previousUnreadTotal = totalUnreadWithSupport;
-        
+        applyUnreadBadge();
         renderList();
       },
       (err) => {
@@ -1850,27 +2008,31 @@ async function main() {
     return conversationId;
   }
 
-  async function refreshUnreadBadgeOnce() {
-    try {
-      const snap = await getDocs(
-        query(
-          collection(db, "privateConversations"),
-          where("participants", "array-contains", uid),
-          orderBy("updatedAt", "desc"),
-          limit(40)
-        )
-      );
-      let totalUnread = 0;
-      snap.docs.forEach((d) => {
-        const data = d.data() || {};
-        const unread = Number((data.unreadCounts || {})[uid] || 0) || 0;
-        totalUnread += unread;
-      });
-      setBadgeEl(badge, totalUnread);
-    } catch {
-      // jeśli nie ma indeksu / permissions, nie spamuj konsoli
-      setBadgeEl(badge, 0);
-    }
+  function subscribeSupportBadgeListener() {
+    if (supportBadgeUnsub) supportBadgeUnsub();
+    supportBadgeUnsub = onSnapshot(
+      doc(db, "userInboxes", uid),
+      (snap) => {
+        const data = snap.exists() ? (snap.data() || {}) : {};
+        state.supportUnread = Number(data.supportUnread || 0) || 0;
+        if (typeof data.supportLastText === "string" && data.supportLastText.trim()) {
+          state.supportLastText = data.supportLastText.slice(0, 70);
+        }
+        applyUnreadBadge();
+        renderList();
+      },
+      (err) => {
+        const msg = (err?.message || "").toString();
+        if (
+          msg.includes("Missing or insufficient permissions") ||
+          msg.includes("permission-denied") ||
+          msg.includes("Not authenticated")
+        ) {
+          return;
+        }
+        console.warn("support badge snapshot error:", msg || err);
+      }
+    );
   }
 
   function subscribeThread(peerId) {
@@ -1920,6 +2082,10 @@ async function main() {
     
     async function recompute() {
       const merged = mapDocs(allDocs).sort((x, y) => (x.timestampMs || 0) - (y.timestampMs || 0));
+      const unreadDocsFromPeer = allDocs.filter((d) => {
+        const data = d.data() || {};
+        return data.senderId === peerId && data.recipientId === uid && data.isRead !== true;
+      });
       
       // Sprawdź czy są nowe nieprzeczytane wiadomości od tego użytkownika
       const unreadFromPeer = merged.filter(m => m.senderId === peerId && m.recipientId === uid && !m.isRead);
@@ -1942,8 +2108,12 @@ async function main() {
       renderMessages(merged);
       
       // Oznacz jako przeczytane jeśli panel jest otwarty i ta konwersacja jest wybrana
-      if (isOpen && state.selectedPeerId === peerId) {
-        await markConversationRead({ conversationId, peerId });
+      if (isOpen && state.selectedPeerId === peerId && unreadDocsFromPeer.length > 0) {
+        await markConversationRead({
+          conversationId,
+          unreadDocs: unreadDocsFromPeer,
+          unreadHint: unreadDocsFromPeer.length,
+        });
       }
     }
 
@@ -2017,71 +2187,8 @@ async function main() {
   }
 
   // =========================
-  // SUPPORT CHAT (API)
+  // SUPPORT CHAT (realtime Firestore + API read-ack)
   // =========================
-  let supportTimer = null;
-  async function fetchSupportThread() {
-    // Pobierz Firebase Auth ID token jako fallback jeśli cookie SSO nie działa
-    let authToken = null;
-    try {
-      if (user) {
-        authToken = await user.getIdToken(false); // false = nie wymuszaj odświeżenia
-      } else {
-        console.warn("fetchSupportThread: No user available");
-      }
-    } catch (e) {
-      console.warn("fetchSupportThread: Failed to get ID token", e);
-    }
-    
-    const headers = { "Content-Type": "application/json" };
-    if (authToken) {
-      headers["Authorization"] = `Bearer ${authToken}`;
-    }
-    
-    const apiUrl = getApiUrl(`/api/messages/thread?peerId=admin&limit=200`);
-    try {
-      const res = await fetch(apiUrl, {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store",
-        headers,
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        console.warn("fetchSupportThread: API error", {
-          status: res.status,
-          statusText: res.statusText,
-          error: data?.error,
-          apiUrl,
-          hasAuthToken: !!authToken,
-          hasUser: !!user
-        });
-        throw new Error(data?.error || `HTTP ${res.status}`);
-      }
-      if (!data?.success) {
-        throw new Error(data?.error || "Unknown error");
-      }
-      
-      const items = Array.isArray(data?.data?.messages) ? data.data.messages : [];
-      
-      // update preview + unread for support item
-      try {
-        const last = items[items.length - 1];
-        state.supportLastText = last?.content ? String(last.content).slice(0, 70) : "Pomoc / zgłoszenia";
-        state.supportUnread = items.filter((m) => m && m.senderId === "admin" && m.isRead === false).length;
-        // Zaktualizuj badge z uwzględnieniem support unread
-        const totalUnreadWithSupport = state.unreadTotal + state.supportUnread;
-        setBadgeEl(badge, totalUnreadWithSupport);
-        renderList();
-      } catch {}
-      
-      return items;
-    } catch (e) {
-      console.error("fetchSupportThread: Request failed", e);
-      throw e;
-    }
-  }
-
   function renderSupportMessages(items) {
     // map to widget render format
     // Dla wiadomości support: jeśli senderId === "admin", używamy "Pomoc STRZELCA.PL" jako nazwy nadawcy
@@ -2113,9 +2220,37 @@ async function main() {
     renderMessages(mapped);
   }
 
+  function supportDocToItem(docSnap) {
+    const data = docSnap.data() || {};
+    const ts = data.timestamp;
+    const timestampMs =
+      typeof ts?.toMillis === "function" ? ts.toMillis() : typeof ts === "number" ? ts : Date.now();
+    return {
+      id: docSnap.id,
+      content: (data.content || "").toString(),
+      senderId: data.senderId || null,
+      senderName: data.senderName || null,
+      recipientId: data.recipientId || null,
+      isRead: data.isRead === true,
+      timestampMs,
+      imageAttachment:
+        data.imageAttachment &&
+        typeof data.imageAttachment.mimeType === "string" &&
+        typeof data.imageAttachment.dataBase64 === "string"
+          ? {
+              mimeType: data.imageAttachment.mimeType,
+              dataBase64: data.imageAttachment.dataBase64,
+            }
+          : null,
+    };
+  }
+
   async function markSupportRead(items) {
+    if (supportReadInFlight) return;
     // Oznacz jako przeczytane wiadomości od "admin" do usera
     const toMark = (items || []).filter((m) => m && m.senderId === "admin" && m.isRead === false && m.id);
+    if (!toMark.length) return;
+    supportReadInFlight = true;
     
     // Pobierz Firebase Auth ID token jako fallback
     let authToken = null;
@@ -2132,72 +2267,110 @@ async function main() {
       headers["Authorization"] = `Bearer ${authToken}`;
     }
     
-    for (const m of toMark.slice(0, 50)) {
-      try {
-        const apiUrl = getApiUrl(`/api/messages/${m.id}/read`);
-        await fetch(apiUrl, { 
-          method: "PUT", 
-          credentials: "include",
-          headers
-        });
-      } catch {}
+    try {
+      await Promise.all(
+        toMark.slice(0, 50).map(async (m) => {
+          try {
+            const apiUrl = getApiUrl(`/api/messages/${m.id}/read`);
+            await fetch(apiUrl, {
+              method: "PUT",
+              credentials: "include",
+              headers,
+            });
+          } catch {}
+        })
+      );
+    } finally {
+      supportReadInFlight = false;
     }
+  }
+
+  function scheduleSupportRead(items) {
+    if (supportReadDebounceTimer) clearTimeout(supportReadDebounceTimer);
+    supportReadDebounceTimer = setTimeout(() => {
+      void markSupportRead(items);
+    }, 250);
   }
 
   function subscribeSupportThread() {
     if (threadUnsub) threadUnsub();
-    if (supportTimer) clearInterval(supportTimer);
-    supportTimer = null;
-    let previousSupportMessageCount = 0;
-    let previousSupportLastMessageTime = 0;
-
-    const tick = async () => {
+    supportThreadUnsubs.forEach((u) => {
       try {
-        const items = await fetchSupportThread();
-        
-        // Sprawdź czy są nowe nieprzeczytane wiadomości od admina
-        const unreadFromAdmin = items.filter(m => m && m.senderId === "admin" && m.isRead === false);
-        const lastMessage = items[items.length - 1];
-        const lastMessageTime = lastMessage?.timestampMs || lastMessage?.timestamp || 0;
-        
-        // Odtwórz dźwięk jeśli:
-        // 1. Jest nowa nieprzeczytana wiadomość od admina
-        // 2. Ostatnia wiadomość jest nowsza niż poprzednia (nowa wiadomość przyszła)
-        // 3. Panel nie jest otwarty lub otwarta jest inna konwersacja
-        if (unreadFromAdmin.length > 0 && lastMessageTime > previousSupportLastMessageTime && 
-            (!isOpen || state.selectedPeerId !== SUPPORT_PEER_ID)) {
-          playMessageSound();
-        }
-        
-        previousSupportMessageCount = items.length;
-        previousSupportLastMessageTime = lastMessageTime;
-        
-        renderSupportMessages(items);
-        
-        // Oznacz jako przeczytane jeśli panel jest otwarty i ta konwersacja jest wybrana
-        if (isOpen && state.selectedPeerId === SUPPORT_PEER_ID && items.length > 0) {
-          await markSupportRead(items);
-        }
-      } catch (e) {
-        const msg = (e?.message || "").toString();
-        msgs.innerHTML = `<div class="empty">${
-          msg.includes("Not authenticated")
-            ? "Musisz być zalogowany, aby pisać do Pomocy. Zaloguj się i spróbuj ponownie."
-            : "Nie udało się załadować Pomocy. Spróbuj odświeżyć."
-        }</div>`;
+        u();
+      } catch {}
+    });
+    supportThreadUnsubs = [];
+    let fromUserToSupport = [];
+    let fromSupportToUser = [];
+
+    const recompute = () => {
+      const items = [...fromUserToSupport, ...fromSupportToUser].sort(
+        (a, b) => (a.timestampMs || 0) - (b.timestampMs || 0)
+      );
+      const unreadFromAdmin = items.filter(
+        (m) => m && m.senderId === SUPPORT_PEER_ID && m.recipientId === uid && m.isRead === false
+      );
+      const unreadCount = unreadFromAdmin.length;
+      state.supportUnread = unreadCount;
+      const last = items[items.length - 1];
+      state.supportLastText = last?.content
+        ? String(last.content).slice(0, 70)
+        : "Pomoc / zgłoszenia";
+      applyUnreadBadge();
+      renderList();
+      renderSupportMessages(items);
+
+      if (isOpen && state.selectedPeerId === SUPPORT_PEER_ID && unreadCount > 0) {
+        scheduleSupportRead(items);
       }
     };
 
-    tick();
-    supportTimer = setInterval(() => {
-      if (isOpen && state.selectedPeerId === SUPPORT_PEER_ID) tick();
-    }, 3500);
+    const qFromUser = query(
+      collection(db, "messages"),
+      where("senderId", "==", uid)
+    );
+    const qFromSupport = query(
+      collection(db, "messages"),
+      where("recipientId", "==", uid)
+    );
+
+    const unsubUser = onSnapshot(
+      qFromUser,
+      (snap) => {
+        fromUserToSupport = snap.docs
+          .map(supportDocToItem)
+          .filter((m) => m && m.recipientId === SUPPORT_PEER_ID);
+        recompute();
+      },
+      (err) => {
+        console.warn("support thread (user->support) snapshot:", err?.message || err);
+      }
+    );
+    const unsubSupport = onSnapshot(
+      qFromSupport,
+      (snap) => {
+        fromSupportToUser = snap.docs
+          .map(supportDocToItem)
+          .filter((m) => m && m.senderId === SUPPORT_PEER_ID);
+        recompute();
+      },
+      (err) => {
+        console.warn("support thread (support->user) snapshot:", err?.message || err);
+      }
+    );
+    supportThreadUnsubs = [unsubUser, unsubSupport];
 
     threadUnsub = () => {
-      try {
-        if (supportTimer) clearInterval(supportTimer);
-      } catch {}
-      supportTimer = null;
+      supportThreadUnsubs.forEach((u) => {
+        try {
+          u();
+        } catch {}
+      });
+      supportThreadUnsubs = [];
+      if (supportReadDebounceTimer) {
+        clearTimeout(supportReadDebounceTimer);
+      }
+      supportReadDebounceTimer = null;
     };
   }
 
@@ -2289,14 +2462,7 @@ async function main() {
         pendingImageAttachment = null;
         updatePendingAttachUI();
         ta.focus();
-        // refresh
-        await fetchSupportThread().then((items) => {
-          console.log("doSend: Refreshed support thread, got", items?.length || 0, "messages");
-          renderSupportMessages(items);
-          return markSupportRead(items);
-        }).catch((e) => {
-          console.error("doSend: Failed to refresh support thread", e);
-        });
+        // Realtime snapshot sam dociągnie nową wiadomość.
       } else {
         console.log("doSend: Sending private message to", state.selectedPeerId);
         await ensureConversation(state.selectedPeerId).catch((e) => {
@@ -2534,12 +2700,9 @@ async function main() {
     isOpen = true;
     setStoredOpen(true);
     panel.style.display = "block";
-    // realtime uruchamiamy dopiero po otwarciu okna (żeby nie generować Listen na każdej stronie)
-    subscribeConversations();
+    if (!convUnsub) subscribeConversations();
+    if (!supportBadgeUnsub) subscribeSupportBadgeListener();
     selectPeer(state.selectedPeerId, state.selectedPeerId === SUPPORT_PEER_ID ? "Obsługa Strzelca.pl" : "Wiadomości");
-
-    if (badgeTimer) clearInterval(badgeTimer);
-    badgeTimer = null;
   }
 
   // Otwieranie z zewnątrz (np. kafelek na kontakt.strzelca.pl): nie możemy wywołać openPanel()
@@ -2556,7 +2719,7 @@ async function main() {
       state.selectedPeerId = SUPPORT_PEER_ID;
       setStoredSelectedPeerId(SUPPORT_PEER_ID);
       if (!isOpen) openPanel();
-      else subscribeConversations();
+      else if (!convUnsub) subscribeConversations();
       selectPeer(SUPPORT_PEER_ID, "Pomoc STRZELCA.PL");
       if (draft) {
         ta.value = draft;
@@ -2575,23 +2738,12 @@ async function main() {
     panel.style.display = "none";
     if (threadUnsub) threadUnsub();
     threadUnsub = null;
-    if (convUnsub) convUnsub();
-    convUnsub = null;
-
-    // gdy zamknięte: odśwież badge co jakiś czas bez Listen
-    if (badgeTimer) clearInterval(badgeTimer);
-    badgeTimer = setInterval(() => {
-      if (!isOpen) refreshUnreadBadgeOnce().catch(() => {});
-    }, 30000);
+    ensurePassiveRealtimeSubscriptions();
   }
 
   // init
   renderList();
-  // Bez Listen na starcie: tylko badge (best-effort)
-  refreshUnreadBadgeOnce().catch(() => {});
-  badgeTimer = setInterval(() => {
-    if (!isOpen) refreshUnreadBadgeOnce().catch(() => {});
-  }, 30000);
+  startBadgeLeadershipLoop();
   if (isOpen) openPanel();
 }
 }
@@ -2615,4 +2767,3 @@ if (typeof window !== "undefined") {
     }
   }
 }
-

@@ -286,7 +286,7 @@
         }
     </style>
     <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-23-1" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-24-1" />
     <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1" crossorigin />
@@ -523,7 +523,7 @@
         } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
         import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
         import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
-        import { syncCarouselDotsNav } from "https://strzelca.pl/carousel-dots.mjs?v=2026-03-23-1";
+        import { syncCarouselDotsNav } from "https://strzelca.pl/carousel-dots.mjs?v=2026-03-24-1";
         import {
             initNewsletterOptInFromEmptyCarousels,
             buildEmptyCarouselArticleHtml,
@@ -603,9 +603,9 @@ const firebaseConfig = {
             try {
                 const [{ initActivityTracker }, { initUserStatusMonitor }, { initVisitTracker }] =
                     await Promise.all([
-                        import("https://strzelca.pl/activity-tracker.mjs?v=2026-03-21-2"),
+                        import("https://strzelca.pl/activity-tracker.mjs?v=2026-03-23-1"),
                         import("https://strzelca.pl/user-status-monitor.mjs?v=2026-02-06-1"),
-                        import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2"),
+                        import("https://strzelca.pl/visit-tracker.mjs?v=2026-03-23-1"),
                     ]);
                 await Promise.all([
                     initActivityTracker(auth, db),
@@ -638,10 +638,11 @@ const firebaseConfig = {
         function syncCharityCarouselDots() {
             const dots = document.getElementById('charity-carousel-dots');
             const n = charityCarouselSegments.length;
-            syncCarouselDotsNav(dots, n, charityCarouselLeftIndex, (idx) => window.goToCharityCarousel(idx));
+            syncCarouselDotsNav(dots, n, charityCarouselLeftIndex, (idx) => window.goToCharityCarousel(idx), charityLoopEnabled);
         }
 
         window.goToCharityCarousel = (idx) => {
+            if (!charityLoopEnabled) return;
             const n = charityCarouselSegments.length;
             if (n <= 1 || idx < 0 || idx >= n || idx === charityCarouselLeftIndex) return;
             const track = document.getElementById('charity-track');
@@ -1753,7 +1754,7 @@ const firebaseConfig = {
     ></script>
     <script
       type="module"
-      src="https://strzelca.pl/messages-widget.mjs?v=2026-03-21-6"
+      src="https://strzelca.pl/messages-widget.mjs?v=2026-03-23-1"
     ></script>
   </body>
 </html>

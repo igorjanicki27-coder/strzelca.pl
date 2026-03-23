@@ -220,6 +220,12 @@ service cloud.firestore {
       allow delete: if isAdminOrSuperAdmin();
     }
 
+    // Lekki inbox użytkownika (badge unread) aktualizowany przez backend (Admin SDK).
+    match /userInboxes/{userId} {
+      allow read: if isOwner(userId) || isAdminOrSuperAdmin();
+      allow create, update, delete: if false;
+    }
+
     // =============================================================================
     // MAILING LIST & CONTACT FORMS
     // =============================================================================

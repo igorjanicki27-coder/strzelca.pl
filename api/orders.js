@@ -10,6 +10,7 @@ const {
   getSessionUser,
   readJsonBody,
 } = require('./_sso-utils');
+const { firestoreValueToJsonable } = require('./_serialize-firestore');
 
 let dbManager = null;
 
@@ -339,6 +340,7 @@ module.exports = async (req, res) => {
   }
 
   try {
+    initAdmin();
     await initDatabase();
     const sessionUser = await getSessionUser(req);
     
@@ -458,7 +460,10 @@ module.exports = async (req, res) => {
           return bTime - aTime; // desc
         });
         
-        res.status(200).json({ success: true, data: orders });
+        const ordersSafe = orders.map((o) =>
+          o && typeof o === 'object' ? firestoreValueToJsonable(o) : o
+        );
+        res.status(200).json({ success: true, data: ordersSafe });
         return;
       } catch (error) {
         console.error('Error fetching orders:', error);

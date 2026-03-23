@@ -5,13 +5,12 @@
 
 const REGULAMIN_TXT_URL = "https://dokumenty.strzelca.pl/regulamin-witryny.txt";
 export const STRZELCA_ORDERS_API = "https://strzelca.pl/api/orders";
-const STRZELCA_MESSAGES_API = "https://strzelca.pl/api/messages";
-const STRZELCA_SEND_CONTACT_EMAIL_API = "https://strzelca.pl/api/send-contact-email";
+const KONTAKT_EMBED_ORIGIN = "https://kontakt.strzelca.pl";
 
 let regulaminPlainTextCache = null;
 let regulaminRichHtmlCache = null;
 
-/** @type {null | { context: string, db: import('firebase/firestore').Firestore, auth: import('firebase/auth').Auth, regulaminCfg: { docTitle: string }, showParcel: boolean, showAddress: boolean, guestMode?: boolean, displayName?: string, price?: number, successMessage?: string }} */
+/** @type {null | { context: string, db: import('firebase/firestore').Firestore, auth: import('firebase/auth').Auth, regulaminCfg: { docTitle: string }, showParcel: boolean, showAddress: boolean, displayName?: string, price?: number, successMessage?: string }} */
 let pendingForm = null;
 
 function prefixDisplayTitle(context, rawTitle) {
@@ -41,7 +40,7 @@ const CONTEXT = {
   training: {
     loginTitle: "Zapytanie o ofertę",
     loginLeadHtml: (raw) =>
-      `Aby uzyskać więcej informacji dot. <strong>${escapeHtml(raw)}</strong>, zaloguj się albo przejdź do formularza zapytania.`,
+      `Aby uzyskać więcej informacji dot. <strong>${escapeHtml(raw)}</strong>, zaloguj się albo otwórz formularz kontaktowy.`,
     contactTopic: "Pytanie o szkolenie",
     formTitle: "Zapytanie o ofertę",
     submitIcon: "fa-paper-plane",
@@ -72,6 +71,67 @@ function b64DecodeUtf8(str) {
   } catch {
     return "";
   }
+}
+
+/** Tekst startowy w polu wiadomości (min. 10 znaków — walidacja kontaktu). */
+function kontaktPrefillForTraining(rawTitle) {
+  const name = String(rawTitle || "").trim() || "szkolenie";
+  return `Pytanie o szkolenie „${name}”: proszę o więcej informacji.`;
+}
+
+function openKontaktEmbedModal(prefillText) {
+  if (typeof document === "undefined") return;
+  window.strzelcaCloseKontaktEmbedModal?.();
+
+  const wrap = document.createElement("div");
+  wrap.id = "strzelca-kontakt-embed-modal";
+  wrap.className =
+    "fixed inset-0 z-[205] flex items-center justify-center p-3 md:p-4 bg-black/90 backdrop-blur-md";
+  wrap.setAttribute("role", "dialog");
+  wrap.setAttribute("aria-modal", "true");
+  wrap.setAttribute("aria-label", "Formularz kontaktowy");
+
+  const panel = document.createElement("div");
+  panel.className =
+    "relative w-full max-w-lg max-h-[min(92dvh,720px)] flex flex-col rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl overflow-hidden";
+
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className =
+    "absolute top-3 right-3 z-10 text-zinc-400 hover:text-white p-2 rounded-lg hover:bg-zinc-800 transition";
+  closeBtn.setAttribute("aria-label", "Zamknij");
+  closeBtn.innerHTML = '<i class="fa-solid fa-times text-xl" aria-hidden="true"></i>';
+  closeBtn.onclick = function () {
+    window.strzelcaCloseKontaktEmbedModal?.();
+  };
+
+  const iframe = document.createElement("iframe");
+  iframe.title = "Formularz kontaktowy STRZELCA.PL";
+  iframe.className = "w-full border-0 min-h-[420px] h-[min(75dvh,560px)] bg-zinc-950";
+  iframe.src = `${KONTAKT_EMBED_ORIGIN}/?embed=1&prefill=${encodeURIComponent(prefillText)}`;
+  iframe.setAttribute("loading", "lazy");
+  iframe.referrerPolicy = "strict-origin-when-cross-origin";
+
+  panel.appendChild(closeBtn);
+  panel.appendChild(iframe);
+  wrap.appendChild(panel);
+  wrap.onclick = function (e) {
+    if (e.target === wrap) window.strzelcaCloseKontaktEmbedModal?.();
+  };
+  panel.onclick = function (e) {
+    e.stopPropagation();
+  };
+
+  const onMsg = function (ev) {
+    if (ev.origin !== KONTAKT_EMBED_ORIGIN) return;
+    if (ev.data && ev.data.type === "strzelca-contact-embed-done") {
+      window.strzelcaCloseKontaktEmbedModal?.();
+    }
+  };
+  window.__strzelcaKontaktEmbedOnMessage = onMsg;
+  window.addEventListener("message", onMsg);
+
+  document.body.appendChild(wrap);
 }
 
 function closeRegulaminModal() {
@@ -161,7 +221,7 @@ async function logOrderActivity(db, user, displayName, context) {
   }
 }
 
-function renderOrderFormModal({ cfg, context, rawTitle, price, db, auth, user, userProfile, guestMode }) {
+function renderOrderFormModal({ cfg, context, rawTitle, price, db, auth, user, userProfile }) {
   const displayName = prefixDisplayTitle(context, rawTitle);
   const address = userProfile?.address || {};
   const decodedAddress = {
@@ -183,7 +243,6 @@ function renderOrderFormModal({ cfg, context, rawTitle, price, db, auth, user, u
     showParcel: cfg.showParcel,
     showAddress: cfg.showAddress,
     successMessage: cfg.successMessage,
-    guestMode: !!guestMode,
   };
 
   const orderFieldClass =
@@ -222,14 +281,10 @@ function renderOrderFormModal({ cfg, context, rawTitle, price, db, auth, user, u
             </div>`
     : "";
 
-  const emailLabel = guestMode ? "Email" : "Email (z konta)";
-  const emailField = guestMode
-    ? `<input type="email" id="order-email" value="" class="${orderFieldClass}" required autocomplete="email" placeholder="Twój adres email">`
-    : `<input type="email" id="order-email" value="${escapeHtml(userProfile?.email || user?.email || "")}"
+  const emailField = `<input type="email" id="order-email" value="${escapeHtml(userProfile?.email || user?.email || "")}"
                  class="${orderFieldClass} cursor-not-allowed opacity-90" readonly required aria-readonly="true" title="E-mail z konta — edycja w profilu">`;
 
-  const phoneVal =
-    !guestMode && userProfile?.phone ? b64DecodeUtf8(userProfile.phone) : "";
+  const phoneVal = userProfile?.phone ? b64DecodeUtf8(userProfile.phone) : "";
 
   const modal = document.createElement("div");
   modal.id = "order-form-modal";
@@ -260,7 +315,7 @@ function renderOrderFormModal({ cfg, context, rawTitle, price, db, auth, user, u
         </div>
 
         <div class="mb-3">
-          <label class="block text-xs text-zinc-500 mb-1">${escapeHtml(emailLabel)}</label>
+          <label class="block text-xs text-zinc-500 mb-1">Email (z konta)</label>
           ${emailField}
         </div>
 
@@ -347,10 +402,10 @@ function showLoginModal(cfg, rawTitle, flowDeps) {
     : "block w-full bg-[#C19A6B] text-black px-6 py-3 rounded-lg font-bold text-center hover:bg-[#b18a5f] transition";
 
   const altRow = isTraining
-    ? `<button type="button" onclick="window.__strzelcaOpenTrainingGuestInquiryForm && window.__strzelcaOpenTrainingGuestInquiryForm()"
+    ? `<button type="button" onclick="window.__strzelcaOpenKontaktEmbedFromTraining && window.__strzelcaOpenKontaktEmbedFromTraining()"
           class="block w-full border border-zinc-700 text-zinc-300 px-6 py-3 rounded-lg font-bold text-center hover:bg-zinc-800 transition">
           <i class="fa-solid fa-envelope mr-2" aria-hidden="true"></i>
-          Przejdź do formularza zapytania
+          Przejdź do formularza kontaktowego
         </button>`
     : `<a href="https://kontakt.strzelca.pl?topic=${topic}&product=${product}"
            class="block w-full border border-zinc-700 text-zinc-300 px-6 py-3 rounded-lg font-bold text-center hover:bg-zinc-800 transition">
@@ -389,10 +444,9 @@ function showLoginModal(cfg, rawTitle, flowDeps) {
  * @param {'shop'|'training'} deps.context
  * @param {string} deps.rawTitle
  * @param {number} [deps.price]
- * @param {boolean} [deps.allowGuestForm]
  */
 export async function openOrderInquiryFlow(deps) {
-  const { auth, db, getDoc, doc, context, rawTitle, price = 0, allowGuestForm = false } = deps;
+  const { auth, db, getDoc, doc, context, rawTitle, price = 0 } = deps;
   const cfg = CONTEXT[context];
   if (!cfg) {
     console.error("openOrderInquiryFlow: nieznany context", context);
@@ -401,20 +455,6 @@ export async function openOrderInquiryFlow(deps) {
 
   const user = auth.currentUser;
   if (!user) {
-    if (allowGuestForm && context === "training") {
-      renderOrderFormModal({
-        cfg,
-        context,
-        rawTitle,
-        price,
-        db,
-        auth,
-        user: null,
-        userProfile: null,
-        guestMode: true,
-      });
-      return;
-    }
     showLoginModal(cfg, rawTitle, { auth, db, getDoc, doc, context, rawTitle, price });
     return;
   }
@@ -436,19 +476,26 @@ export async function openOrderInquiryFlow(deps) {
     auth,
     user,
     userProfile,
-    guestMode: false,
   });
 }
 
 function attachOrderInquiryGlobals() {
   if (typeof window === "undefined") return;
 
-  window.__strzelcaOpenTrainingGuestInquiryForm = function () {
+  window.strzelcaCloseKontaktEmbedModal = function () {
+    document.getElementById("strzelca-kontakt-embed-modal")?.remove();
+    if (window.__strzelcaKontaktEmbedOnMessage) {
+      window.removeEventListener("message", window.__strzelcaKontaktEmbedOnMessage);
+      window.__strzelcaKontaktEmbedOnMessage = null;
+    }
+  };
+
+  window.__strzelcaOpenKontaktEmbedFromTraining = function () {
     const d = window.__strzelcaPendingLoginFlowDeps;
     document.getElementById("order-login-modal")?.remove();
     window.__strzelcaPendingLoginFlowDeps = null;
     if (!d || d.context !== "training") return;
-    openOrderInquiryFlow({ ...d, allowGuestForm: true });
+    openKontaktEmbedModal(kontaktPrefillForTraining(d.rawTitle));
   };
 
   window.closeStrzelcaRegulaminModal = closeRegulaminModal;
@@ -510,92 +557,6 @@ function attachOrderInquiryGlobals() {
 
     try {
       const getVal = (id) => document.getElementById(id)?.value || "";
-
-      if (p.guestMode) {
-        const email = getVal("order-email").trim();
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email) || email.length > 50) {
-          alert("Podaj prawidłowy adres email (max. 50 znaków).");
-          return;
-        }
-
-        const notes = (getVal("order-notes") || "").trim();
-
-        const lastKey = "strzelcaGuestInquiryLastSubmit";
-        const last = sessionStorage.getItem(lastKey);
-        if (last && Date.now() - parseInt(last, 10) < 60000) {
-          const remaining = Math.ceil((60000 - (Date.now() - parseInt(last, 10))) / 1000);
-          alert(`Poczekaj ${remaining} s przed kolejnym wysłaniem.`);
-          return;
-        }
-
-        const phone = (getVal("order-phone") || "").trim();
-        const lines = [
-          `Zapytanie o ofertę (gość): ${p.displayName}`,
-          `Email: ${email}`,
-          `Telefon: ${phone || "—"}`,
-          "",
-          "Uwagi:",
-          notes || "—",
-        ];
-        const content = lines.join("\n");
-
-        const formData = {
-          senderName: email,
-          senderEmail: email,
-          content,
-          timestamp: Date.now(),
-          senderId: null,
-          senderType: "contact_form",
-          recipientId: "admin",
-          recipientType: "admin",
-          recipientName: "Pomoc STRZELCA.PL",
-          isRead: false,
-          status: "pending",
-          conversationType: "contact_form",
-          allowReply: false,
-          isReadOnly: true,
-        };
-
-        const apiResponse = await fetch(STRZELCA_MESSAGES_API, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        });
-
-        if (!apiResponse.ok) {
-          const errorData = await apiResponse.json().catch(() => ({}));
-          throw new Error(errorData.error || "Nie udało się wysłać zapytania");
-        }
-
-        const responseData = await apiResponse.json();
-        sessionStorage.setItem(lastKey, Date.now().toString());
-
-        try {
-          await fetch(STRZELCA_SEND_CONTACT_EMAIL_API, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ to: email, senderName: email, message: content }),
-          });
-        } catch (_) {}
-
-        try {
-          const { addDoc, collection } = await import(
-            "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
-          );
-          await addDoc(collection(p.db, "contactForms"), {
-            sessionId: sessionStorage.getItem("contactFormSessionId") || "session_" + Date.now(),
-            senderEmail: email,
-            timestamp: Date.now(),
-            messageId: responseData.data?.id || null,
-          });
-        } catch (_) {}
-
-        document.getElementById("order-form-modal")?.remove();
-        pendingForm = null;
-        alert(p.successMessage || "Zapytanie zostało wysłane.");
-        return;
-      }
 
       const user = p.auth.currentUser;
       if (!user) {

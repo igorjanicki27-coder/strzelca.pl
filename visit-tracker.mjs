@@ -5,7 +5,7 @@
  * - działa dla zalogowanych i niezalogowanych użytkowników
  * 
  * Użycie:
- *   import { initVisitTracker } from "https://strzelca.pl/visit-tracker.mjs?v=2026-03-21-2";
+ *   import { initVisitTracker } from "https://strzelca.pl/visit-tracker.mjs?v=2026-03-23-1";
  *   await initVisitTracker();
  */
 
@@ -147,12 +147,84 @@ async function trackVisit(userId = null) {
 }
 
 /** Okres odświeżania obecności (panel admina liczy „online” wg timestamp w ~30 min) */
-const GUEST_PRESENCE_HEARTBEAT_MS = 3 * 60 * 1000;
+const GUEST_PRESENCE_HEARTBEAT_MS = 15 * 60 * 1000;
+const GUEST_LEADER_RENEW_MS = 15 * 1000;
+const GUEST_LEASE_MS = 45 * 1000;
+const GUEST_LEADER_LOCK_KEY = "strzelca_presence_guest_leader_v1";
+const GUEST_TAB_ID = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
 let guestHeartbeatInterval = null;
+let guestLeaderRenewInterval = null;
 let guestPagehideHandler = null;
+let guestVisibilityHandler = null;
 let guestAuthUnsubscribe = null;
 let guestPresenceSessionActive = false;
+
+function nowMs() {
+  return Date.now();
+}
+
+function isPageVisible() {
+  try {
+    return document.visibilityState !== "hidden";
+  } catch {
+    return true;
+  }
+}
+
+function readGuestLeaderLease() {
+  try {
+    const raw = localStorage.getItem(GUEST_LEADER_LOCK_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    if (typeof parsed.tabId !== "string" || typeof parsed.expiresAt !== "number") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeGuestLeaderLease(expiresAt) {
+  try {
+    localStorage.setItem(
+      GUEST_LEADER_LOCK_KEY,
+      JSON.stringify({
+        tabId: GUEST_TAB_ID,
+        expiresAt,
+      }),
+    );
+  } catch {
+    // ignore
+  }
+}
+
+function renewGuestLeadership() {
+  const lease = readGuestLeaderLease();
+  const now = nowMs();
+
+  if (!lease || lease.expiresAt <= now || lease.tabId === GUEST_TAB_ID) {
+    writeGuestLeaderLease(now + GUEST_LEASE_MS);
+    return true;
+  }
+  return false;
+}
+
+function releaseGuestLeadership() {
+  try {
+    const lease = readGuestLeaderLease();
+    if (lease?.tabId === GUEST_TAB_ID) {
+      localStorage.removeItem(GUEST_LEADER_LOCK_KEY);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+function ensureGuestLeaderAndVisible() {
+  if (!isPageVisible()) return false;
+  return renewGuestLeadership();
+}
 
 function stopGuestHeartbeatSession(sendLeave) {
   const shouldBeaconLeave = sendLeave && guestPresenceSessionActive;
@@ -165,6 +237,14 @@ function stopGuestHeartbeatSession(sendLeave) {
   if (guestPagehideHandler) {
     window.removeEventListener('pagehide', guestPagehideHandler);
     guestPagehideHandler = null;
+  }
+  if (guestVisibilityHandler) {
+    document.removeEventListener("visibilitychange", guestVisibilityHandler);
+    guestVisibilityHandler = null;
+  }
+  if (guestLeaderRenewInterval !== null) {
+    clearInterval(guestLeaderRenewInterval);
+    guestLeaderRenewInterval = null;
   }
   if (guestAuthUnsubscribe) {
     guestAuthUnsubscribe();
@@ -189,6 +269,8 @@ function stopGuestHeartbeatSession(sendLeave) {
       // ignoruj przy zamykaniu karty
     }
   }
+
+  releaseGuestLeadership();
 }
 
 async function sendGuestPresencePing() {
@@ -225,16 +307,31 @@ async function startGuestHeartbeatSession(userId, auth) {
   stopGuestHeartbeatSession(false);
   guestPresenceSessionActive = true;
 
-  await sendGuestPresencePing();
+  guestLeaderRenewInterval = setInterval(() => {
+    if (isPageVisible()) renewGuestLeadership();
+  }, GUEST_LEADER_RENEW_MS);
+
+  if (ensureGuestLeaderAndVisible()) {
+    await sendGuestPresencePing();
+  }
 
   guestHeartbeatInterval = setInterval(() => {
-    sendGuestPresencePing();
+    if (!ensureGuestLeaderAndVisible()) return;
+    void sendGuestPresencePing();
   }, GUEST_PRESENCE_HEARTBEAT_MS);
 
   guestPagehideHandler = () => {
     stopGuestHeartbeatSession(true);
   };
   window.addEventListener('pagehide', guestPagehideHandler);
+
+  guestVisibilityHandler = () => {
+    if (!guestPresenceSessionActive) return;
+    if (document.visibilityState !== "visible") return;
+    if (!renewGuestLeadership()) return;
+    void sendGuestPresencePing();
+  };
+  document.addEventListener("visibilitychange", guestVisibilityHandler);
 
   if (auth) {
     try {

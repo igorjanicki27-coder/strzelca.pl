@@ -12,6 +12,7 @@ const {
   readJsonBody,
   getSessionUser,
 } = require('./_sso-utils');
+const { firestoreValueToJsonable } = require('./_serialize-firestore');
 
 let dbManager = null;
 
@@ -168,6 +169,16 @@ async function getDisplayNameForUid(uid) {
   }
 }
 
+function safeJsonSnippet(obj, maxLen = 200) {
+  try {
+    if (obj == null || typeof obj !== 'object') return String(obj);
+    const s = JSON.stringify(obj);
+    return s.length > maxLen ? s.slice(0, maxLen) : s;
+  } catch {
+    return '[body log skipped]';
+  }
+}
+
 // Serverless function handler
 module.exports = async (req, res) => {
   // CORS (wspiera cookie SSO między subdomenami)
@@ -180,6 +191,7 @@ module.exports = async (req, res) => {
   }
 
   try {
+    initAdmin();
     const db = await initDatabase();
 
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -194,7 +206,7 @@ module.exports = async (req, res) => {
       requesterUid,
       requesterIsAdmin,
       hasXAdminPanel: req.headers['x-admin-panel'] === 'true',
-      body: req.method === 'POST' ? (typeof req.body === 'object' ? JSON.stringify(req.body).substring(0, 200) : 'not object') : undefined
+      body: req.method === 'POST' ? safeJsonSnippet(req.body) : undefined
     });
 
     // Ujednolicamy body (Vercel czasem daje string)
@@ -375,21 +387,38 @@ async function handleGetMessages(req, res, db, { query, requesterUid, requesterI
       } : null
     });
 
-    const safeMessages = trimMessagesForListResponse(result?.messages || []);
-    res.json({
+    const safeMessages = trimMessagesForListResponse(
+      (result?.messages || []).map((m) =>
+        m && typeof m === 'object' ? firestoreValueToJsonable(m) : m
+      )
+    );
+    const payload = {
       success: true,
       messagesCount: safeMessages.length,
       total: result?.total || 0,
       data: {
-        ...result,
         messages: safeMessages,
+        total: result?.total || 0,
+        limit: result?.limit,
+        offset: result?.offset,
       },
-    });
+    };
+    try {
+      res.json(payload);
+    } catch (jsonErr) {
+      console.error('handleGetMessages: serializacja JSON nieudana:', jsonErr);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        details: process.env.NODE_ENV === 'development' ? String(jsonErr?.message || jsonErr) : undefined,
+      });
+    }
   } catch (error) {
     console.error('Error getting messages:', error);
     res.status(500).json({
       success: false,
-      error: 'Internal server error'
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? String(error?.message || error) : undefined,
     });
   }
 }

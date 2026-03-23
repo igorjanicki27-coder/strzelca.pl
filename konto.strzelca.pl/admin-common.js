@@ -355,11 +355,14 @@ class AdminCommon {
     // Pobierz aktywności natychmiast
     loadActivities();
 
-    // Ustaw polling co 30 sekund zamiast real-time listenera (unikamy problemów z CORS)
+    // Ustaw polling co 120 sekund zamiast real-time listenera (unikamy problemów z CORS)
     if (this.activitiesPollingInterval) {
       clearInterval(this.activitiesPollingInterval);
     }
-    this.activitiesPollingInterval = setInterval(loadActivities, 30000);
+    this.activitiesPollingInterval = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      loadActivities();
+    }, 120000);
   }
 
   updateActivitiesUI(activities) {

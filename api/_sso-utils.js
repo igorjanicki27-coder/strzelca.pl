@@ -195,8 +195,10 @@ function readJsonBody(req) {
 
 function parseCookies(header) {
   const out = {};
-  if (!header) return out;
-  header.split(";").forEach(part => {
+  if (header == null || header === "") return out;
+  // Vercel / proxy czasem zwraca tablicę nagłówków zamiast jednego stringa
+  const raw = Array.isArray(header) ? header.join(";") : String(header);
+  raw.split(";").forEach(part => {
     const idx = part.indexOf("=");
     if (idx === -1) return;
     const k = part.slice(0, idx).trim();

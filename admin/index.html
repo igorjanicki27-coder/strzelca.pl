@@ -3652,9 +3652,10 @@
       let lastUnreadCount = null;
 
       // ===== SYSTEM ŚLEDZENIA AKTYWNOŚCI ONLINE =====
-      const USER_PRESENCE_HEARTBEAT_MS = 3 * 60 * 1000;
+      const USER_PRESENCE_HEARTBEAT_MS = 15 * 60 * 1000;
       let activityTrackingInterval = null;
       let adminActivityPagehideHandler = null;
+      let adminActivityVisibilityHandler = null;
 
       function sendAdminPresenceLeaveBeacon() {
         if (!currentUser) return;
@@ -3702,10 +3703,17 @@
           window.removeEventListener('pagehide', adminActivityPagehideHandler);
           adminActivityPagehideHandler = null;
         }
+        if (adminActivityVisibilityHandler) {
+          document.removeEventListener('visibilitychange', adminActivityVisibilityHandler);
+          adminActivityVisibilityHandler = null;
+        }
 
-        updateLastSeen();
+        if (document.visibilityState === 'visible') {
+          updateLastSeen();
+        }
 
         activityTrackingInterval = setInterval(() => {
+          if (document.visibilityState !== 'visible') return;
           updateLastSeen();
         }, USER_PRESENCE_HEARTBEAT_MS);
 
@@ -3713,6 +3721,12 @@
           sendAdminPresenceLeaveBeacon();
         };
         window.addEventListener('pagehide', adminActivityPagehideHandler);
+
+        adminActivityVisibilityHandler = () => {
+          if (document.visibilityState !== 'visible') return;
+          updateLastSeen();
+        };
+        document.addEventListener('visibilitychange', adminActivityVisibilityHandler);
       }
 
       function stopActivityTracking() {
@@ -3720,6 +3734,10 @@
         if (adminActivityPagehideHandler) {
           window.removeEventListener('pagehide', adminActivityPagehideHandler);
           adminActivityPagehideHandler = null;
+        }
+        if (adminActivityVisibilityHandler) {
+          document.removeEventListener('visibilitychange', adminActivityVisibilityHandler);
+          adminActivityVisibilityHandler = null;
         }
         if (activityTrackingInterval) {
           clearInterval(activityTrackingInterval);
@@ -8099,6 +8117,87 @@
           '<div class="text-center text-zinc-500 py-4">Brak produktów</div>';
       }
 
+      // Quill 1.x domyślnie wkleja przez ukryty div ql-clipboard — w Safari / przy schowku z HTML bywa pusto.
+      // Nadpisujemy moduł clipboard: bierzemy dane z Clipboard API i wstawiamy przez convert() / insertText.
+      (function registerStrzelcaAdminQuillClipboard() {
+        if (typeof Quill === "undefined") return;
+        try {
+          const Clipboard = Quill.import("modules/clipboard");
+          const Delta = Quill.import("delta");
+          const USER = Quill.sources?.USER || "user";
+          const SILENT = Quill.sources?.SILENT || "silent";
+
+          class StrzelcaAdminClipboard extends Clipboard {
+            onPaste(e) {
+              const cd = e.clipboardData;
+              if (!cd) {
+                super.onPaste(e);
+                return;
+              }
+              if (cd.files && cd.files.length > 0) {
+                super.onPaste(e);
+                return;
+              }
+              const htmlRaw = cd.getData("text/html");
+              const text = cd.getData("text/plain") || "";
+              const html = (htmlRaw || "").trim();
+              if (!html && !text.trim()) {
+                super.onPaste(e);
+                return;
+              }
+
+              e.preventDefault();
+
+              const quill = this.quill;
+              const scrollTop = quill.scrollingContainer ? quill.scrollingContainer.scrollTop : 0;
+
+              let range = quill.getSelection(true);
+              if (!range) {
+                quill.focus();
+                range = quill.getSelection(true);
+              }
+              if (!range) {
+                const idx = Math.max(0, quill.getLength() - 1);
+                quill.setSelection(idx, 0, SILENT);
+                range = quill.getSelection(true);
+              }
+              if (!range) return;
+
+              quill.deleteText(range.index, range.length, USER);
+
+              try {
+                if (html) {
+                  const delta = this.convert(html);
+                  if (delta && typeof delta.length === "function" && delta.length() > 0) {
+                    quill.updateContents(new Delta().retain(range.index).concat(delta), USER);
+                    quill.setSelection(range.index + delta.length(), SILENT);
+                  } else if (text) {
+                    quill.insertText(range.index, text, USER);
+                    quill.setSelection(range.index + text.length, SILENT);
+                  }
+                } else if (text) {
+                  quill.insertText(range.index, text, USER);
+                  quill.setSelection(range.index + text.length, SILENT);
+                }
+              } catch (err) {
+                console.warn("[admin] Quill paste — fallback na czysty tekst:", err);
+                if (text) {
+                  quill.insertText(range.index, text, USER);
+                  quill.setSelection(range.index + text.length, SILENT);
+                }
+              }
+
+              if (quill.scrollingContainer) quill.scrollingContainer.scrollTop = scrollTop;
+              quill.focus();
+            }
+          }
+
+          Quill.register("modules/clipboard", StrzelcaAdminClipboard, true);
+        } catch (regErr) {
+          console.warn("[admin] Rejestracja Quill clipboard:", regErr);
+        }
+      })();
+
       // Wspólna konfiguracja Quill dla opisów (sklep, wydarzenia, itd.)
       const quillDescriptionEditorConfig = {
         theme: "snow",
@@ -9472,8 +9571,14 @@
         return addr;
       }
 
-      function mojEventAdminTsvCell(s) {
+      /** Usuwa znaki, które psują wklejkę; cudzysłowy CSV — Excel nie dzieli wtedy po przecinku w adresie. */
+      function mojEventAdminSanitizePasteCell(s) {
         return String(s).replace(/\t/g, " ").replace(/\r?\n/g, " ");
+      }
+
+      function mojEventAdminQuotedPasteField(s) {
+        const inner = mojEventAdminSanitizePasteCell(s).replace(/"/g, '""');
+        return `"${inner}"`;
       }
 
       window.mojEventAdminGenerate = function mojEventAdminGenerate() {
@@ -9488,9 +9593,9 @@
         const lines = [];
         picked.forEach((rowEl) => {
           const p = mojEventAdminReadRowPayload(rowEl);
-          const imieNazwisko = mojEventAdminTsvCell(mojEventAdminFullNameCell(p));
-          const miejsce = mojEventAdminTsvCell(mojEventAdminMiejsceZamieszkaniaCell(p));
-          lines.push(`${imieNazwisko}\t${miejsce}`);
+          const col1 = mojEventAdminQuotedPasteField(mojEventAdminFullNameCell(p));
+          const col2 = mojEventAdminQuotedPasteField(mojEventAdminMiejsceZamieszkaniaCell(p));
+          lines.push(`${col1}\t${col2}`);
         });
         const tsv = lines.join("\n");
         if (navigator.clipboard?.writeText) {
@@ -12541,14 +12646,17 @@
         };
         window.showEventDetails = showEventDetails;
 
-      // Integracja z activityLogs - Firestore listener (odświeżanie w tle co 30 sekund)
+      // Integracja z activityLogs - Firestore listener (odświeżanie w tle)
       function setupActivityLogsListener() {
         if (activityLogsListener) {
           clearInterval(activityLogsListener); // Odłącz poprzedni interval
         }
 
-        // Odświeżanie logów w tle co 30 sekund - bez widocznych efektów dla użytkownika
+        // Odświeżanie logów w tle co 120 sekund - bez widocznych efektów dla użytkownika
         activityLogsListener = setInterval(async () => {
+          if (document.visibilityState !== 'visible') {
+            return;
+          }
           // Sprawdź czy użytkownik jest na zakładce dashboard
           const dashboardTab = document.getElementById('tab-dashboard');
           if (!dashboardTab || !dashboardTab.classList.contains('active')) {
@@ -12568,7 +12676,7 @@
             // Błędy są ignorowane w trybie cichym - nie pokazuj powiadomień
             console.debug("Silent activity logs refresh error (ignored):", error);
           }
-        }, 30000); // Co 30 sekund
+        }, 120000); // Co 120 sekund
       }
 
       // Funkcja do cichego odświeżania logów (bez powiadomień i animacji)
@@ -12714,15 +12822,18 @@
         }, 2000);
       }
 
-      // Funkcja do automatycznego odświeżania statusu co 30 sekund
+      // Funkcja do automatycznego odświeżania statusu co 120 sekund
       function setupStatusMonitoring() {
         if (statusMonitoringInterval) {
           clearInterval(statusMonitoringInterval); // Odłącz poprzedni interval
         }
 
-        // Uruchom sprawdzanie statusu co 30 sekund
+        // Uruchom sprawdzanie statusu co 120 sekund
         statusMonitoringInterval = setInterval(async () => {
           try {
+            if (document.visibilityState !== 'visible') {
+              return;
+            }
             // Sprawdź status usług (aktualizuje kolor zakładki status)
             // false = nie wyświetlaj powiadomienia przy automatycznym odświeżaniu
             if (typeof checkMainServicesStatus === 'function') {
@@ -12731,7 +12842,7 @@
           } catch (error) {
             console.error("Status monitoring error:", error);
           }
-        }, 30000); // Co 30 sekund
+        }, 120000); // Co 120 sekund
 
         // Pierwsze wywołanie natychmiastowe (jeśli nie jesteśmy w zakładce status, to i tak zaktualizuje kolor)
         // false = nie wyświetlaj powiadomienia przy automatycznym odświeżaniu
@@ -16738,7 +16849,7 @@
         // Inicjalizacja dla zakładki messages
         if (currentTab === 'messages') {
           loadMessages();
-          startAutoRefresh();
+          startMessagesAutoRefresh();
           setupTypingListeners();
         }
 
@@ -16782,12 +16893,20 @@
           }
 
           console.log('loadMessagesStatus: Fetching stats from /api/messages/stats');
-          const response = await fetch(strzelcaActivityLogApiUrl('/api/messages/stats'), {
-            method: 'GET',
-            headers,
-            credentials: 'include',
-            cache: 'no-store',
-          });
+          const statsController = new AbortController();
+          const statsTimer = setTimeout(() => statsController.abort(), 45000);
+          let response;
+          try {
+            response = await fetch(strzelcaActivityLogApiUrl('/api/messages/stats'), {
+              method: 'GET',
+              headers,
+              credentials: 'include',
+              cache: 'no-store',
+              signal: statsController.signal,
+            });
+          } finally {
+            clearTimeout(statsTimer);
+          }
 
           if (!response.ok) {
             throw new Error(`API error: ${response.status}`);
@@ -17009,12 +17128,21 @@
             credentials: 'include'
           });
 
-          const response = await fetch(apiUrl, {
-            method: 'GET',
-            headers,
-            credentials: 'include',
-            cache: 'no-store',
-          });
+          const controller = new AbortController();
+          const fetchTimeoutMs = 45000;
+          const fetchTimer = setTimeout(() => controller.abort(), fetchTimeoutMs);
+          let response;
+          try {
+            response = await fetch(apiUrl, {
+              method: 'GET',
+              headers,
+              credentials: 'include',
+              cache: 'no-store',
+              signal: controller.signal,
+            });
+          } finally {
+            clearTimeout(fetchTimer);
+          }
 
           console.log('loadMessagesWithFilters: Response status:', response.status, response.statusText);
 
@@ -17128,6 +17256,10 @@
           });
 
           let errorMessage = error.message || 'Nieznany błąd';
+          if (error.name === 'AbortError') {
+            errorMessage =
+              'Brak odpowiedzi z API wiadomości (timeout ~45 s). Sprawdź połączenie lub logi Vercel.';
+          }
           if (error.code === 9 || error.message?.includes('index')) {
             errorMessage = 'Brak wymaganego indeksu Firestore. Sprawdź konsolę Firebase dla linku do utworzenia indeksu.';
           } else if (error.code === 7 || error.message?.includes('permission')) {
@@ -17188,7 +17320,18 @@
                 console.warn(`Could not fetch user data for ${userId}:`, e);
               }
             });
-            await Promise.all(userPromises);
+            const profilesTimeoutMs = 12000;
+            await Promise.race([
+              Promise.all(userPromises),
+              new Promise((_, reject) =>
+                setTimeout(
+                  () => reject(new Error('userProfiles-enrichment-timeout')),
+                  profilesTimeoutMs
+                )
+              ),
+            ]).catch((e) => {
+              console.warn('displayMessages: timeout lub błąd przy pobieraniu profili — lista i tak się wyświetli:', e?.message || e);
+            });
           } catch (error) {
             console.error('Error fetching user data:', error);
           }
@@ -17268,67 +17411,15 @@
           }
         });
 
-        // Pobierz stan przypięcia z conversations collection
+        // Stan przypięcia — tylko dokumenty widocznych konwersacji (getDocs na całej kolekcji
+        // przy dużej liczbie wpisów zawieszało panel / Safari).
         try {
-          const conversationsRef = collection(db, 'conversations');
-          const conversationsSnapshot = await getDocs(conversationsRef);
-
-          console.log('displayMessages: Loading pin status', {
-            conversationsCount: conversationsSnapshot.size,
-            conversationKeys: Object.keys(conversations),
-            conversationKeysCount: Object.keys(conversations).length
+          const conversationKeys = Object.keys(conversations);
+          console.log('displayMessages: Loading pin status (targeted getDoc)', {
+            conversationKeysCount: conversationKeys.length
           });
 
-          // Zbierz wszystkie dokumenty dla każdej konwersacji, aby wybrać najlepszy
-          const conversationDocs = new Map();
-
-          conversationsSnapshot.forEach((doc) => {
-            const convData = doc.data();
-            const docId = doc.id;
-            const isPinned = convData.isPinned === true;
-
-            // Pobierz uczestników z dokumentu
-            let docParticipants = [];
-            if (convData.participantA && convData.participantB) {
-              docParticipants = [convData.participantA, convData.participantB].filter(id => id).sort();
-            } else if (convData.userId) {
-              // Stary format - userId jako klucz
-              docParticipants = [convData.userId, 'admin'].filter(id => id).sort();
-            } else {
-              // Spróbuj wyciągnąć z docId (format: "participant1_participant2")
-              const parts = docId.split('_');
-              if (parts.length === 2) {
-                docParticipants = parts.filter(id => id).sort();
-              }
-            }
-
-            if (docParticipants.length === 2) {
-              const conversationKey = docParticipants.join('_');
-
-              // Priorytet: dokumenty z pełnym conversationId (zawierają "_") mają wyższy priorytet
-              // niż stare dokumenty (tylko userId)
-              const isFullFormat = docId.includes('_') && docId === conversationKey;
-              const isOldFormat = !docId.includes('_') && convData.userId;
-
-              if (!conversationDocs.has(conversationKey)) {
-                conversationDocs.set(conversationKey, []);
-              }
-
-              conversationDocs.get(conversationKey).push({
-                docId,
-                isPinned,
-                isFullFormat,
-                isOldFormat,
-                convData
-              });
-            }
-          });
-
-          // Dla każdej konwersacji, wybierz najlepszy dokument (priorytet: pełny format z isPinned: true)
-          conversationDocs.forEach((docs, conversationKey) => {
-            if (!conversations[conversationKey]) return;
-
-            // Sortuj dokumenty: najpierw pełny format, potem isPinned: true
+          const pickBestPinDoc = (docs) => {
             docs.sort((a, b) => {
               if (a.isFullFormat && !b.isFullFormat) return -1;
               if (!a.isFullFormat && b.isFullFormat) return 1;
@@ -17336,23 +17427,57 @@
               if (!a.isPinned && b.isPinned) return 1;
               return 0;
             });
+            return docs[0];
+          };
 
-            // Wybierz najlepszy dokument (pierwszy po sortowaniu)
-            const bestDoc = docs[0];
-            conversations[conversationKey].isPinned = bestDoc.isPinned;
+          const pinTimeoutMs = 15000;
+          const pinDeadline = Date.now() + pinTimeoutMs;
 
-            console.log('displayMessages: ✅ Set pin status', {
-              conversationKey,
-              isPinned: bestDoc.isPinned,
-              docId: bestDoc.docId,
-              isFullFormat: bestDoc.isFullFormat,
-              totalDocs: docs.length
-            });
-          });
+          await Promise.all(
+            conversationKeys.map(async (conversationKey) => {
+              const conv = conversations[conversationKey];
+              if (!conv) return;
 
-          // Sprawdź finalny stan przypięcia
+              const docCandidates = [];
+              const tryId = async (docId) => {
+                if (!docId || Date.now() > pinDeadline) return;
+                try {
+                  const snap = await getDoc(doc(db, 'conversations', docId));
+                  if (!snap.exists()) return;
+                  const convData = snap.data() || {};
+                  const isPinned = convData.isPinned === true;
+                  const isFullFormat =
+                    docId.includes('_') && docId === conversationKey;
+                  const isOldFormat = !docId.includes('_') && convData.userId;
+                  docCandidates.push({
+                    docId,
+                    isPinned,
+                    isFullFormat,
+                    isOldFormat,
+                    convData,
+                  });
+                } catch (e) {
+                  console.warn('displayMessages: pin getDoc failed', docId, e?.message || e);
+                }
+              };
+
+              await tryId(conversationKey);
+              const uid = conv.senderId;
+              if (uid && uid !== 'admin' && uid !== 'anonymous' && uid !== conversationKey) {
+                await tryId(uid);
+              }
+
+              if (docCandidates.length === 0) {
+                conv.isPinned = false;
+                return;
+              }
+              const best = pickBestPinDoc(docCandidates);
+              conv.isPinned = best.isPinned;
+            })
+          );
+
           console.log('displayMessages: Final pin status', {
-            conversations: Object.keys(conversations).map(key => ({
+            conversations: Object.keys(conversations).map((key) => ({
               key,
               isPinned: conversations[key].isPinned,
               senderId: conversations[key].senderId
@@ -17360,7 +17485,6 @@
           });
         } catch (error) {
           console.error('Error fetching conversation pin status:', error);
-          // Kontynuuj bez stanu przypięcia - wszystkie będą nieprzypięte
         }
 
         // Filtruj konwersacje po tekście wyszukiwania (nazwa użytkownika, email lub treść wiadomości)
