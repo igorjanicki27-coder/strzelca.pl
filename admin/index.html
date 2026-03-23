@@ -109,6 +109,22 @@
         background: #161616 !important;
       }
 
+      /* Formularz wydarzenia: pole daty zapisów wyłączone, gdy checkbox odznaczony */
+      #event-registration-deadline-field-block.is-registration-deadline-off #event-registration-deadline-label {
+        color: #71717a !important;
+      }
+      #event-registration-deadline-hint-row.is-registration-deadline-off .event-registration-deadline-hint-extra {
+        color: #52525b !important;
+        opacity: 0.75;
+      }
+      #event-registration-deadline:disabled {
+        opacity: 0.55 !important;
+        color: #71717a !important;
+        background: #0c0c0e !important;
+        border-color: #3f3f46 !important;
+        cursor: not-allowed !important;
+      }
+
       /* Checkboxy i radio — bez width:100% (inaczej w flexie wypychają etykietę) */
       input[type="checkbox"],
       input[type="radio"] {
@@ -9742,7 +9758,7 @@
 
         const modalHtml = `
           <div id="event-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-6xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
               <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold coyote-text">${event ? "Edytuj wydarzenie" : "Dodaj nowe wydarzenie"}</h2>
                 <button onclick="closeEventFormModal()" class="text-zinc-400 hover:text-white transition-colors">
@@ -9765,61 +9781,64 @@
                   />
                 </div>
 
-                <div>
-                  <label class="block text-sm font-medium mb-2">Data i godzina rozpoczęcia *</label>
-                  <input
-                    type="datetime-local"
-                    id="event-date"
-                    value="${event ? formatDateTimeForInput(event.dateObj) : ""}"
-                    required
-                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
-                  />
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  <div class="min-w-0">
+                    <label class="block text-sm font-medium mb-2" for="event-date">Rozpoczęcie *</label>
+                    <input
+                      type="datetime-local"
+                      id="event-date"
+                      value="${event ? formatDateTimeForInput(event.dateObj) : ""}"
+                      required
+                      class="w-full min-w-0 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                    />
+                  </div>
+                  <div class="min-w-0">
+                    <label class="block text-sm font-medium mb-2" for="event-end-date">Zakończenie wydarzenia *</label>
+                    <input
+                      type="datetime-local"
+                      id="event-end-date"
+                      value="${event ? formatDateTimeForInput(event.endDateObj || event.dateObj) : ""}"
+                      required
+                      class="w-full min-w-0 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                    />
+                  </div>
+                  <div id="event-registration-deadline-field-block" class="min-w-0 md:col-span-2 xl:col-span-1 ${event && event.registrationDeadlineEnabled ? "" : "is-registration-deadline-off"}">
+                    <label id="event-registration-deadline-label" for="event-registration-deadline" class="block text-sm font-medium mb-2">Zakończenie zapisów</label>
+                    <input
+                      type="datetime-local"
+                      id="event-registration-deadline"
+                      value="${event && event.registrationDeadlineEnabled && event.registrationDeadlineObj ? formatDateTimeForInput(event.registrationDeadlineObj) : ""}"
+                      class="w-full min-w-0 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                    />
+                  </div>
                 </div>
+                <p id="event-registration-deadline-hint-row" class="text-xs text-zinc-500 -mt-1 ${event && event.registrationDeadlineEnabled ? "" : "is-registration-deadline-off"}">
+                  <span class="event-date-hints-main">Po zakończeniu wydarzenia (środkowa data) status „zakończone” na stronie i w filtrach.</span>
+                  <span class="event-registration-deadline-hint-extra"> Termin zapisów (trzecia kolumna) włącz checkboxem obok kategorii — do końca wydarzenia przycisk „Zapisy zamknięte”, potem „Wydarzenie zakończone”.</span>
+                </p>
 
-                <div>
-                  <label class="block text-sm font-medium mb-2">Data i godzina zakończenia wydarzenia *</label>
-                  <input
-                    type="datetime-local"
-                    id="event-end-date"
-                    value="${event ? formatDateTimeForInput(event.endDateObj || event.dateObj) : ""}"
-                    required
-                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
-                  />
-                  <p class="text-xs text-zinc-500 mt-1">Po tym momencie wydarzenie jest zakończone (widok publiczny, filtr „zakończone”, przycisk „Weź udział”).</p>
-                </div>
-
-                <div class="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="event-registration-deadline-enabled"
-                    ${event && event.registrationDeadlineEnabled ? "checked" : ""}
-                    class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote"
-                  />
-                  <label for="event-registration-deadline-enabled" class="text-sm cursor-pointer select-none">Ustal termin zamknięcia zapisów</label>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium mb-2">Data zakończenia zapisów</label>
-                  <input
-                    type="datetime-local"
-                    id="event-registration-deadline"
-                    value="${event && event.registrationDeadlineEnabled && event.registrationDeadlineObj ? formatDateTimeForInput(event.registrationDeadlineObj) : ""}"
-                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                  <p class="text-xs text-zinc-500 mt-1">Aktywne po zaznaczeniu pola powyżej. Do końca wydarzenia przycisk pokaże „Zapisy zamknięte”, potem „Wydarzenie zakończone”.</p>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium mb-2">Kategoria</label>
-                  <select
-                    id="event-category"
-                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
-                  >
-                    <option value="zawody" ${normalizedCategory === "zawody" ? "selected" : ""}>Zawody</option>
-                    <option value="szkolenie" ${normalizedCategory === "szkolenie" ? "selected" : ""}>Szkolenie</option>
-                    <option value="wystawa" ${normalizedCategory === "wystawa" ? "selected" : ""}>Wystawa</option>
-                    <option value="inne" ${normalizedCategory === "inne" ? "selected" : ""}>Inne</option>
-                  </select>
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:gap-6">
+                  <div class="flex-1 min-w-0">
+                    <label class="block text-sm font-medium mb-2" for="event-category">Kategoria</label>
+                    <select
+                      id="event-category"
+                      class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                    >
+                      <option value="zawody" ${normalizedCategory === "zawody" ? "selected" : ""}>Zawody</option>
+                      <option value="szkolenie" ${normalizedCategory === "szkolenie" ? "selected" : ""}>Szkolenie</option>
+                      <option value="wystawa" ${normalizedCategory === "wystawa" ? "selected" : ""}>Wystawa</option>
+                      <option value="inne" ${normalizedCategory === "inne" ? "selected" : ""}>Inne</option>
+                    </select>
+                  </div>
+                  <div class="flex items-center gap-2 shrink-0 lg:pb-2">
+                    <input
+                      type="checkbox"
+                      id="event-registration-deadline-enabled"
+                      ${event && event.registrationDeadlineEnabled ? "checked" : ""}
+                      class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote"
+                    />
+                    <label for="event-registration-deadline-enabled" class="text-sm cursor-pointer select-none leading-snug">Ustal termin zamknięcia zapisów</label>
+                  </div>
                 </div>
 
                 <div>
@@ -9900,10 +9919,14 @@
 
         const regDeadlineCb = document.getElementById("event-registration-deadline-enabled");
         const regDeadlineInp = document.getElementById("event-registration-deadline");
+        const regDeadlineBlock = document.getElementById("event-registration-deadline-field-block");
+        const regDeadlineHintRow = document.getElementById("event-registration-deadline-hint-row");
         const syncEventRegistrationDeadlineField = () => {
           if (!regDeadlineCb || !regDeadlineInp) return;
           const on = regDeadlineCb.checked;
           regDeadlineInp.disabled = !on;
+          regDeadlineBlock?.classList.toggle("is-registration-deadline-off", !on);
+          regDeadlineHintRow?.classList.toggle("is-registration-deadline-off", !on);
           if (!on) {
             regDeadlineInp.removeAttribute("required");
           } else {

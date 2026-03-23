@@ -196,32 +196,23 @@
             outline-offset: 1px;
         }
 
-        /* html2canvas musi „widzieć” element w viewport (poza ekranem często daje biały PDF).
-           Przezroczystość 0.02 potrafi dać pusty zrzut — na czas generowania dodajemy
-           .return-claim-pdf-root--capture-active (opacity: 1). */
+        /* Kontener PDF trzymamy poza ekranem (bez mignięcia w UI),
+           ale nadal w DOM, żeby html2canvas mógł go poprawnie zrenderować. */
         .return-claim-pdf-root--capture {
             position: fixed;
-            left: 0;
+            left: -10000px;
             top: 0;
             width: 210mm;
             min-width: 210mm;
             max-width: none;
             box-sizing: border-box;
-            z-index: 2147483000;
+            z-index: -1;
             pointer-events: none;
-            opacity: 0.02;
+            opacity: 1;
             overflow: visible;
             color-scheme: light;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
-        }
-        .return-claim-pdf-root--capture-active {
-            opacity: 1 !important;
-            color-scheme: light !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-            forced-color-adjust: none;
-            -webkit-forced-color-adjust: none;
         }
     </style>
     <!-- Wspólne poprawki responsywności -->
@@ -1646,10 +1637,8 @@ const firebaseConfig = {
                 }
             }
 
-            let rcPdfStylesheetPromise = null;
             function ensureReturnClaimPdfStylesheet() {
-                if (rcPdfStylesheetPromise) return rcPdfStylesheetPromise;
-                rcPdfStylesheetPromise = new Promise((resolve) => {
+                return new Promise((resolve) => {
                     const id = "strzelca-rc-pdf-form-styles";
                     if (document.getElementById(id)) {
                         resolve();
@@ -1663,7 +1652,10 @@ const firebaseConfig = {
                     link.onload = link.onerror = () => resolve();
                     document.head.appendChild(link);
                 });
-                return rcPdfStylesheetPromise;
+            }
+
+            function cleanupReturnClaimPdfStylesheet() {
+                document.getElementById("strzelca-rc-pdf-form-styles")?.remove();
             }
 
             function waitReturnClaimPdfImages(root) {
@@ -1812,21 +1804,6 @@ const firebaseConfig = {
                 const powodHtml = typ === "zwrot" ? esc(powod) : "— (pole dotyczy wyłącznie zwrotu)";
                 const dodatkoweHtml = dodatkowe ? esc(dodatkowe) : "—";
 
-                pdfRoot.innerHTML = await buildReturnClaimPdfRootInnerHtml({
-                    typ,
-                    generatedAt,
-                    imie,
-                    nazwisko,
-                    zam,
-                    faktura,
-                    kontoTekst,
-                    opisHtml,
-                    powodHtml,
-                    zadanie,
-                    dodatkoweHtml,
-                });
-                await waitReturnClaimPdfImages(pdfRoot);
-
                 const pdfFilename = `strzelca-zwrot-reklamacja-${Date.now()}.pdf`;
                 const opt = {
                     margin: [6, 6, 6, 6],
@@ -1868,7 +1845,20 @@ const firebaseConfig = {
                         btn.disabled = true;
                         btn.setAttribute("aria-busy", "true");
                     }
-                    pdfRoot.classList.add("return-claim-pdf-root--capture-active");
+                    pdfRoot.innerHTML = await buildReturnClaimPdfRootInnerHtml({
+                        typ,
+                        generatedAt,
+                        imie,
+                        nazwisko,
+                        zam,
+                        faktura,
+                        kontoTekst,
+                        opisHtml,
+                        powodHtml,
+                        zadanie,
+                        dodatkoweHtml,
+                    });
+                    await waitReturnClaimPdfImages(pdfRoot);
                     try {
                         if (document.fonts?.ready) {
                             await document.fonts.ready;
@@ -1897,7 +1887,8 @@ const firebaseConfig = {
                     console.error(e);
                     alert("Nie udało się wygenerować pliku PDF. Spróbuj ponownie.");
                 } finally {
-                    pdfRoot.classList.remove("return-claim-pdf-root--capture-active");
+                    pdfRoot.innerHTML = "";
+                    cleanupReturnClaimPdfStylesheet();
                     if (btn) {
                         btn.removeAttribute("aria-busy");
                         btn.disabled = getReturnClaimCooldownRemainingMs() > 0;

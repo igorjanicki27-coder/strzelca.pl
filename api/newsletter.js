@@ -126,6 +126,7 @@ async function handlePostNewsletter(req, res, firestoreDb, requesterUid) {
         success: false,
         error: smtpErr?.message || 'SMTP nie skonfigurowany na serwerze',
         code: smtpErr?.code || 'SMTP_NOT_CONFIGURED',
+        diag: smtpErr?.diag || null,
       });
     }
 
