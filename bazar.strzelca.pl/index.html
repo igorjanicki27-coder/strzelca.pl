@@ -345,6 +345,31 @@
 
         let currentUser = null;
         const API_BASE = 'https://strzelca.pl/api/bazar';
+        const bazarUrlParams = new URLSearchParams(window.location.search || '');
+        const bazarAutoOfferParam = (bazarUrlParams.get('offer') || '').trim();
+        const bazarEmbedMode = bazarUrlParams.get('embedModal') === '1';
+
+        function notifyParentCloseInEmbedMode() {
+            if (!bazarEmbedMode) return;
+            try {
+                window.parent?.postMessage({ source: 'strzelca-modal', action: 'close' }, '*');
+            } catch (_) {}
+        }
+
+        function applyBazarEmbedMode() {
+            if (!bazarEmbedMode) return;
+            document.getElementById('user-panel')?.classList.add('hidden');
+            document.getElementById('login-button')?.classList.add('hidden');
+            const wrapper = document.querySelector('.main-wrapper');
+            if (wrapper) {
+                Array.from(wrapper.children).forEach((child) => {
+                    child.style.display = 'none';
+                });
+            }
+            document.body.style.background = '#000';
+        }
+
+        applyBazarEmbedMode();
 
         const CATEGORY_LABELS = {
             PISTOLET: 'Pistolety', REWOLWER: 'Rewolwery', KARABIN: 'Karabiny',
@@ -761,6 +786,7 @@
             document.getElementById('offer-detail-modal').classList.add('hidden');
             document.getElementById('offer-detail-modal').innerHTML = '';
             document.body.style.overflow = '';
+            notifyParentCloseInEmbedMode();
         };
 
         /** Ta sama idea co produkty w panelu admina: kompresja w przegladarce, zapis jako data URL w Firestore (bez Storage). */
@@ -1306,6 +1332,11 @@
         initWojFilterGrid();
 
         async function openOfferFromSlugParam() {
+            const offerParam = bazarAutoOfferParam;
+            if (offerParam) {
+                await window.showOfferDetail(offerParam);
+                return;
+            }
             const pathMatch = location.pathname.match(/\/oferta\/([^/]+)\/?$/);
             const hashMatch = location.hash.match(/^#\/oferta\/([^/?#]+)/);
             const slug = pathMatch ? decodeURIComponent(pathMatch[1]) : (hashMatch ? decodeURIComponent(hashMatch[1]) : '');

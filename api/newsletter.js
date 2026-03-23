@@ -120,7 +120,7 @@ async function handlePostNewsletter(req, res, firestoreDb, requesterUid) {
     // Nie zapisuj zadania do kolejki, jeśli SMTP nie jest skonfigurowane:
     // bez tego użytkownik widzi "dodano do kolejki", a wysyłka nigdy nie ruszy.
     try {
-      assertSmtpConfigured();
+      await assertSmtpConfigured();
     } catch (smtpErr) {
       return res.status(503).json({
         success: false,

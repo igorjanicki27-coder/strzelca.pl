@@ -275,9 +275,9 @@
         </div>
     </section>
 
-    <div id="details-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-md" onclick="if(!event.target.closest('#details-modal-panel')) document.getElementById('details-modal').classList.add('hidden')">
+    <div id="details-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-md" onclick="if(!event.target.closest('#details-modal-panel')) window.closeDetailsModal()">
         <div id="details-modal-panel" class="bg-zinc-900 p-4 md:p-8 rounded-2xl md:rounded-3xl max-w-2xl w-full border border-zinc-800 relative shadow-2xl max-h-[90vh] overflow-y-auto">
-            <button onclick="document.getElementById('details-modal').classList.add('hidden')" class="absolute top-4 md:top-6 right-4 md:right-6 text-2xl md:text-3xl text-zinc-500 hover:text-white">&times;</button>
+            <button onclick="window.closeDetailsModal()" class="absolute top-4 md:top-6 right-4 md:right-6 text-2xl md:text-3xl text-zinc-500 hover:text-white">&times;</button>
             <div id="details-content"></div>
         </div>
     </div>
@@ -652,7 +652,7 @@
                         ${item.oldPrice ? `<p class="text-zinc-500 line-through text-sm mb-1">${item.oldPrice} PLN</p>` : ''}
                         <p class="coyote-text font-bold text-lg md:text-xl mb-4 md:mb-5" aria-label="Cena: ${item.price} złotych">${item.price} PLN</p>
                         <div class="mt-auto flex flex-col gap-2 md:gap-3">
-                            <button type="button" onclick="event.stopPropagation(); window.handleOrder(decodeURIComponent('${encodedTitle}'), ${item.price || 0})" aria-label="Zamów produkt ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Zamów</button>
+                            <button type="button" onclick="event.stopPropagation(); window.showDetails('${item.id}')" aria-label="Szczegóły produktu ${item.title}" class="w-full py-3 md:py-4 bg-zinc-600 text-zinc-100 text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-zinc-500 transition">SZCZEGÓŁY</button>
                         </div>
                     </div>
                 </article>
@@ -810,6 +810,31 @@
             });
         }
 
+        const shopUrlParams = new URLSearchParams(window.location.search || '');
+        const shopAutoOpenId = (shopUrlParams.get('open') || shopUrlParams.get('product') || '').trim();
+        const shopEmbedMode = shopUrlParams.get('embedModal') === '1';
+        let shopAutoOpenDone = false;
+
+        function notifyParentCloseInEmbed() {
+            if (!shopEmbedMode) return;
+            try {
+                window.parent?.postMessage({ source: 'strzelca-modal', action: 'close' }, '*');
+            } catch (_) {}
+        }
+
+        function applyShopEmbedMode() {
+            if (!shopEmbedMode) return;
+            document.getElementById('user-panel')?.classList.add('hidden');
+            document.getElementById('login-button')?.classList.add('hidden');
+            document.querySelector('nav')?.classList.add('hidden');
+            document.getElementById('arsenal')?.classList.add('hidden');
+            const footer = document.querySelector('footer');
+            if (footer) footer.classList.add('hidden');
+            document.body.style.background = '#000';
+        }
+
+        applyShopEmbedMode();
+
         const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
         const fetchAll = async () => {
@@ -859,6 +884,13 @@
                     });
                     productItems = Array.isArray(payload) ? payload : [];
                     renderProductCarousel(false);
+                    if (!shopAutoOpenDone && shopAutoOpenId) {
+                        shopAutoOpenDone = true;
+                        const opened = await window.showDetails(shopAutoOpenId);
+                        if (!opened && shopEmbedMode) {
+                            notifyParentCloseInEmbed();
+                        }
+                    }
                     return;
                 } catch (error) {
                     console.warn(`Load products attempt ${attempt}/${maxAttempts} failed:`, error);
@@ -891,8 +923,17 @@
             fetchAll();
         };
 
+        window.closeDetailsModal = () => {
+            const modal = document.getElementById('details-modal');
+            if (modal) modal.classList.add('hidden');
+            if (shopEmbedMode) {
+                notifyParentCloseInEmbed();
+            }
+        };
+
         window.showDetails = async (id) => {
             const d = await getDoc(doc(db, "products", id));
+            if (!d.exists()) return false;
             const p = d.data();
             
             // Pobierz zdjęcia produktu
@@ -983,6 +1024,7 @@
                     <button onclick="window.handleOrder('${p.title}', ${p.price || 0})" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition">Złóż zamówienie</button>
                 </div>`;
             document.getElementById('details-modal').classList.remove('hidden');
+            return true;
         };
         
         // Funkcja zmiany zdjęcia w galerii

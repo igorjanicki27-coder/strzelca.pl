@@ -148,6 +148,138 @@
         border-radius: 8px;
         cursor: pointer;
       }
+
+      .spotlight-shell {
+        background: linear-gradient(120deg, rgba(22, 22, 22, 0.78), rgba(10, 10, 10, 0.62));
+        border: 1px solid rgba(193, 154, 107, 0.35);
+        border-radius: 20px;
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.42);
+        overflow: hidden;
+      }
+      .spotlight-input-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+      }
+      .spotlight-input {
+        background: transparent !important;
+        border: none !important;
+        color: #f5f5f5 !important;
+        padding: 6px 0 !important;
+        width: 100%;
+        font-size: 1rem;
+      }
+      .spotlight-input::placeholder {
+        color: rgba(229, 229, 229, 0.48);
+      }
+      .spotlight-input:focus {
+        box-shadow: none;
+      }
+      .spotlight-right {
+        display: none;
+        align-items: center;
+        gap: 10px;
+        white-space: nowrap;
+      }
+      .spotlight-shell.is-active .spotlight-right {
+        display: flex;
+      }
+      .spotlight-select {
+        width: auto;
+        min-width: 160px;
+        background: rgba(0, 0, 0, 0.45) !important;
+        border: 1px solid rgba(193, 154, 107, 0.4) !important;
+        color: #efefef !important;
+        padding: 8px 10px !important;
+        border-radius: 10px;
+      }
+      .spotlight-submit {
+        border: 1px solid rgba(193, 154, 107, 0.8);
+        background: rgba(193, 154, 107, 0.9);
+        color: #0a0a0a;
+        border-radius: 10px;
+        padding: 9px 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.73rem;
+      }
+      .spotlight-submit:hover {
+        background: #fff;
+      }
+      .spotlight-results {
+        border-top: 1px solid rgba(193, 154, 107, 0.22);
+        background: rgba(5, 5, 5, 0.62);
+        max-height: min(55vh, 520px);
+        overflow-y: auto;
+        padding: 12px 12px 14px;
+      }
+      .spotlight-group {
+        margin-bottom: 12px;
+      }
+      .spotlight-group-title {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: rgba(193, 154, 107, 0.9);
+        margin: 0 0 6px;
+      }
+      .spotlight-item {
+        width: 100%;
+        text-align: left;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        padding: 9px 11px;
+        background: rgba(18, 18, 18, 0.62);
+        color: #f2f2f2;
+        cursor: pointer;
+        margin-bottom: 7px;
+      }
+      .spotlight-item:hover,
+      .spotlight-item.is-selected {
+        border-color: rgba(193, 154, 107, 0.75);
+        background: rgba(30, 30, 30, 0.86);
+      }
+      .spotlight-item-title {
+        font-weight: 700;
+        font-size: 0.92rem;
+      }
+      .spotlight-item-snippet {
+        margin-top: 3px;
+        font-size: 0.78rem;
+        color: rgba(229, 229, 229, 0.68);
+      }
+      .spotlight-empty {
+        padding: 16px 6px;
+        text-align: center;
+        font-size: 0.84rem;
+        color: rgba(229, 229, 229, 0.66);
+      }
+      .spotlight-shortcut {
+        font-size: 0.65rem;
+        color: rgba(229, 229, 229, 0.55);
+        border: 1px solid rgba(229, 229, 229, 0.25);
+        border-radius: 8px;
+        padding: 4px 7px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .global-modal-shell {
+        background: rgba(8, 8, 8, 0.8);
+        border: 1px solid rgba(193, 154, 107, 0.45);
+        border-radius: 18px;
+        box-shadow: 0 26px 56px rgba(0, 0, 0, 0.52);
+        overflow: hidden;
+      }
+      .global-modal-frame {
+        width: 100%;
+        height: min(86vh, 920px);
+        border: none;
+        background: #090909;
+      }
     </style>
 
     <!-- Wspólne poprawki responsywności -->
@@ -220,9 +352,37 @@
       </header>
 
       <main class="container mx-auto px-6 py-12 flex-grow flex items-center">
-        <div
-          class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 max-w-7xl mx-auto w-full"
-        >
+        <div class="w-full max-w-7xl mx-auto">
+          <section id="spotlight-search" class="spotlight-shell mb-7">
+            <div class="spotlight-input-row">
+              <i class="fa-solid fa-magnifying-glass text-zinc-400"></i>
+              <input
+                id="spotlight-search-input"
+                class="spotlight-input"
+                type="search"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="Szukaj: użytkownicy, sklep, wydarzenia, blog, bazar..."
+                aria-label="Wyszukiwarka globalna"
+              />
+              <span class="spotlight-shortcut">⌘/Ctrl + K</span>
+              <div class="spotlight-right" id="spotlight-right-controls">
+                <select id="spotlight-category" class="spotlight-select" aria-label="Kategoria">
+                  <option value="all">Wszystko</option>
+                  <option value="user">Użytkownicy</option>
+                  <option value="shop">Sklep</option>
+                  <option value="event">Wydarzenia</option>
+                  <option value="blog">Blog</option>
+                  <option value="bazar">Bazar</option>
+                </select>
+                <button id="spotlight-submit" class="spotlight-submit" type="button">Szukaj</button>
+              </div>
+            </div>
+            <div id="spotlight-results" class="spotlight-results hidden"></div>
+          </section>
+          <div
+            class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 max-w-7xl mx-auto w-full"
+          >
           <a
             href="https://sklep.strzelca.pl"
             class="hub-button p-10 rounded-3xl flex flex-col items-center"
@@ -391,6 +551,7 @@
               >Kontakt</span
             >
           </a>
+          </div>
         </div>
       </main>
 
@@ -409,6 +570,20 @@
       </footer>
     </div>
 
+    <div id="global-modal" class="fixed inset-0 z-[140] hidden items-center justify-center p-3 md:p-5 bg-black/90 backdrop-blur-md">
+      <div class="global-modal-shell w-full max-w-6xl relative">
+        <button
+          id="global-modal-close"
+          type="button"
+          class="absolute top-3 right-3 z-10 w-10 h-10 rounded-full border border-zinc-600 text-zinc-300 hover:text-white hover:border-coyote transition"
+          aria-label="Zamknij"
+        >
+          <i class="fa-solid fa-times"></i>
+        </button>
+        <iframe id="global-modal-frame" class="global-modal-frame" title="Podgląd wyniku wyszukiwania"></iframe>
+      </div>
+    </div>
+
     <script type="module">
       import {
         doc,
@@ -420,6 +595,7 @@
         query,
         orderBy,
         where,
+        limit,
         updateDoc,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
       import {
@@ -494,6 +670,753 @@
       let usersList = [];
       let conversationsList = [];
       let currentConversationId = null;
+
+      const SEARCH_TYPE_ORDER = ["user", "shop", "event", "blog", "bazar"];
+      const SEARCH_TYPE_LABEL = {
+        user: "Użytkownicy",
+        shop: "Sklep",
+        event: "Wydarzenia",
+        blog: "Blog",
+        bazar: "Bazar",
+      };
+      const SEARCH_MIN_CHARS = 3;
+      const SEARCH_LIMIT_ALL = 3;
+      const SEARCH_LIMIT_SINGLE = 10;
+      const SEARCH_FETCH_LIMIT_ALL = 30;
+      const SEARCH_FETCH_LIMIT_SINGLE = 80;
+      const SEARCH_STORAGE = {
+        recentQueries: "strzelca_spotlight_recent_queries_v1",
+        recentItems: "strzelca_spotlight_recent_items_v1",
+        cacheItems: "strzelca_spotlight_cache_items_v1",
+      };
+
+      const spotlightState = {
+        typingTimer: null,
+        selectionIndex: -1,
+        activeEntries: [],
+        lastFullSignature: "",
+        fullSearchCache: new Map(),
+      };
+
+      const spotlightEls = {
+        shell: null,
+        input: null,
+        submit: null,
+        category: null,
+        results: null,
+        modal: null,
+        modalFrame: null,
+        modalClose: null,
+      };
+
+      function loadJsonStorage(key, fallback) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (!raw) return fallback;
+          const parsed = JSON.parse(raw);
+          return parsed == null ? fallback : parsed;
+        } catch {
+          return fallback;
+        }
+      }
+
+      function saveJsonStorage(key, value) {
+        try {
+          localStorage.setItem(key, JSON.stringify(value));
+        } catch (_) {}
+      }
+
+      function normalizeSearchText(value) {
+        if (value == null) return "";
+        return String(value)
+          .replace(/[Łł]/g, "l")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .replace(/[^a-z0-9\s]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function stripHtmlText(value) {
+        if (!value) return "";
+        return String(value)
+          .replace(/<style[\s\S]*?<\/style>/gi, " ")
+          .replace(/<script[\s\S]*?<\/script>/gi, " ")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function tokenizeQuery(value) {
+        const normalized = normalizeSearchText(value);
+        if (!normalized) return [];
+        return Array.from(new Set(normalized.split(" ").filter((part) => part.length >= 2)));
+      }
+
+      function userSearchVisible() {
+        return !!currentUser;
+      }
+
+      function visibleSearchTypes() {
+        return SEARCH_TYPE_ORDER.filter((type) => type !== "user" || userSearchVisible());
+      }
+
+      function activeSearchTypes() {
+        const selected = spotlightEls.category?.value || "all";
+        if (selected === "all") return visibleSearchTypes();
+        if (selected === "user" && !userSearchVisible()) return [];
+        return visibleSearchTypes().includes(selected) ? [selected] : [];
+      }
+
+      function updateSearchCategoryOptions() {
+        const select = spotlightEls.category;
+        if (!select) return;
+        const current = select.value || "all";
+        const userOption = select.querySelector('option[value="user"]');
+        if (userOption) {
+          userOption.hidden = !userSearchVisible();
+        }
+        if (!userSearchVisible() && current === "user") {
+          select.value = "all";
+        }
+      }
+
+      function searchEntryKey(entry) {
+        return `${entry.type}:${entry.sourceId || entry.slug || entry.title || ""}`;
+      }
+
+      function coerceArray(value) {
+        return Array.isArray(value) ? value : [];
+      }
+
+      function toDisplaySnippet(raw) {
+        const text = stripHtmlText(raw || "");
+        if (!text) return "";
+        if (text.length <= 140) return text;
+        return `${text.slice(0, 139).trim()}…`;
+      }
+
+      function buildEntrySearchBlob(entry) {
+        const parts = [
+          entry.title || "",
+          entry.snippet || "",
+          entry.slug || "",
+          entry.type || "",
+          coerceArray(entry.tokens).join(" "),
+          entry.meta?.category || "",
+          entry.meta?.location || "",
+          entry.meta?.wojewodztwo || "",
+          entry.meta?.miejscowosc || "",
+          entry.meta?.sellerName || "",
+          entry.meta?.username || "",
+        ];
+        return normalizeSearchText(parts.join(" "));
+      }
+
+      function computeEntryScore(entry, normQuery, tokens) {
+        const title = normalizeSearchText(entry.title || "");
+        const blob = buildEntrySearchBlob(entry);
+        let score = 0;
+        if (title.startsWith(normQuery)) score += 180;
+        if (title.includes(normQuery)) score += 110;
+        if (blob.includes(normQuery)) score += 70;
+        for (const tok of tokens) {
+          if (title.includes(tok)) score += 22;
+          if (blob.includes(tok)) score += 10;
+        }
+        const popularity = Number(entry.popularity || 0);
+        if (Number.isFinite(popularity) && popularity > 0) {
+          score += Math.min(90, popularity);
+        }
+        return score;
+      }
+
+      function mapSearchDocToEntry(docSnap) {
+        const data = docSnap.data() || {};
+        return {
+          id: docSnap.id,
+          type: String(data.type || "").toLowerCase(),
+          sourceId: String(data.sourceId || ""),
+          title: String(data.title || "").trim(),
+          snippet: toDisplaySnippet(data.snippet || ""),
+          url: typeof data.url === "string" ? data.url : "",
+          slug: typeof data.slug === "string" ? data.slug : "",
+          tokens: coerceArray(data.tokens).map((x) => String(x)),
+          searchKeys: coerceArray(data.searchKeys).map((x) => String(x)),
+          popularity: Number(data.popularity || 0),
+          meta: data.meta && typeof data.meta === "object" ? data.meta : {},
+          source: "remote",
+        };
+      }
+
+      function getStoredRecentQueries() {
+        return loadJsonStorage(SEARCH_STORAGE.recentQueries, []);
+      }
+
+      function pushRecentQuery(rawQuery) {
+        const queryText = String(rawQuery || "").trim();
+        if (!queryText) return;
+        const list = getStoredRecentQueries();
+        const next = [queryText, ...list.filter((x) => normalizeSearchText(x) !== normalizeSearchText(queryText))].slice(0, 10);
+        saveJsonStorage(SEARCH_STORAGE.recentQueries, next);
+      }
+
+      function getStoredRecentItems() {
+        return loadJsonStorage(SEARCH_STORAGE.recentItems, []);
+      }
+
+      function pushRecentItem(entry) {
+        if (!entry) return;
+        const key = searchEntryKey(entry);
+        const list = getStoredRecentItems();
+        const existing = list.find((x) => x.key === key);
+        const clicks = Number(existing?.clicks || 0) + 1;
+        const payload = {
+          key,
+          type: entry.type,
+          sourceId: entry.sourceId,
+          title: entry.title,
+          snippet: entry.snippet,
+          url: entry.url,
+          slug: entry.slug || "",
+          clicks,
+          lastClickedAt: Date.now(),
+        };
+        const next = [payload, ...list.filter((x) => x.key !== key)].slice(0, 80);
+        saveJsonStorage(SEARCH_STORAGE.recentItems, next);
+      }
+
+      function getStoredCacheItems() {
+        return loadJsonStorage(SEARCH_STORAGE.cacheItems, []);
+      }
+
+      function mergeIntoCache(entries) {
+        if (!Array.isArray(entries) || entries.length === 0) return;
+        const current = getStoredCacheItems();
+        const map = new Map(current.map((item) => [searchEntryKey(item), item]));
+        for (const entry of entries) {
+          map.set(searchEntryKey(entry), {
+            type: entry.type,
+            sourceId: entry.sourceId,
+            title: entry.title,
+            snippet: entry.snippet,
+            url: entry.url,
+            slug: entry.slug || "",
+            tokens: coerceArray(entry.tokens),
+            popularity: Number(entry.popularity || 0),
+            meta: entry.meta || {},
+            updatedAt: Date.now(),
+          });
+        }
+        const next = Array.from(map.values())
+          .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
+          .slice(0, 450);
+        saveJsonStorage(SEARCH_STORAGE.cacheItems, next);
+      }
+
+      function setSpotlightSelection(nextIndex) {
+        spotlightState.selectionIndex = nextIndex;
+        spotlightState.activeEntries.forEach((entry, index) => {
+          entry.element.classList.toggle("is-selected", index === nextIndex);
+        });
+      }
+
+      function flattenRenderedEntries(groups) {
+        const out = [];
+        for (const group of groups) {
+          for (const item of group.items) {
+            out.push(item);
+          }
+        }
+        return out;
+      }
+
+      function renderSpotlightGroups(groups) {
+        const resultsEl = spotlightEls.results;
+        if (!resultsEl) return;
+        resultsEl.innerHTML = "";
+        spotlightState.activeEntries = [];
+        spotlightState.selectionIndex = -1;
+
+        if (!groups.length) {
+          resultsEl.innerHTML = '<div class="spotlight-empty">Brak wyników.</div>';
+          resultsEl.classList.remove("hidden");
+          return;
+        }
+
+        for (const group of groups) {
+          const section = document.createElement("section");
+          section.className = "spotlight-group";
+          const heading = document.createElement("h4");
+          heading.className = "spotlight-group-title";
+          heading.textContent = group.label;
+          section.appendChild(heading);
+
+          for (const item of group.items) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "spotlight-item";
+            const titleEl = document.createElement("div");
+            titleEl.className = "spotlight-item-title";
+            titleEl.textContent = String(item.title || "");
+            btn.appendChild(titleEl);
+
+            if (item.snippet) {
+              const snippetEl = document.createElement("div");
+              snippetEl.className = "spotlight-item-snippet";
+              snippetEl.textContent = String(item.snippet || "");
+              btn.appendChild(snippetEl);
+            }
+            btn.addEventListener("click", () => openSearchEntry(item));
+            section.appendChild(btn);
+            spotlightState.activeEntries.push({ item, element: btn });
+          }
+
+          resultsEl.appendChild(section);
+        }
+
+        resultsEl.classList.remove("hidden");
+      }
+
+      function spotlightSignature(normQuery, category) {
+        return `${category}::${normQuery}`;
+      }
+
+      function tryReuseNearFullSearch(norm, selectedCategory, tokens) {
+        for (const [signature, groups] of spotlightState.fullSearchCache.entries()) {
+          const [cachedCategory = "", cachedNorm = ""] = String(signature).split("::");
+          if (cachedCategory !== selectedCategory) continue;
+          if (!cachedNorm || cachedNorm === norm) continue;
+          const delta = Math.abs(cachedNorm.length - norm.length);
+          if (delta > 1) continue;
+          if (!(norm.startsWith(cachedNorm) || cachedNorm.startsWith(norm))) continue;
+
+          const filtered = flattenRenderedEntries(groups).filter((entry) => {
+            const blob = buildEntrySearchBlob(entry);
+            return tokens.every((token) => blob.includes(token));
+          });
+
+          if (!filtered.length) continue;
+          return groupAndLimitEntries(filtered, selectedCategory, norm, tokens);
+        }
+        return null;
+      }
+
+      async function runCategorySearch(type, primaryKey, tokens, perTypeQueryLimit = SEARCH_FETCH_LIMIT_SINGLE) {
+        const ref = collection(db, "searchIndex");
+        const qRef = query(
+          ref,
+          where("type", "==", type),
+          where("searchKeys", "array-contains", primaryKey),
+          limit(perTypeQueryLimit),
+        );
+
+        const snap = await getDocs(qRef);
+        const mapped = snap.docs.map(mapSearchDocToEntry);
+        const filtered = mapped.filter((entry) => {
+          if (!entry.title) return false;
+          const blob = buildEntrySearchBlob(entry);
+          return tokens.every((token) => blob.includes(token));
+        });
+        return filtered;
+      }
+
+      function groupAndLimitEntries(entries, selectedCategory, normQuery, tokens) {
+        const grouped = new Map();
+        const order = activeSearchTypes();
+        for (const type of order) grouped.set(type, []);
+
+        for (const entry of entries) {
+          if (!grouped.has(entry.type)) continue;
+          grouped.get(entry.type).push(entry);
+        }
+
+        const out = [];
+        for (const type of order) {
+          const scored = grouped
+            .get(type)
+            .map((entry) => ({ ...entry, score: computeEntryScore(entry, normQuery, tokens) }))
+            .sort((a, b) => b.score - a.score || Number(b.popularity || 0) - Number(a.popularity || 0));
+
+          const limitPerCategory = selectedCategory === "all" ? SEARCH_LIMIT_ALL : SEARCH_LIMIT_SINGLE;
+          const items = scored.slice(0, limitPerCategory);
+          if (!items.length) continue;
+
+          out.push({
+            type,
+            label: SEARCH_TYPE_LABEL[type],
+            items,
+          });
+        }
+        return out;
+      }
+
+      function renderLocalSuggestions(rawQuery) {
+        const norm = normalizeSearchText(rawQuery);
+        const types = activeSearchTypes();
+        const cacheItems = getStoredCacheItems().filter((item) => types.includes(item.type));
+        const recentItems = getStoredRecentItems().filter((item) => types.includes(item.type));
+
+        const suggestionItems = [];
+        if (norm.length < SEARCH_MIN_CHARS) {
+          for (const item of recentItems
+            .slice()
+            .sort((a, b) => Number(b.clicks || 0) - Number(a.clicks || 0))
+            .slice(0, 8)) {
+            suggestionItems.push({
+              ...item,
+              popularity: Number(item.clicks || 0),
+              source: "recent",
+            });
+          }
+
+          const queries = getStoredRecentQueries().slice(0, 5);
+          if (queries.length && suggestionItems.length < 8) {
+            for (const qText of queries) {
+              suggestionItems.push({
+                type: "query",
+                sourceId: "",
+                title: qText,
+                snippet: "Poprzednie zapytanie",
+                url: "",
+                slug: "",
+                popularity: 0,
+                source: "query",
+              });
+            }
+          }
+        } else {
+          const tokens = tokenizeQuery(norm);
+          const fromCache = cacheItems
+            .filter((item) => {
+              const blob = normalizeSearchText(
+                [item.title, item.snippet, coerceArray(item.tokens).join(" "), item.meta?.category || ""].join(" "),
+              );
+              return tokens.every((token) => blob.includes(token));
+            })
+            .map((item) => ({
+              ...item,
+              snippet: toDisplaySnippet(item.snippet),
+              source: "cache",
+              score: computeEntryScore(item, norm, tokens),
+            }))
+            .sort((a, b) => Number(b.score || 0) - Number(a.score || 0))
+            .slice(0, 12);
+
+          suggestionItems.push(...fromCache);
+        }
+
+        const deduped = [];
+        const seen = new Set();
+        for (const item of suggestionItems) {
+          if (item.type === "query") {
+            const k = `query:${normalizeSearchText(item.title)}`;
+            if (seen.has(k)) continue;
+            seen.add(k);
+            deduped.push(item);
+            continue;
+          }
+          const key = searchEntryKey(item);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          deduped.push(item);
+        }
+
+        const grouped = [];
+        const entryItems = deduped.filter((x) => x.type !== "query");
+        if (entryItems.length) {
+          const normalizedEntries = entryItems.map((item) => ({
+            ...item,
+            type: item.type,
+            sourceId: item.sourceId,
+            title: item.title,
+            snippet: item.snippet || "",
+            url: item.url || "",
+            slug: item.slug || "",
+            meta: item.meta || {},
+            tokens: coerceArray(item.tokens),
+          }));
+          grouped.push({ type: "suggestions", label: "Szybkie sugestie", items: normalizedEntries.slice(0, 12) });
+        }
+
+        const queryItems = deduped.filter((x) => x.type === "query");
+        if (queryItems.length) {
+          grouped.push({
+            type: "queries",
+            label: "Ostatnie zapytania",
+            items: queryItems.slice(0, 4),
+          });
+        }
+
+        if (!grouped.length) {
+          spotlightEls.results.innerHTML = '<div class="spotlight-empty">Wpisz minimum 3 znaki, aby wyszukać.</div>';
+          spotlightEls.results.classList.remove("hidden");
+          spotlightState.activeEntries = [];
+          spotlightState.selectionIndex = -1;
+          return;
+        }
+
+        renderSpotlightGroups(grouped);
+      }
+
+      async function runFullSearch() {
+        const input = spotlightEls.input;
+        const category = spotlightEls.category;
+        if (!input || !category) return;
+
+        const raw = input.value || "";
+        const norm = normalizeSearchText(raw);
+        if (norm.length < SEARCH_MIN_CHARS) {
+          renderLocalSuggestions(raw);
+          return;
+        }
+
+        const selectedCategory = category.value || "all";
+        const signature = spotlightSignature(norm, selectedCategory);
+        if (spotlightState.lastFullSignature === signature && spotlightState.fullSearchCache.has(signature)) {
+          renderSpotlightGroups(spotlightState.fullSearchCache.get(signature));
+          return;
+        }
+
+        const tokens = tokenizeQuery(norm);
+        if (!tokens.length) {
+          renderLocalSuggestions(raw);
+          return;
+        }
+        const primaryToken = tokens.find((token) => token.length >= SEARCH_MIN_CHARS) || norm;
+        const primaryKey = primaryToken.slice(0, 12);
+        const types = activeSearchTypes();
+        if (!types.length) {
+          spotlightEls.results.innerHTML = '<div class="spotlight-empty">Brak dostępnych kategorii dla tego konta.</div>';
+          spotlightEls.results.classList.remove("hidden");
+          return;
+        }
+
+        const nearCachedGroups = tryReuseNearFullSearch(norm, selectedCategory, tokens);
+        if (nearCachedGroups) {
+          spotlightState.lastFullSignature = signature;
+          spotlightState.fullSearchCache.set(signature, nearCachedGroups);
+          pushRecentQuery(raw);
+          renderSpotlightGroups(nearCachedGroups);
+          return;
+        }
+
+        spotlightEls.results.innerHTML = '<div class="spotlight-empty">Wyszukiwanie…</div>';
+        spotlightEls.results.classList.remove("hidden");
+
+        const perTypeQueryLimit =
+          selectedCategory === "all" ? SEARCH_FETCH_LIMIT_ALL : SEARCH_FETCH_LIMIT_SINGLE;
+        const resultsByType = await Promise.all(
+          types.map(async (type) => {
+            try {
+              const rows = await runCategorySearch(type, primaryKey, tokens, perTypeQueryLimit);
+              return rows;
+            } catch (e) {
+              console.warn("search query failed:", type, e?.message || e);
+              return [];
+            }
+          }),
+        );
+
+        const flat = resultsByType.flat();
+        const grouped = groupAndLimitEntries(flat, selectedCategory, norm, tokens);
+        spotlightState.lastFullSignature = signature;
+        spotlightState.fullSearchCache.set(signature, grouped);
+        if (spotlightState.fullSearchCache.size > 16) {
+          const firstKey = spotlightState.fullSearchCache.keys().next().value;
+          spotlightState.fullSearchCache.delete(firstKey);
+        }
+
+        mergeIntoCache(flat);
+        pushRecentQuery(raw);
+        renderSpotlightGroups(grouped);
+      }
+
+      function openGlobalModal(url) {
+        if (!spotlightEls.modal || !spotlightEls.modalFrame) return;
+        spotlightEls.modalFrame.src = url;
+        spotlightEls.modal.classList.remove("hidden");
+        spotlightEls.modal.classList.add("flex");
+        document.body.style.overflow = "hidden";
+      }
+
+      function closeGlobalModal() {
+        if (!spotlightEls.modal || !spotlightEls.modalFrame) return;
+        spotlightEls.modal.classList.add("hidden");
+        spotlightEls.modal.classList.remove("flex");
+        spotlightEls.modalFrame.src = "about:blank";
+        document.body.style.overflow = "";
+      }
+
+      function withEmbedQuery(urlValue, params = {}) {
+        try {
+          const url = new URL(urlValue);
+          url.searchParams.set("embedModal", "1");
+          for (const [key, value] of Object.entries(params)) {
+            if (value == null || value === "") continue;
+            url.searchParams.set(key, String(value));
+          }
+          return url.toString();
+        } catch (_) {
+          return urlValue;
+        }
+      }
+
+      function openSearchEntry(entry) {
+        if (!entry) return;
+
+        spotlightEls.results?.classList.add("hidden");
+        spotlightEls.shell?.classList.remove("is-active");
+
+        if (entry.type === "query") {
+          spotlightEls.input.value = entry.title || "";
+          runFullSearch();
+          return;
+        }
+
+        pushRecentItem(entry);
+
+        let targetUrl = entry.url || "";
+        if (entry.type === "user") {
+          const userId = entry.sourceId || entry.slug;
+          targetUrl = withEmbedQuery(targetUrl || "https://konto.strzelca.pl/profil.html", {
+            uid: userId || "",
+          });
+        } else if (entry.type === "shop") {
+          targetUrl = withEmbedQuery(targetUrl || "https://sklep.strzelca.pl/", { open: entry.sourceId || entry.slug });
+        } else if (entry.type === "event") {
+          targetUrl = withEmbedQuery(targetUrl || "https://wydarzenia.strzelca.pl/", { open: entry.sourceId || entry.slug });
+        } else if (entry.type === "blog") {
+          targetUrl = withEmbedQuery(targetUrl || "https://blog.strzelca.pl/", { open: entry.sourceId || entry.slug });
+        } else if (entry.type === "bazar") {
+          targetUrl = withEmbedQuery(targetUrl || "https://bazar.strzelca.pl/", { offer: entry.sourceId || entry.slug });
+        }
+
+        if (!targetUrl) return;
+        openGlobalModal(targetUrl);
+      }
+
+      function highlightSpotlightByOffset(offset) {
+        const entries = spotlightState.activeEntries;
+        if (!entries.length) return;
+        const current = spotlightState.selectionIndex;
+        let next = current + offset;
+        if (next < 0) next = entries.length - 1;
+        if (next >= entries.length) next = 0;
+        setSpotlightSelection(next);
+        entries[next].element.scrollIntoView({ block: "nearest" });
+      }
+
+      function scheduleLocalSuggestions() {
+        if (spotlightState.typingTimer) {
+          clearTimeout(spotlightState.typingTimer);
+        }
+        spotlightState.typingTimer = setTimeout(() => {
+          const queryText = spotlightEls.input?.value || "";
+          renderLocalSuggestions(queryText);
+        }, 210);
+      }
+
+      function initSpotlightSearch() {
+        spotlightEls.shell = document.getElementById("spotlight-search");
+        spotlightEls.input = document.getElementById("spotlight-search-input");
+        spotlightEls.submit = document.getElementById("spotlight-submit");
+        spotlightEls.category = document.getElementById("spotlight-category");
+        spotlightEls.results = document.getElementById("spotlight-results");
+        spotlightEls.modal = document.getElementById("global-modal");
+        spotlightEls.modalFrame = document.getElementById("global-modal-frame");
+        spotlightEls.modalClose = document.getElementById("global-modal-close");
+
+        if (!spotlightEls.shell || !spotlightEls.input || !spotlightEls.results) return;
+
+        updateSearchCategoryOptions();
+
+        spotlightEls.input.addEventListener("focus", () => {
+          spotlightEls.shell.classList.add("is-active");
+          renderLocalSuggestions(spotlightEls.input.value || "");
+        });
+
+        spotlightEls.input.addEventListener("input", () => {
+          scheduleLocalSuggestions();
+        });
+
+        spotlightEls.input.addEventListener("keydown", async (event) => {
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            highlightSpotlightByOffset(1);
+            return;
+          }
+          if (event.key === "ArrowUp") {
+            event.preventDefault();
+            highlightSpotlightByOffset(-1);
+            return;
+          }
+          if (event.key === "Enter") {
+            event.preventDefault();
+            if (
+              spotlightState.selectionIndex >= 0 &&
+              spotlightState.selectionIndex < spotlightState.activeEntries.length
+            ) {
+              const chosen = spotlightState.activeEntries[spotlightState.selectionIndex]?.item;
+              if (chosen) {
+                openSearchEntry(chosen);
+                return;
+              }
+            }
+            await runFullSearch();
+            return;
+          }
+          if (event.key === "Escape") {
+            spotlightEls.results.classList.add("hidden");
+            setSpotlightSelection(-1);
+            return;
+          }
+        });
+
+        spotlightEls.submit?.addEventListener("click", () => runFullSearch());
+        spotlightEls.category?.addEventListener("change", () => {
+          spotlightState.lastFullSignature = "";
+          renderLocalSuggestions(spotlightEls.input.value || "");
+        });
+
+        spotlightEls.modalClose?.addEventListener("click", closeGlobalModal);
+        spotlightEls.modal?.addEventListener("click", (event) => {
+          if (event.target === spotlightEls.modal) closeGlobalModal();
+        });
+
+        window.addEventListener("message", (event) => {
+          if (event.data?.source === "strzelca-modal" && event.data?.action === "close") {
+            closeGlobalModal();
+          }
+        });
+
+        document.addEventListener("keydown", (event) => {
+          const isMac = navigator.platform.toUpperCase().includes("MAC");
+          const shortcutPressed = (isMac && event.metaKey && event.key.toLowerCase() === "k") || (!isMac && event.ctrlKey && event.key.toLowerCase() === "k");
+          if (shortcutPressed) {
+            event.preventDefault();
+            spotlightEls.input.focus();
+            spotlightEls.input.select();
+            spotlightEls.shell.classList.add("is-active");
+            renderLocalSuggestions(spotlightEls.input.value || "");
+            return;
+          }
+          if (event.key === "Escape" && !spotlightEls.modal?.classList.contains("hidden")) {
+            closeGlobalModal();
+          }
+        });
+
+        document.addEventListener("click", (event) => {
+          if (!spotlightEls.shell.contains(event.target)) {
+            spotlightEls.shell.classList.remove("is-active");
+            spotlightEls.results.classList.add("hidden");
+            setSpotlightSelection(-1);
+          }
+        });
+      }
+
+      initSpotlightSearch();
 
       // Dodaj globalną obsługę błędów CORS (ignoruj błędy Firebase internal)
       window.addEventListener('error', function(e) {
@@ -585,6 +1508,7 @@
 
         currentUser = user;
         updateUserInterface(user);
+        updateSearchCategoryOptions();
         });
       }
 

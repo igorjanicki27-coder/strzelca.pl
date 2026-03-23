@@ -494,6 +494,37 @@
           const urlParams = new URLSearchParams(window.location.search || "");
           const isResendMode = urlParams.get("resend") === "1";
 
+          async function syncUserSearchIndex(user) {
+            if (!user?.uid) return;
+            try {
+              const headers = { "Content-Type": "application/json" };
+              try {
+                const idToken = await user.getIdToken();
+                if (idToken) headers.Authorization = `Bearer ${idToken}`;
+              } catch (_) {
+                // fallback do cookie sesji
+              }
+
+              const res = await fetch("https://strzelca.pl/api/search-index", {
+                method: "POST",
+                headers,
+                credentials: "include",
+                body: JSON.stringify({
+                  action: "sync",
+                  type: "user",
+                  sourceId: user.uid,
+                }),
+              });
+
+              if (!res.ok) {
+                const errText = await res.text().catch(() => "");
+                console.warn("search-index sync failed:", res.status, errText);
+              }
+            } catch (e) {
+              console.warn("search-index sync failed:", e?.message || e);
+            }
+          }
+
           function unverifiedRedirectUrl({ email, sent } = {}) {
             try {
               const u = new URL(UNVERIFIED_REDIRECT_BASE, window.location.href);
@@ -610,6 +641,7 @@
                     "Użytkownik zweryfikowany, przekierowanie do strony głównej:",
                     POST_LOGIN_REDIRECT_URL
                   );
+                  await syncUserSearchIndex(currentUser);
                   isNavigatingAway = true;
                   window.location.href = POST_LOGIN_REDIRECT_URL;
                 }
@@ -742,6 +774,7 @@
                   );
                 }
 
+                await syncUserSearchIndex(user);
                 isNavigatingAway = true;
                 window.location.href = POST_LOGIN_REDIRECT_URL;
               } catch (reloadError) {
@@ -1105,6 +1138,7 @@
                 );
                 console.log("Zdarzenie zalogowane");
 
+                await syncUserSearchIndex(user);
                 console.log("Ustawianie przekierowania za 1 sekundę...");
                 isNavigatingAway = true; // Oznacz że przekierowujemy, aby onAuthStateChanged nie kolidował
                 setTimeout(() => {
@@ -1176,4 +1210,3 @@
     ></script>
   </body>
 </html>
-

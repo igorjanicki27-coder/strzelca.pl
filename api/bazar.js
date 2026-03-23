@@ -6,6 +6,11 @@ const {
   getSessionUser,
 } = require('./_sso-utils');
 const { sendBazarOfferTemplateEmail } = require('./_bazar-offer-email');
+const {
+  TYPE_BAZAR,
+  syncEntryFromSource,
+  deleteIndexEntry,
+} = require('./_search-index');
 
 const SUPERADMIN_UID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
 
@@ -105,6 +110,20 @@ function generateSlug(title, wojewodztwo) {
     .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').substring(0,60);
   const woj = (wojewodztwo || '').toLowerCase().replace(/[^a-z]/g,'').substring(0,20);
   return woj ? `${base}-${woj}` : base;
+}
+
+async function syncBazarOfferInSearchIndex(db, offerId) {
+  if (!offerId) return;
+  try {
+    await syncEntryFromSource({
+      db,
+      admin,
+      type: TYPE_BAZAR,
+      sourceId: String(offerId),
+    });
+  } catch (e) {
+    console.warn('syncBazarOfferInSearchIndex failed:', e?.message || e);
+  }
 }
 
 module.exports = async (req, res) => {
@@ -362,6 +381,7 @@ module.exports = async (req, res) => {
       };
 
       const docRef = await db.collection('bazarOffers').add(offerData);
+      await syncBazarOfferInSearchIndex(db, docRef.id);
       sendBazarOfferTemplateEmail(db, 'bazar_offer_submitted', { ...offerData, id: docRef.id, slug }).catch(
         () => {},
       );
@@ -410,6 +430,7 @@ module.exports = async (req, res) => {
 
       await docRef.update(updates);
       await bumpBazarPublicListVersion(db);
+      await syncBazarOfferInSearchIndex(db, subAction);
       return res.json({ success: true });
     }
 
@@ -450,6 +471,7 @@ module.exports = async (req, res) => {
       sendBazarOfferTemplateEmail(db, 'bazar_offer_approved', approvedRow, {}).catch(() => {});
 
       await bumpBazarPublicListVersion(db);
+      await syncBazarOfferInSearchIndex(db, offerId);
       return res.json({ success: true });
     }
 
@@ -482,6 +504,7 @@ module.exports = async (req, res) => {
       ).catch(() => {});
 
       await bumpBazarPublicListVersion(db);
+      await syncBazarOfferInSearchIndex(db, offerId);
       return res.json({ success: true });
     }
 
@@ -498,6 +521,7 @@ module.exports = async (req, res) => {
 
       await db.collection('bazarOffers').doc(offerId).update({ is_pinned: pinned });
       await bumpBazarPublicListVersion(db);
+      await syncBazarOfferInSearchIndex(db, offerId);
       return res.json({ success: true, is_pinned: pinned });
     }
 
@@ -511,6 +535,7 @@ module.exports = async (req, res) => {
 
       await db.collection('bazarOffers').doc(offerId).update({ status: 'SOLD' });
       await bumpBazarPublicListVersion(db);
+      await syncBazarOfferInSearchIndex(db, offerId);
       return res.json({ success: true });
     }
 
@@ -609,6 +634,7 @@ module.exports = async (req, res) => {
       ).catch(() => {});
 
       await bumpBazarPublicListVersion(db);
+      await syncBazarOfferInSearchIndex(db, subAction);
       return res.json({ success: true });
     }
 
@@ -661,6 +687,7 @@ module.exports = async (req, res) => {
 
       await docRef.update({ status: 'SOLD' });
       await bumpBazarPublicListVersion(db);
+      await syncBazarOfferInSearchIndex(db, subAction);
       return res.json({ success: true });
     }
 
@@ -680,6 +707,7 @@ module.exports = async (req, res) => {
 
       await docRef.delete();
       await bumpBazarPublicListVersion(db);
+      await deleteIndexEntry(db, TYPE_BAZAR, subAction).catch(() => null);
       return res.json({ success: true });
     }
 

@@ -1075,6 +1075,16 @@
           let isViewingOwnProfile = true;
           let reviewTargetUid = null;
           let reviewTargetDisplayName = "";
+          const profileUrlParams = new URLSearchParams(window.location.search || "");
+          const profileEmbedMode = profileUrlParams.get("embedModal") === "1";
+
+          function applyProfileEmbedMode() {
+            if (!profileEmbedMode) return;
+            document.querySelector("nav")?.classList.add("hidden");
+            document.body.style.background = "#000";
+          }
+
+          applyProfileEmbedMode();
 
           // Stały avatar dla administratorów (w repo jest obecnie: /admin/Avatar_admin.png).
           // Jeśli zmienisz nazwę pliku na /admin/avatar_admin.jpg, podmień stałą poniżej.
@@ -1100,11 +1110,38 @@
                 publicDoc,
                 { merge: true },
               );
+              await syncUserSearchIndex();
             } catch (e) {
               console.warn(
                 "syncPublicProfileFromPrivate failed (ignored):",
                 e?.message || e,
               );
+            }
+          }
+
+          async function syncUserSearchIndex(action = "sync") {
+            if (!currentUser?.uid) return;
+            try {
+              const headers = { "Content-Type": "application/json" };
+              try {
+                const idToken = await currentUser.getIdToken();
+                if (idToken) headers.Authorization = `Bearer ${idToken}`;
+              } catch (_) {
+                // fallback do sesji cookie
+              }
+
+              await fetch("https://strzelca.pl/api/search-index", {
+                method: "POST",
+                headers,
+                credentials: "include",
+                body: JSON.stringify({
+                  action,
+                  type: "user",
+                  sourceId: currentUser.uid,
+                }),
+              });
+            } catch (e) {
+              console.warn("syncUserSearchIndex failed (ignored):", e?.message || e);
             }
           }
 
@@ -1597,6 +1634,7 @@
                   },
                   { merge: true },
                 );
+                await syncUserSearchIndex();
               } catch (e) {
                 console.warn(
                   "Public profile avatar sync failed (ignored):",
@@ -1664,6 +1702,7 @@
                     },
                     { merge: true },
                   );
+                  await syncUserSearchIndex();
                 } catch (e) {
                   console.warn(
                     "Public profile avatar sync failed (ignored):",
@@ -1712,6 +1751,7 @@
                   },
                   { merge: true },
                 );
+                await syncUserSearchIndex();
               } catch (e) {
                 console.warn(
                   "Public profile avatar sync failed (ignored):",

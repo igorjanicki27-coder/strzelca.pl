@@ -94,6 +94,13 @@ service cloud.firestore {
       allow create, update, delete: if isAdminOrSuperAdmin();
     }
 
+    // Lekki indeks wyszukiwania globalnego.
+    // Uwaga: rekordy typu "user" są widoczne tylko dla zalogowanych.
+    match /searchIndex/{docId} {
+      allow read: if (resource.data.type != 'user') || isAuthenticated();
+      allow create, update, delete: if false; // zapis wyłącznie przez backend (Admin SDK)
+    }
+
     // =============================================================================
     // MESSAGES & CONVERSATIONS
     // =============================================================================

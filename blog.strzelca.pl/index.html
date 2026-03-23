@@ -1441,6 +1441,31 @@ const firebaseConfig = {
         let eventLoopEnabled = false;
         let eventCarouselAnimating = false;
         let eventPendingMoves = 0;
+        const blogUrlParams = new URLSearchParams(window.location.search || '');
+        const blogAutoOpenId = (blogUrlParams.get('open') || blogUrlParams.get('post') || '').trim();
+        const blogEmbedMode = blogUrlParams.get('embedModal') === '1';
+        let blogAutoOpenDone = false;
+
+        function notifyParentCloseInEmbedMode() {
+            if (!blogEmbedMode) return;
+            try {
+                window.parent?.postMessage({ source: 'strzelca-modal', action: 'close' }, '*');
+            } catch (_) {}
+        }
+
+        function applyBlogEmbedMode() {
+            if (!blogEmbedMode) return;
+            document.getElementById('user-panel')?.classList.add('hidden');
+            document.getElementById('login-button')?.classList.add('hidden');
+            document.querySelector('nav')?.classList.add('hidden');
+            document.querySelector('header')?.classList.add('hidden');
+            document.getElementById('arsenal')?.classList.add('hidden');
+            const footer = document.querySelector('footer');
+            if (footer) footer.classList.add('hidden');
+            document.body.style.background = '#000';
+        }
+
+        applyBlogEmbedMode();
 
         function syncBlogCarouselDots() {
             const dots = document.getElementById('blog-carousel-dots');
@@ -1868,6 +1893,10 @@ const firebaseConfig = {
                         allEvents.sort((a, b) => compareBlogPosts(a, b));
                         updateLastUpdate();
                         applyBlogSearch();
+                        if (!blogAutoOpenDone && blogAutoOpenId) {
+                            blogAutoOpenDone = true;
+                            showEventDetail(blogAutoOpenId);
+                        }
                         return;
                     } catch (error) {
                         console.warn(`Load blog attempt ${attempt}/${maxAttempts} failed:`, error);
@@ -2011,6 +2040,11 @@ const firebaseConfig = {
                             <div class="event-data-slot" style="margin-top: 0.5rem;">
                                 <p class="event-meta-row"><i class="fa-solid fa-calendar-day text-coyote/80 mr-1"></i>${dateLabel}</p>
                             </div>
+                            <div class="mt-3 pt-2 border-t border-zinc-700/50">
+                                <button type="button" data-blog-read-id="${encodeURIComponent(event.id)}" aria-label="Czytaj wpis ${safeTitle}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">
+                                    CZYTAJ
+                                </button>
+                            </div>
                         </div>
                     </article>
                 `;
@@ -2020,6 +2054,13 @@ const firebaseConfig = {
             track.querySelectorAll('.event-carousel-card[data-event-id]').forEach((cardEl) => {
                 cardEl.addEventListener('click', () => {
                     const eventId = decodeURIComponent(cardEl.dataset.eventId || '');
+                    if (eventId) showEventDetail(eventId);
+                });
+            });
+            track.querySelectorAll('[data-blog-read-id]').forEach((btn) => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const eventId = decodeURIComponent(btn.getAttribute('data-blog-read-id') || '');
                     if (eventId) showEventDetail(eventId);
                 });
             });
@@ -2223,6 +2264,9 @@ const firebaseConfig = {
             const event = allEvents.find(e => e.id === eventId);
             if (!event) {
                 console.error('Event not found:', eventId);
+                if (blogEmbedMode) {
+                    notifyParentCloseInEmbedMode();
+                }
                 return;
             }
 
@@ -2295,6 +2339,7 @@ const firebaseConfig = {
                 document.removeEventListener('keydown', window.blogGalleryKeyHandler);
                 window.blogGalleryKeyHandler = null;
             }
+            notifyParentCloseInEmbedMode();
         }
 
         // Global functions for onclick handlers

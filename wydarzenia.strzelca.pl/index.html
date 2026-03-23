@@ -1510,6 +1510,32 @@ const firebaseConfig = {
         let eventLoopEnabled = false;
         let eventCarouselAnimating = false;
         let eventPendingMoves = 0;
+        const eventUrlParams = new URLSearchParams(window.location.search || '');
+        const eventAutoOpenId = (eventUrlParams.get('open') || eventUrlParams.get('event') || '').trim();
+        const eventEmbedMode = eventUrlParams.get('embedModal') === '1';
+        let eventAutoOpenDone = false;
+
+        function notifyParentCloseInEmbedMode() {
+            if (!eventEmbedMode) return;
+            try {
+                window.parent?.postMessage({ source: 'strzelca-modal', action: 'close' }, '*');
+            } catch (_) {}
+        }
+
+        function applyEventEmbedMode() {
+            if (!eventEmbedMode) return;
+            document.getElementById('user-panel')?.classList.add('hidden');
+            document.getElementById('login-button')?.classList.add('hidden');
+            document.querySelector('nav')?.classList.add('hidden');
+            document.querySelector('header')?.classList.add('hidden');
+            document.getElementById('desktop-filters')?.classList.add('hidden');
+            document.getElementById('arsenal')?.classList.add('hidden');
+            const footer = document.querySelector('footer');
+            if (footer) footer.classList.add('hidden');
+            document.body.style.background = '#000';
+        }
+
+        applyEventEmbedMode();
 
         function syncEventCarouselDots() {
             const dots = document.getElementById('events-carousel-dots');
@@ -1964,6 +1990,10 @@ const firebaseConfig = {
                         });
                         updateLastUpdate();
                         applyFilters();
+                        if (!eventAutoOpenDone && eventAutoOpenId) {
+                            eventAutoOpenDone = true;
+                            showEventDetail(eventAutoOpenId);
+                        }
                         return;
                     } catch (error) {
                         console.warn(`Load events attempt ${attempt}/${maxAttempts} failed:`, error);
@@ -2195,9 +2225,6 @@ const firebaseConfig = {
             });
             const isPast = isEventCompleted(event, now);
             const isPinned = !!event.pinned;
-            const part = getEventParticipateButtonState(event, now);
-            const partLockedClass = part.lockedClass ? ' event-participate-btn--locked' : '';
-            const partDisabledAttr = part.disabled ? ' disabled aria-disabled="true"' : '';
 
             return `
                     <article class="card-dark event-carousel-card ${isPinned ? 'event-pinned' : ''} ${isPast ? 'event-completed opacity-70' : ''}" data-event-id="${encodeURIComponent(event.id)}">
@@ -2211,8 +2238,8 @@ const firebaseConfig = {
                             ${safeLocation ? `<p class="event-meta-row"><i class="fa-solid fa-location-dot text-coyote/80 mr-1"></i>${safeLocation}</p>` : ''}
                         </div>
                         <div class="mt-3 pt-2 border-t border-zinc-700/50">
-                            <button type="button" data-participate-event-id="${encodeURIComponent(event.id)}" class="event-participate-btn w-full font-bold text-sm tracking-widest py-3 px-4 rounded-lg uppercase flex items-center justify-center gap-2 transition-all duration-300${partLockedClass}"${partDisabledAttr}>
-                                <span class="event-participate-label transition-colors">${escapeHtml(part.label)}</span>
+                            <button type="button" data-details-event-id="${encodeURIComponent(event.id)}" aria-label="Szczegóły wydarzenia ${safeTitle}" class="w-full py-3 md:py-4 bg-zinc-600 text-zinc-100 text-[9px] md:text-[10px] uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-zinc-500 transition">
+                                SZCZEGÓŁY
                             </button>
                         </div>
                     </article>
@@ -2227,13 +2254,11 @@ const firebaseConfig = {
                 });
             });
 
-            track.querySelectorAll('[data-participate-event-id]').forEach((btn) => {
+            track.querySelectorAll('[data-details-event-id]').forEach((btn) => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    if (btn.disabled) return;
-                    const id = decodeURIComponent(btn.getAttribute('data-participate-event-id') || '');
-                    const ev = allEvents.find((x) => x.id === id);
-                    if (ev) handleEventParticipateClick(ev);
+                    const id = decodeURIComponent(btn.getAttribute('data-details-event-id') || '');
+                    if (id) showEventDetail(id);
                 });
             });
         }
@@ -2512,6 +2537,9 @@ const firebaseConfig = {
             const event = allEvents.find(e => e.id === eventId);
             if (!event) {
                 console.error('Event not found:', eventId);
+                if (eventEmbedMode) {
+                    notifyParentCloseInEmbedMode();
+                }
                 return;
             }
 
@@ -2563,6 +2591,7 @@ const firebaseConfig = {
 
         function closeEventModal() {
             document.getElementById('event-modal').classList.add('hidden');
+            notifyParentCloseInEmbedMode();
         }
 
         // Global functions for onclick handlers

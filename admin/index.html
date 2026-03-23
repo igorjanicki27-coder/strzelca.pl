@@ -1208,6 +1208,24 @@
                 <span id="last-status-check">Teraz</span></span
               >
               </div>
+
+              <div class="mt-6 bg-zinc-800/50 rounded-xl p-5 border border-zinc-700/60">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div>
+                    <h3 class="text-sm uppercase tracking-wider text-zinc-300 font-bold">Search Index</h3>
+                    <p class="text-xs text-zinc-500 mt-1">Awaryjna przebudowa indeksu wyszukiwania.</p>
+                  </div>
+                  <div class="flex gap-2 flex-wrap">
+                    <button type="button" class="btn-admin text-xs px-3 py-2" onclick="reindexSearchIndex('all', false)">
+                      Reindex całości
+                    </button>
+                    <button type="button" class="btn-admin bg-zinc-700 hover:bg-zinc-600 text-xs px-3 py-2" onclick="reindexSearchIndex('all', true)">
+                      Dry run
+                    </button>
+                  </div>
+                </div>
+                <p id="search-index-status" class="text-xs text-zinc-500 mt-3">Nie uruchamiano przebudowy indeksu w tej sesji.</p>
+              </div>
             </div>
           </div>
 
@@ -3428,6 +3446,7 @@
         writeBatch,
         serverTimestamp,
         Timestamp,
+        getCountFromServer,
         deleteField,
         increment,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -3643,6 +3662,96 @@
           console.warn("[publicListCacheMeta] bump", metaKey, e);
         }
       }
+
+      async function syncSearchIndexRecord(type, sourceId, action = "sync") {
+        if (!type || !sourceId) return false;
+        try {
+          const headers = { "Content-Type": "application/json" };
+          try {
+            const idToken = await auth?.currentUser?.getIdToken?.();
+            if (idToken) headers.Authorization = `Bearer ${idToken}`;
+          } catch (_) {
+            // fallback do same-site cookie
+          }
+
+          const res = await fetch("https://strzelca.pl/api/search-index", {
+            method: "POST",
+            headers,
+            credentials: "include",
+            body: JSON.stringify({
+              action,
+              type,
+              sourceId,
+            }),
+          });
+
+          if (!res.ok) {
+            const errText = await res.text().catch(() => "");
+            console.warn("[search-index] sync failed:", res.status, errText);
+            return false;
+          }
+
+          return true;
+        } catch (e) {
+          console.warn("[search-index] sync failed:", e?.message || e);
+          return false;
+        }
+      }
+
+      window.reindexSearchIndex = async (type = "all", dryRun = false) => {
+        const statusEl = document.getElementById("search-index-status");
+        if (statusEl) {
+          statusEl.textContent = dryRun
+            ? "Uruchamianie dry-run indeksu..."
+            : "Uruchamianie przebudowy indeksu...";
+          statusEl.className = "text-xs text-zinc-400 mt-3";
+        }
+
+        try {
+          const headers = { "Content-Type": "application/json" };
+          try {
+            const idToken = await auth?.currentUser?.getIdToken?.();
+            if (idToken) headers.Authorization = `Bearer ${idToken}`;
+          } catch (_) {}
+
+          const res = await fetch("https://strzelca.pl/api/search-index", {
+            method: "POST",
+            headers,
+            credentials: "include",
+            body: JSON.stringify({
+              action: "reindex",
+              type,
+              dryRun: dryRun === true,
+            }),
+          });
+
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data?.success !== true) {
+            throw new Error(data?.error || `HTTP ${res.status}`);
+          }
+
+          const summaryRows = Array.isArray(data?.data?.summary) ? data.data.summary : [];
+          const summaryText = summaryRows
+            .map((row) => `${row.type}: upsert ${row.upserts}, delete ${row.deletes}, skip ${row.skipped}`)
+            .join(" | ");
+
+          if (statusEl) {
+            statusEl.textContent = `Zakończono ${dryRun ? "dry-run" : "reindex"}: ${summaryText || "brak zmian"}`;
+            statusEl.className = "text-xs text-green-400 mt-3";
+          }
+          showNotification(
+            dryRun ? "Dry-run indeksu zakończony." : "Przebudowa indeksu zakończona.",
+            "success",
+          );
+        } catch (e) {
+          console.error("reindexSearchIndex failed:", e);
+          if (statusEl) {
+            statusEl.textContent = `Błąd przebudowy indeksu: ${e?.message || e}`;
+            statusEl.className = "text-xs text-red-400 mt-3";
+          }
+          showNotification("Błąd przebudowy searchIndex.", "error");
+        }
+      };
 
       let currentUser = null;
       let currentTab = "dashboard";
@@ -7750,6 +7859,7 @@
           }
 
           await updateDoc(doc(db, "userProfiles", userId), updateData);
+          await syncSearchIndexRecord("user", userId, "sync");
 
           // Zaloguj odblokowanie użytkownika
           if (!isAutomatic && currentUser?.uid) {
@@ -8050,6 +8160,7 @@
           } catch (e) {
             console.warn("publicProfiles role sync failed (ignored):", e?.message || e);
           }
+          await syncSearchIndexRecord("user", userId, "sync");
 
           // Zaloguj zmianę roli
           await logActivity(userId, "ROLE_CHANGE", {
@@ -8223,6 +8334,18 @@
         }
       })();
 
+      // Wspólny pasek narzędzi Quill (używany też z custom handlerem obrazka w wydarzeniach).
+      const quillDescriptionToolbar = [
+        [{ header: [1, 2, 3, 4, 5, 6, false] }],
+        ["bold", "italic", "underline", "strike"],
+        [{ color: [] }, { background: [] }],
+        [{ list: "ordered" }, { list: "bullet" }],
+        [{ align: [] }],
+        ["link", "image", "video"],
+        ["blockquote", "code-block"],
+        ["clean"],
+      ];
+
       // Wspólna konfiguracja Quill dla opisów (sklep, wydarzenia, itd.)
       const quillDescriptionEditorConfig = {
         theme: "snow",
@@ -8231,16 +8354,7 @@
             // Stabilniejsze wklejanie z Worda / stron www (unika „dopasowywania wizualnego”, które często psuje treść).
             matchVisual: false,
           },
-          toolbar: [
-            [{ header: [1, 2, 3, 4, 5, 6, false] }],
-            ["bold", "italic", "underline", "strike"],
-            [{ color: [] }, { background: [] }],
-            [{ list: "ordered" }, { list: "bullet" }],
-            [{ align: [] }],
-            ["link", "image", "video"],
-            ["blockquote", "code-block"],
-            ["clean"],
-          ],
+          toolbar: quillDescriptionToolbar,
         },
       };
 
@@ -8276,8 +8390,39 @@
           console.warn("Quill nie jest załadowany.");
           return;
         }
+        // Domyślny przycisk „Obraz” w Quill wstawia pełny base64 — przekracza limit Firestore (~1 MB na pole).
+        // Tutaj: wybór pliku + kompresja (ta sama ścieżka co przy zdjęciach produktów).
         eventQuill = new Quill("#event-description-editor", {
-          ...quillDescriptionEditorConfig,
+          theme: "snow",
+          modules: {
+            clipboard: quillDescriptionEditorConfig.modules.clipboard,
+            toolbar: {
+              container: quillDescriptionToolbar,
+              handlers: {
+                image: function () {
+                  const quill = this.quill;
+                  const input = document.createElement("input");
+                  input.type = "file";
+                  input.accept = "image/*";
+                  input.click();
+                  input.onchange = async () => {
+                    const file = input.files && input.files[0];
+                    if (!file) return;
+                    try {
+                      const base64 = await compressProductImageToBase64(file, 900, 0.68);
+                      const range = quill.getSelection(true);
+                      const idx = range ? range.index : Math.max(0, quill.getLength() - 1);
+                      quill.insertEmbed(idx, "image", base64, "user");
+                      quill.setSelection(idx + 1, 0, "silent");
+                    } catch (err) {
+                      const msg = err && err.message ? err.message : "Nie udało się dodać zdjęcia.";
+                      showNotification(msg, "error");
+                    }
+                  };
+                },
+              },
+            },
+          },
           placeholder: "Opis wydarzenia...",
         });
         editorElement.removeAttribute("contenteditable");
@@ -9628,23 +9773,6 @@
         };
       }
 
-      function mojEventAdminFullNameCell(p) {
-        return `${String(p.imie || "").trim()} ${String(p.nazwisko || "").trim()}`.trim();
-      }
-
-      /** Format: „Wierzbowa 42/16, Wrocław” (ulica + nr, opcjonalnie /lokal, przecinek, miejscowość) */
-      function mojEventAdminMiejsceZamieszkaniaCell(p) {
-        const ulica = String(p.ulica || "").trim();
-        const nb = String(p.numerBudynku || "").trim();
-        const nl = String(p.numerLokalu || "").trim();
-        const miasto = String(p.miejscowosc || "").trim();
-        let addr = ulica;
-        if (nb) addr = addr ? `${addr} ${nb}` : nb;
-        if (nl) addr = `${addr}/${nl}`;
-        if (miasto) return addr ? `${addr}, ${miasto}` : miasto;
-        return addr;
-      }
-
       /** Usuwa znaki, które psują wklejkę; cudzysłowy CSV — Excel nie dzieli wtedy po przecinku w adresie. */
       function mojEventAdminSanitizePasteCell(s) {
         return String(s).replace(/\t/g, " ").replace(/\r?\n/g, " ");
@@ -9664,7 +9792,15 @@
           showNotification("Zaznacz co najmniej jedną osobę (checkbox), aby wygenerować tabelę.", "error");
           return;
         }
-        const lines = [];
+        const headerCols = [
+          "Imię",
+          "Nazwisko",
+          "Ulica",
+          "Nr budynku",
+          "Nr lokalu",
+          "Miejscowość",
+        ];
+        const lines = [headerCols.join("\t")];
         let prevGroupMs = null;
         picked.forEach((rowEl) => {
           const ms = parseInt(rowEl.getAttribute("data-moj-group-ms") || "0", 10);
@@ -9673,16 +9809,22 @@
           }
           prevGroupMs = ms;
           const p = mojEventAdminReadRowPayload(rowEl);
-          const col1 = mojEventAdminQuotedPasteField(mojEventAdminFullNameCell(p));
-          const col2 = mojEventAdminQuotedPasteField(mojEventAdminMiejsceZamieszkaniaCell(p));
-          lines.push(`${col1}\t${col2}`);
+          const cells = [
+            mojEventAdminQuotedPasteField(p.imie || ""),
+            mojEventAdminQuotedPasteField(p.nazwisko || ""),
+            mojEventAdminQuotedPasteField(p.ulica || ""),
+            mojEventAdminQuotedPasteField(p.numerBudynku || ""),
+            mojEventAdminQuotedPasteField(p.numerLokalu || ""),
+            mojEventAdminQuotedPasteField(p.miejscowosc || ""),
+          ];
+          lines.push(cells.join("\t"));
         });
         const tsv = lines.join("\n");
         if (navigator.clipboard?.writeText) {
           navigator.clipboard.writeText(tsv).then(
             () =>
               showNotification(
-                "Skopiowano listę (TSV): dwie kolumny, bez nagłówka; pusta linia oddziela kolejne zgłoszenia z formularza.",
+                "Skopiowano listę do Excela: 6 kolumn (imię, nazwisko, adres osobno) + wiersz nagłówka; pusta linia oddziela kolejne zgłoszenia z formularza.",
                 "success"
               ),
             () => mojEventAdminShowTsvFallback(tsv)
@@ -9996,6 +10138,15 @@
         const pinned = document.getElementById("event-pinned").checked;
         const published = document.getElementById("event-published").checked;
 
+        const firestoreFieldMaxBytes = 1040000;
+        if (new TextEncoder().encode(description).length > firestoreFieldMaxBytes) {
+          showNotification(
+            "Opis wydarzenia przekracza limit bazy (~1 MB), zwykle przez zbyt duże zdjęcia w treści. Usuń obrazy z opisu lub dodaj je ponownie przyciskiem obrazka w pasku edytora (są wtedy kompresowane). Wklejanie z innych programów może wstawić bardzo duży obraz.",
+            "error"
+          );
+          return;
+        }
+
         if (!title || !dateTime || !endDateTime) {
           showNotification("Wypełnij wszystkie wymagane pola.", "error");
           return;
@@ -10069,6 +10220,7 @@
           if (eventId) {
             // Aktualizacja istniejącego wydarzenia
             await updateDoc(doc(db, "events", eventId), eventData);
+            await syncSearchIndexRecord("event", eventId, "sync");
             eventLogDetails.eventId = eventId;
             showNotification("Wydarzenie zostało zaktualizowane.", "success");
             if (actorUid) {
@@ -10083,6 +10235,7 @@
             // Dodanie nowego wydarzenia
             eventData.createdAt = new Date();
             const newEventRef = await addDoc(collection(db, "events"), eventData);
+            await syncSearchIndexRecord("event", newEventRef.id, "sync");
             eventLogDetails.eventId = newEventRef.id;
             showNotification("Wydarzenie zostało dodane.", "success");
             if (actorUid) {
@@ -10116,6 +10269,7 @@
           const eventName = event ? event.title : "Nieznane wydarzenie";
 
           await deleteDoc(doc(db, "events", eventId));
+          await syncSearchIndexRecord("event", eventId, "delete");
           await bumpPublicListCacheVersion("events");
           const delActor = getActivityLogActorUid();
           showNotification("Wydarzenie zostało usunięte.", "success");
@@ -11962,9 +12116,24 @@
 
 
         // Funkcje aktywności
+        async function getQueryCountSafe(queryRef) {
+          try {
+            const countSnap = await getCountFromServer(queryRef);
+            return Number(countSnap.data()?.count || 0);
+          } catch (countError) {
+            // Fallback zgodności: gdy aggregate count jest chwilowo niedostępny.
+            const docsSnap = await getDocs(queryRef);
+            return Number(docsSnap.size || 0);
+          }
+        }
+
+        function setDashboardStatValue(id, value) {
+          const el = document.getElementById(id);
+          if (el) el.textContent = String(value ?? 0);
+        }
+
         async function loadActivityStats() {
           try {
-            // Pobierz dane bezpośrednio z Firestore jako fallback gdy API nie działa
             const now = new Date();
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
@@ -11974,50 +12143,28 @@
             const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Jeśli niedziela, to 6 dni wstecz
             const weekStart = new Date(today.getTime() - daysFromMonday * 24 * 60 * 60 * 1000);
 
-            // Oblicz początek bieżącego miesiąca kalendarzowego (1.X) w lokalnej strefie czasowej
-            // Ustawiamy na początek dnia lokalnie, co automatycznie konwertuje się do odpowiedniego UTC
-            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-            // Oblicz koniec bieżącego miesiąca kalendarzowego (ostatni dzień miesiąca) w lokalnej strefie czasowej
-            const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-
-            // Oblicz początek bieżącego roku kalendarzowego (1 stycznia) w lokalnej strefie czasowej
-            const yearStart = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
-            // Oblicz koniec bieżącego roku kalendarzowego (31 grudnia) w lokalnej strefie czasowej
-            const yearEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
-
-            // Konwertuj daty na Firestore Timestamp dla zapytań
             const todayTimestamp = Timestamp.fromDate(today);
             const tomorrowTimestamp = Timestamp.fromDate(tomorrow);
             const weekStartTimestamp = Timestamp.fromDate(weekStart);
-            const monthStartTimestamp = Timestamp.fromDate(monthStart);
-            const monthEndTimestamp = Timestamp.fromDate(monthEnd);
-            const yearStartTimestamp = Timestamp.fromDate(yearStart);
-            const yearEndTimestamp = Timestamp.fromDate(yearEnd);
 
-            // Aktywne zalogowane użytkownicy (ostatnie 30 minut - na podstawie lastSeen)
+            // Aktywni zalogowani użytkownicy (ostatnie 30 min)
             let activeUsersCount = 0;
             try {
               const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
               const thirtyMinutesAgoTimestamp = Timestamp.fromDate(thirtyMinutesAgo);
 
-              // Zoptymalizowane zapytanie dla zalogowanych użytkowników
               const activeUsersQuery = query(
                 collection(db, "userProfiles"),
                 where("lastSeen", ">=", thirtyMinutesAgoTimestamp)
               );
-              const usersSnapshot = await getDocs(activeUsersQuery);
-
-              activeUsersCount = usersSnapshot.size;
-
-              const activeUsersEl = document.getElementById("active-logged-users");
-              if (activeUsersEl) activeUsersEl.textContent = activeUsersCount;
+              activeUsersCount = await getQueryCountSafe(activeUsersQuery);
+              setDashboardStatValue("active-logged-users", activeUsersCount);
             } catch (error) {
               console.warn("Could not fetch active users from Firestore:", error);
-              const activeUsersEl = document.getElementById("active-logged-users");
-              if (activeUsersEl) activeUsersEl.textContent = "0";
+              setDashboardStatValue("active-logged-users", 0);
             }
 
-            // Aktywni goście (ostatnie 30 minut) — kolekcja guestPresence (heartbeat), nie activityLogs
+            // Aktywni goście (ostatnie 30 min) — guestPresence ma 1 dokument na visitorId.
             let activeGuestsCount = 0;
             try {
               const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
@@ -12025,168 +12172,92 @@
 
               const guestPresenceQuery = query(
                 collection(db, "guestPresence"),
-                where("timestamp", ">=", thirtyMinutesAgoTimestamp),
-                orderBy("timestamp", "desc")
+                where("timestamp", ">=", thirtyMinutesAgoTimestamp)
               );
-              const guestPresenceSnapshot = await getDocs(guestPresenceQuery);
-
-              const guestUserIds = new Set();
-              guestPresenceSnapshot.forEach((doc) => {
-                const logData = doc.data();
-                const ipAddress = logData.ipAddress || 'no-ip';
-                const userAgent = logData.userAgent || 'no-ua';
-                const guestId = logData.visitorId || `${ipAddress}-${userAgent}`;
-                guestUserIds.add(guestId);
-              });
-
-              activeGuestsCount = guestUserIds.size;
-
-              const activeGuestsEl = document.getElementById("active-guests");
-              if (activeGuestsEl) activeGuestsEl.textContent = activeGuestsCount;
+              activeGuestsCount = await getQueryCountSafe(guestPresenceQuery);
+              setDashboardStatValue("active-guests", activeGuestsCount);
             } catch (error) {
               console.warn("Could not fetch active guests from Firestore:", error);
-              const activeGuestsEl = document.getElementById("active-guests");
-              if (activeGuestsEl) activeGuestsEl.textContent = "0";
+              setDashboardStatValue("active-guests", 0);
             }
 
             // Suma aktywnych użytkowników (zalogowani + goście)
             const activeTotalCount = activeUsersCount + activeGuestsCount;
-            const activeTotalEl = document.getElementById("active-total");
-            if (activeTotalEl) activeTotalEl.textContent = activeTotalCount;
+            setDashboardStatValue("active-total", activeTotalCount);
 
-            // Wizyty dzisiaj - zliczamy unikalne odwiedziny z kolekcji "visits" (zarówno zalogowanych jak i niezalogowanych)
+            // Wizyty dzisiaj: 1 dokument = 1 użytkownik/gość na dzień.
             try {
               const todayVisitsQuery = query(
                 collection(db, "visits"),
                 where("timestamp", ">=", todayTimestamp),
                 where("timestamp", "<", tomorrowTimestamp)
               );
-              const todayVisitsSnapshot = await getDocs(todayVisitsQuery);
-
-              // Zlicz unikalnych użytkowników (userId dla zalogowanych, visitorId dla niezalogowanych)
-              const uniqueVisitors = new Set();
-              let loggedInCount = 0;
-              let guestCount = 0;
-
-              todayVisitsSnapshot.forEach((doc) => {
-                const visitData = doc.data();
-                // Dla zalogowanych: userId jest ustawiony, visitorId jest null
-                // Dla niezalogowanych: userId jest null, visitorId jest ustawiony
-                const identifier = visitData.userId ?? visitData.visitorId;
-                if (identifier) {
-                  uniqueVisitors.add(identifier);
-                  if (visitData.userId) {
-                    loggedInCount++;
-                  } else if (visitData.visitorId) {
-                    guestCount++;
-                  }
-                }
-              });
-
-              const todayVisitsCount = uniqueVisitors.size;
-              console.log(`Odwiedziny dzisiaj: ${todayVisitsCount} (zalogowani: ${loggedInCount}, goście: ${guestCount})`);
-
-              const todayVisitsEl = document.getElementById("visits-today");
-              if (todayVisitsEl) {
-                todayVisitsEl.textContent = todayVisitsCount;
-              }
+              const todayVisitsCount = await getQueryCountSafe(todayVisitsQuery);
+              setDashboardStatValue("visits-today", todayVisitsCount);
             } catch (error) {
               console.error("Error fetching today visits from Firestore:", error);
-              const todayVisitsEl = document.getElementById("visits-today");
-              if (todayVisitsEl) todayVisitsEl.textContent = "0";
+              setDashboardStatValue("visits-today", 0);
             }
 
             // Nowe formularze kontaktowe dzisiaj
             try {
               const todayContactsQuery = query(
                 collection(db, "contactForms"),
-                where("timestamp", ">=", today)
+                where("timestamp", ">=", todayTimestamp),
+                where("timestamp", "<", tomorrowTimestamp)
               );
-              const todayContactsSnapshot = await getDocs(todayContactsQuery);
-
-              const todayContactsEl = document.getElementById("new-forms-today");
-              if (todayContactsEl) todayContactsEl.textContent = todayContactsSnapshot.size;
+              const todayContactsCount = await getQueryCountSafe(todayContactsQuery);
+              setDashboardStatValue("new-forms-today", todayContactsCount);
             } catch (error) {
               console.warn("Could not fetch today contacts from Firestore:", error);
-              const todayContactsEl = document.getElementById("new-forms-today");
-              if (todayContactsEl) todayContactsEl.textContent = "0";
+              setDashboardStatValue("new-forms-today", 0);
             }
 
-            // Wiadomości - liczymy na podstawie isRead
+            // Wiadomości admina
             try {
-              const messagesQuery = query(
+              const messagesBaseQuery = query(
                 collection(db, "messages"),
                 where("recipientId", "==", "admin")
               );
-              const messagesSnapshot = await getDocs(messagesQuery);
+              const messagesUnreadQuery = query(
+                collection(db, "messages"),
+                where("recipientId", "==", "admin"),
+                where("isRead", "==", false),
+              );
 
-              let unreadCount = 0;
-              let readCount = 0;
-              let totalCount = 0;
+              const [totalCount, unreadCount] = await Promise.all([
+                getQueryCountSafe(messagesBaseQuery),
+                getQueryCountSafe(messagesUnreadQuery),
+              ]);
+              const readCount = Math.max(0, totalCount - unreadCount);
 
-              messagesSnapshot.forEach((doc) => {
-                const message = doc.data();
-                totalCount++;
-                if (!message.isRead) {
-                  unreadCount++;
-                } else {
-                  readCount++;
-                }
-              });
-
-              const unreadEl = document.getElementById("messages-unread");
-              if (unreadEl) unreadEl.textContent = unreadCount;
-
-              const readEl = document.getElementById("messages-read");
-              if (readEl) readEl.textContent = readCount;
-
-              const totalEl = document.getElementById("messages-total");
-              if (totalEl) totalEl.textContent = totalCount;
+              setDashboardStatValue("messages-unread", unreadCount);
+              setDashboardStatValue("messages-read", readCount);
+              setDashboardStatValue("messages-total", totalCount);
             } catch (error) {
               console.warn("Could not fetch messages from Firestore:", error);
-              const unreadEl = document.getElementById("messages-unread");
-              if (unreadEl) unreadEl.textContent = "0";
-              const readEl = document.getElementById("messages-read");
-              if (readEl) readEl.textContent = "0";
-              const totalEl = document.getElementById("messages-total");
-              if (totalEl) totalEl.textContent = "0";
+              setDashboardStatValue("messages-unread", 0);
+              setDashboardStatValue("messages-read", 0);
+              setDashboardStatValue("messages-total", 0);
             }
 
             // Załaduj statystyki zamówień
             loadDashboardOrdersCount();
 
-            // Wizyty w tym tygodniu - unikalni użytkownicy aktywni od początku tygodnia (poniedziałek)
+            // Wizyty w tym tygodniu
             try {
               const weekVisitsQuery = query(
                 collection(db, "visits"),
                 where("timestamp", ">=", weekStartTimestamp)
               );
-              const weekVisitsSnapshot = await getDocs(weekVisitsQuery);
-
-              // Zlicz unikalnych użytkowników (userId dla zalogowanych, visitorId dla niezalogowanych)
-              const uniqueVisitors = new Set();
-              weekVisitsSnapshot.forEach((doc) => {
-                const visitData = doc.data();
-                // Dla zalogowanych: userId jest ustawiony, visitorId jest null
-                // Dla niezalogowanych: userId jest null, visitorId jest ustawiony
-                const identifier = visitData.userId ?? visitData.visitorId;
-                if (identifier) {
-                  uniqueVisitors.add(identifier);
-                }
-              });
-
-              const weekVisitsCount = uniqueVisitors.size;
-
-              const weekVisitsEl = document.getElementById("visits-week");
-              if (weekVisitsEl) weekVisitsEl.textContent = weekVisitsCount;
+              const weekVisitsCount = await getQueryCountSafe(weekVisitsQuery);
+              setDashboardStatValue("visits-week", weekVisitsCount);
             } catch (error) {
               console.warn("Could not fetch week visits from Firestore:", error);
-              const weekVisitsEl = document.getElementById("visits-week");
-              if (weekVisitsEl) weekVisitsEl.textContent = "0";
+              setDashboardStatValue("visits-week", 0);
             }
 
-            // Wizyty w tym miesiącu - unikalni użytkownicy aktywni w bieżącym miesiącu kalendarzowym (od 1.X do ostatniego dnia miesiąca)
-            // Używamy pól year i month zamiast timestamp, aby uniknąć problemów ze strefami czasowymi
+            // Wizyty w tym miesiącu
             try {
               const currentYear = now.getFullYear();
               const currentMonth = now.getMonth() + 1; // 1-12
@@ -12196,33 +12267,14 @@
                 where("year", "==", currentYear),
                 where("month", "==", currentMonth)
               );
-              const monthVisitsSnapshot = await getDocs(monthVisitsQuery);
-
-              // Zlicz unikalnych użytkowników (userId dla zalogowanych, visitorId dla niezalogowanych)
-              const uniqueVisitors = new Set();
-              monthVisitsSnapshot.forEach((doc) => {
-                const visitData = doc.data();
-                // Dla zalogowanych: userId jest ustawiony, visitorId jest null
-                // Dla niezalogowanych: userId jest null, visitorId jest ustawiony
-                const identifier = visitData.userId ?? visitData.visitorId;
-                if (identifier) {
-                  uniqueVisitors.add(identifier);
-                }
-              });
-
-              const monthVisitsCount = uniqueVisitors.size;
-              console.log(`Odwiedziny w miesiącu (${currentMonth}/${currentYear}): ${monthVisitsCount}`);
-
-              const monthVisitsEl = document.getElementById("visits-month");
-              if (monthVisitsEl) monthVisitsEl.textContent = monthVisitsCount;
+              const monthVisitsCount = await getQueryCountSafe(monthVisitsQuery);
+              setDashboardStatValue("visits-month", monthVisitsCount);
             } catch (error) {
               console.warn("Could not fetch month visits from Firestore:", error);
-              const monthVisitsEl = document.getElementById("visits-month");
-              if (monthVisitsEl) monthVisitsEl.textContent = "0";
+              setDashboardStatValue("visits-month", 0);
             }
 
-            // Wizyty w tym roku - unikalni użytkownicy aktywni w bieżącym roku kalendarzowym (od 1 stycznia do 31 grudnia)
-            // Używamy pola year zamiast timestamp, aby uniknąć problemów ze strefami czasowymi
+            // Wizyty w tym roku
             try {
               const currentYear = now.getFullYear();
 
@@ -12230,56 +12282,20 @@
                 collection(db, "visits"),
                 where("year", "==", currentYear)
               );
-              const yearVisitsSnapshot = await getDocs(yearVisitsQuery);
-
-              // Zlicz unikalnych użytkowników (userId dla zalogowanych, visitorId dla niezalogowanych)
-              const uniqueVisitors = new Set();
-              yearVisitsSnapshot.forEach((doc) => {
-                const visitData = doc.data();
-                // Dla zalogowanych: userId jest ustawiony, visitorId jest null
-                // Dla niezalogowanych: userId jest null, visitorId jest ustawiony
-                const identifier = visitData.userId ?? visitData.visitorId;
-                if (identifier) {
-                  uniqueVisitors.add(identifier);
-                }
-              });
-
-              const yearVisitsCount = uniqueVisitors.size;
-              console.log(`Odwiedziny w roku (${currentYear}): ${yearVisitsCount}`);
-
-              const yearVisitsEl = document.getElementById("visits-year");
-              if (yearVisitsEl) yearVisitsEl.textContent = yearVisitsCount;
+              const yearVisitsCount = await getQueryCountSafe(yearVisitsQuery);
+              setDashboardStatValue("visits-year", yearVisitsCount);
             } catch (error) {
               console.warn("Could not fetch year visits from Firestore:", error);
-              const yearVisitsEl = document.getElementById("visits-year");
-              if (yearVisitsEl) yearVisitsEl.textContent = "0";
+              setDashboardStatValue("visits-year", 0);
             }
 
-            // Wizyty ogółem - wszyscy unikalni użytkownicy (zalogowani i niezalogowani)
+            // Wizyty ogółem
             try {
-              const visitsRef = collection(db, "visits");
-              const visitsSnapshot = await getDocs(visitsRef);
-
-              // Zlicz unikalnych użytkowników (userId dla zalogowanych, visitorId dla niezalogowanych)
-              const uniqueVisitors = new Set();
-              visitsSnapshot.forEach((doc) => {
-                const visitData = doc.data();
-                // Dla zalogowanych: userId jest ustawiony, visitorId jest null
-                // Dla niezalogowanych: userId jest null, visitorId jest ustawiony
-                const identifier = visitData.userId ?? visitData.visitorId;
-                if (identifier) {
-                  uniqueVisitors.add(identifier);
-                }
-              });
-
-              const totalVisitsCount = uniqueVisitors.size;
-
-              const totalVisitsEl = document.getElementById("visits-total");
-              if (totalVisitsEl) totalVisitsEl.textContent = totalVisitsCount;
+              const totalVisitsCount = await getQueryCountSafe(collection(db, "visits"));
+              setDashboardStatValue("visits-total", totalVisitsCount);
             } catch (error) {
               console.warn("Could not fetch total visits from Firestore:", error);
-              const totalVisitsEl = document.getElementById("visits-total");
-              if (totalVisitsEl) totalVisitsEl.textContent = "0";
+              setDashboardStatValue("visits-total", 0);
             }
 
           } catch (error) {
@@ -13994,6 +14010,7 @@
           const productName = product ? product.title : "Nieznany produkt";
 
           await deleteDoc(doc(db, "products", productId));
+          await syncSearchIndexRecord("shop", productId, "delete");
           await bumpPublicListCacheVersion("products");
           if (currentUser) {
             await logActivity(currentUser.uid, "PRODUCT_DELETED", {
@@ -14063,6 +14080,7 @@
             if (productId) {
               // Aktualizacja istniejącego produktu
               await updateDoc(doc(db, "products", productId), productData);
+              await syncSearchIndexRecord("shop", productId, "sync");
               showNotification("Produkt został zapisany poprawnie.", 'success');
               if (currentUser) {
                 await logActivity(currentUser.uid, "PRODUCT_EDITED", {
@@ -14074,7 +14092,8 @@
               await editProduct(productId);
             } else {
               // Dodanie nowego produktu
-              await addDoc(collection(db, "products"), productData);
+              const createdRef = await addDoc(collection(db, "products"), productData);
+              await syncSearchIndexRecord("shop", createdRef.id, "sync");
               showNotification("Produkt został zapisany poprawnie.", 'success');
               // Zaloguj utworzenie produktu
               if (currentUser) {
@@ -15533,6 +15552,7 @@
           const blogActorUid = getActivityLogActorUid();
           if (id) {
             await setDoc(doc(db, "blogPosts", id), postData, { merge: true });
+            await syncSearchIndexRecord("blog", id, "sync");
             showNotification("Wpis zaktualizowany pomyślnie", "success");
             if (blogActorUid) {
               const okLog = await logActivity(blogActorUid, "BLOG_UPDATED", {
@@ -15561,6 +15581,7 @@
             postData.createdAt = Timestamp.now();
             const newDocRef = doc(collection(db, "blogPosts"));
             await setDoc(newDocRef, postData);
+            await syncSearchIndexRecord("blog", newDocRef.id, "sync");
             showNotification("Nowy wpis dodany pomyślnie", "success");
             if (blogActorUid) {
               const okLog = await logActivity(blogActorUid, "BLOG_CREATED", {
@@ -15614,6 +15635,7 @@
 
         try {
           await deleteDoc(doc(db, "blogPosts", postId));
+          await syncSearchIndexRecord("blog", postId, "delete");
           await bumpPublicListCacheVersion("blogPosts");
           showNotification("Wpis został usunięty.", "success");
           const delActor = getActivityLogActorUid();
@@ -16496,6 +16518,7 @@
             };
 
             await updateDoc(doc(db, "userProfiles", userId), updatedProfile);
+            await syncSearchIndexRecord("user", userId, "sync");
 
             // Zaloguj edycję profilu
             await logActivity(userId, "PROFILE_EDITED", {
@@ -16591,6 +16614,7 @@
             };
 
             await updateDoc(doc(db, "userProfiles", userId), blockData);
+            await syncSearchIndexRecord("user", userId, "sync");
 
             // Zaloguj blokadę użytkownika - userId to ID administratora, targetUserId to ID zablokowanego użytkownika
             // Pobierz email administratora dla logowania
@@ -16669,6 +16693,7 @@
 
             // Usuń profil użytkownika
             await deleteDoc(doc(db, "userProfiles", userId));
+            await syncSearchIndexRecord("user", userId, "delete");
 
             // Zaloguj usunięcie użytkownika PRZED faktycznym usunięciem
             await logActivity(userId, "USER_DELETED", {

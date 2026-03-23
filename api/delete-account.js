@@ -1,4 +1,5 @@
 const { initAdmin, admin, setCors, readJsonBody } = require("./_sso-utils");
+const { TYPE_USER, deleteIndexEntry } = require("./_search-index");
 
 async function deleteDocsByQuery(db, colName, field, op, value, { batchSize = 200, maxDocs = 2000 } = {}) {
   let deleted = 0;
@@ -68,6 +69,7 @@ module.exports = async (req, res) => {
     const singleDeletes = [];
     singleDeletes.push(db.collection("userProfiles").doc(uid).delete().catch(() => null));
     singleDeletes.push(db.collection("publicProfiles").doc(uid).delete().catch(() => null));
+    singleDeletes.push(deleteIndexEntry(db, TYPE_USER, uid).catch(() => null));
     singleDeletes.push(db.collection("conversations").doc(uid).delete().catch(() => null));
     if (email) singleDeletes.push(db.collection("mailingList").doc(email).delete().catch(() => null));
     if (displayNameLower) singleDeletes.push(db.collection("displayNames").doc(displayNameLower).delete().catch(() => null));
@@ -169,4 +171,3 @@ module.exports = async (req, res) => {
     });
   }
 };
-
