@@ -211,6 +211,70 @@ function getCookieName() {
   return process.env.SSO_COOKIE_NAME || "__session";
 }
 
+/** Bearer z typowych nagłówków (Vercel / proxy czasem zmienia wielkość liter). */
+function getBearerTokenFromReq(req) {
+  const h = req && req.headers ? req.headers : {};
+  const raw =
+    h.authorization ||
+    h.Authorization ||
+    h["x-authorization"] ||
+    h["X-Authorization"];
+  if (!raw || typeof raw !== "string") return null;
+  const m = raw.match(/^Bearer\s+(.+)$/i);
+  return m ? m[1].trim() : null;
+}
+
+/**
+ * Identyfikacja użytkownika: najpierw Firebase ID token (aktualna sesja w SPA / panelu),
+ * potem cookie SSO. Gdy cookie jest starsze lub z innego konta, samo cookie mogło dawać 403 przy Bearer od admina.
+ */
+async function getSessionUser(req) {
+  try {
+    initAdmin();
+    const idTokenFromHeader = getBearerTokenFromReq(req);
+    if (idTokenFromHeader) {
+      try {
+        const decoded = await admin.auth().verifyIdToken(idTokenFromHeader);
+        if (decoded?.uid) {
+          return {
+            uid: decoded.uid,
+            emailVerified: decoded.email_verified === true,
+          };
+        }
+      } catch (e) {
+        console.debug(
+          "getSessionUser: Firebase Auth token verification failed",
+          e?.message,
+        );
+      }
+    }
+
+    const cookies = parseCookies((req.headers && req.headers.cookie) || "");
+    const sessionCookie = cookies[getCookieName()];
+    if (sessionCookie) {
+      try {
+        const decoded = verifyLocalSessionJwt(sessionCookie);
+        if (decoded?.uid) {
+          return {
+            uid: decoded.uid,
+            emailVerified: decoded.emailVerified === true,
+          };
+        }
+      } catch (e) {
+        console.debug(
+          "getSessionUser: Cookie SSO verification failed",
+          e?.message,
+        );
+      }
+    }
+
+    return null;
+  } catch (e) {
+    console.debug("getSessionUser error:", e?.message || e);
+    return null;
+  }
+}
+
 function getCookieDomain() {
   return process.env.SSO_COOKIE_DOMAIN || ".strzelca.pl";
 }
@@ -251,6 +315,8 @@ module.exports = {
   getServiceAccountPublicKeyPem,
   signLocalSessionJwt,
   verifyLocalSessionJwt,
+  getBearerTokenFromReq,
+  getSessionUser,
   setCors,
   readJsonBody,
   parseCookies,

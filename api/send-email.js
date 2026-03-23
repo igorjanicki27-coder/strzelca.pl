@@ -7,51 +7,11 @@ const {
   initAdmin,
   admin,
   setCors,
-  parseCookies,
-  getCookieName,
-  verifyLocalSessionJwt,
+  getSessionUser,
   readJsonBody,
 } = require('./_sso-utils');
 
 const SUPERADMIN_UID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
-
-async function getSessionUser(req) {
-  try {
-    initAdmin();
-    const cookies = parseCookies(req.headers.cookie || '');
-    const cookieName = getCookieName();
-    const sessionCookie = cookies[cookieName];
-    
-    if (sessionCookie) {
-      try {
-        const decoded = verifyLocalSessionJwt(sessionCookie);
-        if (decoded?.uid) {
-          return { uid: decoded.uid, emailVerified: decoded.emailVerified === true };
-        }
-      } catch (e) {
-        console.debug('getSessionUser: Cookie SSO verification failed', e?.message);
-      }
-    }
-    
-    const authHeader = req.headers.authorization || '';
-    if (authHeader.startsWith('Bearer ')) {
-      const idToken = authHeader.substring(7);
-      try {
-        const decoded = await admin.auth().verifyIdToken(idToken);
-        if (decoded?.uid) {
-          return { uid: decoded.uid, emailVerified: decoded.email_verified === true };
-        }
-      } catch (e) {
-        console.debug('getSessionUser: Firebase Auth token verification failed', e?.message);
-      }
-    }
-    
-    return null;
-  } catch (e) {
-    console.debug('getSessionUser error:', e?.message || e);
-    return null;
-  }
-}
 
 async function isAdmin(uid) {
   if (!uid) return false;
@@ -143,6 +103,15 @@ module.exports = async (req, res) => {
 
     mailTo = to;
     mailSubject = subject;
+
+    if (!String(process.env.SMTP_PASSWORD || '').trim()) {
+      res.status(503).json({
+        success: false,
+        error:
+          'SMTP nie skonfigurowany na serwerze (brak SMTP_PASSWORD w Vercel).',
+      });
+      return;
+    }
 
     const transporter = createTransporter();
     

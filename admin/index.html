@@ -6440,9 +6440,16 @@
 
             let queueId = null;
             try {
+              let newsletterAuthHeaders = { 'Content-Type': 'application/json' };
+              try {
+                if (typeof auth !== 'undefined' && auth?.currentUser) {
+                  const t = await auth.currentUser.getIdToken();
+                  if (t) newsletterAuthHeaders['Authorization'] = `Bearer ${t}`;
+                }
+              } catch (_) {}
               const res = await fetch('/api/newsletter', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: newsletterAuthHeaders,
                 credentials: 'include',
                 body: JSON.stringify(newsletterPayload),
               });
@@ -8096,6 +8103,10 @@
       const quillDescriptionEditorConfig = {
         theme: "snow",
         modules: {
+          clipboard: {
+            // Stabilniejsze wklejanie z Worda / stron www (unika „dopasowywania wizualnego”, które często psuje treść).
+            matchVisual: false,
+          },
           toolbar: [
             [{ header: [1, 2, 3, 4, 5, 6, false] }],
             ["bold", "italic", "underline", "strike"],
@@ -8129,6 +8140,7 @@
           ...quillDescriptionEditorConfig,
           placeholder: "Opis produktu...",
         });
+        editorElement.removeAttribute("contenteditable");
       }
 
       let eventQuill = null;
@@ -8144,6 +8156,7 @@
           ...quillDescriptionEditorConfig,
           placeholder: "Opis wydarzenia...",
         });
+        editorElement.removeAttribute("contenteditable");
       }
 
       let blogQuill = null;
@@ -8158,6 +8171,7 @@
           ...quillDescriptionEditorConfig,
           placeholder: "Treść wpisu...",
         });
+        editorElement.removeAttribute("contenteditable");
       }
 
       function blogPlainTextFromHtml(html) {
@@ -9441,6 +9455,27 @@
         };
       }
 
+      function mojEventAdminFullNameCell(p) {
+        return `${String(p.imie || "").trim()} ${String(p.nazwisko || "").trim()}`.trim();
+      }
+
+      /** Format: „Wierzbowa 42/16, Wrocław” (ulica + nr, opcjonalnie /lokal, przecinek, miejscowość) */
+      function mojEventAdminMiejsceZamieszkaniaCell(p) {
+        const ulica = String(p.ulica || "").trim();
+        const nb = String(p.numerBudynku || "").trim();
+        const nl = String(p.numerLokalu || "").trim();
+        const miasto = String(p.miejscowosc || "").trim();
+        let addr = ulica;
+        if (nb) addr = addr ? `${addr} ${nb}` : nb;
+        if (nl) addr = `${addr}/${nl}`;
+        if (miasto) return addr ? `${addr}, ${miasto}` : miasto;
+        return addr;
+      }
+
+      function mojEventAdminTsvCell(s) {
+        return String(s).replace(/\t/g, " ").replace(/\r?\n/g, " ");
+      }
+
       window.mojEventAdminGenerate = function mojEventAdminGenerate() {
         const listEl = document.getElementById("moj-event-admin-list");
         if (!listEl) return;
@@ -9450,20 +9485,21 @@
           showNotification("Zaznacz co najmniej jedną osobę (checkbox), aby wygenerować tabelę.", "error");
           return;
         }
-        const header = ["Imię", "Nazwisko", "Ulica", "Nr budynku", "Nr lokalu", "Miejscowość"];
-        const lines = [header.join("\t")];
+        const lines = [];
         picked.forEach((rowEl) => {
           const p = mojEventAdminReadRowPayload(rowEl);
-          lines.push(
-            [p.imie, p.nazwisko, p.ulica, p.numerBudynku, p.numerLokalu, p.miejscowosc]
-              .map((cell) => String(cell).replace(/\t/g, " ").replace(/\r?\n/g, " "))
-              .join("\t")
-          );
+          const imieNazwisko = mojEventAdminTsvCell(mojEventAdminFullNameCell(p));
+          const miejsce = mojEventAdminTsvCell(mojEventAdminMiejsceZamieszkaniaCell(p));
+          lines.push(`${imieNazwisko}\t${miejsce}`);
         });
         const tsv = lines.join("\n");
         if (navigator.clipboard?.writeText) {
           navigator.clipboard.writeText(tsv).then(
-            () => showNotification("Skopiowano tabelę (TSV) — wklej do Excela lub Arkuszy.", "success"),
+            () =>
+              showNotification(
+                "Skopiowano listę (TSV): dwie kolumny danych, bez nagłówka — wklej do Excela lub Arkuszy.",
+                "success"
+              ),
             () => mojEventAdminShowTsvFallback(tsv)
           );
         } else {
@@ -9613,7 +9649,6 @@
                     id="event-description-editor"
                     class="editor-content rounded-lg overflow-hidden border border-zinc-700 bg-zinc-900"
                     style="min-height: 220px;"
-                    contenteditable="true"
                   ></div>
                 </div>
 
@@ -9881,6 +9916,7 @@
         charityActionQuill = new Quill("#charity-description-editor", {
           theme: "snow",
           modules: {
+            clipboard: { matchVisual: false },
             toolbar: [
               [{ header: [1, 2, 3, 4, 5, 6, false] }],
               ["bold", "italic", "underline", "strike"],
@@ -9895,6 +9931,7 @@
           placeholder: "Opis akcji charytatywnej...",
         });
         charityActionQuill.root.innerHTML = html || "";
+        host.removeAttribute("contenteditable");
       }
 
       function initPinnedDonationsQuill(html) {
@@ -9904,6 +9941,7 @@
         pinnedDonationsQuill = new Quill("#pinned-donations-description-editor", {
           theme: "snow",
           modules: {
+            clipboard: { matchVisual: false },
             toolbar: [
               [{ header: [1, 2, 3, 4, 5, 6, false] }],
               ["bold", "italic", "underline", "strike"],
@@ -9918,6 +9956,7 @@
           placeholder: "Opis kafelka wpłat...",
         });
         pinnedDonationsQuill.root.innerHTML = html || "";
+        host.removeAttribute("contenteditable");
       }
 
       function getDefaultPinnedDonationsHtml() {
@@ -20575,7 +20614,8 @@
 
           <div>
             <label class="block text-sm font-medium mb-2">Opis produktu</label>
-            <div id="product-description-editor" style="min-height: 300px;" class="editor-content" contenteditable="true" placeholder="Opis produktu..."></div>
+            <!-- Bez contenteditable: Quill ustawia edycję tylko na .ql-editor; zagnieżdżone contenteditable psuje wklejanie (Safari/Chrome). -->
+            <div id="product-description-editor" style="min-height: 300px;" class="editor-content"></div>
           </div>
 
           <div class="flex gap-4 pt-4 border-t border-zinc-700">

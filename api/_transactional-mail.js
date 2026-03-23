@@ -15,13 +15,17 @@ function replaceTemplateVariables(template, variables) {
 }
 
 function createTransporter() {
+  const pass = process.env.SMTP_PASSWORD || '';
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'ssl0.ovh.net',
     port: parseInt(process.env.SMTP_PORT || '465', 10),
     secure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465',
+    connectionTimeout: 25_000,
+    greetingTimeout: 20_000,
+    socketTimeout: 25_000,
     auth: {
       user: process.env.SMTP_USER || 'kontakt@strzelca.pl',
-      pass: process.env.SMTP_PASSWORD || '',
+      pass,
     },
   });
 }
@@ -39,6 +43,11 @@ async function sendTransactionalEmail(opts) {
   } = opts || {};
   if (!to || !subject || !html) {
     throw new Error('sendTransactionalEmail: brak to, subject lub html');
+  }
+  if (!String(process.env.SMTP_PASSWORD || '').trim()) {
+    throw new Error(
+      'SMTP nie skonfigurowany: ustaw SMTP_PASSWORD (i ewent. SMTP_HOST/SMTP_USER) w zmiennych środowiska Vercel.',
+    );
   }
   const transporter = createTransporter();
   const smtpUser = process.env.SMTP_USER || 'kontakt@strzelca.pl';

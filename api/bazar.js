@@ -2,10 +2,8 @@ const {
   initAdmin,
   admin,
   setCors,
-  parseCookies,
-  getCookieName,
-  verifyLocalSessionJwt,
   readJsonBody,
+  getSessionUser,
 } = require('./_sso-utils');
 const { sendBazarOfferTemplateEmail } = require('./_bazar-offer-email');
 
@@ -62,37 +60,6 @@ const WOJEWODZTWA = [
   'podkarpackie','podlaskie','pomorskie','slaskie',
   'swietokrzyskie','warminsko-mazurskie','wielkopolskie','zachodniopomorskie'
 ];
-
-function getBearerFromReq(req) {
-  const h = req.headers || {};
-  const raw = h.authorization || h.Authorization || h['x-authorization'] || h['X-Authorization'];
-  if (!raw || typeof raw !== 'string') return null;
-  const m = raw.match(/^Bearer\s+(.+)$/i);
-  return m ? m[1].trim() : null;
-}
-
-async function getSessionUser(req) {
-  try {
-    initAdmin();
-    const cookies = parseCookies(req.headers.cookie || '');
-    const cookieName = getCookieName();
-    const sessionCookie = cookies[cookieName];
-    if (sessionCookie) {
-      try {
-        const decoded = verifyLocalSessionJwt(sessionCookie);
-        if (decoded?.uid) return { uid: decoded.uid, emailVerified: decoded.emailVerified === true };
-      } catch (_) {}
-    }
-    const idToken = getBearerFromReq(req);
-    if (idToken) {
-      try {
-        const decoded = await admin.auth().verifyIdToken(idToken);
-        if (decoded?.uid) return { uid: decoded.uid, emailVerified: decoded.email_verified === true };
-      } catch (_) {}
-    }
-    return null;
-  } catch (_) { return null; }
-}
 
 async function isAdmin(uid) {
   if (!uid) return false;

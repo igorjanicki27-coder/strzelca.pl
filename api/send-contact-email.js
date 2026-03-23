@@ -140,6 +140,15 @@ module.exports = async (req, res) => {
       topic: 'Formularz kontaktowy'
     });
 
+    if (!String(process.env.SMTP_PASSWORD || '').trim()) {
+      res.status(503).json({
+        success: false,
+        error:
+          'SMTP nie skonfigurowany na serwerze (brak SMTP_PASSWORD w Vercel).',
+      });
+      return;
+    }
+
     const transporter = createTransporter();
     
     const mailOptions = {

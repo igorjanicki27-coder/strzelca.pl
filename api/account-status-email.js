@@ -6,44 +6,12 @@ const {
   initAdmin,
   admin,
   setCors,
-  parseCookies,
-  getCookieName,
-  verifyLocalSessionJwt,
   readJsonBody,
+  getSessionUser,
 } = require('./_sso-utils');
 const { replaceTemplateVariables, sendTransactionalEmail } = require('./_transactional-mail');
 
 const SUPERADMIN_UID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
-
-async function getSessionUser(req) {
-  try {
-    initAdmin();
-    const cookies = parseCookies(req.headers.cookie || '');
-    const cookieName = getCookieName();
-    const sessionCookie = cookies[cookieName];
-    if (sessionCookie) {
-      try {
-        const decoded = verifyLocalSessionJwt(sessionCookie);
-        if (decoded?.uid) {
-          return { uid: decoded.uid, emailVerified: decoded.emailVerified === true };
-        }
-      } catch (_) {}
-    }
-    const authHeader = req.headers.authorization || '';
-    if (authHeader.startsWith('Bearer ')) {
-      const idToken = authHeader.substring(7);
-      try {
-        const decoded = await admin.auth().verifyIdToken(idToken);
-        if (decoded?.uid) {
-          return { uid: decoded.uid, emailVerified: decoded.email_verified === true };
-        }
-      } catch (_) {}
-    }
-    return null;
-  } catch (_) {
-    return null;
-  }
-}
 
 async function isAdmin(uid) {
   if (!uid) return false;

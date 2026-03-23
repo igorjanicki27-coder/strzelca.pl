@@ -416,6 +416,29 @@
             let finishedLessons = new Set(); // Lekcje które zostały zakończone (100% progresu)
             let currentLessonIndex = 0;
             let trainingTitle = "";
+            /** Nazwa na certyfikat — ustawiana przy pierwszym rozwiązaniu (unika podwójnego getDoc userProfiles: ekran + „Pobierz”). */
+            let lastCertificateRecipientName = null;
+
+            async function resolveRecipientNameForCertificate() {
+                if (!currentUser) return "";
+                if (lastCertificateRecipientName) return lastCertificateRecipientName;
+
+                const cached = getHeaderProfileFromCache(currentUser.uid);
+                if (cached?.displayName?.trim()) {
+                    lastCertificateRecipientName = cached.displayName.trim();
+                    return lastCertificateRecipientName;
+                }
+
+                const profileDoc = await getDoc(doc(db, "userProfiles", currentUser.uid));
+                const profile = profileDoc.exists() ? profileDoc.data() : {};
+                const userName =
+                    profile.displayName ||
+                    `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
+                    (currentUser.displayName || "").trim() ||
+                    currentUser.email.split("@")[0];
+                lastCertificateRecipientName = userName;
+                return userName;
+            }
 
             // Funkcje UI
             window.toggleUserMenu = () => {
@@ -496,6 +519,7 @@
                         if (userDisplayName) userDisplayName.textContent = fallbackName;
                     }
                 } else {
+                    lastCertificateRecipientName = null;
                     if (loginBtn) loginBtn.classList.remove("hidden");
                     if (userPanel) userPanel.classList.add("hidden");
                 }
@@ -761,12 +785,9 @@
             async function showCertificate() {
                 const contentArea = document.getElementById("lesson-content-area");
                 if (!contentArea || !currentUser) return;
-                
-                // Pobierz dane użytkownika
-                const profileDoc = await getDoc(doc(db, "userProfiles", currentUser.uid));
-                const profile = profileDoc.exists() ? profileDoc.data() : {};
-                const userName = profile.displayName || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || currentUser.email.split('@')[0];
-                
+
+                await resolveRecipientNameForCertificate();
+
                 contentArea.innerHTML = `
                     <div class="text-center py-12">
                         <div class="mb-8">
@@ -776,7 +797,7 @@
                         </div>
                         <button 
                             onclick="downloadCertificate()" 
-                            class="px-8 py-4 bg-coyote text-black rounded-lg font-bold hover:bg-opacity-90 transition text-lg"
+                            class="px-8 py-4 rounded-lg font-bold transition text-lg border-2 border-[var(--coyote)] text-[var(--coyote)] bg-zinc-950/60 hover:bg-[rgba(193,154,107,0.12)] backdrop-blur-sm"
                         >
                             <i class="fa-solid fa-download mr-2"></i>Pobierz certyfikat
                         </button>
@@ -786,18 +807,21 @@
             
             window.downloadCertificate = async () => {
                 if (!currentUser) return;
-                
+
                 try {
-                    // Pobierz dane użytkownika
-                    const profileDoc = await getDoc(doc(db, "userProfiles", currentUser.uid));
-                    const profile = profileDoc.exists() ? profileDoc.data() : {};
-                    const userName = profile.displayName || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || currentUser.email.split('@')[0];
-                    
-                    // Generuj certyfikat
+                    const userName = await resolveRecipientNameForCertificate();
                     await generateCertificate(userName);
                 } catch (error) {
                     console.error("Error downloading certificate:", error);
-                    alert("Błąd podczas generowania certyfikatu.");
+                    const code = error?.code || "";
+                    const msg = String(error?.message || "");
+                    if (code === "resource-exhausted" || msg.includes("Quota") || msg.includes("RESOURCE_EXHAUSTED")) {
+                        alert(
+                            "Baza danych chwilowo odrzuca zapytania (limit zapytań / quota Firestore). Spróbuj za kilka minut. Jeśli komunikat się powtarza, sprawdź limity projektu w konsoli Firebase (ew. plan Blaze) lub skontaktuj się z administratorem."
+                        );
+                    } else {
+                        alert("Błąd podczas generowania certyfikatu.");
+                    }
                 }
             };
 
@@ -824,13 +848,16 @@
                 }
                 const courseSlug = courseSlugFromTitle(trainingTitle);
                 const counterRef = doc(db, "trainingCertificateCounters", currentTrainingId);
+                let issuedNumber = null;
                 await runTransaction(db, async (tx) => {
+                    issuedNumber = null;
                     const cSnap = await tx.get(certRef);
                     if (cSnap.exists()) return;
                     const counterSnap = await tx.get(counterRef);
                     const last = counterSnap.exists() ? (counterSnap.data().lastSerial || 0) : 0;
                     const serial = last + 1;
                     const certificateNumber = `STRZELCA.PL/${courseSlug}/${serial}`;
+                    issuedNumber = certificateNumber;
                     tx.set(counterRef, { lastSerial: serial }, { merge: true });
                     tx.set(certRef, {
                         certificateNumber,
@@ -843,6 +870,12 @@
                         issuedAt: serverTimestamp(),
                     });
                 });
+                if (issuedNumber) {
+                    return {
+                        certificateNumber: issuedNumber,
+                        issuedAtDate: new Date(),
+                    };
+                }
                 const snap = await getDoc(certRef);
                 if (!snap.exists()) throw new Error("Brak rekordu certyfikatu po zapisie");
                 const d = snap.data();

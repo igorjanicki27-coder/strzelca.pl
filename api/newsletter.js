@@ -9,10 +9,8 @@ const {
   initAdmin,
   admin,
   setCors,
-  parseCookies,
-  getCookieName,
-  verifyLocalSessionJwt,
   readJsonBody,
+  getSessionUser,
 } = require('./_sso-utils');
 const { replaceTemplateVariables } = require('./_transactional-mail');
 const { logEmailDeliveryFailure } = require('./_activity-email-log');
@@ -41,18 +39,6 @@ async function isAdminOrSuperAdmin(uid) {
   }
 }
 
-function getSessionUser(req) {
-  const cookies = parseCookies(req);
-  const cookieName = getCookieName('sso_session');
-  const sessionToken = cookies[cookieName];
-  if (!sessionToken) return null;
-  try {
-    return verifyLocalSessionJwt(sessionToken);
-  } catch {
-    return null;
-  }
-}
-
 // Serverless function handler
 module.exports = async (req, res) => {
   // CORS (wspiera cookie SSO między subdomenami)
@@ -69,7 +55,7 @@ module.exports = async (req, res) => {
     const firestoreDb = admin.firestore();
     const db = await initDatabase();
 
-    const sessionUser = getSessionUser(req);
+    const sessionUser = await getSessionUser(req);
     const requesterUid = sessionUser?.uid || null;
     const requesterIsAdmin = await isAdminOrSuperAdmin(requesterUid);
 

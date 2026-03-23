@@ -7,9 +7,7 @@ const {
   initAdmin,
   admin,
   setCors,
-  parseCookies,
-  getCookieName,
-  verifyLocalSessionJwt,
+  getSessionUser,
   readJsonBody,
 } = require('./_sso-utils');
 
@@ -47,44 +45,6 @@ function isOrdersSummaryRequest(req) {
   if (v === undefined || v === null) return false;
   const s = String(v).toLowerCase();
   return s === '1' || s === 'true' || v === 1 || v === true;
-}
-
-async function getSessionUser(req) {
-  try {
-    initAdmin();
-    const cookies = parseCookies(req.headers.cookie || '');
-    const cookieName = getCookieName();
-    const sessionCookie = cookies[cookieName];
-    
-    if (sessionCookie) {
-      try {
-        const decoded = verifyLocalSessionJwt(sessionCookie);
-        if (decoded?.uid) {
-          return { uid: decoded.uid, emailVerified: decoded.emailVerified === true };
-        }
-      } catch (e) {
-        console.debug('getSessionUser: Cookie SSO verification failed', e?.message);
-      }
-    }
-    
-    const authHeader = req.headers.authorization || '';
-    if (authHeader.startsWith('Bearer ')) {
-      const idToken = authHeader.substring(7);
-      try {
-        const decoded = await admin.auth().verifyIdToken(idToken);
-        if (decoded?.uid) {
-          return { uid: decoded.uid, emailVerified: decoded.email_verified === true };
-        }
-      } catch (e) {
-        console.debug('getSessionUser: Firebase Auth token verification failed', e?.message);
-      }
-    }
-    
-    return null;
-  } catch (e) {
-    console.debug('getSessionUser error:', e?.message || e);
-    return null;
-  }
 }
 
 async function isAdmin(uid) {

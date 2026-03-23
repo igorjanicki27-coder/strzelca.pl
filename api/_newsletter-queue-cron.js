@@ -223,6 +223,8 @@ async function handleNewsletterQueueCron(req, res) {
     const endIndex = Math.min(startIndex + batchLimit, emails.length);
     let sentOk = 0;
     let sentFail = 0;
+    /** Po błędzie SMTP nie przesuwaj kolejki — w poprzedniej logice cała partia była „zużywana” mimo 0 dostarczeń. */
+    let nextSubscriberIndex = startIndex;
 
     for (let i = startIndex; i < endIndex; i++) {
       const to = emails[i];
@@ -237,14 +239,21 @@ async function handleNewsletterQueueCron(req, res) {
           logMeta: { jobId: docRef.id, index: String(i) },
         });
         sentOk++;
-      } catch {
+        nextSubscriberIndex = i + 1;
+      } catch (e) {
         sentFail++;
+        console.error('newsletter-queue-cron: send failed', {
+          jobId: docRef.id,
+          index: i,
+          err: e?.message || String(e),
+        });
+        break;
       }
     }
 
-    const done = endIndex >= emails.length;
+    const done = nextSubscriberIndex >= emails.length;
     await docRef.update({
-      nextSubscriberIndex: endIndex,
+      nextSubscriberIndex,
       status: done ? 'completed' : 'processing',
       updatedAt: ts,
       sendLeaseUntil: admin.firestore.FieldValue.delete(),
@@ -258,7 +267,7 @@ async function handleNewsletterQueueCron(req, res) {
       jobId: docRef.id,
       sentOk,
       sentFail,
-      progressedTo: endIndex,
+      progressedTo: nextSubscriberIndex,
       total: emails.length,
       completed: done,
     });

@@ -8,9 +8,7 @@ const {
   initAdmin,
   admin,
   setCors,
-  parseCookies,
-  getCookieName,
-  verifyLocalSessionJwt,
+  getSessionUser,
 } = require('./_sso-utils');
 
 // Przed firestore-db: pełna inicjalizacja Admin SDK + klucze SSO (cookie __session)
@@ -27,44 +25,6 @@ async function initDatabase() {
     await dbManager.initializeFirebase();
   }
   return dbManager;
-}
-
-async function getSessionUser(req) {
-  try {
-    initAdmin();
-    const cookies = parseCookies(req.headers.cookie || '');
-    const cookieName = getCookieName();
-    const sessionCookie = cookies[cookieName];
-
-    if (sessionCookie) {
-      try {
-        const decoded = verifyLocalSessionJwt(sessionCookie);
-        if (decoded?.uid) {
-          return { uid: decoded.uid, emailVerified: decoded.emailVerified === true };
-        }
-      } catch (e) {
-        console.debug('admin API: cookie SSO verification failed', e?.message);
-      }
-    }
-
-    const authHeader = req.headers.authorization || '';
-    if (authHeader.startsWith('Bearer ')) {
-      const idToken = authHeader.substring(7);
-      try {
-        const decoded = await admin.auth().verifyIdToken(idToken);
-        if (decoded?.uid) {
-          return { uid: decoded.uid, emailVerified: decoded.email_verified === true };
-        }
-      } catch (e) {
-        console.debug('admin API: Firebase ID token verification failed', e?.message);
-      }
-    }
-
-    return null;
-  } catch (e) {
-    console.debug('admin API getSessionUser:', e?.message || e);
-    return null;
-  }
 }
 
 async function isAdmin(uid) {

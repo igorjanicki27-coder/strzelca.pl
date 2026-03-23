@@ -9,10 +9,8 @@ const {
   initAdmin,
   admin,
   setCors,
-  parseCookies,
-  getCookieName,
-  verifyLocalSessionJwt,
   readJsonBody,
+  getSessionUser,
 } = require('./_sso-utils');
 
 let dbManager = null;
@@ -131,56 +129,6 @@ function getRoutedSegments({ urlObj, queryObj }) {
   const raw = (queryObj?.__path ?? urlObj.searchParams.get('__path') ?? '').toString().trim();
   if (!raw) return normalizePathSegments(urlObj.pathname);
   return raw.split('/').filter(Boolean);
-}
-
-async function getSessionUser(req) {
-  try {
-    initAdmin();
-    const cookies = parseCookies(req.headers.cookie || '');
-    const cookieName = getCookieName();
-    const sessionCookie = cookies[cookieName];
-    
-    // Próbuj najpierw cookie SSO
-    if (sessionCookie) {
-      try {
-        const decoded = verifyLocalSessionJwt(sessionCookie);
-        if (decoded?.uid) {
-          return { uid: decoded.uid, emailVerified: decoded.emailVerified === true };
-        }
-      } catch (e) {
-        // Nie loguj jako error jeśli brakuje klucza publicznego - to jest normalne gdy SSO nie jest skonfigurowane
-        // System automatycznie fallbackuje do Firebase Auth token verification
-        if (e?.code !== 'SSO_KEY_MISSING') {
-          console.debug('getSessionUser: Cookie SSO verification failed, trying Firebase Auth token', e?.message);
-        }
-      }
-    }
-    
-    // Fallback: spróbuj Firebase Auth ID token z nagłówka Authorization
-    const authHeader = req.headers.authorization || '';
-    if (authHeader.startsWith('Bearer ')) {
-      const idToken = authHeader.substring(7);
-      try {
-        const decoded = await admin.auth().verifyIdToken(idToken);
-        if (decoded?.uid) {
-          return { uid: decoded.uid, emailVerified: decoded.email_verified === true };
-        }
-      } catch (e) {
-        console.debug('getSessionUser: Firebase Auth token verification failed', e?.message);
-      }
-    }
-    
-    console.debug('getSessionUser: No valid session found', { 
-      cookieName, 
-      hasCookies: !!req.headers.cookie,
-      hasAuthHeader: !!authHeader,
-      cookieKeys: Object.keys(cookies)
-    });
-    return null;
-  } catch (e) {
-    console.debug('getSessionUser error:', e?.message || e);
-    return null;
-  }
 }
 
 async function isAdminOrSuperAdmin(uid) {
