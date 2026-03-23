@@ -286,7 +286,7 @@
         }
     </style>
     <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-23-1" />
     <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1" crossorigin />
@@ -358,14 +358,17 @@
                 <button id="charity-carousel-prev" class="carousel-arrow" type="button" aria-label="Poprzednia akcja" onclick="window.moveCharityCarousel(-1)">
                     <i class="fa-solid fa-chevron-left"></i>
                 </button>
-                <div class="carousel-viewport">
-                    <div id="charity-track">
-                        <article class="card-dark charity-card">
-                            <div class="charity-card-inner text-center charity-status-only w-full">
-                                <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs w-full text-center">Ładowanie ...</p>
-                            </div>
-                        </article>
+                <div class="carousel-column">
+                    <div class="carousel-viewport">
+                        <div id="charity-track">
+                            <article class="card-dark charity-card">
+                                <div class="charity-card-inner text-center charity-status-only w-full">
+                                    <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs w-full text-center">Ładowanie ...</p>
+                                </div>
+                            </article>
+                        </div>
                     </div>
+                    <div id="charity-carousel-dots" class="carousel-dots-nav" hidden aria-label="Pozycja w karuzeli akcji"></div>
                 </div>
                 <button id="charity-carousel-next" class="carousel-arrow" type="button" aria-label="Następna akcja" onclick="window.moveCharityCarousel(1)">
                     <i class="fa-solid fa-chevron-right"></i>
@@ -520,6 +523,7 @@
         } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
         import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
         import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
+        import { syncCarouselDotsNav } from "https://strzelca.pl/carousel-dots.mjs?v=2026-03-23-1";
         import {
             initNewsletterOptInFromEmptyCarousels,
             buildEmptyCarouselArticleHtml,
@@ -628,6 +632,34 @@ const firebaseConfig = {
         let charityLoopEnabled = false;
         let charityCarouselAnimating = false;
         let charityPendingMoves = 0;
+        let charityCarouselSegments = [];
+        let charityCarouselLeftIndex = 0;
+
+        function syncCharityCarouselDots() {
+            const dots = document.getElementById('charity-carousel-dots');
+            const n = charityCarouselSegments.length;
+            syncCarouselDotsNav(dots, n, charityCarouselLeftIndex, (idx) => window.goToCharityCarousel(idx));
+        }
+
+        window.goToCharityCarousel = (idx) => {
+            const n = charityCarouselSegments.length;
+            if (n <= 1 || idx < 0 || idx >= n || idx === charityCarouselLeftIndex) return;
+            const track = document.getElementById('charity-track');
+            if (!track) return;
+            charityCarouselAnimating = false;
+            charityPendingMoves = 0;
+            const rotated = [...charityCarouselSegments.slice(idx), ...charityCarouselSegments.slice(0, idx)];
+            track.innerHTML = rotated.join('');
+            charityCarouselLeftIndex = idx;
+            const cardCount = n;
+            track.classList.toggle('carousel-track--single', cardCount === 1);
+            track.style.transition = 'none';
+            track.style.transform = 'translateX(0)';
+            void track.offsetHeight;
+            track.style.transition = `transform ${CHARITY_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+            window.requestAnimationFrame(updateCharityCarouselControls);
+            syncCharityCarouselDots();
+        };
 
         function getVisibleCharityCardsCount() {
             if (window.innerWidth <= 700) return 1;
@@ -664,6 +696,7 @@ const firebaseConfig = {
                     track.style.transition = `transform ${CHARITY_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
                 });
             }
+            syncCharityCarouselDots();
         }
 
         function consumeQueuedCharityMove() {
@@ -687,6 +720,9 @@ const firebaseConfig = {
             if (!track) return;
             const stepWidth = getCharityStepWidth();
             if (stepWidth <= 0) return;
+
+            const n = charityCarouselSegments.length;
+            if (!n) return;
 
             charityCarouselAnimating = true;
             let finished = false;
@@ -713,6 +749,8 @@ const firebaseConfig = {
                     track.style.transform = 'translateX(0)';
                     void track.offsetHeight;
                     track.style.transition = `transform ${CHARITY_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                    charityCarouselLeftIndex = (charityCarouselLeftIndex + 1) % n;
+                    syncCharityCarouselDots();
                     finalizeMove();
                 };
                 track.addEventListener('transitionend', onEnd, { once: true });
@@ -724,12 +762,16 @@ const firebaseConfig = {
                         track.style.transform = 'translateX(0)';
                         void track.offsetHeight;
                         track.style.transition = `transform ${CHARITY_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                        charityCarouselLeftIndex = (charityCarouselLeftIndex + 1) % n;
+                        syncCharityCarouselDots();
                     });
                 }, CHARITY_CAROUSEL_DURATION_MS + 120);
             } else {
                 track.style.transition = 'none';
                 const lastCard = track.lastElementChild;
                 if (lastCard) track.insertBefore(lastCard, track.firstElementChild);
+                charityCarouselLeftIndex = (charityCarouselLeftIndex - 1 + n) % n;
+                syncCharityCarouselDots();
                 track.style.transform = `translateX(-${stepWidth}px)`;
                 void track.offsetHeight;
                 track.style.transition = `transform ${CHARITY_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
@@ -1128,6 +1170,8 @@ const firebaseConfig = {
                     ),
                 );
             }
+            charityCarouselSegments = cardsHtml.slice();
+            charityCarouselLeftIndex = 0;
             track.innerHTML = cardsHtml.join('');
             const cardCount = cardsHtml.length;
             track.classList.toggle('carousel-track--single', cardCount === 1);

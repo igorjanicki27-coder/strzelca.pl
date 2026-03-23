@@ -25,6 +25,30 @@ async function initDatabase() {
 
 const SUPERADMIN_UID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
 
+/** Vercel czasem nie wypełnia req.query — łączymy z parsowaniem URL (np. summary=1 na dashboardzie). */
+function readOrdersQueryParam(req, name) {
+  const rq = req.query && typeof req.query === 'object' && !Array.isArray(req.query) ? req.query : {};
+  const raw = rq[name];
+  if (raw !== undefined && raw !== null && !(Array.isArray(raw) && raw.length === 0)) {
+    return Array.isArray(raw) ? raw[0] : raw;
+  }
+  try {
+    const host = req.headers?.host || 'localhost';
+    const urlObj = new URL(req.url || '/', `http://${host}`);
+    const s = urlObj.searchParams.get(name);
+    return s === null ? undefined : s;
+  } catch {
+    return undefined;
+  }
+}
+
+function isOrdersSummaryRequest(req) {
+  const v = readOrdersQueryParam(req, 'summary');
+  if (v === undefined || v === null) return false;
+  const s = String(v).toLowerCase();
+  return s === '1' || s === 'true' || v === 1 || v === true;
+}
+
 async function getSessionUser(req) {
   try {
     initAdmin();
@@ -368,14 +392,11 @@ module.exports = async (req, res) => {
 
     // GET - lista zamówień
     if (req.method === 'GET') {
-      const { status, userId } = req.query;
+      const status = readOrdersQueryParam(req, 'status');
+      const userId = readOrdersQueryParam(req, 'userId');
 
       // Lekkie statystyki na dashboard (bez pobierania całej listy zamówień)
-      const summaryFlag = req.query.summary;
-      if (
-        isUserAdmin &&
-        (summaryFlag === '1' || summaryFlag === 'true')
-      ) {
+      if (isUserAdmin && isOrdersSummaryRequest(req)) {
         const statuses = ['zlozone', 'realizacja', 'wyslane', 'zakonczone', 'anulowane'];
         const safeCount = async (q) => {
           try {
@@ -413,7 +434,7 @@ module.exports = async (req, res) => {
         let hasWhereClause = false;
 
         const maxOrders = Math.min(
-          Math.max(parseInt(req.query.limit, 10) || 1500, 1),
+          Math.max(parseInt(readOrdersQueryParam(req, 'limit'), 10) || 1500, 1),
           2500
         );
         
@@ -728,7 +749,7 @@ module.exports = async (req, res) => {
         return;
       }
 
-      const { id } = req.query;
+      const id = readOrdersQueryParam(req, 'id');
       if (!id) {
         res.status(400).json({ success: false, error: 'Order ID is required' });
         return;

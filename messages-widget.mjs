@@ -165,17 +165,40 @@ function loadImageFromFile(file) {
   });
 }
 
+function isLikelyRasterImageFileForChat(file) {
+  if (!file) return false;
+  const t = (file.type || "").toLowerCase();
+  if (t === "image/heic" || t === "image/heif") return false;
+  if (t && /^image\//.test(t)) return true;
+  const n = (file.name || "").toLowerCase();
+  return /\.(jpe?g|png|webp)$/i.test(n);
+}
+
 /**
  * Kompresja do JPEG i dopasowanie rozmiaru pod limit Firestore/API (~720 KB binarnie).
+ * @param {(progress01: number) => void} [onProgress] — 0…1 (wczytanie, skalowanie, kompresja, base64)
  */
-async function compressImageFileToJpegAttachment(file) {
-  if (!file || !/^image\//.test(file.type || "")) {
+async function compressImageFileToJpegAttachment(file, onProgress) {
+  const rep = (p) => {
+    try {
+      if (typeof onProgress === "function") onProgress(Math.max(0, Math.min(1, p)));
+    } catch (_) {}
+  };
+  if (!isLikelyRasterImageFileForChat(file)) {
+    const t = (file.type || "").toLowerCase();
+    if (t.includes("heic") || t.includes("heif") || /\.hei[cf]$/i.test(file.name || "")) {
+      throw new Error(
+        "Format HEIC/HEIF nie jest obsługiwany w przeglądarce — zapisz zdjęcie jako JPG lub PNG.",
+      );
+    }
     throw new Error("Wybierz plik graficzny (JPG, PNG lub WebP).");
   }
   if (file.size > 30 * 1024 * 1024) {
     throw new Error("Plik jest zbyt duży (max 30 MB przed kompresją).");
   }
+  rep(0.06);
   const img = await loadImageFromFile(file);
+  rep(0.22);
   let w = img.naturalWidth || img.width;
   let h = img.naturalHeight || img.height;
   if (!w || !h) throw new Error("Nieprawidłowy obraz.");
@@ -197,14 +220,19 @@ async function compressImageFileToJpegAttachment(file) {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, w, h);
   ctx.drawImage(img, 0, 0, w, h);
+  rep(0.32);
 
   let quality = 0.88;
   let blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", quality));
   if (!blob) throw new Error("Kompresja nie powiodła się.");
+  rep(0.4);
 
+  let shrinkStep = 0;
   async function shrinkUntilOk() {
     for (;;) {
       if (blob.size <= MAX_MESSAGE_IMAGE_BYTES) return;
+      shrinkStep += 1;
+      rep(0.4 + Math.min(0.42, shrinkStep * 0.07));
       if (quality > 0.42) {
         quality -= 0.07;
         blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", quality));
@@ -213,7 +241,7 @@ async function compressImageFileToJpegAttachment(file) {
       }
       if (w <= 360 && h <= 360) {
         throw new Error(
-          "Nie udało się zmieścić zdjęcia w bezpiecznym limicie (~720 KB). Wybierz mniejszy obraz."
+          "Nie udało się zmieścić zdjęcia w bezpiecznym limicie (~720 KB). Wybierz mniejszy obraz.",
         );
       }
       w = Math.max(320, Math.round(w * 0.82));
@@ -230,7 +258,9 @@ async function compressImageFileToJpegAttachment(file) {
   }
   await shrinkUntilOk();
 
+  rep(0.88);
   const dataBase64 = await blobToBase64(blob);
+  rep(1);
   return { mimeType: "image/jpeg", dataBase64 };
 }
 
@@ -567,14 +597,58 @@ function makeStyles() {
     .attach:disabled { opacity: 0.45; cursor: not-allowed; }
     .attach svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
     .pendingAttach {
+      display: none;
+      padding: 0 2px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .pendingAttach.show { display: block; }
+    .pendingAttachRow {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+    .pendingThumb {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 1px solid rgba(255,255,255,0.12);
+      flex-shrink: 0;
+      display: none;
+      background: rgba(0,0,0,0.3);
+    }
+    .pendingAttachMid {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .attachProgress {
+      display: none;
+      width: 100%;
+    }
+    .attachProgressTrack {
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.10);
+      overflow: hidden;
+    }
+    .attachProgressBar {
+      height: 100%;
+      width: 8%;
+      border-radius: 999px;
+      background: rgba(193,154,107,0.95);
+      transition: width 0.18s ease-out;
+    }
+    .pendingAttachLabel {
       font-size: 11px;
       color: rgba(229,229,229,0.65);
-      display: none;
-      align-items: center;
-      gap: 8px;
-      padding: 0 2px;
+      line-height: 1.35;
     }
-    .pendingAttach.show { display: flex; }
     .pendingRemove {
       border: none;
       background: rgba(239,68,68,0.2);
@@ -1197,13 +1271,29 @@ async function main() {
   composer.className = "composer";
   const pendingAttach = document.createElement("div");
   pendingAttach.className = "pendingAttach";
+  const pendingRow = document.createElement("div");
+  pendingRow.className = "pendingAttachRow";
+  const pendingThumb = document.createElement("img");
+  pendingThumb.className = "pendingThumb";
+  pendingThumb.alt = "";
+  const pendingMid = document.createElement("div");
+  pendingMid.className = "pendingAttachMid";
+  const pendingProgress = document.createElement("div");
+  pendingProgress.className = "attachProgress";
+  pendingProgress.innerHTML =
+    '<div class="attachProgressTrack"><div class="attachProgressBar"></div></div>';
   const pendingLabel = document.createElement("span");
+  pendingLabel.className = "pendingAttachLabel";
   const pendingRemove = document.createElement("button");
   pendingRemove.type = "button";
   pendingRemove.className = "pendingRemove";
   pendingRemove.textContent = "Usuń zdjęcie";
-  pendingAttach.appendChild(pendingLabel);
-  pendingAttach.appendChild(pendingRemove);
+  pendingMid.appendChild(pendingProgress);
+  pendingMid.appendChild(pendingLabel);
+  pendingRow.appendChild(pendingThumb);
+  pendingRow.appendChild(pendingMid);
+  pendingRow.appendChild(pendingRemove);
+  pendingAttach.appendChild(pendingRow);
 
   const composerBar = document.createElement("div");
   composerBar.className = "composerBar";
@@ -1218,7 +1308,7 @@ async function main() {
 
   const fileInput = document.createElement("input");
   fileInput.type = "file";
-  fileInput.accept = "image/jpeg,image/png,image/webp";
+  fileInput.accept = "image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp";
   fileInput.style.display = "none";
 
   const ta = document.createElement("textarea");
@@ -1238,12 +1328,24 @@ async function main() {
   composer.appendChild(fileInput);
 
   let pendingImageAttachment = null;
+  let attachmentProcessing = false;
   function updatePendingAttachUI() {
+    const bar = pendingProgress.querySelector(".attachProgressBar");
     if (pendingImageAttachment) {
       pendingAttach.classList.add("show");
+      pendingThumb.src = `data:${pendingImageAttachment.mimeType};base64,${pendingImageAttachment.dataBase64}`;
+      pendingThumb.style.display = "block";
+      pendingProgress.style.display = "none";
+      if (bar) bar.style.width = "100%";
       pendingLabel.textContent = "Zdjęcie gotowe do wysłania (JPEG, skompresowane).";
-    } else {
+      return;
+    }
+    if (!attachmentProcessing) {
       pendingAttach.classList.remove("show");
+      pendingThumb.removeAttribute("src");
+      pendingThumb.style.display = "none";
+      pendingProgress.style.display = "none";
+      if (bar) bar.style.width = "8%";
       pendingLabel.textContent = "";
     }
   }
@@ -2363,20 +2465,52 @@ async function main() {
   attachBtn.addEventListener("click", () => fileInput.click());
   fileInput.addEventListener("change", async () => {
     const f = fileInput.files && fileInput.files[0];
-    fileInput.value = "";
     if (!f) return;
+    const bar = pendingProgress.querySelector(".attachProgressBar");
+    let blobUrl = null;
     try {
       attachBtn.disabled = true;
-      pendingImageAttachment = await compressImageFileToJpegAttachment(f);
+      attachmentProcessing = true;
+      pendingImageAttachment = null;
+      pendingAttach.classList.add("show");
+      blobUrl = URL.createObjectURL(f);
+      pendingThumb.src = blobUrl;
+      pendingThumb.style.display = "block";
+      pendingProgress.style.display = "block";
+      if (bar) bar.style.width = "5%";
+      pendingLabel.textContent = "Wczytywanie i przygotowanie zdjęcia…";
+      const att = await compressImageFileToJpegAttachment(f, (p) => {
+        if (bar) bar.style.width = `${8 + Math.round(p * 90)}%`;
+        if (p < 0.28) pendingLabel.textContent = "Wczytywanie obrazu…";
+        else if (p < 0.55) pendingLabel.textContent = "Optymalizacja rozmiaru…";
+        else if (p < 0.9) pendingLabel.textContent = "Kompresja…";
+        else pendingLabel.textContent = "Finalizowanie…";
+      });
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+        blobUrl = null;
+      }
+      pendingImageAttachment = att;
+      attachmentProcessing = false;
+      if (bar) bar.style.width = "100%";
       updatePendingAttachUI();
+      setTimeout(() => {
+        if (pendingImageAttachment) pendingProgress.style.display = "none";
+      }, 400);
     } catch (e) {
+      attachmentProcessing = false;
+      pendingImageAttachment = null;
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      updatePendingAttachUI();
       alert(e?.message || "Nie udało się przygotować zdjęcia");
     } finally {
+      fileInput.value = "";
       attachBtn.disabled = false;
     }
   });
   pendingRemove.addEventListener("click", () => {
     pendingImageAttachment = null;
+    attachmentProcessing = false;
     updatePendingAttachUI();
   });
   ta.addEventListener("keydown", (e) => {

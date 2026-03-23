@@ -320,6 +320,27 @@
         color: var(--coyote);
         background: rgba(193, 154, 107, 0.08);
       }
+      .admin-toolbar-reset {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        padding: 0 1rem;
+        min-height: 46px;
+        border: 2px solid #3f3f46;
+        border-radius: 8px;
+        background: transparent;
+        color: #a1a1aa;
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+      }
+      .admin-toolbar-reset:hover {
+        border-color: #71717a;
+        color: #e4e4e7;
+        background: rgba(39, 39, 42, 0.6);
+      }
       .admin-toolbar-more {
         display: inline-flex;
         align-items: center;
@@ -1592,7 +1613,7 @@
                 <div class="flex flex-wrap items-end gap-2 sm:gap-3">
                   <div class="w-full min-w-0 sm:flex-1 sm:min-w-[14rem]">
                     <label class="block text-xs font-medium text-zinc-400 mb-1.5" for="events-status-filter">Status</label>
-                    <select id="events-status-filter" class="w-full">
+                    <select id="events-status-filter" class="w-full" onchange="applyEventsFilters()">
                       <option value="all">Wszystkie</option>
                       <option value="upcoming">Nadchodzące</option>
                       <option value="past">Przeszłe</option>
@@ -1600,9 +1621,14 @@
                     </select>
                   </div>
                   <div class="flex shrink-0 gap-2">
-                    <button type="button" onclick="applyEventsFilters()" class="admin-toolbar-apply">
-                      <i class="fa-solid fa-filter text-sm opacity-80" aria-hidden="true"></i>
-                      Filtruj
+                    <button
+                      type="button"
+                      onclick="resetEventsFilters()"
+                      class="admin-toolbar-reset"
+                      title="Przywróć domyślne filtry"
+                    >
+                      <i class="fa-solid fa-rotate-left text-sm opacity-80" aria-hidden="true"></i>
+                      Wyczyść
                     </button>
                     <button
                       type="button"
@@ -1623,7 +1649,7 @@
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm font-medium mb-2" for="events-category-filter">Kategoria</label>
-                      <select id="events-category-filter" class="w-full">
+                      <select id="events-category-filter" class="w-full" onchange="applyEventsFilters()">
                         <option value="all">Wszystkie kategorie</option>
                         <option value="zawody">Zawody</option>
                         <option value="szkolenie">Szkolenie</option>
@@ -1633,7 +1659,7 @@
                     </div>
                     <div>
                       <label class="block text-sm font-medium mb-2" for="events-sort-filter">Sortowanie</label>
-                      <select id="events-sort-filter" class="w-full">
+                      <select id="events-sort-filter" class="w-full" onchange="applyEventsFilters()">
                         <option value="date-asc">Data ↑</option>
                         <option value="date-desc">Data ↓</option>
                         <option value="title">Tytuł</option>
@@ -1717,15 +1743,20 @@
               <div class="flex flex-wrap items-end gap-2 sm:gap-3">
                 <div class="w-full min-w-0 sm:flex-1 sm:min-w-[16rem]">
                   <label class="block text-xs font-medium text-zinc-400 mb-1.5" for="charity-list-view">Widok listy</label>
-                  <select id="charity-list-view" class="w-full">
+                  <select id="charity-list-view" class="w-full" onchange="applyCharityListFilter()">
                     <option value="upcoming">Tylko bieżące (bez zakończonych)</option>
                     <option value="all">Wszystkie (wraz z zakończonymi)</option>
                   </select>
                 </div>
                 <div class="flex shrink-0 gap-2">
-                  <button type="button" onclick="applyCharityListFilter()" class="admin-toolbar-apply">
-                    <i class="fa-solid fa-filter text-sm opacity-80" aria-hidden="true"></i>
-                    Filtruj
+                  <button
+                    type="button"
+                    onclick="resetCharityFilters()"
+                    class="admin-toolbar-reset"
+                    title="Przywróć widok domyślny (tylko bieżące)"
+                  >
+                    <i class="fa-solid fa-rotate-left text-sm opacity-80" aria-hidden="true"></i>
+                    Wyczyść
                   </button>
                   <button
                     type="button"
@@ -1788,7 +1819,7 @@
                 <i class="fa-solid fa-filter-circle-xmark text-4xl mb-4 text-zinc-600"></i>
                 <p>Brak akcji do wyświetlenia przy obecnym filtrze.</p>
                 <p class="text-sm text-zinc-500 mt-2">
-                  Wybierz widok „Wszystkie (wraz z zakończonymi)” i kliknij Filtruj, aby zobaczyć archiwalne akcje.
+                  Wybierz widok „Wszystkie (wraz z zakończonymi)” na liście powyżej — lista odświeży się od razu.
                 </p>
               </div>
         </div>
@@ -2097,12 +2128,12 @@
 
             <!-- Filtry i wyszukiwanie -->
             <div class="admin-card mb-8">
-              <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label class="block text-sm font-medium mb-2"
                     >Status oferty</label
                   >
-                  <select id="bazar-status-filter" class="w-full">
+                  <select id="bazar-status-filter" class="w-full" onchange="applyBazarFilters()">
                   <option value="all">Wszystkie</option>
                   <option value="PENDING">Oczekujące</option>
                   <option value="ACTIVE">Aktywne</option>
@@ -2113,7 +2144,7 @@
                 </div>
                 <div>
                   <label class="block text-sm font-medium mb-2">Kategoria</label>
-                  <select id="bazar-category-filter" class="w-full">
+                  <select id="bazar-category-filter" class="w-full" onchange="applyBazarFilters()">
                     <option value="all">Wszystkie kategorie</option>
                     <option value="PISTOLET">Pistolety</option>
                     <option value="REWOLWER">Rewolwery</option>
@@ -2132,15 +2163,15 @@
                     id="bazar-search"
                     placeholder="Tytuł lub sprzedawca..."
                     class="w-full"
-                    onkeydown="if(event.key==='Enter')applyBazarFilters()"
+                    oninput="scheduleApplyBazarFilters()"
                   />
                 </div>
-                <div class="flex items-end">
-                  <button onclick="applyBazarFilters()" class="btn-admin w-full">
-                    <i class="fa-solid fa-filter mr-2"></i>
-                    Filtruj
-                  </button>
-                </div>
+              </div>
+              <div class="flex justify-end mt-3">
+                <button type="button" onclick="resetBazarFilters()" class="admin-toolbar-reset" title="Wszystkie oferty, pusty wyszukiwacz">
+                  <i class="fa-solid fa-rotate-left text-sm opacity-80" aria-hidden="true"></i>
+                  Wyczyść
+                </button>
               </div>
             </div>
 
@@ -2254,7 +2285,7 @@
                 <div class="flex flex-wrap items-end gap-2 sm:gap-3">
                   <div class="w-full min-w-0 sm:flex-1 sm:min-w-[14rem]">
                     <label class="block text-xs font-medium text-zinc-400 mb-1.5" for="blog-status-filter">Status</label>
-                    <select id="blog-status-filter" class="w-full">
+                    <select id="blog-status-filter" class="w-full" onchange="applyBlogFilters()">
                       <option value="all">Wszystkie</option>
                       <option value="published">Opublikowane</option>
                       <option value="draft">Szkice</option>
@@ -2262,9 +2293,14 @@
                     </select>
                   </div>
                   <div class="flex shrink-0 gap-2">
-                    <button type="button" onclick="applyBlogFilters()" class="admin-toolbar-apply">
-                      <i class="fa-solid fa-filter text-sm opacity-80" aria-hidden="true"></i>
-                      Filtruj
+                    <button
+                      type="button"
+                      onclick="resetBlogFilters()"
+                      class="admin-toolbar-reset"
+                      title="Przywróć domyślne filtry"
+                    >
+                      <i class="fa-solid fa-rotate-left text-sm opacity-80" aria-hidden="true"></i>
+                      Wyczyść
                     </button>
                     <button
                       type="button"
@@ -2285,7 +2321,7 @@
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm font-medium mb-2" for="blog-category-filter">Kategoria</label>
-                      <select id="blog-category-filter" class="w-full">
+                      <select id="blog-category-filter" class="w-full" onchange="applyBlogFilters()">
                         <option value="all">Wszystkie kategorie</option>
                         <option value="news">Aktualności</option>
                         <option value="tips">Porady</option>
@@ -2295,7 +2331,7 @@
                     </div>
                     <div>
                       <label class="block text-sm font-medium mb-2" for="blog-sort-filter">Sortowanie</label>
-                      <select id="blog-sort-filter" class="w-full">
+                      <select id="blog-sort-filter" class="w-full" onchange="applyBlogFilters()">
                         <option value="date-desc">Data dodania ↓</option>
                         <option value="date-asc">Data dodania ↑</option>
                         <option value="title">Tytuł A–Z</option>
@@ -8878,30 +8914,6 @@
           });
         }
 
-        // Załącznik obrazu w czacie admina (API /api/messages → imageAttachment)
-        const chatAttInp = document.getElementById("chat-attachment-input");
-        if (chatAttInp && !chatAttInp._strzelcaChatAttBound) {
-          chatAttInp._strzelcaChatAttBound = true;
-          chatAttInp.addEventListener("change", async function () {
-            const f = this.files && this.files[0];
-            this.value = "";
-            if (!f) return;
-            try {
-              showNotification("Przetwarzanie obrazu…", "info");
-              const att = await compressImageFileForChatReply(f);
-              chatReplyPendingImage = att;
-              const wrap = document.getElementById("chat-attachment-preview-wrap");
-              const prev = document.getElementById("chat-attachment-preview");
-              if (prev) {
-                prev.innerHTML = `<img src="data:${att.mimeType};base64,${att.dataBase64}" class="max-h-14 max-w-[120px] rounded object-cover border border-zinc-600/50" alt="" />`;
-              }
-              if (wrap) wrap.classList.remove("hidden");
-            } catch (err) {
-              chatReplyPendingImage = null;
-              showNotification(err?.message || "Nie udało się dodać zdjęcia", "error");
-            }
-          });
-        }
       });
 
       // Funkcja do wysyłania odpowiedzi - przeniesiona niżej w kodzie
@@ -9819,6 +9831,18 @@
         renderEventsList();
       };
 
+      window.resetEventsFilters = () => {
+        const a = document.getElementById("events-status-filter");
+        const b = document.getElementById("events-category-filter");
+        const c = document.getElementById("events-sort-filter");
+        const d = document.getElementById("events-show-completed");
+        if (a) a.value = "all";
+        if (b) b.value = "all";
+        if (c) c.value = "date-asc";
+        if (d) d.checked = false;
+        applyEventsFilters();
+      };
+
       window.toggleEventsMoreFilters = () => {
         const panel = document.getElementById("events-more-filters");
         const btn = document.getElementById("events-more-filters-toggle");
@@ -10035,6 +10059,12 @@
 
       window.applyCharityListFilter = () => {
         renderCharityActionsListDOM();
+      };
+
+      window.resetCharityFilters = () => {
+        const v = document.getElementById("charity-list-view");
+        if (v) v.value = "upcoming";
+        applyCharityListFilter();
       };
 
       window.toggleCharityMoreFilters = () => {
@@ -10847,6 +10877,25 @@
             ? "/api/bazar"
             : "https://strzelca.pl/api/bazar";
         let bazarAdminList = [];
+        let bazarFilterDebounceTimer = null;
+
+        window.scheduleApplyBazarFilters = () => {
+          clearTimeout(bazarFilterDebounceTimer);
+          bazarFilterDebounceTimer = setTimeout(() => {
+            applyBazarFilters();
+          }, 400);
+        };
+
+        window.resetBazarFilters = async () => {
+          clearTimeout(bazarFilterDebounceTimer);
+          const st = document.getElementById("bazar-status-filter");
+          const cat = document.getElementById("bazar-category-filter");
+          const s = document.getElementById("bazar-search");
+          if (st) st.value = "all";
+          if (cat) cat.value = "all";
+          if (s) s.value = "";
+          await applyBazarFilters();
+        };
 
         function bazarFmtTs(ts) {
           if (!ts) return "—";
@@ -15328,6 +15377,16 @@
         renderBlogPostsList();
       };
 
+      window.resetBlogFilters = () => {
+        const a = document.getElementById("blog-status-filter");
+        const b = document.getElementById("blog-category-filter");
+        const c = document.getElementById("blog-sort-filter");
+        if (a) a.value = "all";
+        if (b) b.value = "all";
+        if (c) c.value = "date-desc";
+        applyBlogFilters();
+      };
+
       window.toggleBlogMoreFilters = () => {
         const panel = document.getElementById("blog-more-filters");
         const btn = document.getElementById("blog-more-filters-toggle");
@@ -17691,57 +17750,6 @@
         }
       };
 
-      // Funkcja otwierania czatu z wiadomością
-      async function openMessageChat(userId, userName, userEmail) {
-        if (typeof window.clearChatReplyAttachment === "function") window.clearChatReplyAttachment();
-        currentConversationUser = { id: userId, name: userName, email: userEmail };
-
-        // Zablokuj scrollowanie strony w tle
-        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-        document.body.style.overflow = 'hidden';
-        if (scrollbarWidth > 0) {
-          document.body.style.paddingRight = `${scrollbarWidth}px`;
-        }
-
-        // Pokaż modal
-        document.getElementById('chat-modal').classList.remove('hidden');
-
-        // Ustaw informacje użytkownika
-        const chatNameEl2 = document.getElementById('chat-user-name');
-        if (chatNameEl2) chatNameEl2.textContent = userName;
-        const chatEmailEl2 = document.getElementById('chat-user-email');
-        if (chatEmailEl2) chatEmailEl2.textContent = userEmail;
-
-        // Ustaw aktualną kategorię rozmowy (jeśli istnieje element categorySelect)
-        const categorySelect = document.getElementById('message-category');
-        if (categorySelect) {
-          try {
-            const messagesRef = collection(db, "privateMessages");
-            const messagesQuery = query(
-              messagesRef,
-              where("senderId", "==", userId),
-              where("recipientId", "==", "admin"),
-              orderBy("timestamp", "desc"),
-              limit(1)
-            );
-            const messagesSnapshot = await getDocs(messagesQuery);
-            if (!messagesSnapshot.empty) {
-              const latestMessage = { id: messagesSnapshot.docs[0].id, ...messagesSnapshot.docs[0].data() };
-              if (latestMessage.category_id) {
-                categorySelect.value = latestMessage.category_id;
-              }
-            }
-          } catch (error) {
-            console.error('Error setting current category:', error);
-          }
-        }
-
-        // Obsługa klawisza Enter jest już dodana globalnie w init()
-
-        // Załaduj wiadomości konwersacji
-        await loadConversationMessages(userId);
-      }
-
       // Funkcja otwierania modalu szybkich odpowiedzi - dostępna globalnie dla onclick
       window.openQuickRepliesMenu = async function openQuickRepliesMenu() {
         const modal = document.getElementById('quick-replies-modal');
@@ -18078,14 +18086,36 @@
         });
       }
 
-      async function compressImageFileForChatReply(file) {
-        if (!file || !/^image\//.test(file.type || "")) {
+      function chatReplyIsLikelyRasterImageFile(file) {
+        if (!file) return false;
+        const t = (file.type || "").toLowerCase();
+        if (t === "image/heic" || t === "image/heif") return false;
+        if (t && /^image\//.test(t)) return true;
+        const n = (file.name || "").toLowerCase();
+        return /\.(jpe?g|png|webp)$/i.test(n);
+      }
+
+      async function compressImageFileForChatReply(file, onProgress) {
+        const rep = (p) => {
+          try {
+            if (typeof onProgress === "function") onProgress(Math.max(0, Math.min(1, p)));
+          } catch (_) {}
+        };
+        if (!chatReplyIsLikelyRasterImageFile(file)) {
+          const t = (file.type || "").toLowerCase();
+          if (t.includes("heic") || t.includes("heif") || /\.hei[cf]$/i.test(file.name || "")) {
+            throw new Error(
+              "Format HEIC/HEIF nie jest obsługiwany w przeglądarce — zapisz zdjęcie jako JPG lub PNG i spróbuj ponownie.",
+            );
+          }
           throw new Error("Wybierz plik graficzny (JPG, PNG lub WebP).");
         }
         if (file.size > 30 * 1024 * 1024) {
           throw new Error("Plik jest zbyt duży (max 30 MB przed kompresją).");
         }
+        rep(0.06);
         const img = await chatReplyLoadImageFromFile(file);
+        rep(0.22);
         let w = img.naturalWidth || img.width;
         let h = img.naturalHeight || img.height;
         if (!w || !h) throw new Error("Nieprawidłowy obraz.");
@@ -18104,11 +18134,16 @@
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, w, h);
         ctx.drawImage(img, 0, 0, w, h);
+        rep(0.32);
         let quality = 0.88;
         let blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", quality));
         if (!blob) throw new Error("Kompresja nie powiodła się.");
+        rep(0.4);
+        let shrinkStep = 0;
         for (;;) {
           if (blob.size <= CHAT_REPLY_MAX_IMAGE_BYTES) break;
+          shrinkStep += 1;
+          rep(0.4 + Math.min(0.42, shrinkStep * 0.07));
           if (quality > 0.42) {
             quality -= 0.07;
             blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", quality));
@@ -18131,7 +18166,9 @@
           blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", quality));
           if (!blob) throw new Error("Kompresja nie powiodła się.");
         }
+        rep(0.88);
         const dataBase64 = await chatReplyBlobToBase64(blob);
+        rep(1);
         return { mimeType: "image/jpeg", dataBase64 };
       }
 
@@ -18143,11 +18180,84 @@
         if (prev) prev.innerHTML = "";
         const wrap = document.getElementById("chat-attachment-preview-wrap");
         if (wrap) wrap.classList.add("hidden");
+        const progRow = document.getElementById("chat-attachment-progress-row");
+        const progBar = document.getElementById("chat-attachment-progress-bar");
+        if (progRow) progRow.classList.add("hidden");
+        if (progBar) progBar.style.width = "0%";
       };
 
       window.pickChatReplyAttachment = function pickChatReplyAttachment() {
         document.getElementById("chat-attachment-input")?.click();
       };
+
+      function bindAdminChatAttachmentInput() {
+        const chatAttInp = document.getElementById("chat-attachment-input");
+        if (!chatAttInp || chatAttInp._strzelcaChatAttBound) return;
+        chatAttInp._strzelcaChatAttBound = true;
+        chatAttInp.addEventListener("change", async function () {
+          const f = this.files && this.files[0];
+          if (!f) return;
+          const wrap = document.getElementById("chat-attachment-preview-wrap");
+          const prev = document.getElementById("chat-attachment-preview");
+          const progRow = document.getElementById("chat-attachment-progress-row");
+          const progBar = document.getElementById("chat-attachment-progress-bar");
+          const progLabel = document.getElementById("chat-attachment-progress-label");
+          let objUrl = null;
+          try {
+            if (wrap) wrap.classList.remove("hidden");
+            if (progRow) progRow.classList.remove("hidden");
+            if (progBar) progBar.style.width = "6%";
+            if (progLabel) progLabel.textContent = "Wczytywanie podglądu…";
+            objUrl = URL.createObjectURL(f);
+            if (prev) {
+              prev.innerHTML = `<img src="${objUrl}" class="max-h-14 max-w-[120px] rounded object-cover border border-zinc-600/50" alt="" />`;
+            }
+            if (progBar) progBar.style.width = "12%";
+            const att = await compressImageFileForChatReply(f, (p) => {
+              if (progBar) progBar.style.width = `${10 + Math.round(p * 88)}%`;
+              if (progLabel) {
+                if (p < 0.25) progLabel.textContent = "Wczytywanie obrazu…";
+                else if (p < 0.55) progLabel.textContent = "Optymalizacja rozmiaru…";
+                else if (p < 0.92) progLabel.textContent = "Kompresja…";
+                else progLabel.textContent = "Finalizowanie…";
+              }
+            });
+            chatReplyPendingImage = att;
+            if (progBar) progBar.style.width = "100%";
+            if (progLabel) progLabel.textContent = "Gotowe do wysłania.";
+            if (objUrl) {
+              URL.revokeObjectURL(objUrl);
+              objUrl = null;
+            }
+            if (prev) {
+              prev.innerHTML = `<img src="data:${att.mimeType};base64,${att.dataBase64}" class="max-h-14 max-w-[120px] rounded object-cover border border-zinc-600/50" alt="" />`;
+            }
+            setTimeout(() => {
+              if (progRow) progRow.classList.add("hidden");
+              if (progBar) progBar.style.width = "0%";
+            }, 450);
+          } catch (err) {
+            chatReplyPendingImage = null;
+            if (wrap) wrap.classList.add("hidden");
+            if (prev) prev.innerHTML = "";
+            if (progRow) progRow.classList.add("hidden");
+            if (progBar) progBar.style.width = "0%";
+            showNotification(err?.message || "Nie udało się dodać zdjęcia", "error");
+          } finally {
+            this.value = "";
+            if (objUrl) URL.revokeObjectURL(objUrl);
+          }
+        });
+      }
+
+      function scheduleAdminChatAttachmentInit() {
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", bindAdminChatAttachmentInput, { once: true });
+        } else {
+          bindAdminChatAttachmentInput();
+        }
+      }
+      scheduleAdminChatAttachmentInit();
 
       // Funkcja wysyłania odpowiedzi - dostępna globalnie dla onclick
       window.sendChatReply = async function sendChatReply() {
@@ -20343,36 +20453,46 @@
         </div>
 
         <!-- Pole odpowiedzi + załącznik (obrazy zgodne z API: JPEG/PNG/WebP, ~720 KB) -->
-        <input type="file" id="chat-attachment-input" accept="image/jpeg,image/png,image/webp" class="hidden" />
-        <div id="chat-attachment-preview-wrap" class="hidden mt-4 mb-0 rounded-xl border border-zinc-600/60 bg-zinc-800/40 px-3 py-2 flex items-center gap-3">
-          <span class="text-xs text-zinc-400 shrink-0"><i class="fa-solid fa-image mr-1"></i>Załącznik</span>
-          <div id="chat-attachment-preview" class="flex-1 min-w-0 flex items-center gap-2 text-xs text-zinc-300"></div>
-          <button type="button" onclick="clearChatReplyAttachment()" class="text-zinc-400 hover:text-white p-1.5 rounded-lg hover:bg-zinc-700/80" title="Usuń załącznik" aria-label="Usuń załącznik">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
+        <input type="file" id="chat-attachment-input" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" class="hidden" />
+        <div id="chat-attachment-preview-wrap" class="hidden mt-4 mb-0 rounded-xl border border-zinc-600/60 bg-zinc-800/40 px-3 py-2 flex flex-col gap-2">
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-zinc-400 shrink-0"><i class="fa-solid fa-image mr-1"></i>Załącznik</span>
+            <div id="chat-attachment-preview" class="flex-1 min-w-0 flex items-center gap-2 text-xs text-zinc-300 min-h-[40px]"></div>
+            <button type="button" onclick="clearChatReplyAttachment()" class="text-zinc-400 hover:text-white p-1.5 rounded-lg hover:bg-zinc-700/80 shrink-0" title="Usuń załącznik" aria-label="Usuń załącznik">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div id="chat-attachment-progress-row" class="hidden w-full">
+            <div class="h-1.5 w-full rounded-full bg-zinc-700/80 overflow-hidden">
+              <div id="chat-attachment-progress-bar" class="h-full rounded-full bg-coyote transition-[width] duration-200 ease-out" style="width:0%"></div>
+            </div>
+            <p id="chat-attachment-progress-label" class="text-[10px] text-zinc-500 mt-1">Przygotowywanie…</p>
+          </div>
         </div>
         <div class="flex flex-col gap-2 mt-4">
           <div class="flex flex-row items-end gap-2 rounded-2xl border border-zinc-600/80 bg-zinc-900/80 pl-2 pr-2 py-2 focus-within:border-coyote/60 focus-within:ring-1 focus-within:ring-coyote/20">
-            <button
-              type="button"
-              onclick="pickChatReplyAttachment()"
-              class="flex-shrink-0 mb-0.5 w-11 h-11 flex items-center justify-center rounded-[11px] bg-zinc-700/90 hover:bg-zinc-600 text-zinc-200 border border-zinc-600/80 transition-all"
-              title="Dodaj zdjęcie (JPG, PNG, WebP)">
-              <i class="fa-solid fa-paperclip text-sm"></i>
-            </button>
             <textarea
               id="chat-reply-input"
               placeholder="Napisz odpowiedź… (opcjonalnie przy zdjęciu)"
               class="flex-1 min-w-0 min-h-[72px] max-h-[160px] bg-transparent border-0 rounded-lg px-2 py-2 text-white placeholder-zinc-500 focus:outline-none focus:ring-0 resize-none"
               rows="3"
             ></textarea>
-            <button
-              type="button"
-              onclick="sendChatReply()"
-              class="flex-shrink-0 mb-0.5 w-11 h-11 flex items-center justify-center rounded-[11px] bg-coyote hover:bg-coyote/90 text-white shadow-md hover:shadow-lg hover:-translate-y-px active:translate-y-0 transition-all"
-              title="Wyślij wiadomość">
-              <i class="fa-solid fa-paper-plane text-sm"></i>
-            </button>
+            <div class="flex flex-col gap-2 flex-shrink-0 self-end">
+              <button
+                type="button"
+                onclick="pickChatReplyAttachment()"
+                class="w-11 h-11 flex items-center justify-center rounded-[11px] bg-zinc-700/90 hover:bg-zinc-600 text-zinc-200 border border-zinc-600/80 transition-all"
+                title="Dodaj zdjęcie (JPG, PNG, WebP)">
+                <i class="fa-solid fa-paperclip text-sm"></i>
+              </button>
+              <button
+                type="button"
+                onclick="sendChatReply()"
+                class="w-11 h-11 flex items-center justify-center rounded-[11px] bg-coyote hover:bg-coyote/90 text-white shadow-md hover:shadow-lg hover:-translate-y-px active:translate-y-0 transition-all"
+                title="Wyślij wiadomość">
+                <i class="fa-solid fa-paper-plane text-sm"></i>
+              </button>
+            </div>
           </div>
           <p class="text-[11px] text-zinc-500 px-1">Załącznik: obraz JPG, PNG lub WebP; przed wysłaniem jest kompresowany (limit ok. 720 KB).</p>
         </div>

@@ -117,6 +117,16 @@
         #product-track.carousel-track--single {
             justify-content: center;
         }
+        /* Pusty karuzelowy stan — jak karta „event-carousel-empty-wide” na wydarzeniach (szerokość + obramowanie) */
+        #product-track .product-card.product-carousel-empty-wide {
+            flex: 1 1 100%;
+            max-width: 100%;
+            cursor: default;
+            padding: 1rem 1rem 0.95rem;
+            border-radius: 12px;
+            border: 1px solid #1f1f1f;
+            box-sizing: border-box;
+        }
         .product-card {
             flex: 0 0 calc((100% - 40px) / 3);
             min-width: 0;
@@ -130,6 +140,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            text-align: center;
+            cursor: default;
             min-height: clamp(140px, 24vh, 220px);
         }
         .product-card .product-img-container img {
@@ -183,10 +195,10 @@
         }
     </style>
     <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-23-1" />
     <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
-    <link rel="modulepreload" href="https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-7" crossorigin />
+    <link rel="modulepreload" href="https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-9" crossorigin />
 </head>
 <body>
     <!-- Panel użytkownika -->
@@ -251,8 +263,11 @@
             <button id="carousel-prev" class="carousel-arrow" type="button" aria-label="Poprzedni produkt" onclick="window.moveProductCarousel(-1)">
                 <i class="fa-solid fa-chevron-left"></i>
             </button>
-            <div class="carousel-viewport">
-                <div id="product-track"></div>
+            <div class="carousel-column">
+                <div class="carousel-viewport">
+                    <div id="product-track"></div>
+                </div>
+                <div id="product-carousel-dots" class="carousel-dots-nav" hidden aria-label="Pozycja w karuzeli produktów"></div>
             </div>
             <button id="carousel-next" class="carousel-arrow" type="button" aria-label="Następny produkt" onclick="window.moveProductCarousel(1)">
                 <i class="fa-solid fa-chevron-right"></i>
@@ -281,9 +296,10 @@
           getHeaderProfileFromCache,
           setHeaderProfileCache,
         } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
-        import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-7";
+        import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-9";
         import { loadWithVersionCache, idbDeleteEntry } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
         import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
+        import { syncCarouselDotsNav } from "https://strzelca.pl/carousel-dots.mjs?v=2026-03-23-1";
         import {
             initNewsletterOptInFromEmptyCarousels,
             buildEmptyCarouselArticleHtml,
@@ -569,10 +585,42 @@
         };
 
         let productItems = [];
+        let productCarouselLeftIndex = 0;
         let productLoopEnabled = false;
         let productCarouselAnimating = false;
         let productPendingMoves = 0;
         const PRODUCT_CAROUSEL_DURATION_MS = 180;
+
+        function syncProductCarouselDots() {
+            const dots = document.getElementById('product-carousel-dots');
+            const n = productItems.length;
+            syncCarouselDotsNav(dots, n, productCarouselLeftIndex, (idx) => window.goToProductCarousel(idx));
+        }
+
+        window.goToProductCarousel = (idx) => {
+            const n = productItems.length;
+            if (n <= 1 || idx < 0 || idx >= n || idx === productCarouselLeftIndex) return;
+            const track = document.getElementById('product-track');
+            const prevBtn = document.getElementById('carousel-prev');
+            const nextBtn = document.getElementById('carousel-next');
+            if (!track || !prevBtn || !nextBtn) return;
+            productCarouselAnimating = false;
+            productPendingMoves = 0;
+            const ordered = [...productItems.slice(idx), ...productItems.slice(0, idx)];
+            track.innerHTML = ordered.map((item) => buildProductCard(item)).join('');
+            productCarouselLeftIndex = idx;
+            track.classList.toggle('carousel-track--single', n === 1);
+            const visibleCards = getVisibleCardsCount();
+            productLoopEnabled = n > visibleCards;
+            prevBtn.disabled = !productLoopEnabled;
+            nextBtn.disabled = !productLoopEnabled;
+            track.style.transition = 'none';
+            track.style.transform = 'translateX(0)';
+            window.requestAnimationFrame(() => {
+                track.style.transition = `transform ${PRODUCT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+            });
+            syncProductCarouselDots();
+        };
 
         function getVisibleCardsCount() {
             if (window.innerWidth <= 700) return 1;
@@ -621,17 +669,20 @@
             if (productItems.length === 0) {
                 track.classList.remove('carousel-track--single');
                 track.innerHTML = buildEmptyCarouselArticleHtml(
-                    'card-dark product-card carousel-status-message p-8 w-full',
+                    'card-dark product-card carousel-status-message product-carousel-empty-wide',
                 );
                 productLoopEnabled = false;
+                productCarouselLeftIndex = 0;
                 prevBtn.disabled = true;
                 nextBtn.disabled = true;
                 track.style.transition = 'none';
                 track.style.transform = 'translateX(0)';
+                syncProductCarouselDots();
                 return;
             }
 
             if (!preservePosition) {
+                productCarouselLeftIndex = 0;
                 track.innerHTML = productItems.map((item) => buildProductCard(item)).join('');
             }
             track.classList.toggle('carousel-track--single', productItems.length === 1);
@@ -644,6 +695,7 @@
             window.requestAnimationFrame(() => {
                 track.style.transition = `transform ${PRODUCT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
             });
+            syncProductCarouselDots();
         }
 
         function consumeQueuedProductMove() {
@@ -667,6 +719,8 @@
             if (!track) return;
             const stepWidth = getProductStepWidth();
             if (stepWidth <= 0) return;
+
+            const n = productItems.length;
 
             productCarouselAnimating = true;
             let finished = false;
@@ -699,6 +753,8 @@
                     track.style.transform = 'translateX(0)';
                     void track.offsetHeight;
                     track.style.transition = `transform ${PRODUCT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                    productCarouselLeftIndex = (productCarouselLeftIndex + 1) % n;
+                    syncProductCarouselDots();
                     finalizeMove();
                 };
                 track.addEventListener('transitionend', onEnd, { once: true });
@@ -712,6 +768,8 @@
                         track.style.transform = 'translateX(0)';
                         void track.offsetHeight;
                         track.style.transition = `transform ${PRODUCT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                        productCarouselLeftIndex = (productCarouselLeftIndex + 1) % n;
+                        syncProductCarouselDots();
                     });
                 }, PRODUCT_CAROUSEL_DURATION_MS + 120);
             } else {
@@ -720,6 +778,8 @@
                 if (lastCard) {
                     track.insertBefore(lastCard, track.firstElementChild);
                 }
+                productCarouselLeftIndex = (productCarouselLeftIndex - 1 + n) % n;
+                syncProductCarouselDots();
                 track.style.transform = `translateX(-${stepWidth}px)`;
                 void track.offsetHeight;
                 track.style.transition = `transform ${PRODUCT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;

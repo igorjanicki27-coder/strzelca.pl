@@ -1,0 +1,34 @@
+/**
+ * Wspólny wskaźnik kropek pod karuzelami strzelca.pl.
+ * @param {HTMLElement | null} container
+ * @param {number} count — liczba pozycji (slajdów)
+ * @param {number} activeIndex — indeks karty widocznej jako pierwsza od lewej (0..count-1)
+ * @param {(index: number) => void} onSelect
+ */
+export function syncCarouselDotsNav(container, count, activeIndex, onSelect) {
+    if (!container) return;
+    if (count <= 1) {
+        container.replaceChildren();
+        container.hidden = true;
+        return;
+    }
+    container.hidden = false;
+    const safeActive = Math.max(0, Math.min(count - 1, activeIndex | 0));
+    const needRebuild = container.childElementCount !== count;
+    if (needRebuild) {
+        container.replaceChildren();
+        for (let i = 0; i < count; i++) {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.className = "carousel-dot";
+            b.setAttribute("aria-label", `Przejdź do pozycji ${i + 1} z ${count}`);
+            b.addEventListener("click", () => onSelect(i));
+            container.appendChild(b);
+        }
+    }
+    [...container.children].forEach((btn, i) => {
+        const on = i === safeActive;
+        btn.classList.toggle("carousel-dot--active", on);
+        btn.setAttribute("aria-current", on ? "true" : "false");
+    });
+}

@@ -1093,8 +1093,17 @@
     </script>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { initializeFirestore, doc, getDoc, collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import {
+            initializeFirestore,
+            getFirestore,
+            doc,
+            getDoc,
+            collection,
+            query,
+            orderBy,
+            getDocs,
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { ensureFirebaseSSO } from "https://strzelca.pl/sso-client.mjs?v=2026-03-21-1";
         import {
@@ -1106,7 +1115,7 @@
             mergeSiteDocumentsWithFallback,
             normalizeFirestoreCatalogDocument,
         } from "https://strzelca.pl/documents-catalog-shared.mjs?v=2026-03-22-3";
-        import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
+        import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-23-1";
 
         
       async function getFirebaseApiKey() {
@@ -1141,11 +1150,22 @@ const firebaseConfig = {
             measurementId: "G-9EJ2R3JPVD"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = initializeFirestore(app, {
-            experimentalAutoDetectLongPolling: true,
-            useFetchStreams: true,
-        });
+        // Ta sama instancja i opcje Firestore co messages-widget / auth-init (unikamy „already called with different options”).
+        const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+        let db;
+        try {
+            db = initializeFirestore(app, {
+                experimentalForceLongPolling: true,
+                useFetchStreams: false,
+            });
+        } catch (initErr) {
+            const msg = String(initErr?.message || "");
+            if (initErr?.code === "failed-precondition" || msg.includes("already been called")) {
+                db = getFirestore(app);
+            } else {
+                throw initErr;
+            }
+        }
         const auth = getAuth(app);
 
         function escapeHtml(s) {
@@ -1914,20 +1934,61 @@ const firebaseConfig = {
         maybeOpenReturnClaimFormFromHash();
         window.addEventListener("hashchange", maybeOpenReturnClaimFormFromHash);
 
+        const DOCS_CATALOG_SESSION_KEY = "strzelca_documents_catalog_v1";
+        const DOCS_CATALOG_SESSION_TTL_MS = 12 * 60 * 1000;
+        /** Gdy brak publicListCacheMeta/documents w Firestore — nie powtarzaj getDocs częściej niż co tyle ms (IndexedDB). */
+        const DOCS_NO_META_IDB_TTL_MS = 45 * 60 * 1000;
+
+        function readDocumentsCatalogSessionCache() {
+            try {
+                const raw = sessionStorage.getItem(DOCS_CATALOG_SESSION_KEY);
+                if (!raw) return null;
+                const o = JSON.parse(raw);
+                if (!o || !Array.isArray(o.items) || typeof o.savedAt !== "number") return null;
+                if (Date.now() - o.savedAt > DOCS_CATALOG_SESSION_TTL_MS) return null;
+                return o;
+            } catch {
+                return null;
+            }
+        }
+
+        function writeDocumentsCatalogSessionCache(listVersion, itemsForUi) {
+            try {
+                sessionStorage.setItem(
+                    DOCS_CATALOG_SESSION_KEY,
+                    JSON.stringify({
+                        listVersion: listVersion === null || listVersion === undefined ? null : listVersion,
+                        savedAt: Date.now(),
+                        items: itemsForUi,
+                    }),
+                );
+            } catch {
+                /* ignore */
+            }
+        }
+
         async function loadDocumentsCatalogFromFirestore() {
             const grid = document.getElementById("documents-catalog-grid");
             const loadingEl = document.getElementById("documents-catalog-loading");
             const noteEl = document.getElementById("documents-catalog-note");
             if (!grid) return;
 
+            const sessionSnap = readDocumentsCatalogSessionCache();
+            if (sessionSnap && sessionSnap.items.length) {
+                grid.innerHTML = sessionSnap.items.map((row) => renderCatalogRow(row)).join("");
+                if (loadingEl) loadingEl.classList.add("hidden");
+            }
+
             let items = [];
+            let listVersionForSession = null;
             try {
-                const { payload } = await loadWithVersionCache({
+                const cacheResult = await loadWithVersionCache({
                     db,
                     getDoc,
                     doc,
                     idbKey: "list:documents",
                     metaDocId: "documents",
+                    noMetaCacheTtlMs: DOCS_NO_META_IDB_TTL_MS,
                     fetchFresh: async () => {
                         const q = query(collection(db, "documents"), orderBy("order", "asc"));
                         const snapshot = await getDocs(q);
@@ -1942,6 +2003,8 @@ const firebaseConfig = {
                         return raw;
                     },
                 });
+                listVersionForSession = cacheResult.version;
+                const payload = cacheResult.payload;
                 items = Array.isArray(payload) ? payload : [];
             } catch (e) {
                 console.warn("Nie udało się wczytać dokumentów z Firestore — lista domyślna:", e?.message || e);
@@ -1961,6 +2024,7 @@ const firebaseConfig = {
 
             grid.innerHTML = items.map((row) => renderCatalogRow(row)).join("");
             if (loadingEl) loadingEl.classList.add("hidden");
+            writeDocumentsCatalogSessionCache(listVersionForSession, items);
         }
 
         loadDocumentsCatalogFromFirestore();

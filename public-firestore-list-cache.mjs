@@ -112,6 +112,9 @@ export async function readPublicListVersion(db, getDoc, docFn, metaDocId) {
   }
 }
 
+/** Wersja zapisana w IDB, gdy w Firestore nie ma jeszcze publicListCacheMeta/{id} (oszczędza powtarzane getDocs). */
+const NO_META_VERSION_SENTINEL = -1;
+
 /**
  * @param {object} opts
  * @param {import('firebase/firestore').Firestore} opts.db
@@ -120,8 +123,17 @@ export async function readPublicListVersion(db, getDoc, docFn, metaDocId) {
  * @param {string} opts.idbKey — unikalny klucz (np. "list:products")
  * @param {string} opts.metaDocId — id w publicListCacheMeta (np. "products")
  * @param {() => Promise<any>} opts.fetchFresh — zwraca surową listę/obiekt do zapisu
+ * @param {number} [opts.noMetaCacheTtlMs=0] — jeśli > 0 i brak meta w Firestore, użyj cache z IDB nie starszego niż TTL (bez getDocs)
  */
-export async function loadWithVersionCache({ db, getDoc, doc: docFn, idbKey, metaDocId, fetchFresh }) {
+export async function loadWithVersionCache({
+  db,
+  getDoc,
+  doc: docFn,
+  idbKey,
+  metaDocId,
+  fetchFresh,
+  noMetaCacheTtlMs = 0,
+}) {
   const remoteV = await readPublicListVersion(db, getDoc, docFn, metaDocId);
   const local = await idbGet(idbKey);
 
@@ -129,10 +141,31 @@ export async function loadWithVersionCache({ db, getDoc, doc: docFn, idbKey, met
     return { fromCache: true, version: remoteV, payload: fromStorableDeep(local.payload) };
   }
 
+  if (
+    remoteV === null &&
+    noMetaCacheTtlMs > 0 &&
+    local &&
+    local.v === NO_META_VERSION_SENTINEL &&
+    local.payload !== undefined &&
+    typeof local.savedAt === "number"
+  ) {
+    const age = Date.now() - local.savedAt;
+    if (age >= 0 && age < noMetaCacheTtlMs) {
+      return {
+        fromCache: true,
+        version: null,
+        payload: fromStorableDeep(local.payload),
+        noMetaStale: true,
+      };
+    }
+  }
+
   const raw = await fetchFresh();
   const storable = toStorableDeep(raw);
   if (remoteV !== null) {
     await idbPut(idbKey, { v: remoteV, payload: storable, savedAt: Date.now() });
+  } else if (noMetaCacheTtlMs > 0) {
+    await idbPut(idbKey, { v: NO_META_VERSION_SENTINEL, payload: storable, savedAt: Date.now() });
   }
   return { fromCache: false, version: remoteV, payload: fromStorableDeep(storable) };
 }

@@ -92,6 +92,25 @@ function normalizeImageAttachment(raw) {
   return { value: { mimeType, dataBase64: buf.toString('base64') } };
 }
 
+/** Lista wiadomości w panelu — bez base64 (unika 500 / limitu rozmiaru odpowiedzi przy wielu załącznikach). */
+function trimMessagesForListResponse(messages) {
+  if (!Array.isArray(messages)) return messages;
+  return messages.map((msg) => {
+    if (!msg || typeof msg !== 'object') return msg;
+    const out = { ...msg };
+    if (out.imageAttachment && typeof out.imageAttachment === 'object') {
+      const att = out.imageAttachment;
+      const hasData =
+        typeof att.dataBase64 === 'string' && att.dataBase64.length > 0;
+      out.imageAttachment = {
+        mimeType: att.mimeType || att.mimetype || null,
+        hasData,
+      };
+    }
+    return out;
+  });
+}
+
 function normalizePathSegments(urlPathname) {
   let segs = urlPathname.split('/').filter(Boolean);
   // wspieramy oba warianty: /api/messages/... oraz /messages/... oraz /...
@@ -408,11 +427,15 @@ async function handleGetMessages(req, res, db, { query, requesterUid, requesterI
       } : null
     });
 
+    const safeMessages = trimMessagesForListResponse(result?.messages || []);
     res.json({
       success: true,
-      messagesCount: result?.messages?.length || 0,
+      messagesCount: safeMessages.length,
       total: result?.total || 0,
-      data: result
+      data: {
+        ...result,
+        messages: safeMessages,
+      },
     });
   } catch (error) {
     console.error('Error getting messages:', error);

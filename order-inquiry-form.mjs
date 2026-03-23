@@ -5,11 +5,13 @@
 
 const REGULAMIN_TXT_URL = "https://dokumenty.strzelca.pl/regulamin-witryny.txt";
 export const STRZELCA_ORDERS_API = "https://strzelca.pl/api/orders";
+const STRZELCA_MESSAGES_API = "https://strzelca.pl/api/messages";
+const STRZELCA_SEND_CONTACT_EMAIL_API = "https://strzelca.pl/api/send-contact-email";
 
 let regulaminPlainTextCache = null;
 let regulaminRichHtmlCache = null;
 
-/** @type {null | { context: string, db: import('firebase/firestore').Firestore, auth: import('firebase/auth').Auth, regulaminCfg: { docTitle: string }, showParcel: boolean, showAddress: boolean }} */
+/** @type {null | { context: string, db: import('firebase/firestore').Firestore, auth: import('firebase/auth').Auth, regulaminCfg: { docTitle: string }, showParcel: boolean, showAddress: boolean, guestMode?: boolean, displayName?: string, price?: number, successMessage?: string }} */
 let pendingForm = null;
 
 function prefixDisplayTitle(context, rawTitle) {
@@ -39,7 +41,7 @@ const CONTEXT = {
   training: {
     loginTitle: "Zapytanie o ofertę",
     loginLeadHtml: (raw) =>
-      `Aby wysłać zapytanie o szkolenie <strong>${escapeHtml(raw)}</strong>, musisz być zalogowany.`,
+      `Aby uzyskać więcej informacji dot. <strong>${escapeHtml(raw)}</strong>, zaloguj się albo przejdź do formularza zapytania.`,
     contactTopic: "Pytanie o szkolenie",
     formTitle: "Zapytanie o ofertę",
     submitIcon: "fa-paper-plane",
@@ -61,6 +63,15 @@ function escapeHtml(s) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function b64DecodeUtf8(str) {
+  if (!str) return "";
+  try {
+    return decodeURIComponent(escape(atob(str)));
+  } catch {
+    return "";
+  }
 }
 
 function closeRegulaminModal() {
@@ -150,85 +161,7 @@ async function logOrderActivity(db, user, displayName, context) {
   }
 }
 
-function showLoginModal(cfg, rawTitle) {
-  const modal = document.createElement("div");
-  modal.id = "order-login-modal";
-  modal.className =
-    "fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md";
-  modal.onclick = function (e) {
-    if (e.target.id === "order-login-modal") modal.remove();
-  };
-
-  const topic = encodeURIComponent(cfg.contactTopic);
-  const product = encodeURIComponent(rawTitle);
-
-  modal.innerHTML = `
-    <div class="bg-zinc-900 p-8 rounded-2xl max-w-md w-full border border-zinc-800 shadow-2xl" onclick="event.stopPropagation()">
-      <h2 class="text-2xl font-bold coyote-text mb-4">${escapeHtml(cfg.loginTitle)}</h2>
-      <p class="text-zinc-300 mb-6">${cfg.loginLeadHtml(rawTitle)}</p>
-      <div class="space-y-3">
-        <a href="https://konto.strzelca.pl/logowanie.html?redirect=${encodeURIComponent(window.location.href)}"
-           class="block w-full bg-coyote text-black px-6 py-3 rounded-lg font-bold text-center hover:bg-opacity-90 transition">
-          <i class="fa-solid fa-sign-in-alt mr-2"></i>
-          Zaloguj się
-        </a>
-        <a href="https://kontakt.strzelca.pl?topic=${topic}&product=${product}"
-           class="block w-full border border-zinc-700 text-zinc-300 px-6 py-3 rounded-lg font-bold text-center hover:bg-zinc-800 transition">
-          <i class="fa-solid fa-envelope mr-2"></i>
-          Przejdź do formularza kontaktowego
-        </a>
-        <button onclick="this.closest('#order-login-modal').remove()"
-                class="block w-full text-zinc-400 px-6 py-2 text-sm hover:text-white transition">
-          Anuluj
-        </button>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-}
-
-/**
- * @param {object} deps
- * @param {import('firebase/auth').Auth} deps.auth
- * @param {import('firebase/firestore').Firestore} deps.db
- * @param {Function} deps.getDoc
- * @param {Function} deps.doc
- * @param {'shop'|'training'} deps.context
- * @param {string} deps.rawTitle
- * @param {number} [deps.price]
- */
-export async function openOrderInquiryFlow(deps) {
-  const { auth, db, getDoc, doc, context, rawTitle, price = 0 } = deps;
-  const cfg = CONTEXT[context];
-  if (!cfg) {
-    console.error("openOrderInquiryFlow: nieznany context", context);
-    return;
-  }
-
-  const user = auth.currentUser;
-  if (!user) {
-    showLoginModal(cfg, rawTitle);
-    return;
-  }
-
-  let userProfile = null;
-  try {
-    const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
-    if (profileDoc.exists()) userProfile = profileDoc.data();
-  } catch (error) {
-    console.error("Error loading user profile:", error);
-  }
-
-  function b64DecodeUtf8(str) {
-    if (!str) return "";
-    try {
-      return decodeURIComponent(escape(atob(str)));
-    } catch {
-      return "";
-    }
-  }
-
+function renderOrderFormModal({ cfg, context, rawTitle, price, db, auth, user, userProfile, guestMode }) {
   const displayName = prefixDisplayTitle(context, rawTitle);
   const address = userProfile?.address || {};
   const decodedAddress = {
@@ -250,6 +183,7 @@ export async function openOrderInquiryFlow(deps) {
     showParcel: cfg.showParcel,
     showAddress: cfg.showAddress,
     successMessage: cfg.successMessage,
+    guestMode: !!guestMode,
   };
 
   const orderFieldClass =
@@ -288,6 +222,15 @@ export async function openOrderInquiryFlow(deps) {
             </div>`
     : "";
 
+  const emailLabel = guestMode ? "Email" : "Email (z konta)";
+  const emailField = guestMode
+    ? `<input type="email" id="order-email" value="" class="${orderFieldClass}" required autocomplete="email" placeholder="Twój adres email">`
+    : `<input type="email" id="order-email" value="${escapeHtml(userProfile?.email || user?.email || "")}"
+                 class="${orderFieldClass} cursor-not-allowed opacity-90" readonly required aria-readonly="true" title="E-mail z konta — edycja w profilu">`;
+
+  const phoneVal =
+    !guestMode && userProfile?.phone ? b64DecodeUtf8(userProfile.phone) : "";
+
   const modal = document.createElement("div");
   modal.id = "order-form-modal";
   modal.className =
@@ -317,9 +260,8 @@ export async function openOrderInquiryFlow(deps) {
         </div>
 
         <div class="mb-3">
-          <label class="block text-xs text-zinc-500 mb-1">Email (z konta)</label>
-          <input type="email" id="order-email" value="${escapeHtml(userProfile?.email || user.email || "")}"
-                 class="${orderFieldClass} cursor-not-allowed opacity-90" readonly required aria-readonly="true" title="E-mail z konta — edycja w profilu">
+          <label class="block text-xs text-zinc-500 mb-1">${escapeHtml(emailLabel)}</label>
+          ${emailField}
         </div>
 
         <div class="mb-3">
@@ -358,7 +300,7 @@ export async function openOrderInquiryFlow(deps) {
           <div class="mb-4">
             <label class="block text-xs font-medium text-zinc-400 mb-1">Telefon</label>
             <input type="text" id="order-phone" form="shop-order-form"
-                   value="${escapeHtml(userProfile?.phone ? b64DecodeUtf8(userProfile.phone) : "")}"
+                   value="${escapeHtml(phoneVal)}"
                    class="${orderFieldClass}" placeholder="Numer telefonu" autocomplete="tel">
           </div>
           ${contactParcel}
@@ -381,8 +323,133 @@ export async function openOrderInquiryFlow(deps) {
   document.body.appendChild(modal);
 }
 
+function showLoginModal(cfg, rawTitle, flowDeps) {
+  const modal = document.createElement("div");
+  modal.id = "order-login-modal";
+  modal.className =
+    "fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md";
+  if (typeof window !== "undefined" && flowDeps) {
+    window.__strzelcaPendingLoginFlowDeps = { ...flowDeps };
+  }
+  modal.onclick = function (e) {
+    if (e.target.id === "order-login-modal") {
+      if (typeof window !== "undefined") window.__strzelcaPendingLoginFlowDeps = null;
+      modal.remove();
+    }
+  };
+
+  const topic = encodeURIComponent(cfg.contactTopic);
+  const product = encodeURIComponent(rawTitle);
+
+  const isTraining = flowDeps?.context === "training";
+  const zalogujBtnClass = isTraining
+    ? "block w-full border-2 border-[#C19A6B] text-[#C19A6B] px-6 py-3 rounded-lg font-bold text-center hover:bg-[#C19A6B]/15 transition"
+    : "block w-full bg-[#C19A6B] text-black px-6 py-3 rounded-lg font-bold text-center hover:bg-[#b18a5f] transition";
+
+  const altRow = isTraining
+    ? `<button type="button" onclick="window.__strzelcaOpenTrainingGuestInquiryForm && window.__strzelcaOpenTrainingGuestInquiryForm()"
+          class="block w-full border border-zinc-700 text-zinc-300 px-6 py-3 rounded-lg font-bold text-center hover:bg-zinc-800 transition">
+          <i class="fa-solid fa-envelope mr-2" aria-hidden="true"></i>
+          Przejdź do formularza zapytania
+        </button>`
+    : `<a href="https://kontakt.strzelca.pl?topic=${topic}&product=${product}"
+           class="block w-full border border-zinc-700 text-zinc-300 px-6 py-3 rounded-lg font-bold text-center hover:bg-zinc-800 transition">
+          <i class="fa-solid fa-envelope mr-2" aria-hidden="true"></i>
+          Przejdź do formularza kontaktowego
+        </a>`;
+
+  modal.innerHTML = `
+    <div class="bg-zinc-900 p-8 rounded-2xl max-w-md w-full border border-zinc-800 shadow-2xl" onclick="event.stopPropagation()">
+      <h2 class="text-2xl font-bold text-[#C19A6B] font-[Orbitron] mb-4">${escapeHtml(cfg.loginTitle)}</h2>
+      <p class="text-zinc-300 mb-6">${cfg.loginLeadHtml(rawTitle)}</p>
+      <div class="space-y-3">
+        <a href="https://konto.strzelca.pl/logowanie.html?redirect=${encodeURIComponent(window.location.href)}"
+           class="${zalogujBtnClass}">
+          <i class="fa-solid fa-sign-in-alt mr-2" aria-hidden="true"></i>
+          Zaloguj się
+        </a>
+        ${altRow}
+        <button type="button" onclick="window.__strzelcaPendingLoginFlowDeps=null;this.closest('#order-login-modal').remove()"
+                class="block w-full text-zinc-400 px-6 py-2 text-sm hover:text-white transition">
+          Anuluj
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+}
+
+/**
+ * @param {object} deps
+ * @param {import('firebase/auth').Auth} deps.auth
+ * @param {import('firebase/firestore').Firestore} deps.db
+ * @param {Function} deps.getDoc
+ * @param {Function} deps.doc
+ * @param {'shop'|'training'} deps.context
+ * @param {string} deps.rawTitle
+ * @param {number} [deps.price]
+ * @param {boolean} [deps.allowGuestForm]
+ */
+export async function openOrderInquiryFlow(deps) {
+  const { auth, db, getDoc, doc, context, rawTitle, price = 0, allowGuestForm = false } = deps;
+  const cfg = CONTEXT[context];
+  if (!cfg) {
+    console.error("openOrderInquiryFlow: nieznany context", context);
+    return;
+  }
+
+  const user = auth.currentUser;
+  if (!user) {
+    if (allowGuestForm && context === "training") {
+      renderOrderFormModal({
+        cfg,
+        context,
+        rawTitle,
+        price,
+        db,
+        auth,
+        user: null,
+        userProfile: null,
+        guestMode: true,
+      });
+      return;
+    }
+    showLoginModal(cfg, rawTitle, { auth, db, getDoc, doc, context, rawTitle, price });
+    return;
+  }
+
+  let userProfile = null;
+  try {
+    const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
+    if (profileDoc.exists()) userProfile = profileDoc.data();
+  } catch (error) {
+    console.error("Error loading user profile:", error);
+  }
+
+  renderOrderFormModal({
+    cfg,
+    context,
+    rawTitle,
+    price,
+    db,
+    auth,
+    user,
+    userProfile,
+    guestMode: false,
+  });
+}
+
 function attachOrderInquiryGlobals() {
   if (typeof window === "undefined") return;
+
+  window.__strzelcaOpenTrainingGuestInquiryForm = function () {
+    const d = window.__strzelcaPendingLoginFlowDeps;
+    document.getElementById("order-login-modal")?.remove();
+    window.__strzelcaPendingLoginFlowDeps = null;
+    if (!d || d.context !== "training") return;
+    openOrderInquiryFlow({ ...d, allowGuestForm: true });
+  };
 
   window.closeStrzelcaRegulaminModal = closeRegulaminModal;
 
@@ -442,13 +509,99 @@ function attachOrderInquiryGlobals() {
     if (!p) return;
 
     try {
+      const getVal = (id) => document.getElementById(id)?.value || "";
+
+      if (p.guestMode) {
+        const email = getVal("order-email").trim();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email) || email.length > 50) {
+          alert("Podaj prawidłowy adres email (max. 50 znaków).");
+          return;
+        }
+
+        const notes = (getVal("order-notes") || "").trim();
+
+        const lastKey = "strzelcaGuestInquiryLastSubmit";
+        const last = sessionStorage.getItem(lastKey);
+        if (last && Date.now() - parseInt(last, 10) < 60000) {
+          const remaining = Math.ceil((60000 - (Date.now() - parseInt(last, 10))) / 1000);
+          alert(`Poczekaj ${remaining} s przed kolejnym wysłaniem.`);
+          return;
+        }
+
+        const phone = (getVal("order-phone") || "").trim();
+        const lines = [
+          `Zapytanie o ofertę (gość): ${p.displayName}`,
+          `Email: ${email}`,
+          `Telefon: ${phone || "—"}`,
+          "",
+          "Uwagi:",
+          notes || "—",
+        ];
+        const content = lines.join("\n");
+
+        const formData = {
+          senderName: email,
+          senderEmail: email,
+          content,
+          timestamp: Date.now(),
+          senderId: null,
+          senderType: "contact_form",
+          recipientId: "admin",
+          recipientType: "admin",
+          recipientName: "Pomoc STRZELCA.PL",
+          isRead: false,
+          status: "pending",
+          conversationType: "contact_form",
+          allowReply: false,
+          isReadOnly: true,
+        };
+
+        const apiResponse = await fetch(STRZELCA_MESSAGES_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        });
+
+        if (!apiResponse.ok) {
+          const errorData = await apiResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || "Nie udało się wysłać zapytania");
+        }
+
+        const responseData = await apiResponse.json();
+        sessionStorage.setItem(lastKey, Date.now().toString());
+
+        try {
+          await fetch(STRZELCA_SEND_CONTACT_EMAIL_API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ to: email, senderName: email, message: content }),
+          });
+        } catch (_) {}
+
+        try {
+          const { addDoc, collection } = await import(
+            "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
+          );
+          await addDoc(collection(p.db, "contactForms"), {
+            sessionId: sessionStorage.getItem("contactFormSessionId") || "session_" + Date.now(),
+            senderEmail: email,
+            timestamp: Date.now(),
+            messageId: responseData.data?.id || null,
+          });
+        } catch (_) {}
+
+        document.getElementById("order-form-modal")?.remove();
+        pendingForm = null;
+        alert(p.successMessage || "Zapytanie zostało wysłane.");
+        return;
+      }
+
       const user = p.auth.currentUser;
       if (!user) {
         alert("Musisz być zalogowany.");
         return;
       }
-
-      const getVal = (id) => document.getElementById(id)?.value || "";
 
       const orderData = {
         userId: user.uid,

@@ -26,7 +26,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-23-1" />
     <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1" crossorigin />
@@ -46,6 +46,14 @@
             clip: rect(0, 0, 0, 0);
             white-space: nowrap;
             border: 0;
+        }
+        /* Jedno „X”: ukryj natywny przycisk czyszczenia przeglądarki (zostaje #blog-search-clear) */
+        #blog-search-input::-webkit-search-cancel-button {
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        #blog-search-input::-moz-search-clear-button {
+            display: none;
         }
         * { scroll-behavior: smooth; }
         html {
@@ -1071,21 +1079,12 @@
 
     <!-- Top nav - spójny z innymi podstronami -->
     <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative w-full" role="navigation" aria-label="Nawigacja główna">
-        <a href="https://strzelca.pl" aria-label="Powrót do centrum dowodzenia" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl z-[60]">
+        <a href="https://strzelca.pl" aria-label="Powrót do centrum dowodzenia" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl z-[60] top-1/2 -translate-y-1/2">
             <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
         </a>
-        <div class="container mx-auto px-6 flex justify-center items-center w-full">
-            <div class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400">
-                BLOG.<span class="coyote-text">STRZELCA</span>.PL
-                </div>
-            </div>
-    </nav>
-
-    <!-- Wyszukiwanie artykułów (bez filtrów wydarzeń) -->
-    <div class="w-full border-b border-zinc-800/80 bg-black/90 backdrop-blur-md sticky top-[73px] z-40">
-        <div class="max-w-4xl mx-auto px-4 py-3">
+        <div class="w-full max-w-2xl mx-auto pl-14 pr-16 md:pl-20 md:pr-20 flex items-center">
             <label for="blog-search-input" class="blog-visually-hidden">Szukaj w artykułach</label>
-            <div class="relative flex items-center">
+            <div class="relative flex items-center w-full">
                 <i class="fa-solid fa-magnifying-glass absolute left-3 text-zinc-500 pointer-events-none text-sm" aria-hidden="true"></i>
                 <input
                     type="search"
@@ -1105,24 +1104,27 @@
                 </button>
             </div>
         </div>
-    </div>
+    </nav>
 
     <div class="main-wrapper">
 
         <main class="w-full px-4 md:px-8 py-6 md:py-10 flex-grow">
             <section id="arsenal">
                 <div class="shop-carousel">
-                    <button id="events-carousel-prev" class="carousel-arrow" type="button" aria-label="Poprzednie wydarzenie" onclick="window.moveEventsCarousel(-1)">
+                    <button id="events-carousel-prev" class="carousel-arrow" type="button" aria-label="Poprzedni wpis" onclick="window.moveEventsCarousel(-1)">
                         <i class="fa-solid fa-chevron-left"></i>
                     </button>
-                    <div class="carousel-viewport">
-                        <div id="events-track">
-                            <article class="card-dark event-carousel-card carousel-status-message">
-                                <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs w-full">Ładowanie ...</p>
-                            </article>
+                    <div class="carousel-column">
+                        <div class="carousel-viewport">
+                            <div id="events-track">
+                                <article class="card-dark event-carousel-card carousel-status-message">
+                                    <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs w-full">Ładowanie ...</p>
+                                </article>
+                            </div>
                         </div>
+                        <div id="blog-carousel-dots" class="carousel-dots-nav" hidden aria-label="Pozycja w karuzeli wpisów"></div>
                     </div>
-                    <button id="events-carousel-next" class="carousel-arrow" type="button" aria-label="Następne wydarzenie" onclick="window.moveEventsCarousel(1)">
+                    <button id="events-carousel-next" class="carousel-arrow" type="button" aria-label="Następny wpis" onclick="window.moveEventsCarousel(1)">
                         <i class="fa-solid fa-chevron-right"></i>
                     </button>
                 </div>
@@ -1171,6 +1173,7 @@
         } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
         import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
         import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
+        import { syncCarouselDotsNav } from "https://strzelca.pl/carousel-dots.mjs?v=2026-03-23-1";
         import {
             initNewsletterOptInFromEmptyCarousels,
             buildEmptyCarouselArticleHtml,
@@ -1424,6 +1427,8 @@ const firebaseConfig = {
 
         let allEvents = [];
         let filteredEvents = [];
+        let blogCarouselSorted = [];
+        let blogCarouselLeftIndex = 0;
         let currentView = 'week'; // legacy (calendar)
         let currentDate = new Date(); // legacy (calendar)
         let userScrollPosition = null; // legacy (calendar)
@@ -1432,6 +1437,31 @@ const firebaseConfig = {
         let eventLoopEnabled = false;
         let eventCarouselAnimating = false;
         let eventPendingMoves = 0;
+
+        function syncBlogCarouselDots() {
+            const dots = document.getElementById('blog-carousel-dots');
+            const n = blogCarouselSorted.length;
+            syncCarouselDotsNav(dots, n, blogCarouselLeftIndex, (idx) => window.goToBlogCarousel(idx));
+        }
+
+        window.goToBlogCarousel = (idx) => {
+            const n = blogCarouselSorted.length;
+            if (n <= 1 || idx < 0 || idx >= n || idx === blogCarouselLeftIndex) return;
+            const track = document.getElementById('events-track');
+            if (!track) return;
+            eventCarouselAnimating = false;
+            eventPendingMoves = 0;
+            const rotated = [...blogCarouselSorted.slice(idx), ...blogCarouselSorted.slice(0, idx)];
+            track.innerHTML = rotated.map((event) => buildBlogCarouselCardHtml(event)).join('');
+            bindBlogCarouselInteractions(track);
+            blogCarouselLeftIndex = idx;
+            track.style.transition = 'none';
+            track.style.transform = 'translateX(0)';
+            void track.offsetHeight;
+            track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+            window.requestAnimationFrame(updateEventsCarouselControls);
+            syncBlogCarouselDots();
+        };
 
         function getVisibleEventsCardsCount() {
             if (window.innerWidth <= 700) return 1;
@@ -1469,6 +1499,7 @@ const firebaseConfig = {
                     track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
                 });
             }
+            syncBlogCarouselDots();
         }
 
         function consumeQueuedEventMove() {
@@ -1493,6 +1524,9 @@ const firebaseConfig = {
 
             const stepWidth = getEventsStepWidth();
             if (stepWidth <= 0) return;
+
+            const n = blogCarouselSorted.length;
+            if (!n) return;
 
             eventCarouselAnimating = true;
             let finished = false;
@@ -1519,6 +1553,8 @@ const firebaseConfig = {
                     track.style.transform = 'translateX(0)';
                     void track.offsetHeight;
                     track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                    blogCarouselLeftIndex = (blogCarouselLeftIndex + 1) % n;
+                    syncBlogCarouselDots();
                     finalizeMove();
                 };
 
@@ -1531,12 +1567,16 @@ const firebaseConfig = {
                         track.style.transform = 'translateX(0)';
                         void track.offsetHeight;
                         track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                        blogCarouselLeftIndex = (blogCarouselLeftIndex + 1) % n;
+                        syncBlogCarouselDots();
                     });
                 }, EVENT_CAROUSEL_DURATION_MS + 120);
             } else {
                 track.style.transition = 'none';
                 const lastCard = track.lastElementChild;
                 if (lastCard) track.insertBefore(lastCard, track.firstElementChild);
+                blogCarouselLeftIndex = (blogCarouselLeftIndex - 1 + n) % n;
+                syncBlogCarouselDots();
                 track.style.transform = `translateX(-${stepWidth}px)`;
                 void track.offsetHeight;
                 track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
@@ -1945,36 +1985,17 @@ const firebaseConfig = {
             });
         }
 
-        // Render events as a single carousel track in shop style
-        function renderEventsList() {
-            const track = document.getElementById('events-track');
-            if (!track) return;
+        function buildBlogCarouselCardHtml(event) {
+            const safeTitle = escapeHtml(event.title || 'Bez tytułu');
+            const safeCategory = escapeHtml(getEventCategoryName(event.category).toLocaleUpperCase('pl-PL'));
+            const dateLabel = getBlogPostDate(event).toLocaleDateString('pl-PL', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
 
-            eventCarouselAnimating = false;
-            eventPendingMoves = 0;
-
-            if (filteredEvents.length === 0) {
-                track.classList.remove('carousel-track--single');
-                track.innerHTML = buildEmptyCarouselArticleHtml(
-                    'card-dark event-carousel-card carousel-status-message event-carousel-empty-wide',
-                );
-                updateEventsCarouselControls();
-                return;
-            }
-
-            const sortedEvents = [...filteredEvents].sort((a, b) => compareBlogPosts(a, b));
-
-            track.innerHTML = sortedEvents.map((event) => {
-                const safeTitle = escapeHtml(event.title || 'Bez tytułu');
-                const safeCategory = escapeHtml(getEventCategoryName(event.category).toLocaleUpperCase('pl-PL'));
-                const dateLabel = getBlogPostDate(event).toLocaleDateString('pl-PL', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                });
-
-                const cardThumb = getBlogPostImageUrls(event)[0];
-                return `
+            const cardThumb = getBlogPostImageUrls(event)[0];
+            return `
                     <article class="card-dark event-carousel-card" style="padding: 0; padding-bottom: 1rem;" data-event-id="${encodeURIComponent(event.id)}">
                         ${cardThumb ? `<img src="${cardThumb}" style="width: 100%; height: 160px; object-fit: cover; border-top-left-radius: 12px; border-top-right-radius: 12px; margin-bottom: 0.5rem;" alt="">` : ''}
                         <div style="padding: 0 1rem;">
@@ -1988,16 +2009,47 @@ const firebaseConfig = {
                         </div>
                     </article>
                 `;
-            }).join('');
+        }
 
-            track.classList.toggle('carousel-track--single', sortedEvents.length === 1);
-
+        function bindBlogCarouselInteractions(track) {
             track.querySelectorAll('.event-carousel-card[data-event-id]').forEach((cardEl) => {
                 cardEl.addEventListener('click', () => {
                     const eventId = decodeURIComponent(cardEl.dataset.eventId || '');
                     if (eventId) showEventDetail(eventId);
                 });
             });
+        }
+
+        // Render events as a single carousel track in shop style
+        function renderEventsList() {
+            const track = document.getElementById('events-track');
+            if (!track) return;
+
+            eventCarouselAnimating = false;
+            eventPendingMoves = 0;
+
+            if (filteredEvents.length === 0) {
+                blogCarouselSorted = [];
+                blogCarouselLeftIndex = 0;
+                track.classList.remove('carousel-track--single');
+                track.innerHTML = buildEmptyCarouselArticleHtml(
+                    'card-dark event-carousel-card carousel-status-message event-carousel-empty-wide',
+                );
+                updateEventsCarouselControls();
+                syncBlogCarouselDots();
+                return;
+            }
+
+            const sortedEvents = [...filteredEvents].sort((a, b) => compareBlogPosts(a, b));
+
+            blogCarouselSorted = sortedEvents;
+            blogCarouselLeftIndex = 0;
+
+            track.innerHTML = sortedEvents.map((event) => buildBlogCarouselCardHtml(event)).join('');
+
+            track.classList.toggle('carousel-track--single', sortedEvents.length === 1);
+
+            bindBlogCarouselInteractions(track);
 
             track.style.transition = 'none';
             track.style.transform = 'translateX(0)';

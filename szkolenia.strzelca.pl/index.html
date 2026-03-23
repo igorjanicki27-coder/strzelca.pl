@@ -51,10 +51,10 @@
             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
         />
         <!-- Wspólne poprawki responsywności -->
-        <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
+        <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-23-1" />
         <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
         <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
-        <link rel="modulepreload" href="https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-7" crossorigin />
+        <link rel="modulepreload" href="https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-9" crossorigin />
         <style>
             :root {
                 --coyote: #c19a6b;
@@ -391,8 +391,11 @@
                 <button id="training-carousel-prev" class="carousel-arrow" type="button" aria-label="Poprzednie szkolenie" onclick="window.moveTrainingCarousel(-1)">
                     <i class="fa-solid fa-chevron-left"></i>
                 </button>
-                <div class="carousel-viewport">
-                    <div id="training-track"></div>
+                <div class="carousel-column">
+                    <div class="carousel-viewport">
+                        <div id="training-track"></div>
+                    </div>
+                    <div id="training-carousel-dots" class="carousel-dots-nav" hidden aria-label="Pozycja w karuzeli szkoleń"></div>
                 </div>
                 <button id="training-carousel-next" class="carousel-arrow" type="button" aria-label="Następne szkolenie" onclick="window.moveTrainingCarousel(1)">
                     <i class="fa-solid fa-chevron-right"></i>
@@ -450,9 +453,10 @@
                 getHeaderProfileFromCache,
                 setHeaderProfileCache,
             } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
-            import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-7";
+            import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-9";
             import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
             import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
+            import { syncCarouselDotsNav } from "https://strzelca.pl/carousel-dots.mjs?v=2026-03-23-1";
             import {
                 initNewsletterOptInFromEmptyCarousels,
                 buildEmptyCarouselArticleHtml,
@@ -728,10 +732,42 @@ const firebaseConfig = {
             };
 
             let trainingItems = [];
+            let trainingCarouselLeftIndex = 0;
             let trainingLoopEnabled = false;
             let trainingCarouselAnimating = false;
             let trainingPendingMoves = 0;
             const TRAINING_CAROUSEL_DURATION_MS = 180;
+
+            function syncTrainingCarouselDots() {
+                const dots = document.getElementById("training-carousel-dots");
+                const n = trainingItems.length;
+                syncCarouselDotsNav(dots, n, trainingCarouselLeftIndex, (idx) => window.goToTrainingCarousel(idx));
+            }
+
+            window.goToTrainingCarousel = (idx) => {
+                const n = trainingItems.length;
+                if (n <= 1 || idx < 0 || idx >= n || idx === trainingCarouselLeftIndex) return;
+                const track = document.getElementById("training-track");
+                const prevBtn = document.getElementById("training-carousel-prev");
+                const nextBtn = document.getElementById("training-carousel-next");
+                if (!track || !prevBtn || !nextBtn) return;
+                trainingCarouselAnimating = false;
+                trainingPendingMoves = 0;
+                const ordered = [...trainingItems.slice(idx), ...trainingItems.slice(0, idx)];
+                track.innerHTML = ordered.map((item) => buildTrainingCard(item)).join("");
+                trainingCarouselLeftIndex = idx;
+                track.classList.toggle("carousel-track--single", n === 1);
+                const visibleCards = getVisibleTrainingCardsCount();
+                trainingLoopEnabled = n > visibleCards;
+                prevBtn.disabled = !trainingLoopEnabled;
+                nextBtn.disabled = !trainingLoopEnabled;
+                track.style.transition = "none";
+                track.style.transform = "translateX(0)";
+                window.requestAnimationFrame(() => {
+                    track.style.transition = `transform ${TRAINING_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                });
+                syncTrainingCarouselDots();
+            };
 
             function getVisibleTrainingCardsCount() {
                 if (window.innerWidth <= 700) return 1;
@@ -788,14 +824,17 @@ const firebaseConfig = {
                         "card-dark training-card carousel-status-message p-8 w-full",
                     );
                     trainingLoopEnabled = false;
+                    trainingCarouselLeftIndex = 0;
                     prevBtn.disabled = true;
                     nextBtn.disabled = true;
                     track.style.transition = "none";
                     track.style.transform = "translateX(0)";
+                    syncTrainingCarouselDots();
                     return;
                 }
 
                 if (!preservePosition) {
+                    trainingCarouselLeftIndex = 0;
                     track.innerHTML = trainingItems.map((item) => buildTrainingCard(item)).join("");
                 }
                 track.classList.toggle("carousel-track--single", trainingItems.length === 1);
@@ -808,6 +847,7 @@ const firebaseConfig = {
                 window.requestAnimationFrame(() => {
                     track.style.transition = `transform ${TRAINING_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
                 });
+                syncTrainingCarouselDots();
             }
 
             function consumeQueuedTrainingMove() {
@@ -831,6 +871,8 @@ const firebaseConfig = {
                 if (!track) return;
                 const stepWidth = getTrainingStepWidth();
                 if (stepWidth <= 0) return;
+
+                const n = trainingItems.length;
 
                 trainingCarouselAnimating = true;
                 let finished = false;
@@ -863,6 +905,8 @@ const firebaseConfig = {
                         track.style.transform = "translateX(0)";
                         void track.offsetHeight;
                         track.style.transition = `transform ${TRAINING_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                        trainingCarouselLeftIndex = (trainingCarouselLeftIndex + 1) % n;
+                        syncTrainingCarouselDots();
                         finalizeMove();
                     };
                     track.addEventListener("transitionend", onEnd, { once: true });
@@ -876,6 +920,8 @@ const firebaseConfig = {
                             track.style.transform = "translateX(0)";
                             void track.offsetHeight;
                             track.style.transition = `transform ${TRAINING_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                            trainingCarouselLeftIndex = (trainingCarouselLeftIndex + 1) % n;
+                            syncTrainingCarouselDots();
                         });
                     }, TRAINING_CAROUSEL_DURATION_MS + 120);
                 } else {
@@ -884,6 +930,8 @@ const firebaseConfig = {
                     if (lastCard) {
                         track.insertBefore(lastCard, track.firstElementChild);
                     }
+                    trainingCarouselLeftIndex = (trainingCarouselLeftIndex - 1 + n) % n;
+                    syncTrainingCarouselDots();
                     track.style.transform = `translateX(-${stepWidth}px)`;
                     void track.offsetHeight;
                     track.style.transition = `transform ${TRAINING_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;

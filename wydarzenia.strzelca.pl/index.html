@@ -39,7 +39,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-23-1" />
     <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1" crossorigin />
@@ -1119,12 +1119,15 @@
                     <button id="events-carousel-prev" class="carousel-arrow" type="button" aria-label="Poprzednie wydarzenie" onclick="window.moveEventsCarousel(-1)">
                         <i class="fa-solid fa-chevron-left"></i>
                     </button>
-                    <div class="carousel-viewport">
-                        <div id="events-track">
-                            <article class="card-dark event-carousel-card carousel-status-message">
-                                <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs w-full">Ładowanie ...</p>
-                            </article>
+                    <div class="carousel-column">
+                        <div class="carousel-viewport">
+                            <div id="events-track">
+                                <article class="card-dark event-carousel-card carousel-status-message">
+                                    <p class="text-zinc-400 uppercase tracking-[0.15em] text-xs w-full">Ładowanie ...</p>
+                                </article>
+                            </div>
                         </div>
+                        <div id="events-carousel-dots" class="carousel-dots-nav" hidden aria-label="Pozycja w karuzeli wydarzeń"></div>
                     </div>
                     <button id="events-carousel-next" class="carousel-arrow" type="button" aria-label="Następne wydarzenie" onclick="window.moveEventsCarousel(1)">
                         <i class="fa-solid fa-chevron-right"></i>
@@ -1209,6 +1212,7 @@
         } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
         import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
         import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
+        import { syncCarouselDotsNav } from "https://strzelca.pl/carousel-dots.mjs?v=2026-03-23-1";
         import {
             initNewsletterOptInFromEmptyCarousels,
             buildEmptyCarouselArticleHtml,
@@ -1469,6 +1473,8 @@ const firebaseConfig = {
 
         let allEvents = [];
         let filteredEvents = [];
+        let eventsCarouselSorted = [];
+        let eventCarouselLeftIndex = 0;
         let currentView = 'week'; // legacy (calendar)
         let currentDate = new Date(); // legacy (calendar)
         let userScrollPosition = null; // legacy (calendar)
@@ -1483,6 +1489,32 @@ const firebaseConfig = {
         let eventLoopEnabled = false;
         let eventCarouselAnimating = false;
         let eventPendingMoves = 0;
+
+        function syncEventCarouselDots() {
+            const dots = document.getElementById('events-carousel-dots');
+            const n = eventsCarouselSorted.length;
+            syncCarouselDotsNav(dots, n, eventCarouselLeftIndex, (idx) => window.goToEventsCarousel(idx));
+        }
+
+        window.goToEventsCarousel = (idx) => {
+            const n = eventsCarouselSorted.length;
+            if (n <= 1 || idx < 0 || idx >= n || idx === eventCarouselLeftIndex) return;
+            const track = document.getElementById('events-track');
+            if (!track) return;
+            eventCarouselAnimating = false;
+            eventPendingMoves = 0;
+            const now = new Date();
+            const rotated = [...eventsCarouselSorted.slice(idx), ...eventsCarouselSorted.slice(0, idx)];
+            track.innerHTML = rotated.map((event) => buildEventCarouselCardHtml(event, now)).join('');
+            bindEventsCarouselInteractions(track);
+            eventCarouselLeftIndex = idx;
+            track.style.transition = 'none';
+            track.style.transform = 'translateX(0)';
+            void track.offsetHeight;
+            track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+            window.requestAnimationFrame(updateEventsCarouselControls);
+            syncEventCarouselDots();
+        };
 
         function getVisibleEventsCardsCount() {
             if (window.innerWidth <= 700) return 1;
@@ -1520,6 +1552,7 @@ const firebaseConfig = {
                     track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
                 });
             }
+            syncEventCarouselDots();
         }
 
         function consumeQueuedEventMove() {
@@ -1544,6 +1577,9 @@ const firebaseConfig = {
 
             const stepWidth = getEventsStepWidth();
             if (stepWidth <= 0) return;
+
+            const n = eventsCarouselSorted.length;
+            if (!n) return;
 
             eventCarouselAnimating = true;
             let finished = false;
@@ -1570,6 +1606,8 @@ const firebaseConfig = {
                     track.style.transform = 'translateX(0)';
                     void track.offsetHeight;
                     track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                    eventCarouselLeftIndex = (eventCarouselLeftIndex + 1) % n;
+                    syncEventCarouselDots();
                     finalizeMove();
                 };
 
@@ -1582,12 +1620,16 @@ const firebaseConfig = {
                         track.style.transform = 'translateX(0)';
                         void track.offsetHeight;
                         track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
+                        eventCarouselLeftIndex = (eventCarouselLeftIndex + 1) % n;
+                        syncEventCarouselDots();
                     });
                 }, EVENT_CAROUSEL_DURATION_MS + 120);
             } else {
                 track.style.transition = 'none';
                 const lastCard = track.lastElementChild;
                 if (lastCard) track.insertBefore(lastCard, track.firstElementChild);
+                eventCarouselLeftIndex = (eventCarouselLeftIndex - 1 + n) % n;
+                syncEventCarouselDots();
                 track.style.transform = `translateX(-${stepWidth}px)`;
                 void track.offsetHeight;
                 track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
@@ -2086,47 +2128,23 @@ const firebaseConfig = {
             });
         }
 
-        // Render events as a single carousel track in shop style
-        function renderEventsList() {
-            const track = document.getElementById('events-track');
-            if (!track) return;
-
-            eventCarouselAnimating = false;
-            eventPendingMoves = 0;
-
-            if (filteredEvents.length === 0) {
-                track.classList.remove('carousel-track--single');
-                track.innerHTML = buildEmptyCarouselArticleHtml(
-                    'card-dark event-carousel-card carousel-status-message event-carousel-empty-wide',
-                );
-                updateEventsCarouselControls();
-                return;
-            }
-
-            const now = new Date();
-            const sortedEvents = [...filteredEvents].sort((a, b) => {
-                if (a.pinned && !b.pinned) return -1;
-                if (!a.pinned && b.pinned) return 1;
-                return compareEvents(a, b, now);
+        function buildEventCarouselCardHtml(event, now) {
+            const safeTitle = escapeHtml(event.title || 'Bez tytułu');
+            const safeLocation = escapeHtml(event.location || '');
+            const safeCategory = escapeHtml(getEventCategoryName(event.category).toLocaleUpperCase('pl-PL'));
+            const dateLabel = event.dateObj.toLocaleDateString('pl-PL', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
             });
+            const timeLabel = event.dateObj.toLocaleTimeString('pl-PL', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            const isPast = isEventCompleted(event, now);
+            const isPinned = !!event.pinned;
 
-            track.innerHTML = sortedEvents.map((event) => {
-                const safeTitle = escapeHtml(event.title || 'Bez tytułu');
-                const safeLocation = escapeHtml(event.location || '');
-                const safeCategory = escapeHtml(getEventCategoryName(event.category).toLocaleUpperCase('pl-PL'));
-                const dateLabel = event.dateObj.toLocaleDateString('pl-PL', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                });
-                const timeLabel = event.dateObj.toLocaleTimeString('pl-PL', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-                const isPast = isEventCompleted(event, now);
-                const isPinned = !!event.pinned;
-
-                return `
+            return `
                     <article class="card-dark event-carousel-card ${isPinned ? 'event-pinned' : ''} ${isPast ? 'event-completed opacity-70' : ''}" data-event-id="${encodeURIComponent(event.id)}">
                         <p class="event-category-slot">${safeCategory}</p>
                         <div class="event-divider"></div>
@@ -2144,10 +2162,9 @@ const firebaseConfig = {
                         </div>
                     </article>
                 `;
-            }).join('');
+        }
 
-            track.classList.toggle('carousel-track--single', sortedEvents.length === 1);
-
+        function bindEventsCarouselInteractions(track) {
             track.querySelectorAll('.event-carousel-card[data-event-id]').forEach((cardEl) => {
                 cardEl.addEventListener('click', () => {
                     const eventId = decodeURIComponent(cardEl.dataset.eventId || '');
@@ -2163,6 +2180,43 @@ const firebaseConfig = {
                     if (ev) handleEventParticipateClick(ev);
                 });
             });
+        }
+
+        // Render events as a single carousel track in shop style
+        function renderEventsList() {
+            const track = document.getElementById('events-track');
+            if (!track) return;
+
+            eventCarouselAnimating = false;
+            eventPendingMoves = 0;
+
+            if (filteredEvents.length === 0) {
+                eventsCarouselSorted = [];
+                eventCarouselLeftIndex = 0;
+                track.classList.remove('carousel-track--single');
+                track.innerHTML = buildEmptyCarouselArticleHtml(
+                    'card-dark event-carousel-card carousel-status-message event-carousel-empty-wide',
+                );
+                updateEventsCarouselControls();
+                syncEventCarouselDots();
+                return;
+            }
+
+            const now = new Date();
+            const sortedEvents = [...filteredEvents].sort((a, b) => {
+                if (a.pinned && !b.pinned) return -1;
+                if (!a.pinned && b.pinned) return 1;
+                return compareEvents(a, b, now);
+            });
+
+            eventsCarouselSorted = sortedEvents;
+            eventCarouselLeftIndex = 0;
+
+            track.innerHTML = sortedEvents.map((event) => buildEventCarouselCardHtml(event, now)).join('');
+
+            track.classList.toggle('carousel-track--single', sortedEvents.length === 1);
+
+            bindEventsCarouselInteractions(track);
 
             track.style.transition = 'none';
             track.style.transform = 'translateX(0)';

@@ -246,7 +246,19 @@ class FirestoreDatabaseManager {
         ? (options.limit || 50)
         : (options.limit ? options.limit * 2 : 200);
       baseQuery = baseQuery.limit(fetchLimit);
-      
+
+      function isFirestoreIndexError(err) {
+        if (!err) return false;
+        const c = err.code;
+        const msg = String(err.message || '');
+        return (
+          c === 9 ||
+          c === 'failed-precondition' ||
+          /FAILED_PRECONDITION/i.test(msg) ||
+          /requires an index/i.test(msg)
+        );
+      }
+
       try {
         snapshot = await baseQuery.get();
         console.log('getMessages: Fetched', snapshot.size, 'documents from Firestore (size)');
@@ -260,8 +272,26 @@ class FirestoreDatabaseManager {
           limit: fetchLimit
         });
       } catch (queryError) {
-        console.error('getMessages: Error fetching messages:', queryError);
-        throw queryError;
+        if (canOrderByTimestamp && isFirestoreIndexError(queryError)) {
+          console.warn(
+            'getMessages: orderBy+limit failed (brak indeksu?), fallback bez orderBy:',
+            queryError.message
+          );
+          needsInMemorySort = true;
+          let fb = db.collection('messages');
+          if (options.recipientId) fb = fb.where('recipientId', '==', options.recipientId);
+          if (options.senderId) fb = fb.where('senderId', '==', options.senderId);
+          if (options.status) fb = fb.where('status', '==', options.status);
+          if (options.categoryId) fb = fb.where('categoryId', '==', options.categoryId);
+          if (typeof options.isRead === 'boolean') {
+            fb = fb.where('isRead', '==', options.isRead);
+          }
+          const cap = Math.min(2000, Math.max(fetchLimit * 5, (options.limit || 50) * 10, 200));
+          snapshot = await fb.limit(cap).get();
+        } else {
+          console.error('getMessages: Error fetching messages:', queryError);
+          throw queryError;
+        }
       }
       let messages = snapshot.docs.map(doc => {
         const data = doc.data();
