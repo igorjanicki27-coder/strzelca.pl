@@ -1,15 +1,19 @@
 // Odszyfrowanie szczegółów logu USER_CREATED — wyłącznie dla administratora (token Firebase).
 const { initAdmin, admin, setCors, readJsonBody } = require("./_sso-utils");
 const { decryptActivityPayload } = require("./_activity-log-crypto");
+const {
+  getUserRoleProfile,
+  isAdminRoleProfile,
+  canAccessBackofficeScope,
+} = require("./_moderation");
 
 const SUPERADMIN_UID = "nCMUz2fc8MM9WhhMVBLZ1pdR7O43";
 
 async function isAdminOrSuperAdmin(uid) {
   if (!uid) return false;
-  if (uid === SUPERADMIN_UID) return true;
   try {
-    const snap = await admin.firestore().collection("userProfiles").doc(uid).get();
-    return snap.exists && snap.data()?.role === "admin";
+    const profile = await getUserRoleProfile(admin.firestore(), uid);
+    return isAdminRoleProfile(profile) || canAccessBackofficeScope(profile, "users");
   } catch {
     return false;
   }

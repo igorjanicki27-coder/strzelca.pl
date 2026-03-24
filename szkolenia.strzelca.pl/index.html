@@ -713,8 +713,8 @@ const firebaseConfig = {
                 }
             };
 
-            // Zapytanie o ofertę — ten sam formularz co w sklepie (bez adresu i paczkomatu), POST /api/orders
-            window.handleOfferInquiry = async (trainingName, trainingPrice = 0) => {
+            // Zamówienie szkolenia — ten sam formularz co w sklepie (bez adresu i paczkomatu), POST /api/orders
+            window.handleOfferInquiry = async (trainingId, trainingName, trainingPrice = 0, individualPricing = false) => {
                 const detailsModal = document.getElementById("details-modal");
                 if (detailsModal && !detailsModal.classList.contains("hidden")) {
                     detailsModal.classList.add("hidden");
@@ -728,6 +728,8 @@ const firebaseConfig = {
                     context: "training",
                     rawTitle: trainingName,
                     price: trainingPrice || 0,
+                    itemId: trainingId || "",
+                    individualPricing: individualPricing === true,
                 });
             };
 
@@ -789,6 +791,8 @@ const firebaseConfig = {
 
             function buildTrainingCard(item) {
                 const encodedTitle = encodeURIComponent(item.title || "");
+                const priceLabel = item.individualPricing ? "Cena ustalana indywidualnie" : `${item.price} PLN`;
+                const priceAriaLabel = item.individualPricing ? "Cena ustalana indywidualnie" : `Cena: ${item.price} złotych`;
 
                 let buttonHtml = "";
                 if (item.hasAccess) {
@@ -802,7 +806,7 @@ const firebaseConfig = {
                         <div class="training-img-container"><img src="${item.img}" alt="${item.title}" loading="lazy"></div>
                         <div class="p-4 md:p-6 flex flex-col flex-grow text-center">
                             <h3 class="text-xl md:text-2xl font-black uppercase mb-2 font-[Orbitron] text-white tracking-tight">${item.title}</h3>
-                            <p class="coyote-text font-bold text-lg md:text-xl mb-4 md:mb-5" aria-label="Cena: ${item.price} złotych">${item.price} PLN</p>
+                            <p class="coyote-text font-bold text-lg md:text-xl mb-4 md:mb-5" aria-label="${priceAriaLabel}">${priceLabel}</p>
                             <div class="mt-auto flex flex-col gap-2 md:gap-3">
                                 ${buttonHtml}
                             </div>
@@ -991,6 +995,7 @@ const firebaseConfig = {
                                         id: d.id,
                                         title: t.title || "",
                                         price: t.price || 0,
+                                        individualPricing: t.individualPricing === true,
                                         img: t.img || "",
                                         available: t.available === true,
                                     });
@@ -1018,6 +1023,7 @@ const firebaseConfig = {
                                 id: row.id,
                                 title: row.title,
                                 price: row.price,
+                                individualPricing: row.individualPricing === true,
                                 img: row.img,
                                 hasAccess,
                                 _adminListIndex: listIndex,
@@ -1085,9 +1091,12 @@ const firebaseConfig = {
                         Rozpocznij kurs
                     </button>`;
                 } else {
-                    buttonHtml = `<button type="button" onclick="window.handleOfferInquiry(decodeURIComponent('${encodedTitle}'), ${t.price || 0})" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition flex items-center justify-center gap-2">
-                        <i class="fas fa-envelope"></i>
-                        Zapytaj o ofertę
+                    const isLoggedIn = !!user;
+                    const actionLabel = isLoggedIn ? "Złóż zamówienie" : "Zapytaj o ofertę";
+                    const actionIcon = isLoggedIn ? "fa-shopping-cart" : "fa-envelope";
+                    buttonHtml = `<button type="button" onclick="window.handleOfferInquiry('${id}', decodeURIComponent('${encodedTitle}'), ${t.price || 0}, ${t.individualPricing === true})" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition flex items-center justify-center gap-2">
+                        <i class="fas ${actionIcon}"></i>
+                        ${actionLabel}
                     </button>`;
                 }
 
@@ -1177,7 +1186,7 @@ const firebaseConfig = {
                 </div>
                 ${regulaminBlock}
                 <div class="flex justify-between items-center border-t border-zinc-800 pt-6">
-                    <p class="text-2xl font-bold coyote-text">${t.price} PLN</p>
+                    <p class="text-2xl font-bold coyote-text">${t.individualPricing === true ? 'Cena ustalana indywidualnie' : `${t.price} PLN`}</p>
                     ${buttonHtml}
                 </div>`;
                 document

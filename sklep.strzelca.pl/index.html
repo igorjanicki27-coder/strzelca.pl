@@ -572,7 +572,12 @@
             updateUserInterface(user);
         });
 
-        window.handleOrder = async (productName, productPrice = null) => {
+        window.handleOrder = async (
+            productId,
+            productName,
+            productPrice = null,
+            individualPricing = false,
+        ) => {
             await openOrderInquiryFlow({
                 auth,
                 db,
@@ -581,6 +586,8 @@
                 context: "shop",
                 rawTitle: productName,
                 price: productPrice || 0,
+                itemId: productId || "",
+                individualPricing: individualPricing === true,
             });
         };
 
@@ -643,6 +650,8 @@
         function buildProductCard(item) {
             const encodedTitle = encodeURIComponent(item.title || '');
             const mainImage = item.mainImage || '';
+            const priceLabel = item.individualPricing ? 'Cena ustalana indywidualnie' : `${item.price} PLN`;
+            const priceAriaLabel = item.individualPricing ? 'Cena ustalana indywidualnie' : `Cena: ${item.price} złotych`;
 
             return `
                 <article class="card-dark product-card flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50 cursor-pointer" role="button" tabindex="0" aria-label="Pokaż szczegóły produktu ${item.title}" onclick="window.showDetails('${item.id}')" onkeydown="if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); window.showDetails('${item.id}'); }">
@@ -650,7 +659,7 @@
                     <div class="p-4 md:p-6 flex flex-col flex-grow text-center">
                         <h3 class="text-xl md:text-2xl font-black uppercase mb-2 font-[Orbitron] text-white tracking-tight">${item.title}</h3>
                         ${item.oldPrice ? `<p class="text-zinc-500 line-through text-sm mb-1">${item.oldPrice} PLN</p>` : ''}
-                        <p class="coyote-text font-bold text-lg md:text-xl mb-4 md:mb-5" aria-label="Cena: ${item.price} złotych">${item.price} PLN</p>
+                        <p class="coyote-text font-bold text-lg md:text-xl mb-4 md:mb-5" aria-label="${priceAriaLabel}">${priceLabel}</p>
                         <div class="mt-auto flex flex-col gap-2 md:gap-3">
                             <button type="button" onclick="event.stopPropagation(); window.showDetails('${item.id}')" aria-label="Szczegóły produktu ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[11px] md:text-xs uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">SZCZEGÓŁY</button>
                         </div>
@@ -876,6 +885,7 @@
                                     id: d.id,
                                     title: p.title || '',
                                     price: p.price || 0,
+                                    individualPricing: p.individualPricing === true,
                                     mainImage,
                                 });
                             });
@@ -1020,8 +1030,8 @@
                     ${descriptionHTML}
                 </div>
                 <div class="flex justify-between items-center border-t border-zinc-800 pt-6">
-                    <p class="text-2xl font-bold coyote-text">${p.price} PLN</p>
-                    <button onclick="window.handleOrder('${p.title}', ${p.price || 0})" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition">Złóż zamówienie</button>
+                    <p class="text-2xl font-bold coyote-text">${p.individualPricing ? 'Cena ustalana indywidualnie' : `${p.price} PLN`}</p>
+                    <button onclick="window.handleOrder('${p.id}', decodeURIComponent('${encodeURIComponent(p.title || "")}'), ${p.price || 0}, ${p.individualPricing === true})" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition">Złóż zamówienie</button>
                 </div>`;
             document.getElementById('details-modal').classList.remove('hidden');
             return true;

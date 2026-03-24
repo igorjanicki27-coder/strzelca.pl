@@ -10,6 +10,11 @@ const {
   getCookieName,
   verifyLocalSessionJwt,
 } = require("./_sso-utils");
+const {
+  getUserRoleProfile,
+  isAdminRoleProfile,
+  canAccessBackofficeScope,
+} = require("./_moderation");
 
 function getSessionUser(req) {
   try {
@@ -29,14 +34,11 @@ const SUPERADMIN_UID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
 
 async function isAdminOrSuperAdmin(uid) {
   if (!uid) return false;
-  if (uid === SUPERADMIN_UID) return true;
   try {
     initAdmin();
     const db = admin.firestore();
-    const snap = await db.collection("userProfiles").doc(uid).get();
-    if (!snap.exists) return false;
-    const data = snap.data();
-    return data?.role === "admin";
+    const profile = await getUserRoleProfile(db, uid);
+    return isAdminRoleProfile(profile) || canAccessBackofficeScope(profile, "users");
   } catch {
     return false;
   }

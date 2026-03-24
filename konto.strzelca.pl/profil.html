@@ -46,7 +46,11 @@
       #display-name {
         color: #ffffff;
       }
-      #display-name.name-role-user {
+      #display-name.name-role-user-unverified {
+        color: #a1a1aa !important; /* zinc-400 */
+        text-shadow: 0 0 10px rgba(161, 161, 170, 0.2);
+      }
+      #display-name.name-role-user-verified {
         color: #34d399 !important; /* emerald-400 */
         text-shadow: 0 0 10px rgba(52, 211, 153, 0.25);
       }
@@ -54,9 +58,25 @@
         color: #60a5fa !important; /* blue-400 */
         text-shadow: 0 0 10px rgba(96, 165, 250, 0.25);
       }
+      #display-name.name-role-operator {
+        color: #22d3ee !important; /* cyan-400 */
+        text-shadow: 0 0 12px rgba(34, 211, 238, 0.28);
+      }
       #display-name.name-role-admin {
         color: #f87171 !important; /* red-400 */
         text-shadow: 0 0 10px rgba(248, 113, 113, 0.25);
+      }
+      #display-name.name-role-moderator {
+        color: #c084fc !important; /* purple-400 */
+        text-shadow: 0 0 12px rgba(192, 132, 252, 0.3);
+      }
+
+      .profile-role-description {
+        color: #c084fc;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
       }
 
       /* Tooltip on hover (moved from email to display name) */
@@ -379,6 +399,7 @@
                   title=""
                   style="display: none;"
                 ></p>
+                <p id="profile-role-description" class="profile-role-description mb-4 hidden"></p>
               </div>
 
               <!-- Prawa kolumna (przyciski) - pod nazwą na mniejszych ekranach, obok na większych -->
@@ -487,9 +508,37 @@
 
             <!-- Dane kontaktowe -->
             <div class="bg-zinc-800/50 p-6 rounded-2xl border border-zinc-700">
-              <h3 class="text-lg font-semibold text-white mb-4">
+              <h3 class="text-lg font-semibold text-white mb-4" id="profile-contact-title">
                 Dane kontaktowe
               </h3>
+
+              <div id="profile-company-fields" class="hidden mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label
+                      class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
+                      >Nazwa firmy</label
+                    >
+                    <input
+                      type="text"
+                      id="edit-company-name"
+                      placeholder="np. Strzelca Sp. z o.o."
+                    />
+                  </div>
+                  <div>
+                    <label
+                      class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
+                      >NIP</label
+                    >
+                    <input
+                      type="text"
+                      id="edit-company-nip"
+                      placeholder="123-456-32-18"
+                      inputmode="numeric"
+                    />
+                  </div>
+                </div>
+              </div>
 
               <!-- Telefon i Paczkomat w jednej linii -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -522,10 +571,14 @@
 
               <!-- Adres STRZELCA -->
               <div class="space-y-4 mt-6 pt-6 border-t border-zinc-700">
+                <h4 id="profile-address-title" class="text-sm font-semibold text-zinc-300">
+                  Adres STRZELCA
+                </h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label
                       class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
+                      id="profile-street-label"
                       >Ulica</label
                     >
                     <input
@@ -537,6 +590,7 @@
                   <div>
                     <label
                       class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
+                      id="profile-building-label"
                       >Numer budynku / lokalu</label
                     >
                     <input
@@ -551,6 +605,7 @@
                   <div>
                     <label
                       class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
+                      id="profile-postal-label"
                       >Kod pocztowy</label
                     >
                     <input
@@ -562,7 +617,8 @@
                   <div>
                     <label
                       class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
-                      >Miasto</label
+                      id="profile-city-label"
+                      >Miejscowość</label
                     >
                     <input
                       type="text"
@@ -615,26 +671,52 @@
       </div>
 
 
-      <!-- Sekcja Moje zamówienia (tylko dla własnego profilu) -->
-      <div id="orders-section" class="mt-8" style="display: none">
-        <div
-          class="bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800 shadow-2xl"
-        >
-          <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold coyote-text">Moje zamówienia</h2>
-            <button
-              onclick="loadMyOrders()"
-              class="bg-zinc-700 text-white px-4 py-2 rounded-lg hover:bg-zinc-600 transition"
-            >
-              <i class="fa-solid fa-sync-alt mr-2"></i>
-              Odśwież
-            </button>
-          </div>
+      <div id="commerce-sections" class="mt-8 grid grid-cols-1 xl:grid-cols-2 gap-8">
+        <!-- Sekcja Moje zamówienia (tylko dla własnego profilu) -->
+        <div id="orders-section" style="display: none">
+          <div
+            class="bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800 shadow-2xl h-full"
+          >
+            <div class="flex justify-between items-center mb-6">
+              <h2 class="text-2xl font-bold coyote-text">Moje zamówienia</h2>
+              <button
+                onclick="loadMyOrders()"
+                class="bg-zinc-700 text-white px-4 py-2 rounded-lg hover:bg-zinc-600 transition"
+              >
+                <i class="fa-solid fa-sync-alt mr-2"></i>
+                Odśwież
+              </button>
+            </div>
 
-          <div id="orders-list" class="space-y-4">
-            <div class="text-center text-zinc-500 py-8">
-              <i class="fa-solid fa-spinner fa-spin text-2xl mb-4"></i>
-              <p>Ładowanie zamówień...</p>
+            <div id="orders-list" class="space-y-4">
+              <div class="text-center text-zinc-500 py-8">
+                <i class="fa-solid fa-spinner fa-spin text-2xl mb-4"></i>
+                <p>Ładowanie zamówień...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="returns-section" style="display: none">
+          <div
+            class="bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800 shadow-2xl h-full"
+          >
+            <div class="flex justify-between items-center mb-6">
+              <h2 class="text-2xl font-bold coyote-text">Zwroty i reklamacje</h2>
+              <button
+                onclick="loadMyReturns()"
+                class="bg-zinc-700 text-white px-4 py-2 rounded-lg hover:bg-zinc-600 transition"
+              >
+                <i class="fa-solid fa-sync-alt mr-2"></i>
+                Odśwież
+              </button>
+            </div>
+
+            <div id="returns-list" class="space-y-4">
+              <div class="text-center text-zinc-500 py-8">
+                <i class="fa-solid fa-spinner fa-spin text-2xl mb-4"></i>
+                <p>Ładowanie zgłoszeń...</p>
+              </div>
             </div>
           </div>
         </div>
@@ -1077,6 +1159,36 @@
           let reviewTargetDisplayName = "";
           const profileUrlParams = new URLSearchParams(window.location.search || "");
           const profileEmbedMode = profileUrlParams.get("embedModal") === "1";
+          const OPERATOR_SCOPE_ORDER = [
+            "shop",
+            "bazaar",
+            "trainings",
+            "events",
+            "blog",
+            "help",
+            "users",
+            "contact",
+          ];
+          const OPERATOR_SCOPE_LABELS = {
+            users: "Operator ds. użytkowników",
+            contact: "Operator ds. kontaktu",
+            blog: "Operator ds. bloga",
+            shop: "Operator ds. sklepu",
+            help: "Operator ds. pomocy",
+            events: "Operator ds. wydarzeń",
+            trainings: "Operator ds. szkoleń",
+            bazaar: "Operator ds. bazaru",
+          };
+          const OPERATOR_SCOPE_SHORT_LABELS = {
+            users: "użytkowników",
+            contact: "kontaktu",
+            blog: "bloga",
+            shop: "sklepu",
+            help: "pomocy",
+            events: "wydarzeń",
+            trainings: "szkoleń",
+            bazaar: "bazaru",
+          };
 
           function applyProfileEmbedMode() {
             if (!profileEmbedMode) return;
@@ -1091,6 +1203,111 @@
           const ADMIN_AVATAR_URL = "https://strzelca.pl/admin/Avatar_admin.png";
           const isAdminRole = (role) =>
             String(role || "").toLowerCase() === "admin";
+          const isOperatorRole = (role) =>
+            String(role || "").toLowerCase() === "operator";
+          const isModeratorRole = (role) =>
+            String(role || "").toLowerCase() === "moderator";
+
+          function normalizeOperatorScopes(value) {
+            if (!Array.isArray(value)) return [];
+            return value
+              .map((item) => String(item || "").trim().toLowerCase())
+              .filter((item) => Object.prototype.hasOwnProperty.call(OPERATOR_SCOPE_LABELS, item))
+              .sort((a, b) => OPERATOR_SCOPE_ORDER.indexOf(a) - OPERATOR_SCOPE_ORDER.indexOf(b));
+          }
+
+          function formatOperatorDescription(scopes) {
+            const orderedScopes = normalizeOperatorScopes(scopes);
+            const labels = orderedScopes.map((scope) => OPERATOR_SCOPE_SHORT_LABELS[scope]);
+            if (labels.length === 0) return "Operator";
+            if (labels.length === 1) return OPERATOR_SCOPE_LABELS[orderedScopes[0]];
+            return `Operator ds. ${labels.join(", ")}`;
+          }
+
+          function formatRoleDescription(profileData) {
+            const role = String(profileData?.role || "user").toLowerCase();
+            if (role === "admin") return "Administrator";
+            if (role === "company") return "Firma";
+            if (role === "operator") {
+              return formatOperatorDescription(
+                profileData?.operatorScopes || profileData?.moderatorScopes,
+              );
+            }
+            if (role === "moderator") {
+              return "Moderator";
+            }
+            return profileData?.emailVerified ? "Użytkownik zweryfikowany" : "Użytkownik niezweryfikowany";
+          }
+
+          function normalizeNip(value) {
+            return String(value || "").replace(/\D/g, "").slice(0, 10);
+          }
+
+          function formatNip(value) {
+            const digits = normalizeNip(value);
+            if (!digits) return "";
+            if (digits.length <= 3) return digits;
+            if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+            if (digits.length <= 8) {
+              return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+            }
+            return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 8)}-${digits.slice(8)}`;
+          }
+
+          function applyProfileRoleFormState(profileData) {
+            const isCompany = String(profileData?.role || "").toLowerCase() === "company";
+            const companyFields = document.getElementById("profile-company-fields");
+            const companyNameInput = document.getElementById("edit-company-name");
+            const companyNipInput = document.getElementById("edit-company-nip");
+            const contactTitle = document.getElementById("profile-contact-title");
+            const addressTitle = document.getElementById("profile-address-title");
+            const streetLabel = document.getElementById("profile-street-label");
+            const buildingLabel = document.getElementById("profile-building-label");
+            const postalLabel = document.getElementById("profile-postal-label");
+            const cityLabel = document.getElementById("profile-city-label");
+
+            companyFields?.classList.toggle("hidden", !isCompany);
+            if (companyNameInput) companyNameInput.disabled = !isCompany;
+            if (companyNipInput) companyNipInput.disabled = !isCompany;
+
+            if (contactTitle) {
+              contactTitle.textContent = isCompany ? "Dane kontaktowe firmy" : "Dane kontaktowe";
+            }
+            if (addressTitle) {
+              addressTitle.textContent = isCompany ? "Adres firmy" : "Adres STRZELCA";
+            }
+            if (streetLabel) streetLabel.textContent = isCompany ? "Ulica firmy" : "Ulica";
+            if (buildingLabel) {
+              buildingLabel.textContent = isCompany
+                ? "Numer budynku / lokalu firmy"
+                : "Numer budynku / lokalu";
+            }
+            if (postalLabel) {
+              postalLabel.textContent = isCompany ? "Kod pocztowy firmy" : "Kod pocztowy";
+            }
+            if (cityLabel) cityLabel.textContent = isCompany ? "Miejscowość firmy" : "Miejscowość";
+          }
+
+          function updateProfileRoleDescription(profileData) {
+            const roleDescriptionEl = document.getElementById("profile-role-description");
+            if (!roleDescriptionEl) return;
+            const role = String(profileData?.role || "user").toLowerCase();
+            const text = formatRoleDescription(profileData);
+            roleDescriptionEl.textContent = text;
+            roleDescriptionEl.style.color =
+              role === "admin"
+                ? "#f87171"
+              : role === "moderator"
+                ? "#c084fc"
+              : role === "operator"
+                ? "#22d3ee"
+              : role === "company"
+                ? "#60a5fa"
+              : profileData?.emailVerified
+                ? "#34d399"
+                : "#a1a1aa";
+            roleDescriptionEl.classList.toggle("hidden", !text);
+          }
 
           async function syncPublicProfileFromPrivate() {
             if (!currentUser || !isViewingOwnProfile || !userProfile) return;
@@ -1102,6 +1319,11 @@
               const publicDoc = {
                 displayName: String(userProfile.displayName || "").trim(),
                 avatar: adminForcedAvatar || userProfile.avatar || "",
+                role: String(userProfile.role || "user"),
+                operatorScopes: normalizeOperatorScopes(
+                  userProfile.operatorScopes || userProfile.moderatorScopes,
+                ),
+                emailVerified: userProfile.emailVerified === true,
                 updatedAt: new Date(),
               };
               if (!publicDoc.displayName) return;
@@ -1200,6 +1422,10 @@
                 phone: document.getElementById("edit-phone")?.value || "",
                 parcelLocker:
                   document.getElementById("edit-parcel-locker")?.value || "",
+                companyName:
+                  document.getElementById("edit-company-name")?.value || "",
+                companyNip:
+                  document.getElementById("edit-company-nip")?.value || "",
                 street: document.getElementById("edit-street")?.value || "",
                 buildingNumber:
                   document.getElementById("edit-building-number")?.value || "",
@@ -1222,6 +1448,8 @@
             };
             setVal("edit-phone", profileFormSnapshot.phone);
             setVal("edit-parcel-locker", profileFormSnapshot.parcelLocker);
+            setVal("edit-company-name", profileFormSnapshot.companyName);
+            setVal("edit-company-nip", profileFormSnapshot.companyNip);
             setVal("edit-street", profileFormSnapshot.street);
             setVal("edit-building-number", profileFormSnapshot.buildingNumber);
             setVal("edit-postal-code", profileFormSnapshot.postalCode);
@@ -1255,6 +1483,12 @@
               return "";
             }
           }
+
+          document
+            .getElementById("edit-company-nip")
+            ?.addEventListener("input", (event) => {
+              event.target.value = formatNip(event.target.value);
+            });
 
           // Listener stanu autoryzacji z logiką przekierowań
           onAuthStateChanged(auth, async (user) => {
@@ -1806,12 +2040,18 @@
                 selfPrivateProfile?.role ||
                 "user"
               ).toString();
-              const roleLabel =
-                role === "admin"
-                  ? "Status: Administrator"
-                  : role === "company"
-                    ? "Status: Firma"
-                    : "Status: Użytkownik";
+              const roleLabel = `Status: ${formatRoleDescription({
+                role,
+                operatorScopes:
+                  userProfile?.operatorScopes ||
+                  userProfile?.moderatorScopes ||
+                  selfPrivateProfile?.operatorScopes ||
+                  selfPrivateProfile?.moderatorScopes ||
+                  [],
+                emailVerified:
+                  userProfile?.emailVerified === true ||
+                  selfPrivateProfile?.emailVerified === true,
+              })}`;
 
               const tooltip = [roleLabel, memberText]
                 .filter(Boolean)
@@ -1855,25 +2095,38 @@
                   displayNameEl.textContent = userProfile.displayName;
                 memberSinceLabel = formatDate(userProfile.createdAt);
 
-                // Koloruj nick wg roli (zielony user, niebieski firma, czerwony admin)
+                // Koloruj nick wg roli i weryfikacji
                 try {
                   const role = (userProfile?.role || "user").toString();
+                  const isVerifiedUser = userProfile?.emailVerified === true;
                   const el = document.getElementById("display-name");
                   if (el) {
                     el.classList.remove(
-                      "name-role-user",
+                      "name-role-user-unverified",
+                      "name-role-user-verified",
                       "name-role-company",
+                      "name-role-operator",
                       "name-role-admin",
+                      "name-role-moderator",
                     );
                     el.classList.add(
                       role === "admin"
                         ? "name-role-admin"
+                        : role === "moderator"
+                          ? "name-role-moderator"
+                        : role === "operator"
+                          ? "name-role-operator"
                         : role === "company"
                           ? "name-role-company"
-                          : "name-role-user",
+                          : isVerifiedUser
+                            ? "name-role-user-verified"
+                            : "name-role-user-unverified",
                     );
                   }
                 } catch {}
+
+                updateProfileRoleDescription(userProfile);
+                applyProfileRoleFormState(userProfile);
 
                 // target do opinii = oglądany profil
                 reviewTargetUid = uid;
@@ -1964,7 +2217,13 @@
                         ? b64DecodeUtf8(userProfile.address.city)
                         : "",
                     },
+                    companyName: userProfile.companyName
+                      ? b64DecodeUtf8(userProfile.companyName)
+                      : "",
+                    nip: userProfile.nip ? b64DecodeUtf8(userProfile.nip) : "",
                   };
+
+                  applyProfileRoleFormState(decryptedProfile);
 
                   // Wypełnij formularz (odszyfrowanymi danymi)
                   document.getElementById("edit-display-name").value =
@@ -1977,6 +2236,11 @@
                     decryptedProfile.lastName || "";
                   document.getElementById("edit-phone").value =
                     decryptedProfile.phone || "";
+                  document.getElementById("edit-company-name").value =
+                    decryptedProfile.companyName || "";
+                  document.getElementById("edit-company-nip").value = formatNip(
+                    decryptedProfile.nip,
+                  );
                   document.getElementById("edit-street").value =
                     decryptedProfile.address?.street || "";
                   document.getElementById("edit-building-number").value =
@@ -2108,6 +2372,8 @@
                 };
 
                 const oldDecrypted = {
+                  companyName: getDec(userProfile.companyName),
+                  nip: getDec(userProfile.nip),
                   phone: getDec(userProfile.phone),
                   parcelLocker: getDec(userProfile.parcelLocker),
                   address: {
@@ -2120,6 +2386,12 @@
                 };
 
                 const newDecrypted = {
+                  companyName: (
+                    document.getElementById("edit-company-name").value || ""
+                  ).trim(),
+                  nip: normalizeNip(
+                    document.getElementById("edit-company-nip").value || "",
+                  ),
                   phone: (
                     document.getElementById("edit-phone").value || ""
                   ).trim(),
@@ -2146,6 +2418,29 @@
                 };
 
                 const updatedProfile = {};
+                const isCompanyRole =
+                  String(userProfile?.role || "").toLowerCase() === "company";
+
+                if (isCompanyRole) {
+                  if (newDecrypted.companyName.length < 2) {
+                    alert("Podaj nazwę firmy.");
+                    return;
+                  }
+                  if (newDecrypted.nip.length !== 10) {
+                    alert("NIP musi mieć 10 cyfr.");
+                    return;
+                  }
+                }
+
+                if (newDecrypted.companyName !== oldDecrypted.companyName) {
+                  updatedProfile.companyName = b64EncodeUtf8(
+                    newDecrypted.companyName,
+                  );
+                }
+
+                if (newDecrypted.nip !== oldDecrypted.nip) {
+                  updatedProfile.nip = b64EncodeUtf8(newDecrypted.nip);
+                }
 
                 if (newDecrypted.phone !== oldDecrypted.phone) {
                   updatedProfile.phone = b64EncodeUtf8(newDecrypted.phone);
@@ -2807,187 +3102,1221 @@
           // ===== KONIEC FUNKCJI OPINII =====
 
           // ===== FUNKCJE ZAMÓWIEŃ =====
+          let profileOrdersCache = [];
+          let profileReturnsCache = [];
+          let activeReturnClaimDetail = null;
+          let returnClaimEditAttachments = [];
+          const RETURN_ATTACHMENT_LIMIT = 5;
+
+          function escapeProfileHtml(value) {
+            return String(value ?? "")
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/"/g, "&quot;")
+              .replace(/'/g, "&#39;");
+          }
+
+          function nl2brProfile(value) {
+            return escapeProfileHtml(value).replace(/\n/g, "<br />");
+          }
+
+          function getStrzelcaApiUrl(path) {
+            const isMain = (window.location?.hostname || "") === "strzelca.pl";
+            return isMain ? path : `https://strzelca.pl${path}`;
+          }
+
+          async function getProfileApiHeaders() {
+            const headers = {
+              "Content-Type": "application/json",
+            };
+            if (currentUser) {
+              const token = await currentUser.getIdToken();
+              if (token) {
+                headers.Authorization = `Bearer ${token}`;
+              }
+            }
+            return headers;
+          }
+
+          function setProfileSectionVisible(sectionId, visible) {
+            const section = document.getElementById(sectionId);
+            if (section) {
+              section.style.display = visible ? "block" : "none";
+            }
+          }
+
+          function formatCurrency(value) {
+            return `${(Number(value) || 0).toFixed(2)} zł`;
+          }
+
+          function getOrderStatusMeta(status) {
+            const map = {
+              zlozone: {
+                label: "Złożone",
+                color: "text-yellow-400 bg-yellow-400/20 border-yellow-400/40",
+              },
+              wycena_zlozona: {
+                label: "Wycena złożona",
+                color: "text-amber-300 bg-amber-400/10 border-amber-400/30",
+              },
+              wycena_zaakceptowana: {
+                label: "Wycena zaakceptowana",
+                color: "text-emerald-300 bg-emerald-400/10 border-emerald-400/30",
+              },
+              wycena_odrzucona: {
+                label: "Wycena odrzucona",
+                color: "text-rose-300 bg-rose-400/10 border-rose-400/30",
+              },
+              oczekuje_na_platnosc: {
+                label: "Oczekuje na płatność",
+                color: "text-sky-300 bg-sky-400/10 border-sky-400/30",
+              },
+              weryfikowanie_platnosci: {
+                label: "Weryfikowanie płatności",
+                color: "text-cyan-300 bg-cyan-400/10 border-cyan-400/30",
+              },
+              platnosc_zakonczona_niepowodzeniem: {
+                label: "Płatność zakończona niepowodzeniem",
+                color: "text-red-300 bg-red-400/10 border-red-400/30",
+              },
+              realizacja: {
+                label: "W realizacji",
+                color: "text-orange-400 bg-orange-400/20 border-orange-400/40",
+              },
+              wyslane: {
+                label: "Wysłane",
+                color: "text-blue-400 bg-blue-400/20 border-blue-400/40",
+              },
+              zakonczone: {
+                label: "Zakończone",
+                color: "text-green-400 bg-green-400/20 border-green-400/40",
+              },
+              anulowane: {
+                label: "Anulowane",
+                color: "text-red-400 bg-red-400/20 border-red-400/40",
+              },
+            };
+            return (
+              map[status] || {
+                label: status || "Nieznany",
+                color: "text-zinc-300 bg-zinc-300/10 border-zinc-300/30",
+              }
+            );
+          }
+
+          function ensureProfileDynamicModal(modalId, extraClasses = "") {
+            let modal = document.getElementById(modalId);
+            if (!modal) {
+              modal = document.createElement("div");
+              modal.id = modalId;
+              modal.className = `modal ${extraClasses}`.trim();
+              modal.addEventListener("click", (event) => {
+                if (event.target === modal) {
+                  modal.classList.remove("show");
+                  document.body.style.overflow = "";
+                }
+              });
+              document.body.appendChild(modal);
+            }
+            return modal;
+          }
+
+          function closeProfileDynamicModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+              modal.classList.remove("show");
+            }
+            document.body.style.overflow = "";
+          }
+          window.closeProfileDynamicModal = closeProfileDynamicModal;
+
+          function triggerBase64Download(dataBase64, mimeType, fileName) {
+            const link = document.createElement("a");
+            link.href = `data:${mimeType};base64,${dataBase64}`;
+            link.download = fileName || "zalacznik.jpg";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+          }
+
+          function renderOrderCards(orders) {
+            const ordersList = document.getElementById("orders-list");
+            if (!ordersList) return;
+            ordersList.innerHTML = orders
+              .map((order) => {
+                const status = getOrderStatusMeta(order.status);
+                const canEdit = order.status === "zlozone";
+                const canAcceptQuote = order.status === "wycena_zlozona";
+                const canPay =
+                  ["oczekuje_na_platnosc", "platnosc_zakonczona_niepowodzeniem"].includes(order.status) &&
+                  !!order.paymentLinkUrl;
+                return `
+                  <div class="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700">
+                    <div class="flex flex-col gap-4 md:flex-row md:justify-between md:items-start mb-4">
+                      <div>
+                        <div class="flex flex-wrap items-center gap-3 mb-2">
+                          <h3 class="text-lg font-bold text-white">${escapeProfileHtml(order.orderNumber || "Brak numeru")}</h3>
+                          <span class="px-3 py-1 rounded text-xs font-medium border ${status.color}">
+                            ${escapeProfileHtml(status.label)}
+                          </span>
+                        </div>
+                        <div class="text-sm text-zinc-400">
+                          ${escapeProfileHtml(order.createdAtFormatted || "Brak daty")}
+                        </div>
+                      </div>
+                      ${
+                        canEdit
+                          ? `<div class="flex flex-wrap gap-2">
+                              <button type="button" onclick="openOrderEditModal('${order.id}')" class="bg-coyote text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition">
+                                <i class="fa-solid fa-pen mr-2"></i>Edycja
+                              </button>
+                              <button type="button" onclick="cancelOrderByUser('${order.id}')" class="bg-red-500/15 border border-red-500/40 text-red-300 px-4 py-2 rounded-lg font-semibold hover:bg-red-500/25 transition">
+                                <i class="fa-solid fa-ban mr-2"></i>Anuluj
+                              </button>
+                            </div>`
+                          : ""
+                      }
+                      ${
+                        canAcceptQuote
+                          ? `<div class="flex flex-wrap gap-2">
+                              <button type="button" onclick="openOrderQuoteAcceptModal('${order.id}')" class="bg-emerald-500 text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition">
+                                <i class="fa-solid fa-check mr-2"></i>Akceptuj wycenę
+                              </button>
+                              <button type="button" onclick="openOrderQuoteRejectModal('${order.id}')" class="bg-red-500/15 border border-red-500/40 text-red-300 px-4 py-2 rounded-lg font-semibold hover:bg-red-500/25 transition">
+                                <i class="fa-solid fa-xmark mr-2"></i>Odrzuć
+                              </button>
+                            </div>`
+                          : ""
+                      }
+                      ${
+                        canPay
+                          ? `<div class="flex flex-wrap gap-2">
+                              <button type="button" onclick="payOrder('${order.id}')" class="bg-sky-500 text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition">
+                                <i class="fa-solid fa-credit-card mr-2"></i>Opłać
+                              </button>
+                            </div>`
+                          : ""
+                      }
+                    </div>
+
+                    <div class="mb-4 text-sm text-zinc-300">
+                      <strong>Zamówienie:</strong> ${nl2brProfile(order.orderDetails || "Brak opisu")}
+                    </div>
+                    ${
+                      order.notes
+                        ? `<div class="mb-4 text-sm text-zinc-400 italic">${nl2brProfile(order.notes)}</div>`
+                        : ""
+                    }
+                    ${
+                      order.quoteRejectedReason
+                        ? `<div class="mb-4 text-sm text-red-300"><strong>Powód odrzucenia wyceny:</strong><br>${nl2brProfile(order.quoteRejectedReason)}</div>`
+                        : ""
+                    }
+
+                    <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                      <div class="text-zinc-400">Razem: <span class="text-coyote font-bold text-base">${escapeProfileHtml(order.totalDisplay || formatCurrency(order.total))}</span></div>
+                      <div class="text-zinc-400">Telefon: <span class="text-zinc-200">${escapeProfileHtml(order.phone || "—")}</span></div>
+                    </div>
+                    ${
+                      order.firstName || order.lastName || order.isCompany
+                        ? `<div class="mb-4 text-sm text-zinc-400 space-y-1">
+                            ${(order.firstName || order.lastName) ? `<div>Dane: <span class="text-zinc-200">${escapeProfileHtml([order.firstName, order.lastName].filter(Boolean).join(" "))}</span></div>` : ""}
+                            ${order.isCompany ? `<div>Firma: <span class="text-zinc-200">${escapeProfileHtml(order.companyName || "—")}</span></div>` : ""}
+                            ${order.isCompany ? `<div>NIP: <span class="text-zinc-200">${escapeProfileHtml(order.taxId || "—")}</span></div>` : ""}
+                          </div>`
+                        : ""
+                    }
+
+                    <div class="pt-4 border-t border-zinc-700 text-xs text-zinc-500 flex flex-col gap-2">
+                      <p>Edycja zamowienia mozliwa do czasu przyjecia do realizacji.</p>
+                      ${
+                        order.status === "wycena_zlozona"
+                          ? `<p>Wycena oczekuje na Twoją decyzję. Akceptacja jest wiążąca i oznacza zobowiązanie do opłacenia zamówienia.</p>`
+                          : ""
+                      }
+                      ${
+                        ["oczekuje_na_platnosc", "platnosc_zakonczona_niepowodzeniem"].includes(order.status) && order.paymentLinkUrl
+                          ? `<p>Po kliknięciu „Opłać” zamówienie przejdzie do statusu weryfikowania płatności i będzie oczekiwać na ręczne potwierdzenie przez administratora.</p>`
+                          : ""
+                      }
+                      ${
+                        order.status === "weryfikowanie_platnosci"
+                          ? `<p>Płatność jest obecnie sprawdzana przez administratora.</p>`
+                          : ""
+                      }
+                      <div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="openOrderReturnClaim('${order.id}')" class="bg-zinc-700 text-white px-4 py-2 rounded-lg hover:bg-zinc-600 transition text-sm">
+                          <i class="fa-solid fa-rotate-left mr-2"></i>Zwrot / reklamacja
+                        </button>
+                      </div>
+                      ${
+                        order.invoiceFile
+                          ? `<a href="https://strzelca.pl/api/download-invoice?orderId=${order.id}" target="_blank" class="text-coyote hover:text-coyote/80 text-sm">
+                              <i class="fa-solid fa-file-pdf mr-2"></i>Pobierz fakturę
+                            </a>`
+                          : ""
+                      }
+                    </div>
+                  </div>
+                `;
+              })
+              .join("");
+          }
 
           window.loadMyOrders = async function () {
             try {
               if (!currentUser || !isViewingOwnProfile) return;
 
-              const ordersSection = document.getElementById("orders-section");
               const ordersList = document.getElementById("orders-list");
-
-              if (!ordersSection || !ordersList) return;
+              if (!ordersList) return;
 
               ordersList.innerHTML = `
-            <div class="text-center text-zinc-500 py-8">
-              <i class="fa-solid fa-spinner fa-spin text-2xl mb-4"></i>
-              <p>Ładowanie zamówień...</p>
-            </div>
-          `;
+                <div class="text-center text-zinc-500 py-8">
+                  <i class="fa-solid fa-spinner fa-spin text-2xl mb-4"></i>
+                  <p>Ładowanie zamówień...</p>
+                </div>
+              `;
 
-              // Pobierz token autoryzacyjny
-              let authToken = null;
-              try {
-                if (currentUser) {
-                  authToken = await currentUser.getIdToken();
-                }
-              } catch (tokenError) {
-                console.error("Failed to get Firebase Auth token:", tokenError);
-                throw new Error("Błąd autoryzacji");
-              }
-
-              const headers = {
-                "Content-Type": "application/json",
-              };
-              if (authToken) {
-                headers["Authorization"] = `Bearer ${authToken}`;
-              }
-
-              // Zawsze używaj pełnego URL dla subdomen (Vercel nie routuje /api/* z subdomen)
-              const isMain =
-                (window.location?.hostname || "") === "strzelca.pl";
-              const apiUrl = isMain
-                ? "/api/orders"
-                : "https://strzelca.pl/api/orders";
-
-              console.log("Fetching orders from:", apiUrl);
-
+              const headers = await getProfileApiHeaders();
+              const apiUrl = getStrzelcaApiUrl("/api/orders");
               const response = await fetch(apiUrl, {
                 method: "GET",
                 headers,
-                credentials: apiUrl.startsWith("http")
-                  ? "include"
-                  : "same-origin",
+                credentials: apiUrl.startsWith("http") ? "include" : "same-origin",
               });
-
-              console.log("Orders API response status:", response.status);
-
-              if (!response.ok) {
-                const errorText = await response.text().catch(() => "");
-                console.error(
-                  "Failed to load orders:",
-                  response.status,
-                  errorText,
-                );
-                throw new Error(
-                  `Failed to load orders: HTTP ${response.status}${errorText ? " - " + errorText : ""}`,
-                );
+              const data = await response.json().catch(() => null);
+              if (!response.ok || !data?.success) {
+                throw new Error(data?.error || "Nie udało się pobrać zamówień.");
               }
 
-              if (!response.ok) {
-                throw new Error("Failed to load orders");
-              }
-
-              const data = await response.json();
-              if (!data.success) {
-                throw new Error(data.error || "Failed to load orders");
-              }
-
-              const orders = data.data || [];
-
-              if (orders.length === 0) {
-                ordersList.innerHTML = `
-              <div class="text-center text-zinc-500 py-8">
-                <i class="fa-solid fa-shopping-bag text-4xl mb-4 text-zinc-600"></i>
-                <p class="text-lg font-semibold mb-2">Brak zamówień</p>
-                <p class="text-sm">Nie masz jeszcze żadnych zamówień.</p>
-              </div>
-            `;
-                return;
-              }
-
-              const statusNames = {
-                zlozone: "Złożone",
-                realizacja: "W realizacji",
-                wyslane: "Wysłane",
-                zakonczone: "Zakończone",
-                anulowane: "Anulowane",
-              };
-
-              const statusColors = {
-                zlozone:
-                  "text-yellow-400 bg-yellow-400/20 border-yellow-400/40",
-                realizacja:
-                  "text-orange-400 bg-orange-400/20 border-orange-400/40",
-                wyslane: "text-blue-400 bg-blue-400/20 border-blue-400/40",
-                zakonczone:
-                  "text-green-400 bg-green-400/20 border-green-400/40",
-                anulowane: "text-red-400 bg-red-400/20 border-red-400/40",
-              };
-
-              ordersList.innerHTML = orders
-                .map((order) => {
-                  const statusColor =
-                    statusColors[order.status] ||
-                    "text-zinc-400 bg-zinc-400/20 border-zinc-400/40";
-                  const statusName = statusNames[order.status] || order.status;
-
-                  return `
-              <div class="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700">
-                <div class="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 class="text-lg font-bold text-white mb-2">${order.orderNumber || "Brak numeru"}</h3>
-                    <span class="px-3 py-1 rounded text-xs font-medium border ${statusColor}">
-                      ${statusName}
-                    </span>
-                  </div>
-                  <div class="text-sm text-zinc-400">
-                    ${order.createdAtFormatted || "Brak daty"}
-                  </div>
-                </div>
-
-                <div class="mb-4">
-                  <div class="text-sm text-zinc-300 mb-2">
-                    <strong>Zamówienie:</strong> ${order.orderDetails || "Brak opisu"}
-                  </div>
-                  ${order.notes ? `<div class="text-sm text-zinc-400 italic">${order.notes}</div>` : ""}
-                </div>
-
-                <div class="flex justify-between items-center mb-4">
-                  <div class="text-sm text-zinc-400">
-                    Razem: <span class="text-coyote font-bold text-lg">${(order.total || 0).toFixed(2)} zł</span>
-                  </div>
-                  ${
-                    order.invoiceFile || order.id
-                      ? `
-                    <a href="https://strzelca.pl/api/download-invoice?orderId=${order.id}" target="_blank" class="text-coyote hover:text-coyote/80 text-sm">
-                      <i class="fa-solid fa-file-pdf mr-2"></i> Pobierz fakturę
-                    </a>
-                  `
-                      : ""
-                  }
-                </div>
-
-                <div class="pt-4 border-t border-zinc-700 text-xs text-zinc-500">
-                  <p>Aby wprowadzić zmianę w zamówieniu, skontaktuj się z Pomocą STRZELCA.pl (system wiadomości).
-                </div>
-              </div>
-            `;
-                })
-                .join("");
+              profileOrdersCache = Array.isArray(data.data) ? data.data : [];
+              setProfileSectionVisible("orders-section", profileOrdersCache.length > 0 && isViewingOwnProfile);
+              if (!profileOrdersCache.length) return;
+              renderOrderCards(profileOrdersCache);
             } catch (error) {
               console.error("Error loading orders:", error);
+              setProfileSectionVisible("orders-section", true);
               const ordersList = document.getElementById("orders-list");
               if (ordersList) {
                 ordersList.innerHTML = `
-              <div class="text-center text-red-400 py-8">
-                <i class="fa-solid fa-exclamation-triangle text-4xl mb-4"></i>
-                <p class="text-lg font-semibold mb-2">Błąd ładowania zamówień</p>
-                <p class="text-sm">${error.message}</p>
-              </div>
-            `;
+                  <div class="text-center text-red-400 py-8">
+                    <i class="fa-solid fa-exclamation-triangle text-4xl mb-4"></i>
+                    <p class="text-lg font-semibold mb-2">Błąd ładowania zamówień</p>
+                    <p class="text-sm">${escapeProfileHtml(error.message)}</p>
+                  </div>
+                `;
               }
             }
           };
 
-          // Pokazanie sekcji zamówień tylko dla własnego profilu
-          function showOrdersSectionIfOwnProfile() {
-            const ordersSection = document.getElementById("orders-section");
-            if (ordersSection && isViewingOwnProfile) {
-              ordersSection.style.display = "block";
-              loadMyOrders();
-            } else if (ordersSection) {
-              ordersSection.style.display = "none";
+          window.openOrderReturnClaim = function (orderId) {
+            const order = profileOrdersCache.find((item) => item.id === orderId);
+            if (!order) return;
+            const url = new URL("https://dokumenty.strzelca.pl/");
+            url.hash = "#zwrot-reklamacja";
+            if (order.orderNumber) {
+              url.searchParams.set("returnOrder", String(order.orderNumber).trim());
             }
+            const invoiceHint = String(
+              order.invoiceDocumentLabel ||
+                order.invoiceNumber ||
+                "Załączona do zamówienia",
+            ).trim();
+            if (invoiceHint) {
+              url.searchParams.set("returnInvoice", invoiceHint);
+            }
+            const opened = window.open(url.toString(), "_blank", "noopener");
+            if (!opened) {
+              window.location.href = url.toString();
+            }
+          };
+
+          window.openOrderEditModal = function (orderId) {
+            const order = profileOrdersCache.find((item) => item.id === orderId);
+            if (!order) return;
+
+            const modal = ensureProfileDynamicModal("order-edit-modal");
+            modal.innerHTML = `
+              <div class="modal-content modal-content--wide">
+                <div class="modal-header">
+                  <h3 class="text-xl font-bold coyote-text">Edycja zamówienia</h3>
+                  <button class="modal-close" onclick="closeProfileDynamicModal('order-edit-modal')">&times;</button>
+                </div>
+                <form id="order-edit-form" class="space-y-4">
+                  <input type="hidden" id="order-edit-id" value="${escapeProfileHtml(order.id)}" />
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">E-mail</label>
+                      <input type="email" value="${escapeProfileHtml(order.email || currentUser?.email || "")}" readonly />
+                    </div>
+                    <div>
+                      <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Telefon</label>
+                      <input type="text" id="order-edit-phone" value="${escapeProfileHtml(order.phone || "")}" />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Zamówienie</label>
+                    <textarea id="order-edit-details" rows="4">${escapeProfileHtml(order.orderDetails || "")}</textarea>
+                  </div>
+                  <div>
+                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Uwagi</label>
+                    <textarea id="order-edit-notes" rows="3">${escapeProfileHtml(order.notes || "")}</textarea>
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Cena</label>
+                      <input type="number" step="0.01" id="order-edit-price" value="${escapeProfileHtml(order.price || 0)}" />
+                    </div>
+                    <div>
+                      <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Wysyłka</label>
+                      <input type="number" step="0.01" id="order-edit-shipping" value="${escapeProfileHtml(order.shipping || 0)}" />
+                    </div>
+                    <div>
+                      <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Koszty dodatkowe</label>
+                      <input type="number" step="0.01" id="order-edit-additional" value="${escapeProfileHtml(order.additionalCosts || 0)}" />
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Paczkomat</label>
+                      <input type="text" id="order-edit-parcel" value="${escapeProfileHtml(order.parcelLocker || "")}" />
+                    </div>
+                    <div>
+                      <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Miasto</label>
+                      <input type="text" id="order-edit-city" value="${escapeProfileHtml(order.address?.city || "")}" />
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Ulica</label>
+                      <input type="text" id="order-edit-street" value="${escapeProfileHtml(order.address?.street || "")}" />
+                    </div>
+                    <div>
+                      <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Budynek</label>
+                      <input type="text" id="order-edit-building" value="${escapeProfileHtml(order.address?.buildingNumber || "")}" />
+                    </div>
+                    <div>
+                      <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Kod pocztowy</label>
+                      <input type="text" id="order-edit-postal" value="${escapeProfileHtml(order.address?.postalCode || "")}" />
+                    </div>
+                  </div>
+                  <div class="flex justify-end gap-4 pt-4 border-t border-zinc-700">
+                    <button type="button" onclick="closeProfileDynamicModal('order-edit-modal')" class="bg-zinc-700 text-white px-6 py-3 rounded-lg hover:bg-zinc-600 transition">Anuluj</button>
+                    <button type="submit" class="btn-save">Zapisz zmiany</button>
+                  </div>
+                </form>
+              </div>
+            `;
+            modal.classList.add("show");
+            document.body.style.overflow = "hidden";
+            modal.querySelector("#order-edit-form")?.addEventListener("submit", saveOrderEdit);
+          };
+
+          async function saveOrderEdit(event) {
+            event.preventDefault();
+            const orderId = document.getElementById("order-edit-id")?.value;
+            if (!orderId) return;
+            try {
+              const headers = await getProfileApiHeaders();
+              const apiUrl = getStrzelcaApiUrl("/api/orders");
+              const response = await fetch(apiUrl, {
+                method: "PUT",
+                headers,
+                credentials: apiUrl.startsWith("http") ? "include" : "same-origin",
+                body: JSON.stringify({
+                  id: orderId,
+                  orderDetails: document.getElementById("order-edit-details")?.value || "",
+                  notes: document.getElementById("order-edit-notes")?.value || "",
+                  price: document.getElementById("order-edit-price")?.value || 0,
+                  shipping: document.getElementById("order-edit-shipping")?.value || 0,
+                  additionalCosts: document.getElementById("order-edit-additional")?.value || 0,
+                  phone: document.getElementById("order-edit-phone")?.value || "",
+                  parcelLocker: document.getElementById("order-edit-parcel")?.value || "",
+                  address: {
+                    street: document.getElementById("order-edit-street")?.value || "",
+                    buildingNumber: document.getElementById("order-edit-building")?.value || "",
+                    postalCode: document.getElementById("order-edit-postal")?.value || "",
+                    city: document.getElementById("order-edit-city")?.value || "",
+                  },
+                }),
+              });
+              const data = await response.json().catch(() => null);
+              if (!response.ok || !data?.success) {
+                throw new Error(data?.error || "Nie udało się zapisać zamówienia.");
+              }
+              closeProfileDynamicModal("order-edit-modal");
+              await loadMyOrders();
+              alert("Zmiany w zamówieniu zostały zapisane.");
+            } catch (error) {
+              console.error("saveOrderEdit:", error);
+              alert(error.message || "Nie udało się zapisać zmian.");
+            }
+          }
+
+          window.cancelOrderByUser = async function (orderId) {
+            const order = profileOrdersCache.find((item) => item.id === orderId);
+            if (!order) return;
+            if (!confirm(`Czy na pewno anulować zamówienie ${order.orderNumber || ""}?`)) return;
+            try {
+              const headers = await getProfileApiHeaders();
+              delete headers["Content-Type"];
+              const apiUrl = `${getStrzelcaApiUrl("/api/orders")}?id=${encodeURIComponent(orderId)}`;
+              const response = await fetch(apiUrl, {
+                method: "DELETE",
+                headers,
+                credentials: apiUrl.startsWith("http") ? "include" : "same-origin",
+              });
+              const data = await response.json().catch(() => null);
+              if (!response.ok || !data?.success) {
+                throw new Error(data?.error || "Nie udało się anulować zamówienia.");
+              }
+              await loadMyOrders();
+              alert("Zamówienie zostało anulowane.");
+            } catch (error) {
+              console.error("cancelOrderByUser:", error);
+              alert(error.message || "Nie udało się anulować zamówienia.");
+            }
+          };
+
+          window.payOrder = async function (orderId) {
+            const order = profileOrdersCache.find((item) => item.id === orderId);
+            if (!order?.paymentLinkUrl) {
+              alert("Brak linku do płatności dla tego zamówienia.");
+              return;
+            }
+            try {
+              const headers = await getProfileApiHeaders();
+              const apiUrl = getStrzelcaApiUrl("/api/orders");
+              const response = await fetch(apiUrl, {
+                method: "PUT",
+                headers,
+                credentials: apiUrl.startsWith("http") ? "include" : "same-origin",
+                body: JSON.stringify({
+                  id: orderId,
+                  mode: "user_payment_attempt",
+                }),
+              });
+              const data = await response.json().catch(() => null);
+              if (!response.ok || !data?.success) {
+                throw new Error(data?.error || "Nie udało się rozpocząć płatności.");
+              }
+              await loadMyOrders();
+              const opened = window.open(order.paymentLinkUrl, "_blank", "noopener");
+              if (!opened) {
+                window.location.href = order.paymentLinkUrl;
+              }
+            } catch (error) {
+              console.error("payOrder:", error);
+              alert(error.message || "Nie udało się rozpocząć płatności.");
+            }
+          };
+
+          window.openOrderQuoteAcceptModal = function (orderId) {
+            const order = profileOrdersCache.find((item) => item.id === orderId);
+            if (!order) return;
+            const modal = ensureProfileDynamicModal("order-quote-accept-modal");
+            modal.innerHTML = `
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h3 class="text-xl font-bold text-emerald-200">Akceptacja wyceny</h3>
+                  <button class="modal-close" onclick="closeProfileDynamicModal('order-quote-accept-modal')">&times;</button>
+                </div>
+                <div class="space-y-4">
+                  <p class="text-zinc-300">Czy na pewno chcesz zaakceptować wycenę dla zamówienia <strong>${escapeProfileHtml(order.orderNumber || "")}</strong>?</p>
+                  <div class="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
+                    Akceptacja jest wiążąca i oznacza, że zobowiązujesz się opłacić zamówienie.
+                  </div>
+                  <div class="flex justify-end gap-4 pt-4 border-t border-zinc-700">
+                    <button type="button" onclick="closeProfileDynamicModal('order-quote-accept-modal')" class="bg-zinc-700 text-white px-6 py-3 rounded-lg hover:bg-zinc-600 transition">Anuluj</button>
+                    <button type="button" onclick="acceptOrderQuote('${order.id}')" class="bg-emerald-500 text-black px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition">Akceptuję wycenę</button>
+                  </div>
+                </div>
+              </div>
+            `;
+            modal.classList.add("show");
+            document.body.style.overflow = "hidden";
+          };
+
+          window.acceptOrderQuote = async function (orderId) {
+            try {
+              const headers = await getProfileApiHeaders();
+              const apiUrl = getStrzelcaApiUrl("/api/orders");
+              const response = await fetch(apiUrl, {
+                method: "PUT",
+                headers,
+                credentials: apiUrl.startsWith("http") ? "include" : "same-origin",
+                body: JSON.stringify({
+                  id: orderId,
+                  mode: "user_quote_response",
+                  decision: "accept",
+                }),
+              });
+              const data = await response.json().catch(() => null);
+              if (!response.ok || !data?.success) {
+                throw new Error(data?.error || "Nie udało się zaakceptować wyceny.");
+              }
+              closeProfileDynamicModal("order-quote-accept-modal");
+              await loadMyOrders();
+              alert("Wycena została zaakceptowana.");
+            } catch (error) {
+              console.error("acceptOrderQuote:", error);
+              alert(error.message || "Nie udało się zaakceptować wyceny.");
+            }
+          };
+
+          window.openOrderQuoteRejectModal = function (orderId) {
+            const modal = ensureProfileDynamicModal("order-quote-reject-modal");
+            modal.innerHTML = `
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h3 class="text-xl font-bold text-red-200">Odrzucenie wyceny</h3>
+                  <button class="modal-close" onclick="closeProfileDynamicModal('order-quote-reject-modal')">&times;</button>
+                </div>
+                <form id="order-quote-reject-form" class="space-y-4">
+                  <input type="hidden" id="order-quote-reject-id" value="${escapeProfileHtml(orderId)}" />
+                  <div>
+                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Powód odrzucenia</label>
+                    <textarea id="order-quote-reject-reason" rows="5" minlength="10" required></textarea>
+                  </div>
+                  <div class="flex justify-end gap-4 pt-4 border-t border-zinc-700">
+                    <button type="button" onclick="closeProfileDynamicModal('order-quote-reject-modal')" class="bg-zinc-700 text-white px-6 py-3 rounded-lg hover:bg-zinc-600 transition">Anuluj</button>
+                    <button type="submit" class="bg-red-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-400 transition">Odrzuć</button>
+                  </div>
+                </form>
+              </div>
+            `;
+            modal.classList.add("show");
+            document.body.style.overflow = "hidden";
+            modal.querySelector("#order-quote-reject-form")?.addEventListener("submit", submitOrderQuoteRejection);
+          };
+
+          async function submitOrderQuoteRejection(event) {
+            event.preventDefault();
+            const orderId = document.getElementById("order-quote-reject-id")?.value;
+            const reason = (document.getElementById("order-quote-reject-reason")?.value || "").trim();
+            if (reason.length < 10) {
+              alert("Powód odrzucenia musi mieć co najmniej 10 znaków.");
+              return;
+            }
+            try {
+              const headers = await getProfileApiHeaders();
+              const apiUrl = getStrzelcaApiUrl("/api/orders");
+              const response = await fetch(apiUrl, {
+                method: "PUT",
+                headers,
+                credentials: apiUrl.startsWith("http") ? "include" : "same-origin",
+                body: JSON.stringify({
+                  id: orderId,
+                  mode: "user_quote_response",
+                  decision: "reject",
+                  rejectionReason: reason,
+                }),
+              });
+              const data = await response.json().catch(() => null);
+              if (!response.ok || !data?.success) {
+                throw new Error(data?.error || "Nie udało się odrzucić wyceny.");
+              }
+              closeProfileDynamicModal("order-quote-reject-modal");
+              await loadMyOrders();
+              alert("Wycena została odrzucona.");
+            } catch (error) {
+              console.error("submitOrderQuoteRejection:", error);
+              alert(error.message || "Nie udało się odrzucić wyceny.");
+            }
+          }
+
+          function renderReturnClaimCards(items) {
+            const returnsList = document.getElementById("returns-list");
+            if (!returnsList) return;
+            returnsList.innerHTML = items
+              .map((item) => {
+                const canEdit = item.status === "zlozono";
+                const canRespond = item.status === "zaproponowano_rozwiazanie";
+                return `
+                  <div class="bg-zinc-800/50 rounded-lg p-6 border ${item.status === "anulowano_przez_administratora" || item.status === "anulowano_przez_klienta" ? "border-red-500/60 opacity-70" : `${item.verificationBorder || "border-zinc-700"}`}">
+                    <div class="flex flex-col gap-4 md:flex-row md:justify-between md:items-start mb-4">
+                      <div>
+                        <div class="flex flex-wrap items-center gap-2 mb-2">
+                          <h3 class="text-lg font-bold text-white">${escapeProfileHtml(item.claimNumber || "Brak numeru")}</h3>
+                          <span class="px-3 py-1 rounded text-xs font-medium border ${item.statusColor || "border-zinc-600 text-zinc-300"}">
+                            ${escapeProfileHtml(item.statusLabel || item.status || "")}
+                          </span>
+                          <span class="px-3 py-1 rounded text-xs font-medium border ${item.verified ? "border-coyote/40 text-coyote bg-coyote/10" : "border-sky-500/40 text-sky-300 bg-sky-500/10"}">
+                            ${escapeProfileHtml(item.verificationLabel || "")}
+                          </span>
+                        </div>
+                        <div class="text-sm text-zinc-400">${escapeProfileHtml(item.createdAtFormatted || "")}</div>
+                      </div>
+                      <div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="openReturnClaimDetails('${item.id}')" class="bg-zinc-700 text-white px-4 py-2 rounded-lg hover:bg-zinc-600 transition">
+                          <i class="fa-solid fa-eye mr-2"></i>Szczegóły
+                        </button>
+                        ${
+                          canEdit
+                            ? `<button type="button" onclick="openReturnClaimEditModal('${item.id}')" class="bg-coyote text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition">
+                                <i class="fa-solid fa-pen mr-2"></i>Edytuj
+                              </button>
+                              <button type="button" onclick="cancelReturnClaimByUser('${item.id}')" class="bg-red-500/15 border border-red-500/40 text-red-300 px-4 py-2 rounded-lg font-semibold hover:bg-red-500/25 transition">
+                                <i class="fa-solid fa-ban mr-2"></i>Anuluj
+                              </button>`
+                            : ""
+                        }
+                        ${
+                          canRespond
+                            ? `<button type="button" onclick="acceptReturnClaimProposal('${item.id}')" class="bg-emerald-500 text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition">
+                                <i class="fa-solid fa-check mr-2"></i>Akceptuj
+                              </button>
+                              <button type="button" onclick="openReturnClaimRejectModal('${item.id}')" class="bg-red-500/15 border border-red-500/40 text-red-300 px-4 py-2 rounded-lg font-semibold hover:bg-red-500/25 transition">
+                                <i class="fa-solid fa-xmark mr-2"></i>Odrzuć
+                              </button>`
+                            : ""
+                        }
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div><span class="text-zinc-500">Typ:</span> <span class="text-zinc-100">${escapeProfileHtml(item.typeLabel || item.type || "")}</span></div>
+                      <div><span class="text-zinc-500">Zamówienie:</span> <span class="text-zinc-100">${escapeProfileHtml(item.orderNumber || "—")}</span></div>
+                      <div><span class="text-zinc-500">Faktura:</span> <span class="text-zinc-100">${escapeProfileHtml(item.invoiceNumber || "—")}</span></div>
+                      <div><span class="text-zinc-500">Żądanie:</span> <span class="text-zinc-100">${escapeProfileHtml(item.requestKind || "—")}</span></div>
+                    </div>
+                  </div>
+                `;
+              })
+              .join("");
+          }
+
+          window.loadMyReturns = async function () {
+            try {
+              if (!currentUser || !isViewingOwnProfile) return;
+              const returnsList = document.getElementById("returns-list");
+              if (!returnsList) return;
+              returnsList.innerHTML = `
+                <div class="text-center text-zinc-500 py-8">
+                  <i class="fa-solid fa-spinner fa-spin text-2xl mb-4"></i>
+                  <p>Ładowanie zgłoszeń...</p>
+                </div>
+              `;
+              const headers = await getProfileApiHeaders();
+              const apiUrl = getStrzelcaApiUrl("/api/returns");
+              const response = await fetch(apiUrl, {
+                method: "GET",
+                headers,
+                credentials: apiUrl.startsWith("http") ? "include" : "same-origin",
+              });
+              const data = await response.json().catch(() => null);
+              if (!response.ok || !data?.success) {
+                throw new Error(data?.error || "Nie udało się pobrać zgłoszeń.");
+              }
+              profileReturnsCache = Array.isArray(data.data) ? data.data : [];
+              setProfileSectionVisible("returns-section", profileReturnsCache.length > 0 && isViewingOwnProfile);
+              if (!profileReturnsCache.length) return;
+              renderReturnClaimCards(profileReturnsCache);
+            } catch (error) {
+              console.error("loadMyReturns:", error);
+              setProfileSectionVisible("returns-section", true);
+              const returnsList = document.getElementById("returns-list");
+              if (returnsList) {
+                returnsList.innerHTML = `
+                  <div class="text-center text-red-400 py-8">
+                    <i class="fa-solid fa-exclamation-triangle text-4xl mb-4"></i>
+                    <p class="text-lg font-semibold mb-2">Błąd ładowania zgłoszeń</p>
+                    <p class="text-sm">${escapeProfileHtml(error.message)}</p>
+                  </div>
+                `;
+              }
+            }
+          };
+
+          function findReturnAttachment(eventId, attachmentId) {
+            const eventItem = activeReturnClaimDetail?.events?.find((item) => item.id === eventId);
+            return eventItem?.attachments?.find((item) => item.id === attachmentId) || null;
+          }
+
+          window.downloadReturnClaimAttachment = function (eventId, attachmentId) {
+            const item = findReturnAttachment(eventId, attachmentId);
+            if (!item) return;
+            triggerBase64Download(item.dataBase64, item.mimeType || "image/jpeg", item.fileName || "zalacznik.jpg");
+          };
+
+          function renderReturnClaimTimeline(events) {
+            if (!Array.isArray(events) || !events.length) {
+              return `<div class="text-sm text-zinc-500">Brak historii zgłoszenia.</div>`;
+            }
+            return events
+              .map((eventItem) => {
+                const attachmentsHtml = (eventItem.attachments || [])
+                  .map(
+                    (attachment) => `
+                      <div class="rounded-lg border border-zinc-700 p-3 bg-zinc-950/70">
+                        <div class="text-sm text-zinc-200 mb-2">${escapeProfileHtml(attachment.label || attachment.fileName || "Załącznik")}</div>
+                        <img src="data:${attachment.mimeType};base64,${attachment.dataBase64}" alt="${escapeProfileHtml(attachment.fileName || "Załącznik")}" class="w-full max-h-56 object-contain rounded-lg bg-black/30 mb-3" />
+                        <button type="button" onclick="downloadReturnClaimAttachment('${eventItem.id}','${attachment.id}')" class="bg-zinc-700 text-white px-4 py-2 rounded-lg hover:bg-zinc-600 transition text-sm">
+                          <i class="fa-solid fa-download mr-2"></i>Pobierz
+                        </button>
+                      </div>
+                    `,
+                  )
+                  .join("");
+                return `
+                  <div class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
+                    <div class="flex flex-wrap items-center gap-3 mb-3">
+                      <span class="px-3 py-1 rounded text-xs font-medium border ${activeReturnClaimDetail?.statusColor || "border-zinc-600 text-zinc-300"}">${escapeProfileHtml(eventItem.statusLabel || eventItem.status || "")}</span>
+                      <span class="text-sm text-zinc-400">${escapeProfileHtml(eventItem.createdAtFormatted || "")}</span>
+                      <span class="text-sm text-zinc-500">${escapeProfileHtml(eventItem.actorName || eventItem.actorRole || "")}</span>
+                    </div>
+                    ${eventItem.comment ? `<div class="text-sm text-zinc-200 mb-2"><strong>Komentarz:</strong><br>${nl2brProfile(eventItem.comment)}</div>` : ""}
+                    ${eventItem.justification ? `<div class="text-sm text-zinc-200 mb-2"><strong>Uzasadnienie:</strong><br>${nl2brProfile(eventItem.justification)}</div>` : ""}
+                    ${eventItem.solutionText ? `<div class="text-sm text-zinc-200 mb-2"><strong>Proponowane rozwiązanie:</strong><br>${nl2brProfile(eventItem.solutionText)}</div>` : ""}
+                    ${eventItem.refundMethod ? `<div class="text-sm text-zinc-200 mb-2"><strong>Forma zwrotu:</strong> ${escapeProfileHtml(eventItem.refundMethod)} ${eventItem.refundExtra ? `- ${escapeProfileHtml(eventItem.refundExtra)}` : ""}</div>` : ""}
+                    ${eventItem.userResponseReason ? `<div class="text-sm text-zinc-200 mb-2"><strong>Powód odrzucenia:</strong><br>${nl2brProfile(eventItem.userResponseReason)}</div>` : ""}
+                    ${eventItem.userResponseExpectations ? `<div class="text-sm text-zinc-200 mb-3"><strong>Oczekiwania:</strong><br>${nl2brProfile(eventItem.userResponseExpectations)}</div>` : ""}
+                    ${attachmentsHtml ? `<div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">${attachmentsHtml}</div>` : ""}
+                  </div>
+                `;
+              })
+              .join("");
+          }
+
+          window.openReturnClaimDetails = async function (claimId) {
+            try {
+              const headers = await getProfileApiHeaders();
+              const apiUrl = `${getStrzelcaApiUrl("/api/returns")}?id=${encodeURIComponent(claimId)}`;
+              const response = await fetch(apiUrl, {
+                method: "GET",
+                headers,
+                credentials: apiUrl.startsWith("http") ? "include" : "same-origin",
+              });
+              const data = await response.json().catch(() => null);
+              if (!response.ok || !data?.success) {
+                throw new Error(data?.error || "Nie udało się pobrać szczegółów zgłoszenia.");
+              }
+              activeReturnClaimDetail = data.data;
+              const item = activeReturnClaimDetail;
+              const detailActionButtons = item.status === "zaproponowano_rozwiazanie"
+                ? `<div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="acceptReturnClaimProposal('${item.id}')" class="bg-emerald-500 text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition">
+                      <i class="fa-solid fa-check mr-2"></i>Akceptuj
+                    </button>
+                    <button type="button" onclick="openReturnClaimRejectModal('${item.id}')" class="bg-red-500/15 border border-red-500/40 text-red-300 px-4 py-2 rounded-lg font-semibold hover:bg-red-500/25 transition">
+                      <i class="fa-solid fa-xmark mr-2"></i>Odrzuć
+                    </button>
+                  </div>`
+                : item.status === "zlozono"
+                  ? `<div class="flex flex-wrap gap-2">
+                      <button type="button" onclick="openReturnClaimEditModal('${item.id}')" class="bg-coyote text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition">
+                        <i class="fa-solid fa-pen mr-2"></i>Edytuj
+                      </button>
+                      <button type="button" onclick="cancelReturnClaimByUser('${item.id}')" class="bg-red-500/15 border border-red-500/40 text-red-300 px-4 py-2 rounded-lg font-semibold hover:bg-red-500/25 transition">
+                        <i class="fa-solid fa-ban mr-2"></i>Anuluj
+                      </button>
+                    </div>`
+                  : "";
+              const modal = ensureProfileDynamicModal("return-claim-details-modal");
+              modal.innerHTML = `
+                <div class="modal-content modal-content--wide">
+                  <div class="modal-header">
+                    <div>
+                      <h3 class="text-xl font-bold coyote-text">${escapeProfileHtml(item.claimNumber || "Szczegóły zgłoszenia")}</h3>
+                    </div>
+                    <div class="flex items-center gap-3">
+                      ${detailActionButtons}
+                      <button class="modal-close" onclick="closeProfileDynamicModal('return-claim-details-modal')">&times;</button>
+                    </div>
+                  </div>
+                  <div class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div><span class="text-zinc-500">Typ:</span> <span class="text-zinc-100">${escapeProfileHtml(item.typeLabel || item.type || "")}</span></div>
+                      <div><span class="text-zinc-500">Status:</span> <span class="text-zinc-100">${escapeProfileHtml(item.statusLabel || item.status || "")}</span></div>
+                      <div><span class="text-zinc-500">Weryfikacja:</span> <span class="text-zinc-100">${escapeProfileHtml(item.verificationLabel || "")}</span></div>
+                      <div><span class="text-zinc-500">Zamówienie:</span> <span class="text-zinc-100">${escapeProfileHtml(item.orderNumber || "—")}</span></div>
+                      <div><span class="text-zinc-500">Faktura:</span> <span class="text-zinc-100">${escapeProfileHtml(item.invoiceNumber || "—")}</span></div>
+                      <div><span class="text-zinc-500">Żądanie:</span> <span class="text-zinc-100">${escapeProfileHtml(item.requestKind || "—")}</span></div>
+                      <div><span class="text-zinc-500">Telefon:</span> <span class="text-zinc-100">${escapeProfileHtml(item.phone || "—")}</span></div>
+                      <div><span class="text-zinc-500">E-mail:</span> <span class="text-zinc-100">${escapeProfileHtml(item.email || "—")}</span></div>
+                      <div class="md:col-span-2"><span class="text-zinc-500">Adres:</span> <span class="text-zinc-100">${escapeProfileHtml([item.address?.street, item.address?.buildingNumber ? `${item.address.buildingNumber}${item.address?.apartmentNumber ? `/${item.address.apartmentNumber}` : ""}` : "", item.address?.postalCode, item.address?.city].filter(Boolean).join(", ") || "—")}</span></div>
+                      <div class="md:col-span-2"><span class="text-zinc-500">Konto:</span> <span class="text-zinc-100">${escapeProfileHtml(item.bankAccountFormatted || item.bankAccountIban || "—")}</span></div>
+                      ${item.defectDescription ? `<div class="md:col-span-2"><span class="text-zinc-500">Opis wady:</span><div class="text-zinc-100 mt-1">${nl2brProfile(item.defectDescription)}</div></div>` : ""}
+                      ${item.returnReason ? `<div class="md:col-span-2"><span class="text-zinc-500">Powód zwrotu:</span><div class="text-zinc-100 mt-1">${nl2brProfile(item.returnReason)}</div></div>` : ""}
+                      ${item.additionalInfo ? `<div class="md:col-span-2"><span class="text-zinc-500">Dodatkowe informacje:</span><div class="text-zinc-100 mt-1">${nl2brProfile(item.additionalInfo)}</div></div>` : ""}
+                    </div>
+                    <div>
+                      <h4 class="text-lg font-semibold text-white mb-3">Historia zgłoszenia</h4>
+                      <div class="space-y-3">${renderReturnClaimTimeline(item.events || [])}</div>
+                    </div>
+                  </div>
+                </div>
+              `;
+              modal.classList.add("show");
+              document.body.style.overflow = "hidden";
+            } catch (error) {
+              console.error("openReturnClaimDetails:", error);
+              alert(error.message || "Nie udało się pobrać szczegółów zgłoszenia.");
+            }
+          };
+
+          function resetReturnClaimEditAttachmentsUi() {
+            const preview = document.getElementById("return-claim-edit-attachments-preview");
+            const status = document.getElementById("return-claim-edit-attachments-status");
+            if (preview) {
+              preview.innerHTML = returnClaimEditAttachments
+                .map(
+                  (item, index) => `
+                    <div class="rounded-xl border border-zinc-700 bg-zinc-950/80 p-2">
+                      <img src="data:${item.mimeType};base64,${item.dataBase64}" alt="Załącznik ${index + 1}" class="w-full h-24 object-cover rounded-lg mb-2" />
+                      <button type="button" onclick="removeReturnClaimEditAttachment(${index})" class="w-full text-[11px] font-semibold uppercase tracking-[0.18em] text-red-300 border border-red-500/40 rounded-lg px-2 py-1 hover:bg-red-500/10 transition">Usuń</button>
+                    </div>
+                  `,
+                )
+                .join("");
+            }
+            if (status) {
+              status.textContent = returnClaimEditAttachments.length
+                ? `Dodano ${returnClaimEditAttachments.length} z ${RETURN_ATTACHMENT_LIMIT} zdjęć.`
+                : "Możesz dodać maksymalnie 5 zdjęć. Zostaną automatycznie skompresowane.";
+            }
+          }
+
+          function loadImageFromFileProfile(file) {
+            return new Promise((resolve, reject) => {
+              const url = URL.createObjectURL(file);
+              const img = new Image();
+              img.onload = () => {
+                URL.revokeObjectURL(url);
+                resolve(img);
+              };
+              img.onerror = () => {
+                URL.revokeObjectURL(url);
+                reject(new Error("Nie można wczytać obrazu."));
+              };
+              img.src = url;
+            });
+          }
+
+          function blobToBase64Profile(blob) {
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const result = String(reader.result || "");
+                resolve(result.includes(",") ? result.split(",")[1] : result);
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+          }
+
+          async function compressReturnClaimAttachment(file) {
+            const type = String(file?.type || "").toLowerCase();
+            if (!/^image\/(jpeg|png|webp)$/.test(type)) {
+              throw new Error("Wybierz obraz JPG, PNG lub WebP.");
+            }
+            const img = await loadImageFromFileProfile(file);
+            let width = img.naturalWidth || img.width;
+            let height = img.naturalHeight || img.height;
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d", { alpha: false });
+            const maxSide = 1920;
+            if (Math.max(width, height) > maxSide) {
+              const scale = maxSide / Math.max(width, height);
+              width = Math.max(1, Math.round(width * scale));
+              height = Math.max(1, Math.round(height * scale));
+            }
+            canvas.width = width;
+            canvas.height = height;
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+            let quality = 0.88;
+            let blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+            while (blob && blob.size > 720 * 1024) {
+              quality -= 0.07;
+              if (quality < 0.42) {
+                break;
+              }
+              blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+            }
+            if (!blob) throw new Error("Nie udało się przygotować zdjęcia.");
+            return {
+              mimeType: "image/jpeg",
+              dataBase64: await blobToBase64Profile(blob),
+            };
+          }
+
+          window.removeReturnClaimEditAttachment = function (index) {
+            returnClaimEditAttachments.splice(index, 1);
+            resetReturnClaimEditAttachmentsUi();
+          };
+
+          window.openReturnClaimEditModal = async function (claimId) {
+            const listItem = profileReturnsCache.find((item) => item.id === claimId);
+            if (!listItem) return;
+            try {
+              const headers = await getProfileApiHeaders();
+              const apiUrl = `${getStrzelcaApiUrl("/api/returns")}?id=${encodeURIComponent(claimId)}`;
+              const response = await fetch(apiUrl, {
+                method: "GET",
+                headers,
+                credentials: apiUrl.startsWith("http") ? "include" : "same-origin",
+              });
+              const data = await response.json().catch(() => null);
+              if (!response.ok || !data?.success) {
+                throw new Error(data?.error || "Nie udało się pobrać zgłoszenia.");
+              }
+              const item = data.data;
+              returnClaimEditAttachments = [];
+              const modal = ensureProfileDynamicModal("return-claim-edit-modal");
+              modal.innerHTML = `
+                <div class="modal-content modal-content--wide">
+                  <div class="modal-header">
+                    <h3 class="text-xl font-bold coyote-text">Edycja zgłoszenia ${escapeProfileHtml(item.claimNumber || "")}</h3>
+                    <button class="modal-close" onclick="closeProfileDynamicModal('return-claim-edit-modal')">&times;</button>
+                  </div>
+                  <form id="return-claim-edit-form" class="space-y-4">
+                    <input type="hidden" id="return-claim-edit-id" value="${escapeProfileHtml(item.id)}" />
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Imię</label><input type="text" id="return-claim-edit-first" value="${escapeProfileHtml(item.firstName || "")}" /></div>
+                      <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Nazwisko</label><input type="text" id="return-claim-edit-last" value="${escapeProfileHtml(item.lastName || "")}" /></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">E-mail</label><input type="email" value="${escapeProfileHtml(item.email || "")}" readonly /></div>
+                      <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Telefon</label><input type="text" id="return-claim-edit-phone" value="${escapeProfileHtml(item.phone || "")}" /></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Ulica</label><input type="text" id="return-claim-edit-street" value="${escapeProfileHtml(item.address?.street || "")}" /></div>
+                      <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Budynek</label><input type="text" id="return-claim-edit-building" value="${escapeProfileHtml(item.address?.buildingNumber || "")}" /></div>
+                      <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Lokal</label><input type="text" id="return-claim-edit-apartment" value="${escapeProfileHtml(item.address?.apartmentNumber || "")}" /></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Kod pocztowy</label><input type="text" id="return-claim-edit-postal" value="${escapeProfileHtml(item.address?.postalCode || "")}" /></div>
+                      <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Miasto</label><input type="text" id="return-claim-edit-city" value="${escapeProfileHtml(item.address?.city || "")}" /></div>
+                    </div>
+                    <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Numer konta / IBAN</label><input type="text" id="return-claim-edit-bank" value="${escapeProfileHtml(item.bankAccountIban || "")}" /></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Numer zamówienia</label><input type="text" id="return-claim-edit-order" value="${escapeProfileHtml(item.orderNumber || "")}" /></div>
+                      <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Numer faktury</label><input type="text" id="return-claim-edit-invoice" value="${escapeProfileHtml(item.invoiceNumber || "")}" /></div>
+                    </div>
+                    <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Żądanie</label><input type="text" id="return-claim-edit-request-kind" value="${escapeProfileHtml(item.requestKind || "")}" /></div>
+                    ${item.defectDescription !== undefined ? `<div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Opis wady</label><textarea id="return-claim-edit-defect" rows="4">${escapeProfileHtml(item.defectDescription || "")}</textarea></div>` : ""}
+                    ${item.returnReason !== undefined ? `<div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Powód zwrotu</label><textarea id="return-claim-edit-reason" rows="4">${escapeProfileHtml(item.returnReason || "")}</textarea></div>` : ""}
+                    <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Dodatkowe informacje</label><textarea id="return-claim-edit-additional" rows="3">${escapeProfileHtml(item.additionalInfo || "")}</textarea></div>
+                    <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Komentarz do edycji</label><textarea id="return-claim-edit-comment" rows="3" placeholder="Opcjonalny opis zmian widoczny w historii"></textarea></div>
+                    <div>
+                      <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Zdjęcia do edycji</label>
+                      <input type="file" id="return-claim-edit-attachments" accept="image/jpeg,image/png,image/webp" multiple />
+                      <p id="return-claim-edit-attachments-status" class="text-xs text-zinc-500 mt-2"></p>
+                      <div id="return-claim-edit-attachments-preview" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3"></div>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-4 border-t border-zinc-700">
+                      <button type="button" onclick="closeProfileDynamicModal('return-claim-edit-modal')" class="bg-zinc-700 text-white px-6 py-3 rounded-lg hover:bg-zinc-600 transition">Anuluj</button>
+                      <button type="submit" class="btn-save">Zapisz zmiany</button>
+                    </div>
+                  </form>
+                </div>
+              `;
+              modal.classList.add("show");
+              document.body.style.overflow = "hidden";
+              resetReturnClaimEditAttachmentsUi();
+              modal.querySelector("#return-claim-edit-form")?.addEventListener("submit", saveReturnClaimEdit);
+              modal.querySelector("#return-claim-edit-attachments")?.addEventListener("change", async (changeEvent) => {
+                const files = Array.from(changeEvent.target.files || []);
+                if (!files.length) return;
+                if (returnClaimEditAttachments.length + files.length > RETURN_ATTACHMENT_LIMIT) {
+                  alert("Można dodać maksymalnie 5 zdjęć.");
+                  changeEvent.target.value = "";
+                  return;
+                }
+                try {
+                  for (const file of files) {
+                    returnClaimEditAttachments.push(await compressReturnClaimAttachment(file));
+                  }
+                  resetReturnClaimEditAttachmentsUi();
+                } catch (error) {
+                  alert(error.message || "Nie udało się przygotować zdjęcia.");
+                } finally {
+                  changeEvent.target.value = "";
+                }
+              });
+            } catch (error) {
+              console.error("openReturnClaimEditModal:", error);
+              alert(error.message || "Nie udało się otworzyć edycji zgłoszenia.");
+            }
+          };
+
+          async function saveReturnClaimEdit(event) {
+            event.preventDefault();
+            const claimId = document.getElementById("return-claim-edit-id")?.value;
+            if (!claimId) return;
+            try {
+              const headers = await getProfileApiHeaders();
+              const apiUrl = getStrzelcaApiUrl("/api/returns");
+              const response = await fetch(apiUrl, {
+                method: "PUT",
+                headers,
+                credentials: apiUrl.startsWith("http") ? "include" : "same-origin",
+                body: JSON.stringify({
+                  id: claimId,
+                  firstName: document.getElementById("return-claim-edit-first")?.value || "",
+                  lastName: document.getElementById("return-claim-edit-last")?.value || "",
+                  phone: document.getElementById("return-claim-edit-phone")?.value || "",
+                  street: document.getElementById("return-claim-edit-street")?.value || "",
+                  buildingNumber: document.getElementById("return-claim-edit-building")?.value || "",
+                  apartmentNumber: document.getElementById("return-claim-edit-apartment")?.value || "",
+                  postalCode: document.getElementById("return-claim-edit-postal")?.value || "",
+                  city: document.getElementById("return-claim-edit-city")?.value || "",
+                  bankAccount: document.getElementById("return-claim-edit-bank")?.value || "",
+                  orderNumber: document.getElementById("return-claim-edit-order")?.value || "",
+                  invoiceNumber: document.getElementById("return-claim-edit-invoice")?.value || "",
+                  requestKind: document.getElementById("return-claim-edit-request-kind")?.value || "",
+                  defectDescription: document.getElementById("return-claim-edit-defect")?.value,
+                  returnReason: document.getElementById("return-claim-edit-reason")?.value,
+                  additionalInfo: document.getElementById("return-claim-edit-additional")?.value || "",
+                  comment: document.getElementById("return-claim-edit-comment")?.value || "",
+                  images: returnClaimEditAttachments,
+                }),
+              });
+              const data = await response.json().catch(() => null);
+              if (!response.ok || !data?.success) {
+                throw new Error(data?.error || "Nie udało się zapisać zgłoszenia.");
+              }
+              closeProfileDynamicModal("return-claim-edit-modal");
+              await loadMyReturns();
+              alert("Zmiany w zgłoszeniu zostały zapisane.");
+            } catch (error) {
+              console.error("saveReturnClaimEdit:", error);
+              alert(error.message || "Nie udało się zapisać zmian.");
+            }
+          }
+
+          window.cancelReturnClaimByUser = async function (claimId) {
+            const item = profileReturnsCache.find((entry) => entry.id === claimId);
+            if (!item) return;
+            if (!confirm(`Czy na pewno anulować zgłoszenie ${item.claimNumber || ""}?`)) return;
+            try {
+              const headers = await getProfileApiHeaders();
+              delete headers["Content-Type"];
+              const apiUrl = `${getStrzelcaApiUrl("/api/returns")}?id=${encodeURIComponent(claimId)}`;
+              const response = await fetch(apiUrl, {
+                method: "DELETE",
+                headers,
+                credentials: apiUrl.startsWith("http") ? "include" : "same-origin",
+              });
+              const data = await response.json().catch(() => null);
+              if (!response.ok || !data?.success) {
+                throw new Error(data?.error || "Nie udało się anulować zgłoszenia.");
+              }
+              await loadMyReturns();
+              alert("Zgłoszenie zostało anulowane.");
+            } catch (error) {
+              console.error("cancelReturnClaimByUser:", error);
+              alert(error.message || "Nie udało się anulować zgłoszenia.");
+            }
+          };
+
+          window.acceptReturnClaimProposal = async function (claimId) {
+            if (!confirm("Akceptacja propozycji jest zobowiazujaca. Czy chcesz kontynuowac?")) return;
+            try {
+              const headers = await getProfileApiHeaders();
+              const apiUrl = getStrzelcaApiUrl("/api/returns");
+              const response = await fetch(apiUrl, {
+                method: "PUT",
+                headers,
+                credentials: apiUrl.startsWith("http") ? "include" : "same-origin",
+                body: JSON.stringify({
+                  id: claimId,
+                  mode: "user_response",
+                  decision: "accept",
+                }),
+              });
+              const data = await response.json().catch(() => null);
+              if (!response.ok || !data?.success) {
+                throw new Error(data?.error || "Nie udało się zaakceptować propozycji.");
+              }
+              await loadMyReturns();
+              if (activeReturnClaimDetail?.id === claimId) {
+                closeProfileDynamicModal("return-claim-details-modal");
+              }
+              alert("Propozycja została zaakceptowana.");
+            } catch (error) {
+              console.error("acceptReturnClaimProposal:", error);
+              alert(error.message || "Nie udało się zaakceptować propozycji.");
+            }
+          };
+
+          window.openReturnClaimRejectModal = function (claimId) {
+            const modal = ensureProfileDynamicModal("return-claim-reject-modal");
+            modal.innerHTML = `
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h3 class="text-xl font-bold text-red-200">Odrzucenie propozycji</h3>
+                  <button class="modal-close" onclick="closeProfileDynamicModal('return-claim-reject-modal')">&times;</button>
+                </div>
+                <form id="return-claim-reject-form" class="space-y-4">
+                  <input type="hidden" id="return-claim-reject-id" value="${escapeProfileHtml(claimId)}" />
+                  <div>
+                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Powód odrzucenia</label>
+                    <textarea id="return-claim-reject-reason" rows="4" minlength="5" required></textarea>
+                  </div>
+                  <div>
+                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Oczekiwania</label>
+                    <textarea id="return-claim-reject-expectations" rows="4" minlength="5" required></textarea>
+                  </div>
+                  <div class="flex justify-end gap-4 pt-4 border-t border-zinc-700">
+                    <button type="button" onclick="closeProfileDynamicModal('return-claim-reject-modal')" class="bg-zinc-700 text-white px-6 py-3 rounded-lg hover:bg-zinc-600 transition">Anuluj</button>
+                    <button type="submit" class="btn-save">Zatwierdź</button>
+                  </div>
+                </form>
+              </div>
+            `;
+            modal.classList.add("show");
+            document.body.style.overflow = "hidden";
+            modal.querySelector("#return-claim-reject-form")?.addEventListener("submit", submitReturnClaimRejection);
+          };
+
+          async function submitReturnClaimRejection(event) {
+            event.preventDefault();
+            const claimId = document.getElementById("return-claim-reject-id")?.value;
+            const reason = document.getElementById("return-claim-reject-reason")?.value || "";
+            const expectations = document.getElementById("return-claim-reject-expectations")?.value || "";
+            try {
+              const headers = await getProfileApiHeaders();
+              const apiUrl = getStrzelcaApiUrl("/api/returns");
+              const response = await fetch(apiUrl, {
+                method: "PUT",
+                headers,
+                credentials: apiUrl.startsWith("http") ? "include" : "same-origin",
+                body: JSON.stringify({
+                  id: claimId,
+                  mode: "user_response",
+                  decision: "reject",
+                  userResponseReason: reason,
+                  userResponseExpectations: expectations,
+                }),
+              });
+              const data = await response.json().catch(() => null);
+              if (!response.ok || !data?.success) {
+                throw new Error(data?.error || "Nie udało się odrzucić propozycji.");
+              }
+              closeProfileDynamicModal("return-claim-reject-modal");
+              if (activeReturnClaimDetail?.id === claimId) {
+                closeProfileDynamicModal("return-claim-details-modal");
+              }
+              await loadMyReturns();
+              alert("Propozycja została odrzucona.");
+            } catch (error) {
+              console.error("submitReturnClaimRejection:", error);
+              alert(error.message || "Nie udało się odrzucić propozycji.");
+            }
+          }
+
+          // Pokazanie sekcji zamówień i zwrotów tylko dla własnego profilu oraz tylko gdy mają wpisy
+          function showOrdersSectionIfOwnProfile() {
+            if (!isViewingOwnProfile) {
+              setProfileSectionVisible("orders-section", false);
+              setProfileSectionVisible("returns-section", false);
+              return;
+            }
+            loadMyOrders();
+            loadMyReturns();
           }
 
           // ===== KONIEC FUNKCJI ZAMÓWIEŃ =====

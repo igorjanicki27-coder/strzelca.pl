@@ -798,12 +798,24 @@
         color: white;
       }
       .role-user {
-        background: white;
-        color: black;
+        background: #52525b;
+        color: white;
+      }
+      .role-user-verified {
+        background: #16a34a;
+        color: white;
       }
       .role-company {
-        background: var(--coyote);
-        color: black;
+        background: #2563eb;
+        color: white;
+      }
+      .role-operator {
+        background: #06b6d4;
+        color: white;
+      }
+      .role-moderator {
+        background: #7c3aed;
+        color: white;
       }
 
       .nav-section-title {
@@ -1051,6 +1063,10 @@
                 <i class="fa-solid fa-shopping-bag mr-2"></i>
                 Zamówienia
               </div>
+              <div class="nav-item" data-tab="returns">
+                <i class="fa-solid fa-rotate-left mr-2"></i>
+                Zwroty
+              </div>
               <div class="nav-item" data-tab="users">
                 <i class="fa-solid fa-users mr-2"></i>
                 Użytkownicy
@@ -1099,6 +1115,10 @@
             <div class="nav-item" data-tab="email-templates">
               <i class="fa-solid fa-envelope mr-2"></i>
               Szablony maili
+            </div>
+            <div class="nav-item" data-tab="promo-codes">
+              <i class="fa-solid fa-ticket mr-2"></i>
+              Kody
             </div>
           </div>
         </nav>
@@ -1528,6 +1548,20 @@
                 data-filter="company"
               >
                 Firmy
+              </button>
+              <button
+                onclick="filterUsers('operator')"
+                class="user-filter-btn px-4 py-2 border border-zinc-700 rounded text-sm uppercase"
+                data-filter="operator"
+              >
+                Operatorzy
+              </button>
+              <button
+                onclick="filterUsers('moderator')"
+                class="user-filter-btn px-4 py-2 border border-zinc-700 rounded text-sm uppercase"
+                data-filter="moderator"
+              >
+                Moderatorzy
               </button>
             </div>
 
@@ -2076,10 +2110,34 @@
             </div>
 
             <!-- Statystyki -->
-            <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
+            <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4 mb-8">
               <div class="admin-card text-center">
                 <div class="text-2xl font-bold text-white mb-1" id="orders-count-zlozone">0</div>
                 <div class="text-sm text-zinc-400">Złożone</div>
+              </div>
+              <div class="admin-card text-center">
+                <div class="text-2xl font-bold text-amber-300 mb-1" id="orders-count-wycena-zlozona">0</div>
+                <div class="text-sm text-zinc-400">Wycena złożona</div>
+              </div>
+              <div class="admin-card text-center">
+                <div class="text-2xl font-bold text-emerald-300 mb-1" id="orders-count-wycena-zaakceptowana">0</div>
+                <div class="text-sm text-zinc-400">Wycena zaakceptowana</div>
+              </div>
+              <div class="admin-card text-center">
+                <div class="text-2xl font-bold text-rose-300 mb-1" id="orders-count-wycena-odrzucona">0</div>
+                <div class="text-sm text-zinc-400">Wycena odrzucona</div>
+              </div>
+              <div class="admin-card text-center">
+                <div class="text-2xl font-bold text-sky-300 mb-1" id="orders-count-oczekuje-na-platnosc">0</div>
+                <div class="text-sm text-zinc-400">Oczekuje na płatność</div>
+              </div>
+              <div class="admin-card text-center">
+                <div class="text-2xl font-bold text-cyan-300 mb-1" id="orders-count-weryfikowanie-platnosci">0</div>
+                <div class="text-sm text-zinc-400">Weryfikowanie płatności</div>
+              </div>
+              <div class="admin-card text-center">
+                <div class="text-2xl font-bold text-red-300 mb-1" id="orders-count-platnosc-niepowodzenie">0</div>
+                <div class="text-sm text-zinc-400">Płatność nieudana</div>
               </div>
               <div class="admin-card text-center">
                 <div class="text-2xl font-bold text-orange-400 mb-1" id="orders-count-realizacja">0</div>
@@ -2114,6 +2172,30 @@
                   <i class="fa-solid fa-clock mr-2"></i>
                   Złożone
                 </button>
+                <button onclick="filterOrders('wycena_zlozona')" class="order-filter-btn" data-filter="wycena_zlozona">
+                  <i class="fa-solid fa-file-invoice-dollar mr-2"></i>
+                  Wycena złożona
+                </button>
+                <button onclick="filterOrders('wycena_zaakceptowana')" class="order-filter-btn" data-filter="wycena_zaakceptowana">
+                  <i class="fa-solid fa-thumbs-up mr-2"></i>
+                  Wycena zaakceptowana
+                </button>
+                <button onclick="filterOrders('wycena_odrzucona')" class="order-filter-btn" data-filter="wycena_odrzucona">
+                  <i class="fa-solid fa-thumbs-down mr-2"></i>
+                  Wycena odrzucona
+                </button>
+                <button onclick="filterOrders('oczekuje_na_platnosc')" class="order-filter-btn" data-filter="oczekuje_na_platnosc">
+                  <i class="fa-solid fa-credit-card mr-2"></i>
+                  Oczekuje na płatność
+                </button>
+                <button onclick="filterOrders('weryfikowanie_platnosci')" class="order-filter-btn" data-filter="weryfikowanie_platnosci">
+                  <i class="fa-solid fa-wallet mr-2"></i>
+                  Weryfikowanie płatności
+                </button>
+                <button onclick="filterOrders('platnosc_zakonczona_niepowodzeniem')" class="order-filter-btn" data-filter="platnosc_zakonczona_niepowodzeniem">
+                  <i class="fa-solid fa-triangle-exclamation mr-2"></i>
+                  Płatność nieudana
+                </button>
                 <button onclick="filterOrders('realizacja')" class="order-filter-btn" data-filter="realizacja">
                   <i class="fa-solid fa-cog mr-2"></i>
                   W realizacji
@@ -2137,6 +2219,111 @@
                 <div class="text-center text-zinc-500 py-12">
                   <i class="fa-solid fa-spinner fa-spin text-3xl mb-4 text-zinc-600"></i>
                   <h3 class="text-lg font-semibold mb-2">Ładowanie zamówień...</h3>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="tab-returns" class="tab-content">
+            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-8">
+              <div>
+                <h1 class="text-3xl font-bold coyote-text">Obsługa Zwrotów i Reklamacji</h1>
+                <p class="text-sm text-zinc-400 mt-2">Zweryfikowane i niezweryfikowane formularze, historia zmian, statusy i ręczne dodawanie.</p>
+              </div>
+              <div class="flex flex-wrap gap-3">
+                <button onclick="loadAdminReturnClaims()" class="btn-admin text-sm px-4 py-2">
+                  <i class="fa-solid fa-rotate mr-2"></i>Odśwież
+                </button>
+                <button onclick="openAdminReturnClaimManualModal()" class="btn-admin text-sm px-4 py-2">
+                  <i class="fa-solid fa-plus mr-2"></i>Dodaj formularz
+                </button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-4 mb-8">
+              <div class="admin-card text-center">
+                <div class="text-2xl font-bold text-coyote mb-1" id="returns-count-total">0</div>
+                <div class="text-sm text-zinc-400">Razem</div>
+              </div>
+              <div class="admin-card text-center">
+                <div class="text-2xl font-bold text-amber-300 mb-1" id="returns-count-zlozono">0</div>
+                <div class="text-sm text-zinc-400">Złożono</div>
+              </div>
+              <div class="admin-card text-center">
+                <div class="text-2xl font-bold text-orange-300 mb-1" id="returns-count-w-trakcie">0</div>
+                <div class="text-sm text-zinc-400">W realizacji</div>
+              </div>
+              <div class="admin-card text-center">
+                <div class="text-2xl font-bold text-sky-300 mb-1" id="returns-count-zaproponowano">0</div>
+                <div class="text-sm text-zinc-400">Propozycje</div>
+              </div>
+              <div class="admin-card text-center">
+                <div class="text-2xl font-bold text-green-300 mb-1" id="returns-count-positive">0</div>
+                <div class="text-sm text-zinc-400">Pozytywne</div>
+              </div>
+              <div class="admin-card text-center">
+                <div class="text-2xl font-bold text-red-300 mb-1" id="returns-count-negative">0</div>
+                <div class="text-sm text-zinc-400">Negatywne / anulowane</div>
+              </div>
+            </div>
+
+            <div id="returns-status-breakdown" class="flex flex-wrap gap-2 mb-8"></div>
+
+            <div class="admin-card mb-8">
+              <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
+                <div>
+                  <label class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">Status</label>
+                  <select id="returns-filter-status" onchange="applyAdminReturnClaimFilters()">
+                    <option value="all">Wszystkie statusy</option>
+                    <option value="wygenerowany">Wygenerowany</option>
+                    <option value="zlozono">Złożono</option>
+                    <option value="w_trakcie_realizacji">W trakcie realizacji</option>
+                    <option value="zaproponowano_rozwiazanie">Zaproponowano rozwiązanie</option>
+                    <option value="propozycja_zaakceptowana">Propozycja zaakceptowana</option>
+                    <option value="propozycja_odrzucona">Propozycja odrzucona</option>
+                    <option value="oczekiwanie_na_zwrot">Oczekiwanie na zwrot</option>
+                    <option value="rozpatrzono_pozytywnie">Rozpatrzono pozytywnie</option>
+                    <option value="rozpatrzono_negatywnie">Rozpatrzono negatywnie</option>
+                    <option value="anulowano_przez_administratora">Anulowano przez administratora</option>
+                    <option value="anulowano_przez_klienta">Anulowano przez klienta</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">Weryfikacja</label>
+                  <select id="returns-filter-verification" onchange="applyAdminReturnClaimFilters()">
+                    <option value="all">Wszystkie</option>
+                    <option value="verified">Zweryfikowane</option>
+                    <option value="unverified">Niezweryfikowane</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">Sortowanie</label>
+                  <select id="returns-filter-sort" onchange="applyAdminReturnClaimFilters()">
+                    <option value="updated_desc">Najnowsza aktywność</option>
+                    <option value="updated_asc">Najstarsza aktywność</option>
+                    <option value="created_desc">Najnowsze zgłoszenia</option>
+                    <option value="created_asc">Najstarsze zgłoszenia</option>
+                    <option value="status">Status</option>
+                  </select>
+                </div>
+                <div class="flex items-end">
+                  <label class="inline-flex items-center gap-3 text-sm text-zinc-300">
+                    <input type="checkbox" id="returns-filter-closed" onchange="applyAdminReturnClaimFilters()" />
+                    Pokaż zakończone
+                  </label>
+                </div>
+                <div class="flex items-end">
+                  <label class="inline-flex items-center gap-3 text-sm text-zinc-300">
+                    <input type="checkbox" id="returns-filter-stale-only" onchange="applyAdminReturnClaimFilters()" />
+                    Tylko zaległe 7+ dni
+                  </label>
+                </div>
+              </div>
+
+              <div id="returns-admin-container">
+                <div class="text-center text-zinc-500 py-12">
+                  <i class="fa-solid fa-spinner fa-spin text-3xl mb-4 text-zinc-600"></i>
+                  <h3 class="text-lg font-semibold mb-2">Ładowanie zgłoszeń...</h3>
                 </div>
               </div>
             </div>
@@ -2543,6 +2730,43 @@
               </div>
             </div>
           </div>
+
+          <div id="tab-promo-codes" class="tab-content">
+            <div class="grid grid-cols-1 gap-8 max-w-6xl mx-auto">
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h1 class="text-3xl font-bold coyote-text mb-2">Kody</h1>
+                  <p class="text-sm text-zinc-400 max-w-2xl">
+                    Zarządzanie kodami dostępu do szkoleń i kuponami rabatowymi dla sklepu oraz szkoleń. Kody są walidowane po stronie backendu i przechowywane w bazie w formie niejawnej.
+                  </p>
+                </div>
+                <button type="button" onclick="openPromoCodeModal()" class="btn-admin text-sm px-4 py-2 shrink-0 self-start sm:self-center">
+                  <i class="fa-solid fa-plus mr-2"></i>
+                  Utwórz kod
+                </button>
+              </div>
+
+              <div class="admin-card max-w-3xl">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <label class="inline-flex items-center gap-3 text-sm text-zinc-300">
+                    <input type="checkbox" id="promo-codes-show-expired" onchange="loadPromoCodes()" />
+                    <span>Pokaż wygasnięte kody</span>
+                  </label>
+                  <button type="button" onclick="loadPromoCodes()" class="text-sm px-4 py-2 rounded-lg border border-zinc-600 text-zinc-200 hover:border-coyote hover:text-coyote transition self-start">
+                    <i class="fa-solid fa-rotate mr-2"></i>
+                    Odśwież listę
+                  </button>
+                </div>
+              </div>
+
+              <div id="promo-codes-list" class="space-y-4">
+                <div class="text-center text-zinc-500 py-10">
+                  <i class="fa-solid fa-spinner fa-spin text-2xl mb-4 text-zinc-600"></i>
+                  <p class="text-sm">Ładowanie kodów…</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
           </div>
@@ -2739,15 +2963,27 @@
 
           <!-- Adres dostawy -->
           <div class="space-y-6 pt-6 border-t border-zinc-700">
-            <h3 class="text-xl font-bold coyote-text pb-2 border-b border-zinc-700">Adres dostawy</h3>
+            <h3 id="edit-address-section-title" class="text-xl font-bold coyote-text pb-2 border-b border-zinc-700">Adres dostawy</h3>
+            <div id="edit-company-section" class="hidden">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label class="text-sm text-zinc-400 block mb-2">Nazwa firmy</label>
+                  <input type="text" id="edit-company-name" placeholder="Nazwa firmy" />
+                </div>
+                <div>
+                  <label class="text-sm text-zinc-400 block mb-2">NIP</label>
+                  <input type="text" id="edit-company-nip" placeholder="123-456-32-18" inputmode="numeric" />
+                </div>
+              </div>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="space-y-4">
                 <div>
-                  <label class="text-sm text-zinc-400 block mb-2">Ulica</label>
+                  <label id="edit-street-label" class="text-sm text-zinc-400 block mb-2">Ulica</label>
                   <input type="text" id="edit-street" placeholder="Ulica" />
                 </div>
                 <div>
-                  <label class="text-sm text-zinc-400 block mb-2"
+                  <label id="edit-building-label" class="text-sm text-zinc-400 block mb-2"
                     >Numer budynku</label
                   >
                   <input
@@ -2757,7 +2993,7 @@
                   />
                 </div>
                 <div>
-                  <label class="text-sm text-zinc-400 block mb-2"
+                  <label id="edit-postal-label" class="text-sm text-zinc-400 block mb-2"
                     >Kod pocztowy</label
                   >
                   <input
@@ -2770,7 +3006,7 @@
 
               <div class="space-y-4">
                 <div>
-                  <label class="text-sm text-zinc-400 block mb-2">Miasto</label>
+                  <label id="edit-city-label" class="text-sm text-zinc-400 block mb-2">Miasto</label>
                   <input type="text" id="edit-city" placeholder="Miasto" />
                 </div>
                 <div>
@@ -2809,8 +3045,48 @@
                     <select id="edit-role" class="w-full">
                       <option value="user">Użytkownik</option>
                       <option value="company">Firma</option>
+                      <option value="operator">Operator</option>
+                      <option value="moderator">Moderator</option>
                       <option value="admin">Administrator</option>
                     </select>
+                  </div>
+                  <div id="edit-moderator-section" class="hidden rounded-lg border border-zinc-700 bg-zinc-800/50 p-4">
+                    <label id="edit-operator-section-label" class="text-sm text-zinc-300 block mb-3">Zakres operatora</label>
+                    <p id="edit-operator-help" class="text-xs text-zinc-400 mb-3 hidden"></p>
+                    <div id="edit-operator-scope-list" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <label class="flex items-center gap-2 text-sm text-zinc-200">
+                        <input type="checkbox" class="moderator-scope-checkbox w-4 h-4" value="users" />
+                        <span>Operator ds. użytkowników</span>
+                      </label>
+                      <label class="flex items-center gap-2 text-sm text-zinc-200">
+                        <input type="checkbox" class="moderator-scope-checkbox w-4 h-4" value="contact" />
+                        <span>Operator ds. kontaktu</span>
+                      </label>
+                      <label class="flex items-center gap-2 text-sm text-zinc-200">
+                        <input type="checkbox" class="moderator-scope-checkbox w-4 h-4" value="blog" />
+                        <span>Operator ds. bloga</span>
+                      </label>
+                      <label class="flex items-center gap-2 text-sm text-zinc-200">
+                        <input type="checkbox" class="moderator-scope-checkbox w-4 h-4" value="shop" />
+                        <span>Operator ds. sklepu</span>
+                      </label>
+                      <label class="flex items-center gap-2 text-sm text-zinc-200">
+                        <input type="checkbox" class="moderator-scope-checkbox w-4 h-4" value="help" />
+                        <span>Operator ds. pomocy</span>
+                      </label>
+                      <label class="flex items-center gap-2 text-sm text-zinc-200">
+                        <input type="checkbox" class="moderator-scope-checkbox w-4 h-4" value="events" />
+                        <span>Operator ds. wydarzeń</span>
+                      </label>
+                      <label class="flex items-center gap-2 text-sm text-zinc-200">
+                        <input type="checkbox" class="moderator-scope-checkbox w-4 h-4" value="trainings" />
+                        <span>Operator ds. szkoleń</span>
+                      </label>
+                      <label class="flex items-center gap-2 text-sm text-zinc-200">
+                        <input type="checkbox" class="moderator-scope-checkbox w-4 h-4" value="bazaar" />
+                        <span>Operator ds. bazaru</span>
+                      </label>
+                    </div>
                   </div>
                   <div>
                     <label class="text-sm text-zinc-400 block mb-2">Status</label>
@@ -3634,7 +3910,21 @@
       async function ensurePublicListCacheMetaOnce() {
         if (publicListCacheMetaBootstrapped || !db) return;
         publicListCacheMetaBootstrapped = true;
-        const keys = ["products", "trainings", "events", "blogPosts", "charity", "documents", "bazarOffers"];
+        const moderatorMetaKeys = {
+          products: "products",
+          szkolenia: "trainings",
+          events: "events",
+          blog: "blogPosts",
+          charity: "charity",
+          dokumenty: "documents",
+          bazar: "bazarOffers",
+        };
+        const allowedTabs = getAllowedAdminTabs(currentAdminProfile);
+        const keys = allowedTabs.length
+          ? allowedTabs
+              .map((tab) => moderatorMetaKeys[tab])
+              .filter((value, index, list) => value && list.indexOf(value) === index)
+          : ["products", "trainings", "events", "blogPosts", "charity", "documents", "bazarOffers"];
         try {
           for (const k of keys) {
             const r = await getDoc(doc(db, "publicListCacheMeta", k));
@@ -3758,6 +4048,7 @@
       let usersList = [];
       let productsList = [];
       let trainingsList = [];
+      let promoCodesList = [];
       let documentsList = [];
       let currentTrainingId = null;
       let currentConversationId = null;
@@ -3769,6 +4060,287 @@
       let statusMonitoringInterval = null; // Interwał do automatycznego odświeżania statusu
       let userFilterColors = {}; // Kolory filtrów zdefiniowane przez użytkownika
       let activityLogsLimit = 20; // Limit logów do wyświetlenia
+      let currentAdminProfile = null;
+      const OPERATOR_SCOPE_ORDER = [
+        "shop",
+        "bazaar",
+        "trainings",
+        "events",
+        "blog",
+        "help",
+        "users",
+        "contact",
+      ];
+      const OPERATOR_SCOPE_LABELS = {
+        users: "Operator ds. użytkowników",
+        contact: "Operator ds. kontaktu",
+        blog: "Operator ds. bloga",
+        shop: "Operator ds. sklepu",
+        help: "Operator ds. pomocy",
+        events: "Operator ds. wydarzeń",
+        trainings: "Operator ds. szkoleń",
+        bazaar: "Operator ds. bazaru",
+      };
+      const OPERATOR_SCOPE_SHORT_LABELS = {
+        users: "użytkowników",
+        contact: "kontaktu",
+        blog: "bloga",
+        shop: "sklepu",
+        help: "pomocy",
+        events: "wydarzeń",
+        trainings: "szkoleń",
+        bazaar: "bazaru",
+      };
+      const OPERATOR_SCOPE_TO_TABS = {
+        users: ["users"],
+        contact: ["messages"],
+        blog: ["blog"],
+        shop: ["products", "orders", "returns"],
+        help: ["charity"],
+        events: ["events"],
+        trainings: ["szkolenia"],
+        bazaar: ["bazar"],
+      };
+      const ALL_OPERATOR_TABS = Array.from(
+        new Set(OPERATOR_SCOPE_ORDER.flatMap((scope) => OPERATOR_SCOPE_TO_TABS[scope] || [])),
+      );
+
+      function encodeUtf8Base64(value) {
+        try {
+          const bytes = new TextEncoder().encode(String(value ?? ""));
+          let binary = "";
+          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+          return btoa(binary);
+        } catch (error) {
+          console.error("encodeUtf8Base64 failed:", error);
+          return "";
+        }
+      }
+
+      function decodeUtf8Base64(value) {
+        try {
+          if (!value) return "";
+          const binary = atob(String(value));
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          return new TextDecoder().decode(bytes);
+        } catch {
+          try {
+            return atob(String(value || ""));
+          } catch {
+            return "";
+          }
+        }
+      }
+
+      function normalizeOperatorScopes(value) {
+        if (!Array.isArray(value)) return [];
+        return value
+          .map((item) => String(item || "").trim().toLowerCase())
+          .filter((item, index, list) =>
+            Object.prototype.hasOwnProperty.call(OPERATOR_SCOPE_LABELS, item) &&
+            list.indexOf(item) === index
+          )
+          .sort((a, b) => OPERATOR_SCOPE_ORDER.indexOf(a) - OPERATOR_SCOPE_ORDER.indexOf(b));
+      }
+
+      function getOperatorScopeLabels(scopes) {
+        return normalizeOperatorScopes(scopes).map((scope) => OPERATOR_SCOPE_LABELS[scope]);
+      }
+
+      function formatOperatorSummary(scopes) {
+        const orderedScopes = normalizeOperatorScopes(scopes);
+        const labels = orderedScopes.map((scope) => OPERATOR_SCOPE_SHORT_LABELS[scope]);
+        if (labels.length === 0) return "Operator";
+        if (labels.length === 1) return OPERATOR_SCOPE_LABELS[orderedScopes[0]];
+        return `Operator ds. ${labels.join(", ")}`;
+      }
+
+      function formatRoleBadgeLabel(userData) {
+        const role = String(userData?.role || "user").toLowerCase();
+        if (role === "admin") return "ADMINISTRATOR";
+        if (role === "company") return "FIRMA";
+        if (role === "operator") return "OPERATOR";
+        if (role === "moderator") return "MODERATOR";
+        return "UŻYTKOWNIK";
+      }
+
+      function getRoleBadgeClass(userData) {
+        const role = String(userData?.role || "user").toLowerCase();
+        if (role === "admin") return "role-admin";
+        if (role === "company") return "role-company";
+        if (role === "operator") return "role-operator";
+        if (role === "moderator") return "role-moderator";
+        return userData?.emailVerified ? "role-user-verified" : "role-user";
+      }
+
+      function normalizeNip(value) {
+        return String(value || "").replace(/\D/g, "").slice(0, 10);
+      }
+
+      function formatNip(value) {
+        const digits = normalizeNip(value);
+        if (!digits) return "";
+        if (digits.length <= 3) return digits;
+        if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+        if (digits.length <= 8) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+        return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 8)}-${digits.slice(8)}`;
+      }
+
+      function isAdminRoleValue(role) {
+        return String(role || "").toLowerCase() === "admin";
+      }
+
+      function isModeratorRoleValue(role) {
+        return String(role || "").toLowerCase() === "moderator";
+      }
+
+      function isOperatorRoleValue(role) {
+        return String(role || "").toLowerCase() === "operator";
+      }
+
+      function canUseAdminPanel(profileData) {
+        const role = String(profileData?.role || "").toLowerCase();
+        if (role === "admin") return true;
+        if (role === "moderator" || role === "operator") {
+          return getAllowedAdminTabs(profileData).length > 0;
+        }
+        return false;
+      }
+
+      function getAllowedAdminTabs(profileData = currentAdminProfile) {
+        const role = String(profileData?.role || "").toLowerCase();
+        if (role === "admin") {
+          return [
+            "dashboard",
+            "messages",
+            "orders",
+            "returns",
+            "users",
+            "newsletter",
+            "status",
+            "products",
+            "bazar",
+            "szkolenia",
+            "events",
+            "blog",
+            "charity",
+            "dokumenty",
+            "email-templates",
+            "promo-codes",
+          ];
+        }
+        if (role === "moderator") return ALL_OPERATOR_TABS;
+        if (role !== "operator") return [];
+        return normalizeOperatorScopes(profileData?.operatorScopes || profileData?.moderatorScopes)
+          .flatMap((scope) => OPERATOR_SCOPE_TO_TABS[scope] || [])
+          .filter((tab, index, list) => list.indexOf(tab) === index);
+      }
+
+      function canAccessAdminTab(tabName, profileData = currentAdminProfile) {
+        if (!profileData) return true;
+        const allowedTabs = getAllowedAdminTabs(profileData);
+        return allowedTabs.includes(tabName);
+      }
+
+      function getPreferredAdminTab(profileData = currentAdminProfile) {
+        if (!profileData) return "dashboard";
+        const role = String(profileData?.role || "").toLowerCase();
+        if (role === "admin") return "dashboard";
+        const allowedTabs = getAllowedAdminTabs(profileData);
+        return allowedTabs[0] || null;
+      }
+
+      function applyAdminNavigationAccess() {
+        const allowedTabs = new Set(getAllowedAdminTabs());
+        document.querySelectorAll(".nav-item").forEach((item) => {
+          const tab = item.getAttribute("data-tab");
+          const visible = allowedTabs.has(tab);
+          item.classList.toggle("hidden", !visible);
+        });
+      }
+
+      function syncUserEditRoleSections(roleValue = null) {
+        const role = String(roleValue || document.getElementById("edit-role")?.value || "user").toLowerCase();
+        const isCompany = role === "company";
+        const isOperator = role === "operator";
+        const isModerator = role === "moderator";
+        const companySection = document.getElementById("edit-company-section");
+        const moderatorSection = document.getElementById("edit-moderator-section");
+        const operatorSectionLabel = document.getElementById("edit-operator-section-label");
+        const operatorHelp = document.getElementById("edit-operator-help");
+        const operatorScopeList = document.getElementById("edit-operator-scope-list");
+        const addressTitle = document.getElementById("edit-address-section-title");
+        const streetLabel = document.getElementById("edit-street-label");
+        const buildingLabel = document.getElementById("edit-building-label");
+        const postalLabel = document.getElementById("edit-postal-label");
+        const cityLabel = document.getElementById("edit-city-label");
+
+        companySection?.classList.toggle("hidden", !isCompany);
+        moderatorSection?.classList.toggle("hidden", !(isOperator || isModerator));
+        operatorScopeList?.classList.toggle("hidden", !isOperator);
+        operatorHelp?.classList.toggle("hidden", !(isOperator || isModerator));
+        if (operatorSectionLabel) {
+          operatorSectionLabel.textContent = isModerator ? "Uprawnienia moderatora" : "Zakres operatora";
+        }
+        if (operatorHelp) {
+          operatorHelp.textContent = isModerator
+            ? "Moderator ma pełne uprawnienia wszystkich operatorów."
+            : "Wybierz przynajmniej jeden zakres operatora.";
+        }
+
+        if (addressTitle) {
+          addressTitle.textContent = isCompany ? "Adres firmy" : "Adres dostawy";
+        }
+        if (streetLabel) streetLabel.textContent = isCompany ? "Ulica firmy" : "Ulica";
+        if (buildingLabel) {
+          buildingLabel.textContent = isCompany ? "Numer budynku / lokalu firmy" : "Numer budynku";
+        }
+        if (postalLabel) {
+          postalLabel.textContent = isCompany ? "Kod pocztowy firmy" : "Kod pocztowy";
+        }
+        if (cityLabel) cityLabel.textContent = isCompany ? "Miasto firmy" : "Miasto";
+      }
+
+      function getSelectedOperatorScopesFromForm() {
+        return Array.from(document.querySelectorAll(".moderator-scope-checkbox:checked"))
+          .map((input) => String(input.value || "").trim().toLowerCase())
+          .filter((scope, index, list) => list.indexOf(scope) === index);
+      }
+
+      function setSelectedOperatorScopes(scopes) {
+        const selected = new Set(normalizeOperatorScopes(scopes));
+        document.querySelectorAll(".moderator-scope-checkbox").forEach((input) => {
+          input.checked = selected.has(String(input.value || "").toLowerCase());
+        });
+      }
+
+      function enterAdminPanel(user, profileData) {
+        currentUser = user;
+        currentAdminProfile = profileData;
+        userFilterColors = profileData?.filterColors || {};
+        updateAdminDisplay(user);
+        document.getElementById("login-section").classList.add("hidden");
+        document.getElementById("admin-panel").classList.remove("hidden");
+        applyAdminNavigationAccess();
+        startActivityTracking();
+
+        if (!window.autoUnblockInterval && isAdminRoleValue(profileData?.role)) {
+          autoUnblockExpiredBlocks();
+          window.autoUnblockInterval = setInterval(() => {
+            autoUnblockExpiredBlocks();
+          }, 5 * 60 * 1000);
+        }
+
+        const preferredTab = getPreferredAdminTab(profileData);
+        if (preferredTab) {
+          switchTab(preferredTab);
+          if (preferredTab === "dashboard") {
+            setTimeout(() => loadDashboardStats(), 100);
+          }
+        }
+        void ensurePublicListCacheMetaOnce();
+      }
       let loadedActivityLogs = []; // Załadowane logi
 
       // Dźwięk powiadomienia dla nowych wiadomości
@@ -3880,29 +4452,7 @@
         const superAdminUID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
         if (user.uid === superAdminUID) {
           console.log('SuperAdmin login detected:', user.uid);
-          currentUser = user;
-          userFilterColors = {}; // SuperAdmin może nie mieć filtrów
-          updateAdminDisplay(user);
-          document.getElementById("login-section").classList.add("hidden");
-          document.getElementById("admin-panel").classList.remove("hidden");
-
-          // Rozpocznij śledzenie aktywności
-          startActivityTracking();
-
-          // Automatyczne odblokowywanie wygasłych blokad co 5 minut
-          if (!window.autoUnblockInterval) {
-            // Wywołaj natychmiast przy starcie
-            autoUnblockExpiredBlocks();
-            // Następnie co 5 minut
-            window.autoUnblockInterval = setInterval(() => {
-              autoUnblockExpiredBlocks();
-            }, 5 * 60 * 1000); // 5 minut
-          }
-
-          switchTab("dashboard");
-          // Załaduj stats dla SuperAdmin'a
-          setTimeout(() => loadDashboardStats(), 100);
-          void ensurePublicListCacheMetaOnce();
+          enterAdminPanel(user, { role: "admin", filterColors: {} });
           return true;
         }
 
@@ -3953,40 +4503,11 @@
             console.log('[ADMIN CHECK] ✅ User profile found in Firestore');
             console.log('[ADMIN CHECK] User data:', userData);
             console.log('[ADMIN CHECK] User role:', userData.role);
-            console.log('[ADMIN CHECK] Expected role: admin');
+            console.log('[ADMIN CHECK] Allowed roles: admin, moderator, operator');
 
-            if (userData.role === "admin") {
-              console.log('[ADMIN CHECK] ✅ Admin role confirmed for user:', user.uid);
-              currentUser = user;
-
-              // Załaduj kolory filtrów z bazy danych użytkownika
-              if (userData.filterColors) {
-                userFilterColors = userData.filterColors;
-              }
-
-              updateAdminDisplay(user);
-
-              document.getElementById("login-section").classList.add("hidden");
-              document.getElementById("admin-panel").classList.remove("hidden");
-
-              // Rozpocznij śledzenie aktywności
-              startActivityTracking();
-
-              // Automatyczne odblokowywanie wygasłych blokad co 5 minut
-              if (!window.autoUnblockInterval) {
-                // Wywołaj natychmiast przy starcie
-                autoUnblockExpiredBlocks();
-                // Następnie co 5 minut
-                window.autoUnblockInterval = setInterval(() => {
-                  autoUnblockExpiredBlocks();
-                }, 5 * 60 * 1000); // 5 minut
-              }
-
-              // Załaduj dashboard i stats dopiero po zakończeniu ładowania profilu
-              switchTab("dashboard");
-              // Opóźnij ładowanie stats, żeby dać czas na zakończenie ładowania profilu
-              setTimeout(() => loadDashboardStats(), 100);
-              void ensurePublicListCacheMetaOnce();
+            if (canUseAdminPanel(userData)) {
+              console.log('[ADMIN CHECK] ✅ Admin panel access confirmed for user:', user.uid);
+              enterAdminPanel(user, userData);
               return true;
             } else {
               console.warn('[ADMIN CHECK] ❌ User has role:', userData.role, 'but expected admin');
@@ -4056,7 +4577,7 @@
           if (userDoc.exists()) {
             const userData = userDoc.data();
             console.log('User profile found, role:', userData.role);
-            if (userData.role === "admin") {
+            if (canUseAdminPanel(userData)) {
               currentUser = user;
               return true;
             } else {
@@ -4360,6 +4881,15 @@
 
       // Nawigacja między zakładkami
       function switchTab(tabName) {
+        if (!canAccessAdminTab(tabName)) {
+          const fallbackTab = getPreferredAdminTab();
+          if (fallbackTab && fallbackTab !== tabName) {
+            tabName = fallbackTab;
+          } else {
+            return;
+          }
+        }
+
         window.scrollTo(0,0);
         document.getElementById("main-content").scrollTop = 0;
 
@@ -4406,6 +4936,12 @@
         if (tabName === "email-templates") {
           if (typeof loadEmailTemplates === 'function') {
             loadEmailTemplates();
+          }
+        }
+
+        if (tabName === "promo-codes") {
+          if (typeof loadPromoCodes === "function") {
+            loadPromoCodes();
           }
         }
 
@@ -4481,6 +5017,11 @@
             }
             // Uruchom auto-odświeżanie wiadomości
             startMessagesAutoRefresh();
+            break;
+          case "returns":
+            if (typeof window.loadAdminReturnClaims === "function") {
+              window.loadAdminReturnClaims();
+            }
             break;
           case "products":
             loadProducts();
@@ -4616,7 +5157,7 @@
                 console.error("Error logging failed login:", logError);
               }
               showStatus(
-                "<strong style='color: #dc2626; font-weight: bold;'>Brak uprawnień administratora. Sprawdź czy Twoje konto ma rolę 'admin' w systemie.</strong>",
+                "<strong style='color: #dc2626; font-weight: bold;'>Brak uprawnień do panelu. Sprawdź, czy Twoje konto ma rolę administratora, moderatora lub operatora.</strong>",
                 true,
               );
               setTimeout(() => redirectNotAuthorized(), 400);
@@ -4733,6 +5274,7 @@
           }
 
           currentUser = null;
+          currentAdminProfile = null;
 
           // Wyczyść wszystkie dane sesji z localStorage
           localStorage.clear();
@@ -4752,6 +5294,7 @@
             console.warn("Ignored Firestore CORS error during logout");
             // Mimo błędu, kontynuuj wylogowanie
             currentUser = null;
+            currentAdminProfile = null;
             localStorage.clear();
             document.getElementById("login-section")?.classList.remove("hidden");
             document.getElementById("admin-panel")?.classList.add("hidden");
@@ -4808,7 +5351,7 @@
             errorDiv.style.cssText = "position: fixed; top: 0; left: 0; right: 0; background: #dc2626; color: white; padding: 20px; z-index: 10000; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.3);";
             errorDiv.innerHTML = `
               <strong>🚫 Brak dostępu do panelu admina</strong><br>
-              <p style="margin: 10px 0;">Użytkownik nie ma uprawnień administratora.</p>
+              <p style="margin: 10px 0;">Użytkownik nie ma uprawnień do panelu.</p>
               <p style="margin: 10px 0; font-size: 12px;">Wylogowanie za <span id="countdown">5</span> sekund...</p>
               <p style="margin: 10px 0; font-size: 11px;">Sprawdź konsolę przeglądarki (F12) dla szczegółów.</p>
               <button onclick="document.getElementById('admin-access-denied').remove(); clearTimeout(window.signoutTimeout);"
@@ -4848,6 +5391,7 @@
           }
         } else {
           currentUser = null;
+          currentAdminProfile = null;
           document.getElementById("login-section").classList.remove("hidden");
           document.getElementById("admin-panel").classList.add("hidden");
           if (window.sessionInterval) {
@@ -5045,7 +5589,7 @@
             { value: "PRODUCT_CREATED", text: "Wystawienie oferty" },
             { value: "PRODUCT_EDITED", text: "Edycja oferty" },
             { value: "PRODUCT_DELETED", text: "Usunięcie oferty" },
-            { value: "ORDER-PLACED", text: "Zamówienie (klik „Zamów”)" },
+            { value: "ORDER-PLACED", text: "Złożenie zamówienia" },
             { value: "REVIEW_CREATED", text: "Wystawienie opinii" },
           ],
         },
@@ -5720,7 +6264,7 @@
           // Pobierz informacje o weryfikacji emaila dla użytkowników
           const usersWithEmailVerification = await Promise.all(
             recentUsers.map(async (user) => {
-              let emailVerified = false;
+              let emailVerified = user.emailVerified === true;
               try {
                 // Spróbuj pobrać informację o weryfikacji emaila z API
                 const response = await fetch(`https://strzelca.pl/api/user-email-verified?uid=${user.id}`, {
@@ -5740,12 +6284,6 @@
                 }
               } catch (error) {
                 console.warn(`Nie udało się sprawdzić weryfikacji emaila dla użytkownika ${user.id}:`, error);
-              }
-
-              // Fallback: jeśli status konta to "active", zakładamy że email jest zweryfikowany
-              // (ponieważ w szczegółach użytkownika status "active" oznacza zweryfikowany email)
-              if (!emailVerified && user.status === "active") {
-                emailVerified = true;
               }
 
               return { ...user, emailVerified };
@@ -5961,6 +6499,12 @@
           case "company":
             filteredUsers = usersList.filter((u) => u.role === "company");
             break;
+          case "operator":
+            filteredUsers = usersList.filter((u) => u.role === "operator");
+            break;
+          case "moderator":
+            filteredUsers = usersList.filter((u) => u.role === "moderator");
+            break;
         }
 
         const usersHtml = filteredUsers
@@ -5968,11 +6512,6 @@
             const isCurrentUser = currentUser && user.id === currentUser.uid;
             const status = user.status || "active";
             const role = user.role || "user";
-            const roleDisplay = {
-              admin: "ADMINISTRATOR",
-              company: "FIRMA",
-              user: "UŻYTKOWNIK",
-            };
 
             const statusClasses = {
               active: "status-active",
@@ -5980,23 +6519,17 @@
               suspended: "status-suspended",
             };
 
-            const roleClasses = {
-              admin: "role-admin",
-              user: "role-user",
-              company: "role-company",
-            };
-
             const decryptedUser = {
               ...user,
               phone: user.phone
-                ? atob(user.phone)
+                ? decodeUtf8Base64(user.phone)
                 : "",
               address: {
                 street: user.address?.street
-                  ? atob(user.address.street)
+                  ? decodeUtf8Base64(user.address.street)
                   : "",
                 city: user.address?.city
-                  ? atob(user.address.city)
+                  ? decodeUtf8Base64(user.address.city)
                   : "",
               },
             };
@@ -6012,7 +6545,7 @@
                             <div class="flex-1">
                                 <div class="flex items-center space-x-2 mb-1">
                                     <h4 class="${status === "blocked" ? "text-amber-700 font-bold" : "text-white font-bold"}">${decryptedUser.displayName}</h4>
-                                    <span class="px-2 py-1 text-xs rounded font-bold ${roleClasses[role]}">${roleDisplay[role] || role.toUpperCase()}</span>
+                                    <span class="px-2 py-1 text-xs rounded font-bold ${getRoleBadgeClass(user)}">${formatRoleBadgeLabel(user)}</span>
                                     <span class="px-2 py-1 text-xs rounded bg-gray-600 text-white">${status.toUpperCase()}</span>
                                     ${isOnline ? '<span class="px-2 py-1 text-xs rounded bg-green-500 text-white" title="Online">🟢 ONLINE</span>' : `<span class="px-2 py-1 text-xs rounded bg-gray-500 text-white" title="Ostatnia aktywność: ${lastSeenText}">⚫ OFFLINE</span>`}
                                     ${isCurrentUser ? '<span class="px-2 py-1 text-xs rounded bg-purple-600 text-white">TY</span>' : ""}
@@ -6810,7 +7343,7 @@
         const canResetPassword = currentUser && currentEditingUser.id !== currentUser.uid;
 
         // Sprawdź weryfikację emaila
-        let emailVerified = false;
+        let emailVerified = currentEditingUser.emailVerified === true;
         try {
           const response = await fetch(`https://strzelca.pl/api/user-email-verified?uid=${currentEditingUser.id}`, {
             credentials: "include",
@@ -6827,33 +7360,35 @@
           console.warn(`Nie udało się sprawdzić weryfikacji emaila dla użytkownika ${currentEditingUser.id}:`, error);
         }
 
-        // Fallback: jeśli status konta to "active", zakładamy że email jest zweryfikowany
-        if (!emailVerified && currentEditingUser.status === "active") {
-          emailVerified = true;
-        }
-
         const decryptedUser = {
           ...currentEditingUser,
           phone: currentEditingUser.phone
-            ? atob(currentEditingUser.phone)
+            ? decodeUtf8Base64(currentEditingUser.phone)
             : "",
           parcelLocker: currentEditingUser.parcelLocker
-            ? atob(currentEditingUser.parcelLocker)
+            ? decodeUtf8Base64(currentEditingUser.parcelLocker)
             : "",
           address: {
             street: currentEditingUser.address?.street
-              ? atob(currentEditingUser.address.street)
+              ? decodeUtf8Base64(currentEditingUser.address.street)
               : "",
             buildingNumber: currentEditingUser.address?.buildingNumber
-              ? atob(currentEditingUser.address.buildingNumber)
+              ? decodeUtf8Base64(currentEditingUser.address.buildingNumber)
               : "",
             postalCode: currentEditingUser.address?.postalCode
-              ? atob(currentEditingUser.address.postalCode)
+              ? decodeUtf8Base64(currentEditingUser.address.postalCode)
               : "",
             city: currentEditingUser.address?.city
-              ? atob(currentEditingUser.address.city)
+              ? decodeUtf8Base64(currentEditingUser.address.city)
               : "",
           },
+          companyName: currentEditingUser.companyName
+            ? decodeUtf8Base64(currentEditingUser.companyName)
+            : "",
+          nip: currentEditingUser.nip
+            ? decodeUtf8Base64(currentEditingUser.nip)
+            : "",
+          operatorScopes: normalizeOperatorScopes(currentEditingUser.operatorScopes || currentEditingUser.moderatorScopes),
           emailVerified,
         };
 
@@ -6889,6 +7424,16 @@
                                   <label class="text-xs text-zinc-400 block mb-1 uppercase tracking-wider">Data rejestracji</label>
                                   <div class="text-white font-semibold text-base">${new Date(decryptedUser.createdAt?.toDate?.() || decryptedUser.createdAt).toLocaleDateString("pl-PL")}</div>
                               </div>
+                              ${decryptedUser.role === "company" ? `
+                              <div class="bg-zinc-900/50 p-3 rounded border border-zinc-700/50">
+                                  <label class="text-xs text-zinc-400 block mb-1 uppercase tracking-wider">Nazwa firmy</label>
+                                  <div class="text-white font-semibold text-base">${decryptedUser.companyName || "Brak"}</div>
+                              </div>
+                              <div class="bg-zinc-900/50 p-3 rounded border border-zinc-700/50">
+                                  <label class="text-xs text-zinc-400 block mb-1 uppercase tracking-wider">NIP</label>
+                                  <div class="text-white font-semibold text-base">${formatNip(decryptedUser.nip) || "Brak"}</div>
+                              </div>
+                              ` : ""}
                           </div>
                       </div>
 
@@ -6905,8 +7450,12 @@
                                       <select id="user-role-select" class="w-full" onchange="changeUserRoleFromDetails('${currentEditingUser.id}', this.value)">
                                           <option value="user" ${decryptedUser.role === "user" ? "selected" : ""}>Użytkownik</option>
                                           <option value="company" ${decryptedUser.role === "company" ? "selected" : ""}>Firma</option>
+                                          <option value="operator" ${decryptedUser.role === "operator" ? "selected" : ""}>Operator</option>
+                                          <option value="moderator" ${decryptedUser.role === "moderator" ? "selected" : ""}>Moderator</option>
                                           <option value="admin" ${decryptedUser.role === "admin" ? "selected" : ""}>Administrator</option>
                                       </select>
+                                      ${decryptedUser.role === "operator" ? `<div class="mt-3 text-sm text-cyan-300">${formatOperatorSummary(decryptedUser.operatorScopes)}</div>` : ""}
+                                      ${decryptedUser.role === "moderator" ? `<div class="mt-3 text-sm text-violet-300">Moderator</div>` : ""}
                               </div>
                                   <div class="bg-zinc-900/50 p-4 rounded border border-zinc-700/50">
                                       <label class="text-xs text-zinc-400 block mb-2 uppercase tracking-wider">Status konta</label>
@@ -6936,7 +7485,7 @@
                       <div class="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700">
                           <div class="flex items-center space-x-2 mb-4">
                               <i class="fa-solid fa-location-dot text-coyote"></i>
-                              <h3 class="text-lg font-bold text-white">Adres dostawy</h3>
+                              <h3 class="text-lg font-bold text-white">${decryptedUser.role === "company" ? "Adres firmy" : "Adres dostawy"}</h3>
                               </div>
                           <div class="bg-zinc-900/50 p-4 rounded border border-zinc-700/50">
                               ${decryptedUser.address.street || decryptedUser.address.buildingNumber || decryptedUser.address.postalCode || decryptedUser.address.city || decryptedUser.parcelLocker ?
@@ -7213,31 +7762,38 @@
       // Zmienna globalna do przechowywania aktualnie edytowanego użytkownika
       let currentEditingUser = null;
 
-      function showUserEditModal() {
+      function showUserEditModal(options = {}) {
         if (!currentEditingUser) return;
 
         const decryptedUser = {
           ...currentEditingUser,
           phone: currentEditingUser.phone
-            ? atob(currentEditingUser.phone)
+            ? decodeUtf8Base64(currentEditingUser.phone)
             : "",
           parcelLocker: currentEditingUser.parcelLocker
-            ? atob(currentEditingUser.parcelLocker)
+            ? decodeUtf8Base64(currentEditingUser.parcelLocker)
             : "",
           address: {
             street: currentEditingUser.address?.street
-              ? atob(currentEditingUser.address.street)
+              ? decodeUtf8Base64(currentEditingUser.address.street)
               : "",
             buildingNumber: currentEditingUser.address?.buildingNumber
-              ? atob(currentEditingUser.address.buildingNumber)
+              ? decodeUtf8Base64(currentEditingUser.address.buildingNumber)
               : "",
             postalCode: currentEditingUser.address?.postalCode
-              ? atob(currentEditingUser.address.postalCode)
+              ? decodeUtf8Base64(currentEditingUser.address.postalCode)
               : "",
             city: currentEditingUser.address?.city
-              ? atob(currentEditingUser.address.city)
+              ? decodeUtf8Base64(currentEditingUser.address.city)
               : "",
-          },
+            },
+          companyName: currentEditingUser.companyName
+            ? decodeUtf8Base64(currentEditingUser.companyName)
+            : "",
+          nip: currentEditingUser.nip
+            ? decodeUtf8Base64(currentEditingUser.nip)
+            : "",
+          operatorScopes: normalizeOperatorScopes(currentEditingUser.operatorScopes || currentEditingUser.moderatorScopes),
         };
 
         // Wypełnij formularz danymi użytkownika
@@ -7250,6 +7806,10 @@
         document.getElementById("edit-last-name").value =
           decryptedUser.lastName || "";
         document.getElementById("edit-phone").value = decryptedUser.phone || "";
+        document.getElementById("edit-company-name").value =
+          decryptedUser.companyName || "";
+        document.getElementById("edit-company-nip").value =
+          formatNip(decryptedUser.nip) || "";
         document.getElementById("edit-street").value =
           decryptedUser.address?.street || "";
         document.getElementById("edit-building-number").value =
@@ -7263,9 +7823,11 @@
         document.getElementById("edit-newsletter").checked =
           decryptedUser.newsletter || false;
         document.getElementById("edit-role").value =
-          decryptedUser.role || "user";
+          options.preferredRole || decryptedUser.role || "user";
         document.getElementById("edit-status").value =
           decryptedUser.status || "active";
+        setSelectedOperatorScopes(decryptedUser.operatorScopes);
+        syncUserEditRoleSections(options.preferredRole || decryptedUser.role || "user");
 
         document.getElementById("user-edit-modal").classList.remove("hidden");
       }
@@ -7274,6 +7836,16 @@
         document.getElementById("user-edit-modal").classList.add("hidden");
         // Nie czyścimy currentEditingUser, bo użytkownik może nadal być w szczegółach
       };
+
+      document.getElementById("edit-role")?.addEventListener("change", (event) => {
+        syncUserEditRoleSections(event.target.value);
+      });
+
+      document.getElementById("edit-company-nip")?.addEventListener("input", (event) => {
+        event.target.value = formatNip(event.target.value);
+      });
+
+      syncUserEditRoleSections();
 
       // Zmienna globalna dla blokowanego użytkownika
       let currentBlockingUser = null;
@@ -7804,11 +8376,11 @@
         const decryptedUser = {
           ...currentBlockingUser,
           phone: currentBlockingUser.phone
-            ? atob(currentBlockingUser.phone)
+            ? decodeUtf8Base64(currentBlockingUser.phone)
             : "",
           address: {
             city: currentBlockingUser.address?.city
-              ? atob(currentBlockingUser.address.city)
+              ? decodeUtf8Base64(currentBlockingUser.address.city)
               : "",
           },
         };
@@ -8068,11 +8640,11 @@
         const decryptedUser = {
           ...currentDeletingUser,
           phone: currentDeletingUser.phone
-            ? atob(currentDeletingUser.phone)
+            ? decodeUtf8Base64(currentDeletingUser.phone)
             : "",
           address: {
             city: currentDeletingUser.address?.city
-              ? atob(currentDeletingUser.address.city)
+              ? decodeUtf8Base64(currentDeletingUser.address.city)
               : "",
           },
         };
@@ -8142,8 +8714,24 @@
         const roleNames = {
           user: "Użytkownik",
           company: "Firma",
+          operator: "Operator",
+          moderator: "Moderator",
           admin: "Administrator"
         };
+
+        if (
+          newRole === "company" ||
+          newRole === "operator" ||
+          newRole === "moderator" ||
+          currentRole === "company" ||
+          currentRole === "operator" ||
+          currentRole === "moderator"
+        ) {
+          document.getElementById("user-role-select").value = currentRole;
+          showNotification("Rolę firmy, operatora lub moderatora ustaw w oknie Edytuj, żeby uzupełnić wymagane dane.", "info");
+          showUserEditModal({ preferredRole: newRole });
+          return;
+        }
 
         if (!confirm(`Czy na pewno chcesz zmienić rolę użytkownika z "${roleNames[currentRole]}" na "${roleNames[newRole]}"?`)) {
           // Przywróć poprzednią wartość w select
@@ -8234,7 +8822,7 @@
                 <div class="flex justify-between items-center p-3 bg-zinc-800 rounded-lg border border-zinc-700">
                     <div class="flex-1">
                         <div class="font-semibold text-white">${product.title}</div>
-                        <div class="text-sm text-zinc-400">${product.price} zł</div>
+                        <div class="text-sm text-zinc-400">${product.individualPricing ? 'Cena ustalana indywidualnie' : `${product.price} zł`}</div>
                     </div>
                     <div class="flex space-x-2">
                         <button onclick="openProductForm('${product.id}')" class="text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400 rounded text-xs">Edytuj</button>
@@ -13220,7 +13808,7 @@
           "DOCUMENT_UPDATED": "Edycja pozycji w katalogu dokumentów (panel — historia)",
           "DOCUMENT_DELETED": "Usunięcie pozycji z katalogu dokumentów (panel — historia)",
           "DOCS_RETURN_FORM_PDF": "PDF zwrotu / reklamacji (dokumenty.strzelca.pl)",
-          "ORDER-PLACED": "Zamówienie ze sklepu (klik „Zamów”)",
+          "ORDER-PLACED": "Złożenie zamówienia",
           "CHARITY_ACTION_CREATED": "Dodana akcja (pomoc.strzelca.pl)",
           "CHARITY_ACTION_UPDATED": "Zmieniona akcja (pomoc.strzelca.pl)",
           "CHARITY_ACTION_DELETED": "Usunięta akcja (pomoc.strzelca.pl)",
@@ -13805,31 +14393,28 @@
             break;
           }
           case "ORDER-PLACED":
-            // Wyciągnij nazwę produktu z details
-            let productName = "produkt";
+            let orderItemLabel = "zamówienie";
             if (typeof eventDetails === 'string') {
-              // Jeśli details to string typu "Zamówienie produktu: [nazwa]"
-              const match = eventDetails.match(/Zamówienie produktu:\s*(.+)/);
+              const match = eventDetails.match(/Zamówienie(?: produktu)?:\s*(.+)/);
               if (match) {
-                productName = match[1].trim();
+                orderItemLabel = match[1].trim();
               } else {
-                productName = eventDetails;
+                orderItemLabel = eventDetails;
               }
             } else if (eventDetails && eventDetails.details) {
-              // Jeśli details to obiekt z polem details
               const detailsStr = eventDetails.details;
-              const match = detailsStr.match(/Zamówienie produktu:\s*(.+)/);
+              const match = detailsStr.match(/Zamówienie(?: produktu)?:\s*(.+)/);
               if (match) {
-                productName = match[1].trim();
+                orderItemLabel = match[1].trim();
               } else {
-                productName = detailsStr;
+                orderItemLabel = detailsStr;
               }
             } else if (eventDetails && eventDetails.productName) {
-              productName = eventDetails.productName;
+              orderItemLabel = eventDetails.productName;
             }
-            description = `${userDisplayName} kliknął zamów na produkcie`;
-            content = productName;
-            details = `Użytkownik ${userDisplayName} kliknął zamów na produkcie: "${productName}"`;
+            description = `${userDisplayName} złożył zamówienie`;
+            content = orderItemLabel;
+            details = `Użytkownik ${userDisplayName} złożył zamówienie: "${orderItemLabel}"`;
             break;
           case "EMAIL_DELIVERY_FAILED": {
             const cat = eventDetails.category || "nieznany kanał";
@@ -14057,13 +14642,36 @@
         clearProductForm();
       };
 
+      window.toggleProductIndividualPricing = function () {
+        const checkbox = document.getElementById("product-individualPricing");
+        const priceInput = document.getElementById("product-price");
+        const helpText = document.getElementById("product-price-help");
+        if (!checkbox || !priceInput) return;
+        const isIndividualPricing = checkbox.checked === true;
+        priceInput.disabled = isIndividualPricing;
+        priceInput.required = !isIndividualPricing;
+        priceInput.classList.toggle("opacity-60", isIndividualPricing);
+        priceInput.classList.toggle("cursor-not-allowed", isIndividualPricing);
+        if (isIndividualPricing) {
+          priceInput.value = "";
+        }
+        if (helpText) {
+          helpText.textContent = isIndividualPricing
+            ? "Dla tego produktu klient składa zamówienie bez ceny, a wycena jest przygotowywana później."
+            : "Podaj cenę produktu widoczną w sklepie.";
+        }
+      };
+
       window.editProduct = (productId) => {
         const product = productsList.find((p) => p.id === productId);
         if (!product) return;
 
         document.getElementById("product-id").value = product.id;
         document.getElementById("product-title").value = product.title || "";
-        document.getElementById("product-price").value = product.price || "";
+        document.getElementById("product-individualPricing").checked = product.individualPricing === true;
+        document.getElementById("product-price").value =
+          product.individualPricing === true ? "" : product.price || "";
+        window.toggleProductIndividualPricing();
 
         // Użyj Quill do ustawienia treści
         if (productQuill) {
@@ -14193,11 +14801,13 @@
           const productId = document.getElementById("product-id").value;
           const title = document.getElementById("product-title").value.trim();
           const price = document.getElementById("product-price").value.trim();
+          const individualPricing =
+            document.getElementById("product-individualPricing").checked === true;
 
           // Pobierz treść z Quill
           const description = productQuill ? productQuill.root.innerHTML : "";
 
-          if (!title || !price) {
+          if (!title || (!individualPricing && !price)) {
             showNotification("Wypełnij wszystkie wymagane pola.", "error");
             return;
           }
@@ -14214,7 +14824,8 @@
 
             const productData = {
               title,
-              price,
+              price: individualPricing ? null : parseFloat(price) || 0,
+              individualPricing,
               description,
               date: Date.now(),
               order: productId ? productsList.find(p => p.id === productId)?.order || productsList.length : productsList.length,
@@ -14265,6 +14876,8 @@
           productQuill.root.innerHTML = "";
         }
         document.getElementById("product-id").value = "";
+        document.getElementById("product-individualPricing").checked = false;
+        window.toggleProductIndividualPricing();
         productImages = [];
         renderProductImages();
       };
@@ -14337,7 +14950,7 @@
                 <div class="flex justify-between items-center p-3 bg-zinc-800 rounded-lg border border-zinc-700">
                     <div class="flex-1">
                         <div class="font-semibold text-white">${training.title}</div>
-                        <div class="text-sm text-zinc-400">${training.price} zł</div>
+                        <div class="text-sm text-zinc-400">${training.individualPricing === true ? 'Cena ustalana indywidualnie' : `${training.price} zł`}</div>
                         <div class="text-xs text-zinc-500 mt-1">
                           ${training.available === true ? '<span class="text-green-400">Dostępne dla wszystkich</span>' : '<span class="text-yellow-400">Ograniczony dostęp</span>'}
                         </div>
@@ -14533,7 +15146,10 @@
         currentTrainingId = trainingId;
         document.getElementById("training-public-id").value = training.id;
         document.getElementById("training-public-title").value = training.title || "";
-        document.getElementById("training-public-price").value = training.price || "";
+        document.getElementById("training-public-individualPricing").checked = training.individualPricing === true;
+        document.getElementById("training-public-price").value =
+          training.individualPricing === true ? "" : training.price || "";
+        window.toggleTrainingIndividualPricing();
 
         trainingImages = training.images ? [...training.images] : (training.img ? [{url: training.img, order: 0}] : []);
         renderTrainingImages();
@@ -14545,9 +15161,31 @@
         document.getElementById("training-public-form").reset();
         document.getElementById("training-public-description").innerHTML = "";
         document.getElementById("training-public-id").value = "";
+        document.getElementById("training-public-individualPricing").checked = false;
+        window.toggleTrainingIndividualPricing();
         trainingImages = [];
         renderTrainingImages();
         currentTrainingId = null;
+      };
+
+      window.toggleTrainingIndividualPricing = function () {
+        const checkbox = document.getElementById("training-public-individualPricing");
+        const priceInput = document.getElementById("training-public-price");
+        const helpText = document.getElementById("training-public-price-help");
+        if (!checkbox || !priceInput) return;
+        const isIndividualPricing = checkbox.checked === true;
+        priceInput.disabled = isIndividualPricing;
+        priceInput.required = !isIndividualPricing;
+        priceInput.classList.toggle("opacity-60", isIndividualPricing);
+        priceInput.classList.toggle("cursor-not-allowed", isIndividualPricing);
+        if (isIndividualPricing) {
+          priceInput.value = "";
+        }
+        if (helpText) {
+          helpText.textContent = isIndividualPricing
+            ? "Dla tego szkolenia klient składa zamówienie bez ceny, a wycena jest ustalana później."
+            : "Podaj cenę szkolenia widoczną na stronie publicznej.";
+        }
       };
 
       window.updateTrainingPublicVisibility = () => {
@@ -16552,9 +17190,11 @@
           const trainingId = document.getElementById("training-public-id").value;
           const title = document.getElementById("training-public-title").value.trim();
           const price = document.getElementById("training-public-price").value.trim();
+          const individualPricing =
+            document.getElementById("training-public-individualPricing").checked === true;
           const desc = document.getElementById("training-public-description").innerHTML;
 
-          if (!title || !price || trainingImages.length === 0) {
+          if (!title || (!individualPricing && !price) || trainingImages.length === 0) {
             showNotification("Wypełnij wszystkie wymagane pola (w tym zdjęcia).", "error");
             return;
           }
@@ -16565,7 +17205,8 @@
               : null;
             const trainingData = {
               title,
-              price,
+              price: individualPricing ? null : parseFloat(price) || 0,
+              individualPricing,
               images: trainingImages.map(img => ({ url: img.url, order: img.order })),
               img: trainingImages[0] ? trainingImages[0].url : "",
               desc,
@@ -16630,6 +17271,36 @@
             '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Zapisywanie...';
 
           try {
+            const selectedRole = String(
+              document.getElementById("edit-role").value || "user",
+            ).toLowerCase();
+            const operatorScopes =
+              selectedRole === "operator"
+                ? getSelectedOperatorScopesFromForm()
+                : [];
+            const companyName = document
+              .getElementById("edit-company-name")
+              .value.trim();
+            const companyNip = normalizeNip(
+              document.getElementById("edit-company-nip").value,
+            );
+
+            if (selectedRole === "company") {
+              if (companyName.length < 2) {
+                showNotification("Dla firmy podaj nazwę firmy.", "error");
+                return;
+              }
+              if (companyNip.length !== 10) {
+                showNotification("Dla firmy podaj poprawny NIP (10 cyfr).", "error");
+                return;
+              }
+            }
+
+            if (selectedRole === "operator" && operatorScopes.length === 0) {
+              showNotification("Wybierz przynajmniej jeden zakres operatora.", "error");
+              return;
+            }
+
             // Zaszyfruj wrażliwe dane przed zapisaniem
             const updatedProfile = {
               displayName: document
@@ -16639,30 +17310,48 @@
                 .getElementById("edit-first-name")
                 .value.trim(),
               lastName: document.getElementById("edit-last-name").value.trim(),
-              phone: btoa(document.getElementById("edit-phone").value.trim()),
+              phone: encodeUtf8Base64(document.getElementById("edit-phone").value.trim()),
               address: {
-                street: btoa(
+                street: encodeUtf8Base64(
                   document.getElementById("edit-street").value.trim(),
                 ),
-                buildingNumber: btoa(
+                buildingNumber: encodeUtf8Base64(
                   document.getElementById("edit-building-number").value.trim(),
                 ),
-                postalCode: btoa(
+                postalCode: encodeUtf8Base64(
                   document.getElementById("edit-postal-code").value.trim(),
                 ),
-                city: btoa(document.getElementById("edit-city").value.trim()),
+                city: encodeUtf8Base64(document.getElementById("edit-city").value.trim()),
               },
-              parcelLocker: btoa(
+              parcelLocker: encodeUtf8Base64(
                 document.getElementById("edit-parcel-locker").value.trim(),
               ),
+              companyName:
+                selectedRole === "company" ? encodeUtf8Base64(companyName) : "",
+              nip:
+                selectedRole === "company" ? encodeUtf8Base64(companyNip) : "",
               newsletter: document.getElementById("edit-newsletter").checked,
-              role: document.getElementById("edit-role").value,
+              role: selectedRole,
+              operatorScopes,
               status: document.getElementById("edit-status").value,
               updatedAt: new Date(),
               updatedBy: currentUser.uid,
             };
 
             await updateDoc(doc(db, "userProfiles", userId), updatedProfile);
+            try {
+              await setDoc(
+                doc(db, "publicProfiles", userId),
+                {
+                  role: selectedRole,
+                  operatorScopes,
+                  updatedAt: new Date(),
+                },
+                { merge: true },
+              );
+            } catch (e) {
+              console.warn("publicProfiles sync failed (ignored):", e?.message || e);
+            }
             await syncSearchIndexRecord("user", userId, "sync");
 
             // Zaloguj edycję profilu
@@ -16672,7 +17361,9 @@
             });
 
             showNotification("Dane użytkownika zostały zaktualizowane.");
+            currentEditingUser = { ...currentEditingUser, ...updatedProfile };
             closeUserEdit();
+            loadUserDetails();
             loadUsers(); // Odśwież listę użytkowników
           } catch (error) {
             console.error("Error updating user:", error);
@@ -19584,6 +20275,7 @@
       // =============================================================================
       let currentOrderFilter = 'all';
       let currentEditingOrder = null;
+      let orderFinanceEditUnlocked = false;
       let allOrders = [];
 
       // Inicjalizacja filtrów przy załadowaniu
@@ -19670,6 +20362,12 @@
       function updateOrdersStatistics() {
         const stats = {
           zlozone: 0,
+          wycena_zlozona: 0,
+          wycena_zaakceptowana: 0,
+          wycena_odrzucona: 0,
+          oczekuje_na_platnosc: 0,
+          weryfikowanie_platnosci: 0,
+          platnosc_zakonczona_niepowodzeniem: 0,
           realizacja: 0,
           wyslane: 0,
           zakonczone: 0,
@@ -19679,6 +20377,12 @@
 
         allOrders.forEach(order => {
           if (order.status === 'zlozone') stats.zlozone++;
+          else if (order.status === 'wycena_zlozona') stats.wycena_zlozona++;
+          else if (order.status === 'wycena_zaakceptowana') stats.wycena_zaakceptowana++;
+          else if (order.status === 'wycena_odrzucona') stats.wycena_odrzucona++;
+          else if (order.status === 'oczekuje_na_platnosc') stats.oczekuje_na_platnosc++;
+          else if (order.status === 'weryfikowanie_platnosci') stats.weryfikowanie_platnosci++;
+          else if (order.status === 'platnosc_zakonczona_niepowodzeniem') stats.platnosc_zakonczona_niepowodzeniem++;
           else if (order.status === 'realizacja') stats.realizacja++;
           else if (order.status === 'wyslane') stats.wyslane++;
           else if (order.status === 'zakonczone') stats.zakonczone++;
@@ -19686,6 +20390,12 @@
         });
 
         document.getElementById('orders-count-zlozone').textContent = stats.zlozone;
+        document.getElementById('orders-count-wycena-zlozona').textContent = stats.wycena_zlozona;
+        document.getElementById('orders-count-wycena-zaakceptowana').textContent = stats.wycena_zaakceptowana;
+        document.getElementById('orders-count-wycena-odrzucona').textContent = stats.wycena_odrzucona;
+        document.getElementById('orders-count-oczekuje-na-platnosc').textContent = stats.oczekuje_na_platnosc;
+        document.getElementById('orders-count-weryfikowanie-platnosci').textContent = stats.weryfikowanie_platnosci;
+        document.getElementById('orders-count-platnosc-niepowodzenie').textContent = stats.platnosc_zakonczona_niepowodzeniem;
         document.getElementById('orders-count-realizacja').textContent = stats.realizacja;
         document.getElementById('orders-count-wyslane').textContent = stats.wyslane;
         document.getElementById('orders-count-zakonczone').textContent = stats.zakonczone;
@@ -19711,6 +20421,12 @@
 
         const statusColors = {
           zlozone: 'text-yellow-400 bg-yellow-400/20 border-yellow-400/40',
+          wycena_zlozona: 'text-amber-300 bg-amber-400/10 border-amber-400/30',
+          wycena_zaakceptowana: 'text-emerald-300 bg-emerald-400/10 border-emerald-400/30',
+          wycena_odrzucona: 'text-rose-300 bg-rose-400/10 border-rose-400/30',
+          oczekuje_na_platnosc: 'text-sky-300 bg-sky-400/10 border-sky-400/30',
+          weryfikowanie_platnosci: 'text-cyan-300 bg-cyan-400/10 border-cyan-400/30',
+          platnosc_zakonczona_niepowodzeniem: 'text-red-300 bg-red-400/10 border-red-400/30',
           realizacja: 'text-orange-400 bg-orange-400/20 border-orange-400/40',
           wyslane: 'text-blue-400 bg-blue-400/20 border-blue-400/40',
           zakonczone: 'text-green-400 bg-green-400/20 border-green-400/40',
@@ -19719,6 +20435,12 @@
 
         const statusNames = {
           zlozone: 'Złożone',
+          wycena_zlozona: 'Wycena złożona',
+          wycena_zaakceptowana: 'Wycena zaakceptowana',
+          wycena_odrzucona: 'Wycena odrzucona',
+          oczekuje_na_platnosc: 'Oczekuje na płatność',
+          weryfikowanie_platnosci: 'Weryfikowanie płatności',
+          platnosc_zakonczona_niepowodzeniem: 'Płatność zakończona niepowodzeniem',
           realizacja: 'W realizacji',
           wyslane: 'Wysłane',
           zakonczone: 'Zakończone',
@@ -19756,6 +20478,23 @@
           const statusColor = statusColors[order.status] || 'text-zinc-400 bg-zinc-400/20 border-zinc-400/40';
           const statusName = statusNames[order.status] || order.status;
           const userName = order.userId ? (userNamesMap[order.userId] || order.userId) : null;
+          const isIndividualPricing = order.isIndividualPricing === true || order.pricingMode === 'individual';
+          const deliveryMethodLabel =
+            order.orderContext === 'training'
+              ? 'Brak dostawy'
+              : order.deliveryMethod === 'courier'
+                ? 'Kurier'
+                : order.deliveryMethod === 'inpost'
+                  ? 'Paczkomat InPost'
+                  : 'Nie wybrano';
+          const deliveryAddressText =
+            order.deliveryMethod === 'courier'
+              ? [order.deliveryAddress?.street, order.deliveryAddress?.buildingNumber, order.deliveryAddress?.postalCode, order.deliveryAddress?.city]
+                  .filter(Boolean)
+                  .join(', ')
+              : '';
+          const priceDisplay = isIndividualPricing ? '—' : `${(order.price || 0).toFixed(2)} zł`;
+          const totalDisplay = isIndividualPricing ? 'Cena ustalana po wycenie' : `${(order.total || 0).toFixed(2)} zł`;
 
           return `
             <div class="bg-zinc-800/50 rounded-lg p-4 mb-4 border border-zinc-700 hover:border-zinc-600 transition-all">
@@ -19770,6 +20509,9 @@
                   <div class="text-sm text-zinc-400 space-y-1">
                     ${userName ? `<div>Użytkownik: <span class="text-white">${userName}</span></div>` : ''}
                     ${order.email ? `<div>Email: <span class="text-white">${order.email}</span></div>` : ''}
+                    ${(order.firstName || order.lastName) ? `<div>Dane: <span class="text-white">${[order.firstName, order.lastName].filter(Boolean).join(' ')}</span></div>` : ''}
+                    ${order.isCompany ? `<div>Firma: <span class="text-white">${order.companyName || '—'}</span></div>` : ''}
+                    ${order.isCompany ? `<div>NIP: <span class="text-white">${order.taxId || '—'}</span></div>` : ''}
                     <div>Utworzono: <span class="text-white">${order.createdAtFormatted || 'Brak daty'}</span></div>
                     ${order.updatedAtFormatted && order.updatedAtFormatted !== order.createdAtFormatted ?
                       `<div>Zaktualizowano: <span class="text-white">${order.updatedAtFormatted}</span></div>` : ''}
@@ -19790,12 +20532,19 @@
                   <strong>Zamówienie:</strong> ${order.orderDetails || 'Brak opisu'}
                 </div>
                 ${order.notes ? `<div class="text-sm text-zinc-400 italic">${order.notes}</div>` : ''}
+                ${order.quoteRejectedReason ? `<div class="text-sm text-red-300 mt-2"><strong>Powód odrzucenia wyceny:</strong> ${order.quoteRejectedReason}</div>` : ''}
+                ${order.paymentLinkUrl ? `<div class="text-sm text-sky-300 mt-2 break-all"><strong>Link płatności:</strong> <a href="${order.paymentLinkUrl}" target="_blank" class="underline hover:text-sky-200">${order.paymentLinkUrl}</a></div>` : ''}
+                <div class="mt-3 grid gap-2 md:grid-cols-2 text-sm text-zinc-400">
+                  <div>Sposób dostawy: <span class="text-white">${deliveryMethodLabel}</span></div>
+                  ${order.parcelLocker ? `<div>Paczkomat: <span class="text-white">${order.parcelLocker}</span></div>` : ''}
+                  ${deliveryAddressText ? `<div class="md:col-span-2">Adres dostawy: <span class="text-white">${deliveryAddressText}</span></div>` : ''}
+                </div>
               </div>
 
               <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <div class="text-zinc-400">Cena</div>
-                  <div class="text-white font-semibold">${(order.price || 0).toFixed(2)} zł</div>
+                  <div class="text-white font-semibold">${escapeHtml(order.priceDisplay || priceDisplay)}</div>
                 </div>
                 <div>
                   <div class="text-zinc-400">Wysyłka</div>
@@ -19807,11 +20556,11 @@
                 </div>
                 <div>
                   <div class="text-zinc-400">Razem</div>
-                  <div class="text-coyote font-bold text-lg">${(order.total || 0).toFixed(2)} zł</div>
+                  <div class="text-coyote font-bold text-lg">${escapeHtml(order.totalDisplay || totalDisplay)}</div>
                 </div>
               </div>
 
-              ${order.invoiceFile || order.id ? `
+              ${order.invoiceFile ? `
                 <div class="mt-4 pt-4 border-t border-zinc-700">
                   <a href="/api/download-invoice?orderId=${order.id}" target="_blank" class="text-coyote hover:text-coyote/80 text-sm">
                     <i class="fa-solid fa-file-pdf mr-2"></i> Pobierz fakturę
@@ -19842,6 +20591,7 @@
       // Pokazanie modala dodawania zamówienia
       window.showAddOrderModal = function() {
         currentEditingOrder = null;
+        orderFinanceEditUnlocked = false;
         showOrderModal();
       };
 
@@ -19855,12 +20605,21 @@
           }
 
           currentEditingOrder = order;
+          orderFinanceEditUnlocked = false;
           showOrderModal();
         } catch (error) {
           console.error('Error loading order for edit:', error);
           showNotification('Błąd ładowania zamówienia', 'error');
         }
       };
+
+      function toggleOrderStatusExtras() {
+        const status = document.getElementById('order-status')?.value || '';
+        const paymentWrap = document.getElementById('order-payment-link-wrap');
+        if (paymentWrap) {
+          paymentWrap.classList.toggle('hidden', status !== 'oczekuje_na_platnosc');
+        }
+      }
 
       // Modal zamówienia
       function showOrderModal() {
@@ -19891,8 +20650,14 @@
               <div class="grid grid-cols-2 gap-4 mb-6">
                 <div>
                   <label class="block text-sm font-medium mb-2">Status</label>
-                  <select id="order-status" class="w-full">
+                  <select id="order-status" class="w-full" onchange="toggleOrderStatusExtras()">
                     <option value="zlozone">Złożone</option>
+                    <option value="wycena_zlozona">Wycena złożona</option>
+                    <option value="wycena_zaakceptowana">Wycena zaakceptowana</option>
+                    <option value="wycena_odrzucona">Wycena odrzucona</option>
+                    <option value="oczekuje_na_platnosc">Oczekuje na płatność</option>
+                    <option value="weryfikowanie_platnosci">Weryfikowanie płatności</option>
+                    <option value="platnosc_zakonczona_niepowodzeniem">Płatność zakończona niepowodzeniem</option>
                     <option value="realizacja">W realizacji</option>
                     <option value="wyslane">Wysłane</option>
                     <option value="zakonczone">Zakończone</option>
@@ -19952,8 +20717,24 @@
               <input type="hidden" id="order-address-building">
               <input type="hidden" id="order-address-postal">
               <input type="hidden" id="order-address-city">
+              <input type="hidden" id="order-deliveryMethod">
+              <input type="hidden" id="order-deliverySameAsBilling">
+              <input type="hidden" id="order-deliveryAddress-street">
+              <input type="hidden" id="order-deliveryAddress-building">
+              <input type="hidden" id="order-deliveryAddress-postal">
+              <input type="hidden" id="order-deliveryAddress-city">
 
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div class="mb-3 flex items-center justify-between gap-4">
+                <div>
+                  <label class="block text-sm font-medium">Blok finansowy</label>
+                  <p id="order-finance-lock-note" class="text-xs text-zinc-500 mt-1"></p>
+                </div>
+                <button type="button" id="order-finance-edit-btn" onclick="enableOrderFinanceEdit()" class="btn-secondary px-4 py-2 text-xs hidden">
+                  <i class="fa-solid fa-pen-to-square mr-2"></i>Edytuj cenę
+                </button>
+              </div>
+
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" id="order-finance-grid">
                 <div>
                   <label class="block text-sm font-medium mb-2">Cena (zł)</label>
                   <input type="number" id="order-price" step="0.01" class="w-full" value="0" oninput="calculateOrderTotal()">
@@ -19973,6 +20754,12 @@
               </div>
 
               <div class="mb-6">
+                <div id="order-payment-link-wrap" class="hidden mb-6">
+                  <label class="block text-sm font-medium mb-2">Link do płatności</label>
+                  <input type="url" id="order-paymentLinkUrl" class="w-full" placeholder="https://buy.stripe.com/..." />
+                  <p class="text-xs text-zinc-400 mt-1">Pole wymagane dla statusu "Oczekuje na płatność". Klient zobaczy w profilu przycisk „Opłać”, który przekieruje go pod ten adres.</p>
+                </div>
+
                 <label class="block text-sm font-medium mb-2">Faktura (PDF)</label>
                 <input type="file" id="order-invoice" accept=".pdf" class="w-full">
                 <p class="text-xs text-zinc-400 mt-1">Wymagane dla statusu "Zakończone"</p>
@@ -20022,14 +20809,25 @@
           document.getElementById('order-address-building').value = currentEditingOrder.address?.buildingNumber || '';
           document.getElementById('order-address-postal').value = currentEditingOrder.address?.postalCode || '';
           document.getElementById('order-address-city').value = currentEditingOrder.address?.city || '';
+          document.getElementById('order-deliveryMethod').value = currentEditingOrder.deliveryMethod || '';
+          document.getElementById('order-deliverySameAsBilling').value = currentEditingOrder.deliverySameAsBilling === true ? 'true' : 'false';
+          document.getElementById('order-deliveryAddress-street').value = currentEditingOrder.deliveryAddress?.street || '';
+          document.getElementById('order-deliveryAddress-building').value = currentEditingOrder.deliveryAddress?.buildingNumber || '';
+          document.getElementById('order-deliveryAddress-postal').value = currentEditingOrder.deliveryAddress?.postalCode || '';
+          document.getElementById('order-deliveryAddress-city').value = currentEditingOrder.deliveryAddress?.city || '';
           document.getElementById('order-price').value = currentEditingOrder.price || 0;
           document.getElementById('order-shipping').value = currentEditingOrder.shipping || 0;
           document.getElementById('order-additionalCosts').value = currentEditingOrder.additionalCosts || 0;
           document.getElementById('order-status').value = currentEditingOrder.status || 'zlozone';
+          document.getElementById('order-paymentLinkUrl').value = currentEditingOrder.paymentLinkUrl || '';
           calculateOrderTotal();
         } else {
+          const paymentLinkEl = document.getElementById('order-paymentLinkUrl');
+          if (paymentLinkEl) paymentLinkEl.value = '';
           calculateOrderTotal();
         }
+        toggleOrderStatusExtras();
+        window.syncOrderFinanceLock();
 
         modal.classList.remove('hidden');
         // Zablokuj scrollowanie tła
@@ -20048,6 +20846,38 @@
         }
       };
 
+      window.syncOrderFinanceLock = function() {
+        const shouldLock = !!currentEditingOrder && currentEditingOrder.isIndividualPricing !== true && orderFinanceEditUnlocked !== true;
+        ['order-price', 'order-shipping', 'order-additionalCosts'].forEach((id) => {
+          const input = document.getElementById(id);
+          if (!input) return;
+          input.readOnly = shouldLock;
+          input.classList.toggle('cursor-not-allowed', shouldLock);
+          input.classList.toggle('opacity-70', shouldLock);
+        });
+        const note = document.getElementById('order-finance-lock-note');
+        if (note) {
+          note.textContent = shouldLock
+            ? 'Pola są zablokowane dla zamówień z ustaloną ceną. Odblokuj je przyciskiem obok.'
+            : '';
+        }
+        const button = document.getElementById('order-finance-edit-btn');
+        if (button) {
+          button.classList.toggle('hidden', !(!!currentEditingOrder && currentEditingOrder.isIndividualPricing !== true));
+          button.disabled = orderFinanceEditUnlocked === true;
+          if (orderFinanceEditUnlocked === true) {
+            button.classList.add('opacity-60', 'cursor-not-allowed');
+          } else {
+            button.classList.remove('opacity-60', 'cursor-not-allowed');
+          }
+        }
+      };
+
+      window.enableOrderFinanceEdit = function() {
+        orderFinanceEditUnlocked = true;
+        window.syncOrderFinanceLock();
+      };
+
       // Zamykanie modala
       window.closeOrderModal = function() {
         const modal = document.getElementById('order-modal');
@@ -20057,6 +20887,7 @@
         // Odblokuj scrollowanie tła
         document.body.style.overflow = '';
         currentEditingOrder = null;
+        orderFinanceEditUnlocked = false;
       };
 
       // Zmienne do przechowywania oryginalnych danych przed edycją
@@ -20104,13 +20935,13 @@
             if (userDoc.exists()) {
               const userData = userDoc.data();
               customerData = {
-                phone: userData.phone ? atob(userData.phone) : '',
-                parcelLocker: userData.parcelLocker ? atob(userData.parcelLocker) : '',
+                phone: userData.phone ? decodeUtf8Base64(userData.phone) : '',
+                parcelLocker: userData.parcelLocker ? decodeUtf8Base64(userData.parcelLocker) : '',
                 address: {
-                  street: userData.address?.street ? atob(userData.address.street) : '',
-                  buildingNumber: userData.address?.buildingNumber ? atob(userData.address.buildingNumber) : '',
-                  postalCode: userData.address?.postalCode ? atob(userData.address.postalCode) : '',
-                  city: userData.address?.city ? atob(userData.address.city) : ''
+                  street: userData.address?.street ? decodeUtf8Base64(userData.address.street) : '',
+                  buildingNumber: userData.address?.buildingNumber ? decodeUtf8Base64(userData.address.buildingNumber) : '',
+                  postalCode: userData.address?.postalCode ? decodeUtf8Base64(userData.address.postalCode) : '',
+                  city: userData.address?.city ? decodeUtf8Base64(userData.address.city) : ''
                 }
               };
             }
@@ -20414,10 +21245,19 @@
               postalCode: document.getElementById('order-address-postal').value,
               city: document.getElementById('order-address-city').value,
             },
+            deliveryMethod: document.getElementById('order-deliveryMethod')?.value || '',
+            deliverySameAsBilling: document.getElementById('order-deliverySameAsBilling')?.value === 'true',
+            deliveryAddress: {
+              street: document.getElementById('order-deliveryAddress-street')?.value || '',
+              buildingNumber: document.getElementById('order-deliveryAddress-building')?.value || '',
+              postalCode: document.getElementById('order-deliveryAddress-postal')?.value || '',
+              city: document.getElementById('order-deliveryAddress-city')?.value || '',
+            },
             price: document.getElementById('order-price').value,
             shipping: document.getElementById('order-shipping').value,
             additionalCosts: document.getElementById('order-additionalCosts').value,
             status: document.getElementById('order-status').value,
+            paymentLinkUrl: document.getElementById('order-paymentLinkUrl')?.value || '',
           };
 
           const isEdit = !!currentEditingOrder;
@@ -20450,7 +21290,6 @@
             }
           }
           formData.cancellationReason = status === 'anulowane' ? cancellationReasonForApi : null;
-
           // Upload faktury jeśli jest
           let invoiceUrl = existingInvoice || null;
           if (invoiceFile) {
@@ -20603,6 +21442,788 @@
           showNotification('Błąd usuwania zamówienia: ' + error.message, 'error');
         }
       };
+
+      // =============================================================================
+      // ZWROTY / REKLAMACJE - Panel administratora
+      // =============================================================================
+      let adminReturnClaimsCache = [];
+      let adminReturnClaimDetail = null;
+      let adminReturnClaimAttachments = [];
+      const ADMIN_RETURN_ATTACHMENT_LIMIT = 5;
+
+      function escapeAdminReturnHtml(value) {
+        return String(value ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function nl2brAdminReturn(value) {
+        return escapeAdminReturnHtml(value).replace(/\n/g, '<br />');
+      }
+
+      async function getAdminReturnHeaders(includeJson = true) {
+        const headers = { 'X-Admin-Panel': 'true' };
+        if (includeJson) headers['Content-Type'] = 'application/json';
+        try {
+          if (auth?.currentUser) {
+            const token = await auth.currentUser.getIdToken();
+            if (token) headers.Authorization = `Bearer ${token}`;
+          }
+        } catch (error) {
+          console.warn('getAdminReturnHeaders:', error);
+        }
+        return headers;
+      }
+
+      function getAdminReturnStatusMeta(status) {
+        const map = {
+          wygenerowany: { label: 'Wygenerowany', color: 'text-zinc-300 bg-zinc-300/10 border-zinc-300/30' },
+          zlozono: { label: 'Złożono', color: 'text-amber-300 bg-amber-400/10 border-amber-400/30' },
+          w_trakcie_realizacji: { label: 'W trakcie realizacji', color: 'text-orange-300 bg-orange-400/10 border-orange-400/30' },
+          zaproponowano_rozwiazanie: { label: 'Zaproponowano rozwiązanie', color: 'text-sky-300 bg-sky-400/10 border-sky-400/30' },
+          propozycja_zaakceptowana: { label: 'Propozycja zaakceptowana', color: 'text-green-300 bg-green-400/10 border-green-400/30' },
+          propozycja_odrzucona: { label: 'Propozycja odrzucona', color: 'text-red-300 bg-red-400/10 border-red-400/30' },
+          oczekiwanie_na_zwrot: { label: 'Oczekiwanie na zwrot', color: 'text-violet-300 bg-violet-400/10 border-violet-400/30' },
+          rozpatrzono_pozytywnie: { label: 'Rozpatrzono pozytywnie', color: 'text-green-300 bg-green-500/10 border-green-500/30' },
+          rozpatrzono_negatywnie: { label: 'Rozpatrzono negatywnie', color: 'text-red-300 bg-red-500/10 border-red-500/30' },
+          anulowano_przez_administratora: { label: 'Anulowano przez administratora', color: 'text-red-300 bg-red-500/10 border-red-500/60' },
+          anulowano_przez_klienta: { label: 'Anulowano przez klienta', color: 'text-red-300 bg-red-500/10 border-red-500/60' },
+        };
+        return map[status] || { label: status || 'Nieznany', color: 'text-zinc-300 bg-zinc-300/10 border-zinc-300/30' };
+      }
+
+      function ensureAdminReturnModal(modalId) {
+        let modal = document.getElementById(modalId);
+        if (!modal) {
+          modal = document.createElement('div');
+          modal.id = modalId;
+          modal.className = 'fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl';
+          modal.onclick = function(event) {
+            if (event.target.id === modalId) {
+              closeAdminReturnClaimModal(modalId);
+            }
+          };
+          document.body.appendChild(modal);
+        }
+        return modal;
+      }
+
+      window.closeAdminReturnClaimModal = function(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+          modal.classList.add('hidden');
+        }
+        document.body.style.overflow = '';
+      };
+
+      function updateAdminReturnSummary(items) {
+        const counts = {
+          total: items.length,
+          zlozono: 0,
+          w_trakcie_realizacji: 0,
+          zaproponowano: 0,
+          positive: 0,
+          negative: 0,
+        };
+        items.forEach((item) => {
+          if (item.status === 'zlozono' || item.status === 'wygenerowany') counts.zlozono += 1;
+          if (item.status === 'w_trakcie_realizacji') counts.w_trakcie_realizacji += 1;
+          if (item.status === 'zaproponowano_rozwiazanie' || item.status === 'propozycja_zaakceptowana' || item.status === 'propozycja_odrzucona' || item.status === 'oczekiwanie_na_zwrot') counts.zaproponowano += 1;
+          if (item.status === 'rozpatrzono_pozytywnie') counts.positive += 1;
+          if (item.status === 'rozpatrzono_negatywnie' || item.status === 'anulowano_przez_administratora' || item.status === 'anulowano_przez_klienta') counts.negative += 1;
+        });
+        const setText = (id, value) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = String(value);
+        };
+        setText('returns-count-total', counts.total);
+        setText('returns-count-zlozono', counts.zlozono);
+        setText('returns-count-w-trakcie', counts.w_trakcie_realizacji);
+        setText('returns-count-zaproponowano', counts.zaproponowano);
+        setText('returns-count-positive', counts.positive);
+        setText('returns-count-negative', counts.negative);
+
+        const exact = new Map();
+        items.forEach((item) => {
+          const key = item.status || 'inne';
+          exact.set(key, (exact.get(key) || 0) + 1);
+        });
+        const breakdown = document.getElementById('returns-status-breakdown');
+        if (breakdown) {
+          breakdown.innerHTML = [...exact.entries()]
+            .sort((a, b) => String(getAdminReturnStatusMeta(a[0]).label).localeCompare(String(getAdminReturnStatusMeta(b[0]).label), 'pl'))
+            .map(([status, count]) => {
+              const meta = getAdminReturnStatusMeta(status);
+              return `<span class="px-3 py-1.5 rounded-full text-xs font-medium border ${meta.color}">${escapeAdminReturnHtml(meta.label)}: ${count}</span>`;
+            })
+            .join('');
+        }
+      }
+
+      function getFilteredAdminReturnClaims() {
+        const status = document.getElementById('returns-filter-status')?.value || 'all';
+        const verification = document.getElementById('returns-filter-verification')?.value || 'all';
+        const sort = document.getElementById('returns-filter-sort')?.value || 'updated_desc';
+        const includeClosed = !!document.getElementById('returns-filter-closed')?.checked;
+        const staleOnly = !!document.getElementById('returns-filter-stale-only')?.checked;
+
+        let items = [...adminReturnClaimsCache];
+        if (status !== 'all') {
+          items = items.filter((item) => item.status === status);
+        }
+        if (verification === 'verified') {
+          items = items.filter((item) => !!item.verified);
+        } else if (verification === 'unverified') {
+          items = items.filter((item) => !item.verified);
+        }
+        if (!includeClosed) {
+          items = items.filter((item) => !item.statusClosed);
+        }
+        if (staleOnly) {
+          items = items.filter((item) => !!item.stale);
+        }
+
+        const tsValue = (item, key) => {
+          const source = item?.[key];
+          return source?.seconds ? source.seconds * 1000 : 0;
+        };
+
+        items.sort((a, b) => {
+          if (sort === 'updated_asc') return tsValue(a, 'updatedAt') - tsValue(b, 'updatedAt');
+          if (sort === 'created_desc') return tsValue(b, 'createdAt') - tsValue(a, 'createdAt');
+          if (sort === 'created_asc') return tsValue(a, 'createdAt') - tsValue(b, 'createdAt');
+          if (sort === 'status') return String(a.statusLabel || a.status).localeCompare(String(b.statusLabel || b.status), 'pl');
+          return tsValue(b, 'updatedAt') - tsValue(a, 'updatedAt');
+        });
+        return items;
+      }
+
+      function renderAdminReturnClaims(items) {
+        const container = document.getElementById('returns-admin-container');
+        if (!container) return;
+        if (!items.length) {
+          container.innerHTML = `
+            <div class="text-center text-zinc-500 py-12">
+              <i class="fa-solid fa-inbox text-4xl mb-4 text-zinc-600"></i>
+              <h3 class="text-lg font-semibold mb-2">Brak zgłoszeń</h3>
+              <p class="text-sm">Nie znaleziono formularzy spełniających wybrane kryteria.</p>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = items.map((item) => {
+          const statusMeta = getAdminReturnStatusMeta(item.status);
+          const borderClass = item.status === 'anulowano_przez_administratora' || item.status === 'anulowano_przez_klienta'
+            ? 'border-red-500/70 opacity-70'
+            : item.stale
+              ? 'border-red-500/80 shadow-[0_0_0_1px_rgba(239,68,68,0.35)]'
+              : (item.verificationBorder || 'border-zinc-700');
+          return `
+            <div class="bg-zinc-800/50 rounded-lg p-5 mb-4 border ${borderClass}">
+              <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between mb-4">
+                <div>
+                  <div class="flex flex-wrap items-center gap-3 mb-2">
+                    <h3 class="text-lg font-bold text-white">${escapeAdminReturnHtml(item.claimNumber || 'Brak numeru')}</h3>
+                    <span class="px-3 py-1 rounded text-xs font-medium border ${statusMeta.color}">
+                      ${escapeAdminReturnHtml(item.statusLabel || statusMeta.label)}
+                    </span>
+                    <span class="px-3 py-1 rounded text-xs font-medium border ${item.verified ? 'border-coyote/40 text-coyote bg-coyote/10' : 'border-sky-500/40 text-sky-300 bg-sky-500/10'}">
+                      ${escapeAdminReturnHtml(item.verificationLabel || '')}
+                    </span>
+                    ${item.stale ? '<span class="px-3 py-1 rounded text-xs font-medium border border-red-500/50 text-red-300 bg-red-500/10">7+ dni bez zmiany</span>' : ''}
+                  </div>
+                  <div class="text-sm text-zinc-400 space-y-1">
+                    <div>${escapeAdminReturnHtml(item.typeLabel || item.type || '')} • ${escapeAdminReturnHtml(item.requestKind || 'Brak żądania')}</div>
+                    <div>${escapeAdminReturnHtml(item.firstName || '')} ${escapeAdminReturnHtml(item.lastName || '')} • ${escapeAdminReturnHtml(item.email || '')}</div>
+                    <div>Zamówienie: <span class="text-zinc-200">${escapeAdminReturnHtml(item.orderNumber || '—')}</span> • Faktura: <span class="text-zinc-200">${escapeAdminReturnHtml(item.invoiceNumber || '—')}</span></div>
+                    <div>Utworzono: <span class="text-zinc-200">${escapeAdminReturnHtml(item.createdAtFormatted || '—')}</span> • Aktualizacja: <span class="text-zinc-200">${escapeAdminReturnHtml(item.updatedAtFormatted || '—')}</span></div>
+                  </div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <button onclick="openAdminReturnClaimDetail('${item.id}')" class="btn-admin text-xs px-3 py-2">
+                    <i class="fa-solid fa-eye mr-1"></i>Szczegóły
+                  </button>
+                  <button onclick="openAdminReturnClaimStatusModal('${item.id}')" class="btn-admin text-xs px-3 py-2">
+                    <i class="fa-solid fa-pen-to-square mr-1"></i>Zmień status
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      window.applyAdminReturnClaimFilters = function() {
+        renderAdminReturnClaims(getFilteredAdminReturnClaims());
+      };
+
+      window.loadAdminReturnClaims = async function() {
+        try {
+          const container = document.getElementById('returns-admin-container');
+          if (container) {
+            container.innerHTML = `
+              <div class="text-center text-zinc-500 py-12">
+                <i class="fa-solid fa-spinner fa-spin text-3xl mb-4 text-zinc-600"></i>
+                <h3 class="text-lg font-semibold mb-2">Ładowanie zgłoszeń...</h3>
+              </div>
+            `;
+          }
+
+          const headers = await getAdminReturnHeaders(false);
+          const response = await fetch('/api/returns?includeClosed=1', {
+            method: 'GET',
+            headers,
+            credentials: 'include',
+          });
+          const data = await response.json().catch(() => null);
+          if (!response.ok || !data?.success) {
+            throw new Error(data?.error || 'Nie udało się pobrać zgłoszeń.');
+          }
+          adminReturnClaimsCache = Array.isArray(data.data) ? data.data : [];
+          updateAdminReturnSummary(adminReturnClaimsCache);
+          renderAdminReturnClaims(getFilteredAdminReturnClaims());
+        } catch (error) {
+          console.error('loadAdminReturnClaims:', error);
+          const container = document.getElementById('returns-admin-container');
+          if (container) {
+            container.innerHTML = `
+              <div class="text-center text-red-400 py-12">
+                <i class="fa-solid fa-exclamation-triangle text-4xl mb-4"></i>
+                <h3 class="text-lg font-semibold mb-2">Błąd ładowania zgłoszeń</h3>
+                <p class="text-sm">${escapeAdminReturnHtml(error.message)}</p>
+              </div>
+            `;
+          }
+        }
+      };
+
+      function renderAdminReturnTimeline(events) {
+        if (!Array.isArray(events) || !events.length) {
+          return '<div class="text-sm text-zinc-500">Brak historii zgłoszenia.</div>';
+        }
+        return events.map((eventItem) => {
+          const statusMeta = getAdminReturnStatusMeta(eventItem.status);
+          const attachmentsHtml = (eventItem.attachments || []).map((attachment) => `
+            <div class="rounded-lg border border-zinc-700 bg-zinc-950/60 p-3">
+              <div class="text-sm text-zinc-200 mb-2">${escapeAdminReturnHtml(attachment.label || attachment.fileName || 'Załącznik')}</div>
+              <img src="data:${attachment.mimeType};base64,${attachment.dataBase64}" alt="${escapeAdminReturnHtml(attachment.fileName || 'Załącznik')}" class="w-full max-h-60 object-contain rounded-lg bg-black/30 mb-3" />
+              <button type="button" onclick="downloadAdminReturnAttachment('${eventItem.id}','${attachment.id}')" class="btn-admin text-xs px-3 py-2">
+                <i class="fa-solid fa-download mr-1"></i>Pobierz
+              </button>
+            </div>
+          `).join('');
+
+          return `
+            <div class="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
+              <div class="flex flex-wrap items-center gap-3 mb-3">
+                <span class="px-3 py-1 rounded text-xs font-medium border ${statusMeta.color}">
+                  ${escapeAdminReturnHtml(eventItem.statusLabel || statusMeta.label)}
+                </span>
+                <span class="text-sm text-zinc-400">${escapeAdminReturnHtml(eventItem.createdAtFormatted || '')}</span>
+                <span class="text-sm text-zinc-500">${escapeAdminReturnHtml(eventItem.actorName || eventItem.actorRole || '')}</span>
+              </div>
+              ${eventItem.comment ? `<div class="text-sm text-zinc-200 mb-2"><strong>Komentarz:</strong><br>${nl2brAdminReturn(eventItem.comment)}</div>` : ''}
+              ${eventItem.justification ? `<div class="text-sm text-zinc-200 mb-2"><strong>Uzasadnienie:</strong><br>${nl2brAdminReturn(eventItem.justification)}</div>` : ''}
+              ${eventItem.solutionText ? `<div class="text-sm text-zinc-200 mb-2"><strong>Proponowane rozwiązanie:</strong><br>${nl2brAdminReturn(eventItem.solutionText)}</div>` : ''}
+              ${eventItem.refundMethod ? `<div class="text-sm text-zinc-200 mb-2"><strong>Forma zwrotu:</strong> ${escapeAdminReturnHtml(eventItem.refundMethod)} ${eventItem.refundExtra ? `- ${escapeAdminReturnHtml(eventItem.refundExtra)}` : ''}</div>` : ''}
+              ${eventItem.userResponseReason ? `<div class="text-sm text-zinc-200 mb-2"><strong>Powód odrzucenia:</strong><br>${nl2brAdminReturn(eventItem.userResponseReason)}</div>` : ''}
+              ${eventItem.userResponseExpectations ? `<div class="text-sm text-zinc-200 mb-2"><strong>Oczekiwania klienta:</strong><br>${nl2brAdminReturn(eventItem.userResponseExpectations)}</div>` : ''}
+              ${attachmentsHtml ? `<div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">${attachmentsHtml}</div>` : ''}
+            </div>
+          `;
+        }).join('');
+      }
+
+      window.downloadAdminReturnAttachment = function(eventId, attachmentId) {
+        const eventItem = adminReturnClaimDetail?.events?.find((item) => item.id === eventId);
+        const attachment = eventItem?.attachments?.find((item) => item.id === attachmentId);
+        if (!attachment) return;
+        const link = document.createElement('a');
+        link.href = `data:${attachment.mimeType};base64,${attachment.dataBase64}`;
+        link.download = attachment.fileName || 'zalacznik.jpg';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      };
+
+      window.openAdminReturnClaimDetail = async function(claimId) {
+        try {
+          const headers = await getAdminReturnHeaders(false);
+          const response = await fetch(`/api/returns?id=${encodeURIComponent(claimId)}`, {
+            method: 'GET',
+            headers,
+            credentials: 'include',
+          });
+          const data = await response.json().catch(() => null);
+          if (!response.ok || !data?.success) {
+            throw new Error(data?.error || 'Nie udało się pobrać szczegółów zgłoszenia.');
+          }
+          adminReturnClaimDetail = data.data;
+          const item = adminReturnClaimDetail;
+          const modal = ensureAdminReturnModal('admin-return-claim-detail-modal');
+          modal.innerHTML = `
+            <div class="admin-card max-w-6xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+              <div class="flex justify-between items-center mb-6">
+                <div>
+                  <h2 class="text-2xl font-bold coyote-text">${escapeAdminReturnHtml(item.claimNumber || 'Szczegóły zgłoszenia')}</h2>
+                  <p class="text-sm text-zinc-400 mt-1">${escapeAdminReturnHtml(item.typeLabel || item.type || '')} • ${escapeAdminReturnHtml(item.statusLabel || item.status || '')}</p>
+                </div>
+                <button onclick="closeAdminReturnClaimModal('admin-return-claim-detail-modal')" class="text-zinc-400 hover:text-white">
+                  <i class="fa-solid fa-times text-xl"></i>
+                </button>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-6">
+                <div><span class="text-zinc-500">Weryfikacja:</span> <span class="text-zinc-100">${escapeAdminReturnHtml(item.verificationLabel || '')}</span></div>
+                <div><span class="text-zinc-500">Żądanie:</span> <span class="text-zinc-100">${escapeAdminReturnHtml(item.requestKind || '')}</span></div>
+                <div><span class="text-zinc-500">Imię i nazwisko:</span> <span class="text-zinc-100">${escapeAdminReturnHtml(`${item.firstName || ''} ${item.lastName || ''}`.trim())}</span></div>
+                <div><span class="text-zinc-500">Kontakt:</span> <span class="text-zinc-100">${escapeAdminReturnHtml(item.email || '')} • ${escapeAdminReturnHtml(item.phone || '')}</span></div>
+                <div><span class="text-zinc-500">Zamówienie:</span> <span class="text-zinc-100">${escapeAdminReturnHtml(item.orderNumber || '—')}</span></div>
+                <div><span class="text-zinc-500">Faktura:</span> <span class="text-zinc-100">${escapeAdminReturnHtml(item.invoiceNumber || '—')}</span></div>
+                <div class="md:col-span-2"><span class="text-zinc-500">Adres:</span> <span class="text-zinc-100">${escapeAdminReturnHtml([item.address?.street, item.address?.buildingNumber ? `${item.address.buildingNumber}${item.address?.apartmentNumber ? `/${item.address.apartmentNumber}` : ''}` : '', item.address?.postalCode, item.address?.city].filter(Boolean).join(', ') || '—')}</span></div>
+                <div class="md:col-span-2"><span class="text-zinc-500">Konto:</span> <span class="text-zinc-100">${escapeAdminReturnHtml(item.bankAccountFormatted || item.bankAccountIban || '—')}</span></div>
+                ${item.defectDescription ? `<div class="md:col-span-2"><span class="text-zinc-500">Opis wady:</span><div class="text-zinc-100 mt-1">${nl2brAdminReturn(item.defectDescription)}</div></div>` : ''}
+                ${item.returnReason ? `<div class="md:col-span-2"><span class="text-zinc-500">Powód zwrotu:</span><div class="text-zinc-100 mt-1">${nl2brAdminReturn(item.returnReason)}</div></div>` : ''}
+                ${item.additionalInfo ? `<div class="md:col-span-2"><span class="text-zinc-500">Dodatkowe informacje:</span><div class="text-zinc-100 mt-1">${nl2brAdminReturn(item.additionalInfo)}</div></div>` : ''}
+              </div>
+              <div class="flex justify-end gap-3 mb-6">
+                <button onclick="openAdminReturnClaimStatusModal('${item.id}')" class="btn-admin text-sm px-4 py-2">
+                  <i class="fa-solid fa-pen-to-square mr-2"></i>Zmień status
+                </button>
+              </div>
+              <div>
+                <h3 class="text-xl font-bold mb-4">Historia zgłoszenia</h3>
+                <div class="space-y-3">${renderAdminReturnTimeline(item.events || [])}</div>
+              </div>
+            </div>
+          `;
+          modal.classList.remove('hidden');
+          document.body.style.overflow = 'hidden';
+        } catch (error) {
+          console.error('openAdminReturnClaimDetail:', error);
+          showNotification(`Błąd ładowania zgłoszenia: ${error.message}`, 'error');
+        }
+      };
+
+      function getAdminReturnStatusOptions(verified) {
+        const option = (value, label, color, disabled = false) =>
+          `<option value="${value}" ${disabled ? 'disabled' : ''} style="color:${color};font-weight:${disabled ? '700' : '500'};">${label}</option>`;
+        const unverifiedOnly = !verified;
+        return [
+          option('', 'Wybierz status', '#ffffff', true),
+          option('divider-anulowano', 'Anulowano', '#ef4444', true),
+          option('anulowano_przez_administratora', 'Anulowano przez administratora', '#f87171'),
+          option('anulowano_przez_klienta', 'Anulowano przez klienta', '#f87171'),
+          option('divider-zlozono', '------------', '#71717a', true),
+          option(unverifiedOnly ? 'wygenerowany' : 'zlozono', unverifiedOnly ? 'Wygenerowany' : 'Złożono', '#fbbf24'),
+          ...(!unverifiedOnly ? [option('w_trakcie_realizacji', 'W trakcie realizacji', '#fb923c')] : []),
+          option('divider-propozycja', '------------', '#71717a', true),
+          option('zaproponowano_rozwiazanie', 'Zaproponowano rozwiązanie', '#38bdf8'),
+          ...(!unverifiedOnly ? [
+            option('propozycja_zaakceptowana', 'Propozycja zaakceptowana', '#4ade80'),
+            option('propozycja_odrzucona', 'Propozycja odrzucona', '#f87171'),
+            option('divider-waiting', 'Oczekiwanie na zwrot', '#a78bfa', true),
+            option('oczekiwanie_na_zwrot', 'Oczekiwanie na zwrot', '#a78bfa'),
+          ] : []),
+          option('divider-ended', 'Zakończono', '#71717a', true),
+          option('rozpatrzono_pozytywnie', 'Rozpatrzono pozytywnie', '#4ade80'),
+          option('rozpatrzono_negatywnie', 'Rozpatrzono negatywnie', '#f87171'),
+        ].join('');
+      }
+
+      function toggleAdminReturnStatusExtras() {
+        const status = document.getElementById('admin-return-status-select')?.value || '';
+        const proposalWrap = document.getElementById('admin-return-proposal-wrap');
+        const positiveWrap = document.getElementById('admin-return-positive-wrap');
+        const negativeWrap = document.getElementById('admin-return-negative-wrap');
+        if (proposalWrap) proposalWrap.classList.toggle('hidden', status !== 'zaproponowano_rozwiazanie');
+        if (positiveWrap) positiveWrap.classList.toggle('hidden', status !== 'rozpatrzono_pozytywnie');
+        if (negativeWrap) negativeWrap.classList.toggle('hidden', status !== 'rozpatrzono_negatywnie');
+      }
+      window.toggleAdminReturnStatusExtras = toggleAdminReturnStatusExtras;
+
+      function resetAdminReturnAttachmentPreview() {
+        const status = document.getElementById('admin-return-attachments-status');
+        const preview = document.getElementById('admin-return-attachments-preview');
+        if (status) {
+          status.textContent = adminReturnClaimAttachments.length
+            ? `Dodano ${adminReturnClaimAttachments.length} z ${ADMIN_RETURN_ATTACHMENT_LIMIT} zdjęć.`
+            : 'Możesz dodać maksymalnie 5 zdjęć do tej operacji.';
+        }
+        if (preview) {
+          preview.innerHTML = adminReturnClaimAttachments.map((item, index) => `
+            <div class="rounded-xl border border-zinc-700 bg-zinc-950/80 p-2">
+              <img src="data:${item.mimeType};base64,${item.dataBase64}" alt="Załącznik ${index + 1}" class="w-full h-24 object-cover rounded-lg mb-2" />
+              <button type="button" onclick="removeAdminReturnAttachment(${index})" class="w-full text-[11px] font-semibold uppercase tracking-[0.18em] text-red-300 border border-red-500/40 rounded-lg px-2 py-1 hover:bg-red-500/10 transition">Usuń</button>
+            </div>
+          `).join('');
+        }
+      }
+
+      function loadImageForAdminReturn(file) {
+        return new Promise((resolve, reject) => {
+          const url = URL.createObjectURL(file);
+          const img = new Image();
+          img.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve(img);
+          };
+          img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error('Nie można wczytać obrazu.'));
+          };
+          img.src = url;
+        });
+      }
+
+      function blobToBase64AdminReturn(blob) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = String(reader.result || '');
+            resolve(result.includes(',') ? result.split(',')[1] : result);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      async function compressAdminReturnAttachment(file) {
+        const type = String(file?.type || '').toLowerCase();
+        if (!/^image\/(jpeg|png|webp)$/.test(type)) {
+          throw new Error('Wybierz obraz JPG, PNG lub WebP.');
+        }
+        const img = await loadImageForAdminReturn(file);
+        let width = img.naturalWidth || img.width;
+        let height = img.naturalHeight || img.height;
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        const maxSide = 1920;
+        if (Math.max(width, height) > maxSide) {
+          const scale = maxSide / Math.max(width, height);
+          width = Math.max(1, Math.round(width * scale));
+          height = Math.max(1, Math.round(height * scale));
+        }
+        canvas.width = width;
+        canvas.height = height;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        let quality = 0.88;
+        let blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+        while (blob && blob.size > 720 * 1024) {
+          quality -= 0.07;
+          if (quality < 0.42) break;
+          blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+        }
+        if (!blob) throw new Error('Nie udało się przygotować zdjęcia.');
+        return {
+          mimeType: 'image/jpeg',
+          dataBase64: await blobToBase64AdminReturn(blob),
+        };
+      }
+
+      window.removeAdminReturnAttachment = function(index) {
+        adminReturnClaimAttachments.splice(index, 1);
+        resetAdminReturnAttachmentPreview();
+      };
+
+      async function bindAdminReturnAttachmentInput(inputId) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        input.addEventListener('change', async (event) => {
+          const files = Array.from(event.target.files || []);
+          if (!files.length) return;
+          if (adminReturnClaimAttachments.length + files.length > ADMIN_RETURN_ATTACHMENT_LIMIT) {
+            alert(`Można dodać maksymalnie ${ADMIN_RETURN_ATTACHMENT_LIMIT} zdjęć.`);
+            event.target.value = '';
+            return;
+          }
+          try {
+            for (const file of files) {
+              adminReturnClaimAttachments.push(await compressAdminReturnAttachment(file));
+            }
+            resetAdminReturnAttachmentPreview();
+          } catch (error) {
+            alert(error.message || 'Nie udało się przygotować zdjęcia.');
+          } finally {
+            event.target.value = '';
+          }
+        });
+      }
+
+      window.openAdminReturnClaimStatusModal = async function(claimId) {
+        try {
+          const headers = await getAdminReturnHeaders(false);
+          const response = await fetch(`/api/returns?id=${encodeURIComponent(claimId)}`, {
+            method: 'GET',
+            headers,
+            credentials: 'include',
+          });
+          const data = await response.json().catch(() => null);
+          if (!response.ok || !data?.success) {
+            throw new Error(data?.error || 'Nie udało się pobrać zgłoszenia.');
+          }
+          adminReturnClaimDetail = data.data;
+          adminReturnClaimAttachments = [];
+          const item = adminReturnClaimDetail;
+          const modal = ensureAdminReturnModal('admin-return-claim-status-modal');
+          modal.innerHTML = `
+            <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+              <div class="flex justify-between items-center mb-6">
+                <div>
+                  <h2 class="text-2xl font-bold coyote-text">Aktualizacja zgłoszenia ${escapeAdminReturnHtml(item.claimNumber || '')}</h2>
+                  <p class="text-sm text-zinc-400 mt-1">${escapeAdminReturnHtml(item.statusLabel || item.status || '')}</p>
+                </div>
+                <button onclick="closeAdminReturnClaimModal('admin-return-claim-status-modal')" class="text-zinc-400 hover:text-white">
+                  <i class="fa-solid fa-times text-xl"></i>
+                </button>
+              </div>
+              <form id="admin-return-status-form" class="space-y-4">
+                <input type="hidden" id="admin-return-claim-id" value="${escapeAdminReturnHtml(item.id)}" />
+                <div>
+                  <label class="block text-sm font-medium mb-2">Nowy status</label>
+                  <select id="admin-return-status-select" class="w-full" onchange="toggleAdminReturnStatusExtras()">
+                    ${getAdminReturnStatusOptions(item.verified)}
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-2">Opis zmiany statusu</label>
+                  <textarea id="admin-return-status-comment" class="w-full" rows="4" placeholder="Opis widoczny w historii zgłoszenia i w mailu" required></textarea>
+                </div>
+                <div id="admin-return-proposal-wrap" class="hidden">
+                  <label class="block text-sm font-medium mb-2">Proponowane rozwiązanie sporu</label>
+                  <textarea id="admin-return-solution-text" class="w-full" rows="4"></textarea>
+                </div>
+                <div id="admin-return-positive-wrap" class="hidden space-y-4">
+                  <div>
+                    <label class="block text-sm font-medium mb-2">Uzasadnienie</label>
+                    <textarea id="admin-return-justification-positive" class="w-full" rows="4"></textarea>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-2">Forma zwrotu</label>
+                    <select id="admin-return-refund-method" class="w-full">
+                      <option value="">Wybierz formę</option>
+                      <option value="przelew">Przelew</option>
+                      <option value="wymiana">Wymiana</option>
+                      <option value="naprawa">Naprawa</option>
+                      <option value="voucher">Voucher</option>
+                      <option value="obnizka_ceny">Obniżka ceny</option>
+                      <option value="inne">Inne</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-2">Szczegóły formy zwrotu</label>
+                    <input type="text" id="admin-return-refund-extra" class="w-full" placeholder="np. numer vouchera, wartość obniżki, opis rozwiązania" />
+                  </div>
+                </div>
+                <div id="admin-return-negative-wrap" class="hidden">
+                  <label class="block text-sm font-medium mb-2">Uzasadnienie</label>
+                  <textarea id="admin-return-justification-negative" class="w-full" rows="4"></textarea>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-2">Zdjęcia / załączniki do tej zmiany</label>
+                  <input type="file" id="admin-return-attachments-input" accept="image/jpeg,image/png,image/webp" multiple class="w-full" />
+                  <p id="admin-return-attachments-status" class="text-xs text-zinc-500 mt-2"></p>
+                  <div id="admin-return-attachments-preview" class="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3"></div>
+                </div>
+                <div class="flex justify-end gap-4 pt-4 border-t border-zinc-700">
+                  <button type="button" onclick="closeAdminReturnClaimModal('admin-return-claim-status-modal')" class="btn-secondary px-6 py-2">Anuluj</button>
+                  <button type="submit" class="btn-admin px-6 py-2">
+                    <i class="fa-solid fa-save mr-2"></i>Zapisz status
+                  </button>
+                </div>
+              </form>
+            </div>
+          `;
+          modal.classList.remove('hidden');
+          document.body.style.overflow = 'hidden';
+          resetAdminReturnAttachmentPreview();
+          toggleAdminReturnStatusExtras();
+          await bindAdminReturnAttachmentInput('admin-return-attachments-input');
+          document.getElementById('admin-return-status-form')?.addEventListener('submit', saveAdminReturnClaimStatus);
+        } catch (error) {
+          console.error('openAdminReturnClaimStatusModal:', error);
+          showNotification(`Błąd ładowania zgłoszenia: ${error.message}`, 'error');
+        }
+      };
+
+      async function saveAdminReturnClaimStatus(event) {
+        event.preventDefault();
+        try {
+          const claimId = document.getElementById('admin-return-claim-id')?.value;
+          const status = document.getElementById('admin-return-status-select')?.value;
+          const comment = document.getElementById('admin-return-status-comment')?.value || '';
+          const positiveJustification = document.getElementById('admin-return-justification-positive')?.value || '';
+          const negativeJustification = document.getElementById('admin-return-justification-negative')?.value || '';
+          const solutionText = document.getElementById('admin-return-solution-text')?.value || '';
+          const refundMethod = document.getElementById('admin-return-refund-method')?.value || '';
+          const refundExtra = document.getElementById('admin-return-refund-extra')?.value || '';
+
+          const headers = await getAdminReturnHeaders(true);
+          const response = await fetch('/api/returns', {
+            method: 'PUT',
+            headers,
+            credentials: 'include',
+            body: JSON.stringify({
+              id: claimId,
+              status,
+              comment,
+              justification: status === 'rozpatrzono_pozytywnie' ? positiveJustification : status === 'rozpatrzono_negatywnie' ? negativeJustification : '',
+              solutionText,
+              refundMethod,
+              refundExtra,
+              images: adminReturnClaimAttachments,
+            }),
+          });
+          const data = await response.json().catch(() => null);
+          if (!response.ok || !data?.success) {
+            throw new Error(data?.error || 'Nie udało się zapisać statusu.');
+          }
+          closeAdminReturnClaimModal('admin-return-claim-status-modal');
+          if (document.getElementById('admin-return-claim-detail-modal') && !document.getElementById('admin-return-claim-detail-modal').classList.contains('hidden')) {
+            closeAdminReturnClaimModal('admin-return-claim-detail-modal');
+          }
+          showNotification('Status zgłoszenia został zaktualizowany', 'success');
+          await loadAdminReturnClaims();
+        } catch (error) {
+          console.error('saveAdminReturnClaimStatus:', error);
+          showNotification(`Błąd zapisu statusu: ${error.message}`, 'error');
+        }
+      }
+
+      window.openAdminReturnClaimManualModal = function() {
+        adminReturnClaimAttachments = [];
+        const modal = ensureAdminReturnModal('admin-return-claim-manual-modal');
+        modal.innerHTML = `
+          <div class="admin-card max-w-5xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-6">
+              <div>
+                <h2 class="text-2xl font-bold coyote-text">Ręczne dodanie formularza</h2>
+                <p class="text-sm text-zinc-400 mt-1">Do formularzy papierowych i zgłoszeń dosłanych poza systemem.</p>
+              </div>
+              <button onclick="closeAdminReturnClaimModal('admin-return-claim-manual-modal')" class="text-zinc-400 hover:text-white">
+                <i class="fa-solid fa-times text-xl"></i>
+              </button>
+            </div>
+            <form id="admin-return-manual-form" class="space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-sm font-medium mb-2">Typ</label>
+                  <select id="admin-return-manual-type" class="w-full">
+                    <option value="zwrot">Zwrot</option>
+                    <option value="reklamacja">Reklamacja</option>
+                  </select>
+                </div>
+                <div class="flex items-end">
+                  <label class="inline-flex items-center gap-3 text-sm text-zinc-300">
+                    <input type="checkbox" id="admin-return-manual-verified" checked />
+                    Zweryfikowane zgłoszenie
+                  </label>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-2">UID właściciela (opcjonalnie)</label>
+                  <input type="text" id="admin-return-manual-user-id" class="w-full" placeholder="UID użytkownika jeśli chcesz przypiąć do konta" />
+                </div>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label class="block text-sm font-medium mb-2">Imię</label><input type="text" id="admin-return-manual-first-name" class="w-full" required /></div>
+                <div><label class="block text-sm font-medium mb-2">Nazwisko</label><input type="text" id="admin-return-manual-last-name" class="w-full" required /></div>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label class="block text-sm font-medium mb-2">E-mail</label><input type="email" id="admin-return-manual-email" class="w-full" required /></div>
+                <div><label class="block text-sm font-medium mb-2">Telefon</label><input type="text" id="admin-return-manual-phone" class="w-full" required /></div>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div><label class="block text-sm font-medium mb-2">Ulica</label><input type="text" id="admin-return-manual-street" class="w-full" required /></div>
+                <div><label class="block text-sm font-medium mb-2">Budynek</label><input type="text" id="admin-return-manual-building" class="w-full" required /></div>
+                <div><label class="block text-sm font-medium mb-2">Lokal</label><input type="text" id="admin-return-manual-apartment" class="w-full" /></div>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label class="block text-sm font-medium mb-2">Kod pocztowy</label><input type="text" id="admin-return-manual-postal" class="w-full" placeholder="00-000" required /></div>
+                <div><label class="block text-sm font-medium mb-2">Miejscowość</label><input type="text" id="admin-return-manual-city" class="w-full" required /></div>
+              </div>
+              <div><label class="block text-sm font-medium mb-2">Numer konta / IBAN</label><input type="text" id="admin-return-manual-bank" class="w-full" required /></div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label class="block text-sm font-medium mb-2">Numer zamówienia</label><input type="text" id="admin-return-manual-order" class="w-full" required /></div>
+                <div><label class="block text-sm font-medium mb-2">Numer faktury / rachunku</label><input type="text" id="admin-return-manual-invoice" class="w-full" required /></div>
+              </div>
+              <div><label class="block text-sm font-medium mb-2">Żądanie</label><input type="text" id="admin-return-manual-request-kind" class="w-full" required /></div>
+              <div><label class="block text-sm font-medium mb-2">Opis wady</label><textarea id="admin-return-manual-defect" class="w-full" rows="4"></textarea></div>
+              <div><label class="block text-sm font-medium mb-2">Powód zwrotu</label><textarea id="admin-return-manual-reason" class="w-full" rows="4"></textarea></div>
+              <div><label class="block text-sm font-medium mb-2">Dodatkowe informacje</label><textarea id="admin-return-manual-additional" class="w-full" rows="3"></textarea></div>
+              <div><label class="block text-sm font-medium mb-2">Komentarz początkowy</label><textarea id="admin-return-manual-comment" class="w-full" rows="3" placeholder="Np. formularz dostarczony w paczce / wprowadzony z dokumentu papierowego"></textarea></div>
+              <div>
+                <label class="block text-sm font-medium mb-2">Zdjęcia / skany</label>
+                <input type="file" id="admin-return-attachments-input" accept="image/jpeg,image/png,image/webp" multiple class="w-full" />
+                <p id="admin-return-attachments-status" class="text-xs text-zinc-500 mt-2"></p>
+                <div id="admin-return-attachments-preview" class="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3"></div>
+              </div>
+              <div class="flex justify-end gap-4 pt-4 border-t border-zinc-700">
+                <button type="button" onclick="closeAdminReturnClaimModal('admin-return-claim-manual-modal')" class="btn-secondary px-6 py-2">Anuluj</button>
+                <button type="submit" class="btn-admin px-6 py-2">
+                  <i class="fa-solid fa-save mr-2"></i>Zapisz formularz
+                </button>
+              </div>
+            </form>
+          </div>
+        `;
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        resetAdminReturnAttachmentPreview();
+        bindAdminReturnAttachmentInput('admin-return-attachments-input');
+        document.getElementById('admin-return-manual-form')?.addEventListener('submit', saveAdminManualReturnClaim);
+      };
+
+      async function saveAdminManualReturnClaim(event) {
+        event.preventDefault();
+        try {
+          const headers = await getAdminReturnHeaders(true);
+          const response = await fetch('/api/returns', {
+            method: 'POST',
+            headers,
+            credentials: 'include',
+            body: JSON.stringify({
+              manualAdminCreate: true,
+              verified: !!document.getElementById('admin-return-manual-verified')?.checked,
+              userId: document.getElementById('admin-return-manual-user-id')?.value || '',
+              type: document.getElementById('admin-return-manual-type')?.value || 'zwrot',
+              firstName: document.getElementById('admin-return-manual-first-name')?.value || '',
+              lastName: document.getElementById('admin-return-manual-last-name')?.value || '',
+              email: document.getElementById('admin-return-manual-email')?.value || '',
+              phone: document.getElementById('admin-return-manual-phone')?.value || '',
+              street: document.getElementById('admin-return-manual-street')?.value || '',
+              buildingNumber: document.getElementById('admin-return-manual-building')?.value || '',
+              apartmentNumber: document.getElementById('admin-return-manual-apartment')?.value || '',
+              postalCode: document.getElementById('admin-return-manual-postal')?.value || '',
+              city: document.getElementById('admin-return-manual-city')?.value || '',
+              bankAccount: document.getElementById('admin-return-manual-bank')?.value || '',
+              orderNumber: document.getElementById('admin-return-manual-order')?.value || '',
+              invoiceNumber: document.getElementById('admin-return-manual-invoice')?.value || '',
+              requestKind: document.getElementById('admin-return-manual-request-kind')?.value || '',
+              defectDescription: document.getElementById('admin-return-manual-defect')?.value || '',
+              returnReason: document.getElementById('admin-return-manual-reason')?.value || '',
+              additionalInfo: document.getElementById('admin-return-manual-additional')?.value || '',
+              comment: document.getElementById('admin-return-manual-comment')?.value || '',
+              images: adminReturnClaimAttachments,
+              actorName: auth?.currentUser?.email || 'Administrator',
+            }),
+          });
+          const data = await response.json().catch(() => null);
+          if (!response.ok || !data?.success) {
+            throw new Error(data?.error || 'Nie udało się dodać formularza.');
+          }
+          closeAdminReturnClaimModal('admin-return-claim-manual-modal');
+          showNotification('Formularz został dodany', 'success');
+          await loadAdminReturnClaims();
+        } catch (error) {
+          console.error('saveAdminManualReturnClaim:', error);
+          showNotification(`Błąd dodawania formularza: ${error.message}`, 'error');
+        }
+      }
 
       // Wyszukiwanie użytkownika dla zamówień
       window.searchUser = async function() {
@@ -20787,13 +22408,13 @@
           const userData = userDoc.data();
 
           // Odszyfruj dane
-          const decryptedPhone = userData.phone ? atob(userData.phone) : '';
-          const decryptedParcelLocker = userData.parcelLocker ? atob(userData.parcelLocker) : '';
+          const decryptedPhone = userData.phone ? decodeUtf8Base64(userData.phone) : '';
+          const decryptedParcelLocker = userData.parcelLocker ? decodeUtf8Base64(userData.parcelLocker) : '';
           const decryptedAddress = {
-            street: userData.address?.street ? atob(userData.address.street) : '',
-            buildingNumber: userData.address?.buildingNumber ? atob(userData.address.buildingNumber) : '',
-            postalCode: userData.address?.postalCode ? atob(userData.address.postalCode) : '',
-            city: userData.address?.city ? atob(userData.address.city) : ''
+            street: userData.address?.street ? decodeUtf8Base64(userData.address.street) : '',
+            buildingNumber: userData.address?.buildingNumber ? decodeUtf8Base64(userData.address.buildingNumber) : '',
+            postalCode: userData.address?.postalCode ? decodeUtf8Base64(userData.address.postalCode) : '',
+            city: userData.address?.city ? decodeUtf8Base64(userData.address.city) : ''
           };
 
           // Wypełnij pola formularza zamówienia
@@ -20865,6 +22486,436 @@
         }
       }
 
+      async function fetchPromoCodesApi(method = "GET", bodyObject = null, queryString = "") {
+        let authToken = null;
+        try {
+          if (typeof auth !== "undefined" && auth?.currentUser) {
+            authToken = await auth.currentUser.getIdToken();
+          }
+        } catch (_) {}
+
+        const headers = { "X-Admin-Panel": "true" };
+        if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
+        if (bodyObject != null) headers["Content-Type"] = "application/json";
+
+        let urls;
+        try {
+          const h = typeof location !== "undefined" ? location.hostname : "";
+          if (h === "strzelca.pl") {
+            urls = [`/api/promo-codes${queryString}`];
+          } else if (h === "localhost" || h === "127.0.0.1") {
+            urls = [`/api/promo-codes${queryString}`, `https://strzelca.pl/api/promo-codes${queryString}`];
+          } else {
+            urls = [`https://strzelca.pl/api/promo-codes${queryString}`, `/api/promo-codes${queryString}`];
+          }
+        } catch (_) {
+          urls = [`/api/promo-codes${queryString}`, `https://strzelca.pl/api/promo-codes${queryString}`];
+        }
+
+        let lastErr = null;
+        for (const url of urls) {
+          try {
+            const response = await fetch(url, {
+              method,
+              headers,
+              credentials: "include",
+              body: bodyObject != null ? JSON.stringify(bodyObject) : undefined,
+            });
+            const text = await response.text();
+            const data = text ? JSON.parse(text) : null;
+            if (!response.ok || data == null || data.success !== true) {
+              throw new Error((data && data.error) || `HTTP ${response.status}`);
+            }
+            return data;
+          } catch (error) {
+            lastErr = error;
+          }
+        }
+
+        throw lastErr || new Error("Brak połączenia z API kodów.");
+      }
+
+      function generateAdminPromoCodeValue() {
+        const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let generated = "";
+        for (let i = 0; i < 8; i += 1) {
+          generated += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+        }
+        return `${generated}-STRZELCA.pl`;
+      }
+
+      function promoCodeDateTimeLocalValue(value) {
+        const raw = String(value || "").trim();
+        if (!raw) return "";
+        const date = new Date(raw);
+        if (Number.isNaN(date.getTime())) return "";
+        const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+        return local.toISOString().slice(0, 16);
+      }
+
+      function promoCodePurposeLabel(code) {
+        if (code.purpose === "training_access") {
+          return "Dostęp do kursu";
+        }
+        return "Kupon rabatowy";
+      }
+
+      function promoCodePurposeDetails(code) {
+        if (code.purpose === "training_access") {
+          return code.targetTrainingTitle
+            ? `Szkolenie: ${escapeHtml(code.targetTrainingTitle)}`
+            : "Szkolenie nieprzypisane";
+        }
+        if (code.discountType === "percent") {
+          return `Rabat: ${Number(code.discountValue || 0)}%`;
+        }
+        return `Voucher: ${Number(code.discountValue || 0).toFixed(2)} PLN`;
+      }
+
+      async function ensurePromoCodeTrainingsLoaded() {
+        if (Array.isArray(trainingsList) && trainingsList.length) return trainingsList;
+        try {
+          const trainingsQuery = query(collection(db, "trainings"), orderBy("order", "asc"));
+          const snapshot = await getDocs(trainingsQuery);
+          trainingsList = snapshot.docs.map((docRow) => ({
+            id: docRow.id,
+            ...docRow.data(),
+          }));
+        } catch (error) {
+          console.error("ensurePromoCodeTrainingsLoaded:", error);
+        }
+        return trainingsList;
+      }
+
+      function getPromoCodeTrainingOptions(selectedId = "") {
+        const rows = Array.isArray(trainingsList) ? trainingsList : [];
+        return rows
+          .map((training) => {
+            const selected = training.id === selectedId ? "selected" : "";
+            return `<option value="${training.id}" ${selected}>${escapeHtml(training.title || training.id)}</option>`;
+          })
+          .join("");
+      }
+
+      function renderPromoCodesList(codes) {
+        const listEl = document.getElementById("promo-codes-list");
+        if (!listEl) return;
+
+        if (!Array.isArray(codes) || !codes.length) {
+          listEl.innerHTML = `
+            <div class="admin-card text-center text-zinc-500 py-10">
+              <i class="fa-solid fa-ticket text-3xl mb-4 text-zinc-600"></i>
+              <p class="text-sm">Brak kodów do wyświetlenia.</p>
+            </div>
+          `;
+          return;
+        }
+
+        listEl.innerHTML = codes
+          .map((code) => {
+            const isInactive = code.isActive === false;
+            const borderClass = isInactive
+              ? "border-red-500/70"
+              : code.expired
+                ? "border-amber-500/50"
+                : "border-zinc-700";
+            const statusLabel = isInactive
+              ? "Dezaktywowany"
+              : code.expired
+                ? "Wygasł"
+                : "Aktywny";
+            const remaining = code.usageLimit > 0 ? code.remainingUses : "Bez limitu";
+            const visibleCode = code.code || code.maskedCode || "Kod ukryty";
+            return `
+              <div class="admin-card border ${borderClass}">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div class="flex-1 min-w-0">
+                    <div class="flex flex-wrap items-center gap-3 mb-2">
+                      <h3 class="text-xl font-bold text-white break-all">${escapeHtml(visibleCode)}</h3>
+                      <span class="px-3 py-1 rounded-full text-[11px] uppercase tracking-wider border ${isInactive ? "border-red-400 text-red-300" : code.expired ? "border-amber-400 text-amber-200" : "border-emerald-400 text-emerald-200"}">${statusLabel}</span>
+                    </div>
+                    <div class="text-sm text-zinc-300">${promoCodePurposeLabel(code)}</div>
+                    <div class="text-sm text-zinc-500 mt-1">${promoCodePurposeDetails(code)}</div>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-4 text-sm">
+                      <div>
+                        <div class="text-zinc-500 uppercase text-[10px] tracking-widest mb-1">Ważny do</div>
+                        <div class="text-zinc-200">${escapeHtml(code.isPerpetual ? "Bezterminowy" : code.expiresAtLabel || "—")}</div>
+                      </div>
+                      <div>
+                        <div class="text-zinc-500 uppercase text-[10px] tracking-widest mb-1">Liczba użyć</div>
+                        <div class="text-zinc-200">${code.usageLimit > 0 ? code.usageLimit : "Bez limitu"}</div>
+                      </div>
+                      <div>
+                        <div class="text-zinc-500 uppercase text-[10px] tracking-widest mb-1">Wykorzystane</div>
+                        <div class="text-zinc-200">${code.usedCount || 0}</div>
+                      </div>
+                      <div>
+                        <div class="text-zinc-500 uppercase text-[10px] tracking-widest mb-1">Pozostało</div>
+                        <div class="text-zinc-200">${remaining}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="flex flex-wrap gap-2 lg:justify-end">
+                    <button type="button" onclick="openPromoCodeModal('${code.id}')" class="text-blue-400 hover:text-blue-300 px-3 py-2 border border-blue-400 rounded text-xs">Edytuj</button>
+                    <button type="button" onclick="togglePromoCodeActive('${code.id}', ${code.isActive ? "false" : "true"})" class="${code.isActive ? "text-red-300 border-red-400 hover:text-red-200" : "text-emerald-300 border-emerald-400 hover:text-emerald-200"} px-3 py-2 border rounded text-xs">
+                      ${code.isActive ? "Dezaktywuj" : "Aktywuj"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      window.loadPromoCodes = async function() {
+        try {
+          const listEl = document.getElementById("promo-codes-list");
+          if (listEl) {
+            listEl.innerHTML = `
+              <div class="text-center text-zinc-500 py-10">
+                <i class="fa-solid fa-spinner fa-spin text-2xl mb-4 text-zinc-600"></i>
+                <p class="text-sm">Ładowanie kodów…</p>
+              </div>
+            `;
+          }
+          const includeExpired =
+            document.getElementById("promo-codes-show-expired")?.checked === true;
+          const queryString = includeExpired ? "?includeExpired=true" : "";
+          const data = await fetchPromoCodesApi("GET", null, queryString);
+          promoCodesList = Array.isArray(data.data) ? data.data : [];
+          renderPromoCodesList(promoCodesList);
+        } catch (error) {
+          console.error("loadPromoCodes:", error);
+          const listEl = document.getElementById("promo-codes-list");
+          if (listEl) {
+            listEl.innerHTML = `
+              <div class="admin-card text-center text-red-400 py-10">
+                <i class="fa-solid fa-triangle-exclamation text-3xl mb-4"></i>
+                <p class="text-sm">${escapeHtml(error.message || "Błąd ładowania kodów.")}</p>
+              </div>
+            `;
+          }
+          showNotification("Błąd ładowania kodów: " + error.message, "error");
+        }
+      };
+
+      function ensurePromoCodeModal() {
+        let modal = document.getElementById("promo-code-modal");
+        if (modal) return modal;
+        modal = document.createElement("div");
+        modal.id = "promo-code-modal";
+        modal.className = "fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl";
+        modal.onclick = function(event) {
+          if (event.target.id === "promo-code-modal") {
+            closePromoCodeModal();
+          }
+        };
+        document.body.appendChild(modal);
+        return modal;
+      }
+
+      window.closePromoCodeModal = function() {
+        const modal = document.getElementById("promo-code-modal");
+        if (modal) modal.classList.add("hidden");
+      };
+
+      window.syncPromoCodePerpetualState = function() {
+        const perpetual = document.getElementById("promo-code-is-perpetual");
+        const expiresAt = document.getElementById("promo-code-expires-at");
+        if (!perpetual || !expiresAt) return;
+        expiresAt.disabled = perpetual.checked;
+        expiresAt.classList.toggle("opacity-50", perpetual.checked);
+      };
+
+      window.syncPromoCodePurposeFields = function() {
+        const purpose = document.getElementById("promo-code-purpose")?.value || "";
+        const trainingSection = document.getElementById("promo-code-training-section");
+        const discountSection = document.getElementById("promo-code-discount-section");
+        if (trainingSection) trainingSection.classList.toggle("hidden", purpose !== "training_access");
+        if (discountSection) discountSection.classList.toggle("hidden", purpose !== "discount");
+      };
+
+      window.openPromoCodeManualEntryDialog = function() {
+        const currentValue = document.getElementById("promo-code-value")?.value || "";
+        const entered = window.prompt("Wprowadź kod:", currentValue || "");
+        if (entered == null) return;
+        const normalized = String(entered || "").trim();
+        if (!normalized) {
+          showNotification("Kod nie może być pusty.", "error");
+          return;
+        }
+        document.getElementById("promo-code-value").value = normalized;
+      };
+
+      window.generatePromoCodeInForm = function() {
+        const input = document.getElementById("promo-code-value");
+        if (!input) return;
+        input.value = generateAdminPromoCodeValue();
+      };
+
+      window.openPromoCodeModal = async function(codeId = null) {
+        await ensurePromoCodeTrainingsLoaded();
+        const currentCode = promoCodesList.find((item) => item.id === codeId) || null;
+        const modal = ensurePromoCodeModal();
+        const selectedPurpose = currentCode?.purpose || "training_access";
+        modal.innerHTML = `
+          <div class="admin-card max-w-3xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-6">
+              <h2 class="text-2xl font-bold coyote-text">${currentCode ? "Edytuj kod" : "Utwórz kod"}</h2>
+              <button onclick="closePromoCodeModal()" class="text-zinc-400 hover:text-white">
+                <i class="fa-solid fa-times text-xl"></i>
+              </button>
+            </div>
+
+            <form id="promo-code-form" class="space-y-5" onsubmit="savePromoCodeForm(event)">
+              <input type="hidden" id="promo-code-id" value="${escapeHtml(currentCode?.id || "")}" />
+
+              <div>
+                <label class="block text-sm font-medium mb-2">Kod</label>
+                <input type="text" id="promo-code-value" value="${escapeHtml(currentCode?.code || "")}" readonly />
+                <p class="text-xs text-zinc-500 mt-2">System waliduje kod bez rozróżniania wielkości liter.</p>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium mb-2">Data zakończenia ważności</label>
+                  <input type="datetime-local" id="promo-code-expires-at" value="${escapeHtml(promoCodeDateTimeLocalValue(currentCode?.expiresAtIso || ""))}" />
+                </div>
+                <label class="flex items-center gap-3 pt-8 text-sm text-zinc-300">
+                  <input type="checkbox" id="promo-code-is-perpetual" ${currentCode?.isPerpetual ? "checked" : ""} onchange="syncPromoCodePerpetualState()" />
+                  <span>Kod bezterminowy</span>
+                </label>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium mb-2">Ilość użyć</label>
+                  <input type="number" id="promo-code-usage-limit" min="0" step="1" value="${escapeHtml(String(currentCode?.usageLimit || 0))}" />
+                  <p class="text-xs text-zinc-500 mt-2">Wpisz <strong>0</strong>, aby ustawić brak limitu.</p>
+                </div>
+                <label class="flex items-center gap-3 pt-8 text-sm text-zinc-300">
+                  <input type="checkbox" id="promo-code-is-active" ${currentCode?.isActive === false ? "" : "checked"} />
+                  <span>Kod aktywny</span>
+                </label>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium mb-2">Przeznaczenie kodu</label>
+                <select id="promo-code-purpose" onchange="syncPromoCodePurposeFields()">
+                  <option value="training_access" ${selectedPurpose === "training_access" ? "selected" : ""}>Dostęp do kursu</option>
+                  <option value="discount" ${selectedPurpose === "discount" ? "selected" : ""}>Kupon rabatowy</option>
+                </select>
+              </div>
+
+              <div id="promo-code-training-section" class="${selectedPurpose === "training_access" ? "" : "hidden"}">
+                <label class="block text-sm font-medium mb-2">Szkolenie</label>
+                <select id="promo-code-training-id">
+                  <option value="">Wybierz szkolenie</option>
+                  ${getPromoCodeTrainingOptions(currentCode?.targetTrainingId || "")}
+                </select>
+              </div>
+
+              <div id="promo-code-discount-section" class="${selectedPurpose === "discount" ? "" : "hidden"}">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium mb-2">Typ rabatu</label>
+                    <select id="promo-code-discount-type">
+                      <option value="percent" ${currentCode?.discountType === "percent" ? "selected" : ""}>Rabat procentowy</option>
+                      <option value="amount" ${currentCode?.discountType === "amount" ? "selected" : ""}>Wartość vouchera</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-2">Wartość</label>
+                    <input type="number" id="promo-code-discount-value" min="0" step="0.01" value="${escapeHtml(String(currentCode?.discountValue || 0))}" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between pt-4 border-t border-zinc-700">
+                <div class="flex flex-wrap gap-2">
+                  <button type="button" onclick="openPromoCodeManualEntryDialog()" class="px-4 py-2 rounded-lg border border-zinc-600 text-zinc-200 hover:border-coyote hover:text-coyote transition">
+                    Wprowadź kod
+                  </button>
+                  <button type="button" onclick="generatePromoCodeInForm()" class="px-4 py-2 rounded-lg border border-zinc-600 text-zinc-200 hover:border-coyote hover:text-coyote transition">
+                    Generuj kod
+                  </button>
+                </div>
+                <div class="flex flex-col-reverse sm:flex-row gap-2">
+                  <button type="button" onclick="closePromoCodeModal()" class="px-4 py-2 rounded-lg border border-zinc-600 text-zinc-300 hover:bg-zinc-800 transition">
+                    Anuluj
+                  </button>
+                  <button type="submit" class="btn-admin px-5 py-2">
+                    <i class="fa-solid fa-save mr-2"></i>
+                    Zapisz kod
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        `;
+        modal.classList.remove("hidden");
+        if (!currentCode?.code) {
+          window.generatePromoCodeInForm();
+        }
+        window.syncPromoCodePerpetualState();
+        window.syncPromoCodePurposeFields();
+      };
+
+      window.savePromoCodeForm = async function(event) {
+        event.preventDefault();
+        try {
+          const codeId = document.getElementById("promo-code-id")?.value || "";
+          const codeValue = document.getElementById("promo-code-value")?.value || "";
+          const purpose = document.getElementById("promo-code-purpose")?.value || "";
+          const trainingSelect = document.getElementById("promo-code-training-id");
+          const payload = {
+            id: codeId || undefined,
+            code: codeValue,
+            isPerpetual: document.getElementById("promo-code-is-perpetual")?.checked === true,
+            expiresAt: document.getElementById("promo-code-expires-at")?.value || "",
+            usageLimit: document.getElementById("promo-code-usage-limit")?.value || 0,
+            purpose,
+            isActive: document.getElementById("promo-code-is-active")?.checked === true,
+            targetTrainingId: purpose === "training_access" ? trainingSelect?.value || "" : "",
+            targetTrainingTitle:
+              purpose === "training_access" && trainingSelect
+                ? trainingSelect.options[trainingSelect.selectedIndex]?.textContent || ""
+                : "",
+            discountType: purpose === "discount" ? document.getElementById("promo-code-discount-type")?.value || "" : "",
+            discountValue: purpose === "discount" ? document.getElementById("promo-code-discount-value")?.value || 0 : 0,
+          };
+
+          if (!payload.code) {
+            showNotification("Najpierw wprowadź lub wygeneruj kod.", "error");
+            return;
+          }
+
+          const method = codeId ? "PUT" : "POST";
+          await fetchPromoCodesApi(method, payload);
+          showNotification(codeId ? "Kod został zaktualizowany." : "Kod został utworzony.", "success");
+          closePromoCodeModal();
+          await loadPromoCodes();
+        } catch (error) {
+          console.error("savePromoCodeForm:", error);
+          showNotification("Błąd zapisu kodu: " + (error.message || "Nieznany błąd"), "error");
+        }
+      };
+
+      window.togglePromoCodeActive = async function(codeId, nextState) {
+        try {
+          await fetchPromoCodesApi("PUT", {
+            id: codeId,
+            isActive: nextState === true || nextState === "true",
+          });
+          showNotification("Status kodu został zaktualizowany.", "success");
+          await loadPromoCodes();
+        } catch (error) {
+          console.error("togglePromoCodeActive:", error);
+          showNotification("Błąd zmiany statusu kodu: " + (error.message || "Nieznany błąd"), "error");
+        }
+      };
+
       const EMAIL_TEMPLATE_SECTIONS = [
         {
           title: "Szablony zamówień",
@@ -20873,10 +22924,41 @@
           ids: [
             "order_created",
             "order_status_zlozone",
+            "order_status_wycena_zlozona",
+            "order_status_wycena_zaakceptowana",
+            "order_status_wycena_odrzucona",
+            "order_status_oczekuje_na_platnosc",
+            "order_status_weryfikowanie_platnosci",
+            "order_status_platnosc_zakonczona_niepowodzeniem",
             "order_status_realizacja",
             "order_status_wyslane",
             "order_status_zakonczone",
             "order_status_anulowane",
+            "order_edited_by_user",
+            "order_cancelled_by_user",
+            "order_admin_created_by_user",
+            "order_admin_quote_accepted",
+            "order_admin_quote_rejected",
+            "order_admin_payment_started",
+          ],
+        },
+        {
+          title: "Szablony zwrotów i reklamacji",
+          description:
+            "Powiadomienia dla formularzy zwrotów i reklamacji: utworzenie, edycje, propozycje rozwiązania, rozstrzygnięcia i anulowanie.",
+          ids: [
+            "return_claim_created_verified",
+            "return_claim_created_unverified",
+            "return_claim_edited_by_user",
+            "return_claim_w_trakcie_realizacji",
+            "return_claim_zaproponowano_rozwiazanie",
+            "return_claim_propozycja_zaakceptowana",
+            "return_claim_propozycja_odrzucona",
+            "return_claim_oczekiwanie_na_zwrot",
+            "return_claim_rozpatrzono_pozytywnie",
+            "return_claim_rozpatrzono_negatywnie",
+            "return_claim_anulowano_przez_administratora",
+            "return_claim_anulowano_przez_klienta",
           ],
         },
         {
@@ -21248,7 +23330,17 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium mb-2">Cena *</label>
+            <div class="flex items-center justify-between gap-4 mb-2">
+              <label class="block text-sm font-medium">Cena *</label>
+              <label class="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="product-individualPricing"
+                  onchange="toggleProductIndividualPricing()"
+                />
+                <span>Cena ustalana indywidualnie</span>
+              </label>
+            </div>
             <input
               type="text"
               id="product-price"
@@ -21256,6 +23348,9 @@
               required
               class="w-full"
             />
+            <p class="text-xs text-zinc-500 mt-2" id="product-price-help">
+              Podaj cenę produktu widoczną w sklepie.
+            </p>
           </div>
 
           <div>
@@ -21326,7 +23421,17 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium mb-2">Cena *</label>
+            <div class="flex items-center justify-between gap-4 mb-2">
+              <label class="block text-sm font-medium">Cena *</label>
+              <label class="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="training-public-individualPricing"
+                  onchange="toggleTrainingIndividualPricing()"
+                />
+                <span>Cena ustalana indywidualnie</span>
+              </label>
+            </div>
             <input
               type="text"
               id="training-public-price"
@@ -21334,6 +23439,9 @@
               required
               class="w-full"
             />
+            <p class="text-xs text-zinc-500 mt-2" id="training-public-price-help">
+              Podaj cenę szkolenia widoczną na stronie publicznej.
+            </p>
           </div>
 
           <div>

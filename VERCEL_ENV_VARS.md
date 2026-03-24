@@ -30,6 +30,7 @@ Upewnij się, że wszystkie poniższe zmienne są ustawione zarówno w środowis
 - **SMTP_HOST** - host SMTP (domyślnie: `ssl0.ovh.net`)
 - **SMTP_PORT** - port SMTP (domyślnie: `465`)
 - **SMTP_SECURE** - `true`/`false` (dla portu `465` i tak traktowane jako TLS)
+- Powiadomienia administracyjne o zamówieniach są wysyłane na stały adres `kontakt@strzelca.pl`
 
 Brak `SMTP_PASSWORD` powoduje, że newsletter może trafić do kolejki, ale wysyłka się nie powiedzie (cron zapisze błąd).
 

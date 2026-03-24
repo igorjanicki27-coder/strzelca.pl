@@ -16,6 +16,28 @@ service cloud.firestore {
         get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role == 'admin';
     }
 
+    function isOperator() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role == 'operator';
+    }
+
+    function isModerator() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role == 'moderator';
+    }
+
+    function hasOperatorScope(scope) {
+      return isOperator() &&
+        get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.operatorScopes is list &&
+        get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.operatorScopes.hasAny([scope]);
+    }
+
+    function hasBackofficeScope(scope) {
+      return isModerator() || hasOperatorScope(scope);
+    }
+
     function isSuperAdmin() {
       return isAuthenticated() && request.auth.uid == 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
     }
@@ -29,7 +51,36 @@ service cloud.firestore {
     }
 
     function validRole(role) {
-      return role is string && (role == 'user' || role == 'company' || role == 'admin');
+      return role is string && (role == 'user' || role == 'company' || role == 'operator' || role == 'admin' || role == 'moderator');
+    }
+
+    function validSelfServiceRole(role) {
+      return role is string && (role == 'user' || role == 'company');
+    }
+
+    function validOperatorScopes(scopes) {
+      return scopes is list &&
+        scopes.size() <= 8 &&
+        scopes.hasOnly(['blog', 'shop', 'help', 'events', 'trainings', 'bazaar', 'users', 'contact']);
+    }
+
+    function userOwnsCurrentEmailVerifiedFlag() {
+      return !('emailVerified' in request.resource.data) ||
+        (
+          exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
+          request.resource.data.emailVerified ==
+            get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.emailVerified
+        );
+    }
+
+    function canManagePublicListCache(key) {
+      return isAdminOrSuperAdmin() ||
+        (key == 'products' && hasBackofficeScope('shop')) ||
+        (key == 'trainings' && hasBackofficeScope('trainings')) ||
+        (key == 'events' && hasBackofficeScope('events')) ||
+        (key == 'blogPosts' && hasBackofficeScope('blog')) ||
+        (key == 'charity' && hasBackofficeScope('help')) ||
+        (key == 'bazarOffers' && hasBackofficeScope('bazaar'));
     }
 
     // =============================================================================
@@ -38,18 +89,25 @@ service cloud.firestore {
     match /userProfiles/{userId} {
       // Prywatne dane profilu - tylko właściciel lub admin/superadmin
       // Uwaga: Dla zapytań listowych (getDocs) admin musi mieć dostęp do wszystkich dokumentów
-      allow read: if isOwner(userId) || isAdminOrSuperAdmin();
+      allow read: if isOwner(userId) || isAdminOrSuperAdmin() || hasBackofficeScope('users');
 
       // Tworzenie profilu - tylko dla właściciela podczas rejestracji
-      allow create: if isOwner(userId) || isAdminOrSuperAdmin();
+      allow create: if
+        (isOwner(userId) &&
+          (!('role' in request.resource.data) || validSelfServiceRole(request.resource.data.role)) &&
+          (!('operatorScopes' in request.resource.data) || validOperatorScopes(request.resource.data.operatorScopes)))
+        || isAdminOrSuperAdmin()
+        || hasBackofficeScope('users');
 
       // Aktualizacja - tylko właściciel (nie może zmienić własnej roli)
       allow update: if (isOwner(userId) &&
-        (!('role' in request.resource.data) || request.resource.data.role == resource.data.role))
-        || isAdminOrSuperAdmin();
+        (!('role' in request.resource.data) || request.resource.data.role == resource.data.role) &&
+        (!('operatorScopes' in request.resource.data) || request.resource.data.operatorScopes == resource.data.operatorScopes))
+        || isAdminOrSuperAdmin()
+        || hasBackofficeScope('users');
 
       // Usuwanie profilu - tylko admin/superadmin (usuwanie konta robimy przez backend)
-      allow delete: if isAdminOrSuperAdmin();
+      allow delete: if isAdminOrSuperAdmin() || hasBackofficeScope('users');
     }
 
     // =============================================================================
@@ -59,23 +117,55 @@ service cloud.firestore {
       // Publiczne dane: każdy może odczytać (np. podgląd profilu)
       allow read: if true;
 
-      // Tworzy/aktualizuje tylko właściciel lub admin (kontrola pól)
-      allow create, update: if (isOwner(userId) || isAdminOrSuperAdmin()) &&
-        request.resource.data.keys().hasOnly(['displayName', 'avatar', 'updatedAt', 'role']) &&
+      // Tworzenie tylko przez właściciela lub admina (kontrola pól)
+      allow create: if (isOwner(userId) || isAdminOrSuperAdmin() || hasBackofficeScope('users')) &&
+        request.resource.data.keys().hasOnly(['displayName', 'avatar', 'updatedAt', 'role', 'operatorScopes', 'emailVerified']) &&
         request.resource.data.displayName is string &&
         request.resource.data.displayName.size() >= 2 &&
         request.resource.data.displayName.size() <= 32 &&
         (!('avatar' in request.resource.data) || request.resource.data.avatar is string) &&
+        (!('operatorScopes' in request.resource.data) || validOperatorScopes(request.resource.data.operatorScopes)) &&
+        (!('emailVerified' in request.resource.data) || request.resource.data.emailVerified is bool) &&
+        (
+          (isOwner(userId) &&
+            (!('role' in request.resource.data) || validSelfServiceRole(request.resource.data.role)) &&
+            userOwnsCurrentEmailVerifiedFlag())
+          ||
+          ((isAdminOrSuperAdmin() || hasBackofficeScope('users')) &&
+            (!('role' in request.resource.data) || validRole(request.resource.data.role)))
+        );
+
+      // Aktualizuje tylko właściciel lub admin (kontrola pól)
+      allow update: if (isOwner(userId) || isAdminOrSuperAdmin() || hasBackofficeScope('users')) &&
+        request.resource.data.keys().hasOnly(['displayName', 'avatar', 'updatedAt', 'role', 'operatorScopes', 'emailVerified']) &&
+        request.resource.data.displayName is string &&
+        request.resource.data.displayName.size() >= 2 &&
+        request.resource.data.displayName.size() <= 32 &&
+        (!('avatar' in request.resource.data) || request.resource.data.avatar is string) &&
+        (!('operatorScopes' in request.resource.data) || validOperatorScopes(request.resource.data.operatorScopes)) &&
+        (!('emailVerified' in request.resource.data) || request.resource.data.emailVerified is bool) &&
         (
           // Właściciel nie może zmieniać roli (może najwyżej zachować istniejącą)
-          (isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role == resource.data.role))
+          (isOwner(userId) &&
+            (
+              !('role' in request.resource.data) ||
+              request.resource.data.role == resource.data.role ||
+              (!('role' in resource.data) && validSelfServiceRole(request.resource.data.role))
+            ) &&
+            userOwnsCurrentEmailVerifiedFlag() &&
+            (
+              !('operatorScopes' in request.resource.data) ||
+              request.resource.data.operatorScopes == resource.data.operatorScopes ||
+              (!('operatorScopes' in resource.data) && validOperatorScopes(request.resource.data.operatorScopes))
+            ))
           ||
           // Admin może ustawić rolę
-          (isAdminOrSuperAdmin() && (!('role' in request.resource.data) || validRole(request.resource.data.role)))
+          ((isAdminOrSuperAdmin() || hasBackofficeScope('users')) &&
+            (!('role' in request.resource.data) || validRole(request.resource.data.role)))
         );
 
       // Usuwanie: owner lub admin (np. sprzątanie konta)
-      allow delete: if isOwner(userId) || isAdminOrSuperAdmin();
+      allow delete: if isOwner(userId) || isAdminOrSuperAdmin() || hasBackofficeScope('users');
     }
 
     // =============================================================================
@@ -91,7 +181,7 @@ service cloud.firestore {
     // Wersje list publicznych (1 dokument = 1 odczyt zamiast getDocs całej kolekcji przy cache w przeglądarce)
     match /publicListCacheMeta/{key} {
       allow read: if true;
-      allow create, update, delete: if isAdminOrSuperAdmin();
+      allow create, update, delete: if canManagePublicListCache(key);
     }
 
     // Lekki indeks wyszukiwania globalnego.
@@ -106,7 +196,7 @@ service cloud.firestore {
     // =============================================================================
     match /messages/{messageId} {
       // Dla administratorów: pełny dostęp do wszystkich wiadomości
-      allow read: if isAdminOrSuperAdmin();
+      allow read: if isAdminOrSuperAdmin() || hasBackofficeScope('contact');
       
       // Dla zwykłych użytkowników: tylko własne wiadomości lub te gdzie są odbiorcą 'admin'
       allow read: if isAuthenticated() && (
@@ -125,11 +215,11 @@ service cloud.firestore {
         request.resource.data.recipientId == resource.data.recipientId &&
         request.resource.data.status == resource.data.status;
 
-      allow update, delete: if isAdminOrSuperAdmin();
+      allow update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('contact');
     }
 
     match /conversations/{conversationId} {
-      allow read: if isAdminOrSuperAdmin() || (isAuthenticated() && (
+      allow read: if isAdminOrSuperAdmin() || hasBackofficeScope('contact') || (isAuthenticated() && (
         conversationId == request.auth.uid ||
         resource.data.userId == request.auth.uid
       ));
@@ -138,16 +228,16 @@ service cloud.firestore {
       allow create: if isAuthenticated();
 
       // Aktualizacja: użytkownik może aktualizować swoją konwersację, admin może wszystkie
-      allow update: if isAdminOrSuperAdmin() || (isAuthenticated() && (
+      allow update: if isAdminOrSuperAdmin() || hasBackofficeScope('contact') || (isAuthenticated() && (
         conversationId == request.auth.uid ||
         resource.data.userId == request.auth.uid
       ));
 
-      allow delete: if isAdminOrSuperAdmin();
+      allow delete: if isAdminOrSuperAdmin() || hasBackofficeScope('contact');
     }
 
     match /privateMessages/{messageId} {
-      allow read: if isAdminOrSuperAdmin() || (isAuthenticated() && (
+      allow read: if isAdminOrSuperAdmin() || hasBackofficeScope('contact') || (isAuthenticated() && (
         resource.data.senderId == request.auth.uid ||
         resource.data.recipientId == request.auth.uid
       ));
@@ -294,17 +384,17 @@ service cloud.firestore {
     // =============================================================================
     match /products/{productId} {
       allow read: if true;
-      allow create, update, delete: if isAdminOrSuperAdmin();
+      allow create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('shop');
     }
 
     match /trainings/{trainingId} {
       allow read: if true;
-      allow create, update, delete: if isAdminOrSuperAdmin();
+      allow create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('trainings');
     }
 
     match /events/{eventId} {
       allow read: if true;
-      allow create, update, delete: if isAdminOrSuperAdmin();
+      allow create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('events');
     }
 
     // Zgłoszenia na stronę event.html (dokumentacja strzelnicy) — zapis publiczny, odczyt/edycja tylko admin
@@ -332,12 +422,12 @@ service cloud.firestore {
     // Wpis bloga — odczyt publiczny (strona + zapytania listowe w panelu). Wymaga wdrożenia: firebase deploy --only firestore:rules
     match /blogPosts/{postId} {
       allow get, list: if true;
-      allow create, update, delete: if isAdminOrSuperAdmin();
+      allow create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('blog');
     }
 
     match /charity/{charityId} {
       allow read: if true;
-      allow create, update, delete: if isAdminOrSuperAdmin();
+      allow create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('help');
     }
 
     match /documents/{documentId} {
@@ -348,9 +438,18 @@ service cloud.firestore {
     match /trainingAccess/{accessId} {
       allow read: if isAuthenticated() && (
         resource.data.userId == request.auth.uid ||
-        isAdminOrSuperAdmin()
+        isAdminOrSuperAdmin() ||
+        hasBackofficeScope('trainings')
       );
-      allow create, update, delete: if isAdminOrSuperAdmin();
+      allow create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('trainings');
+    }
+
+    match /promoCodes/{codeId} {
+      allow read, create, update, delete: if false;
+    }
+
+    match /promoCodeUsages/{usageId} {
+      allow read, create, update, delete: if false;
     }
 
     match /courseLessons/{lessonId} {
@@ -358,7 +457,7 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       
       // Zapis: tylko admin
-      allow create, update, delete: if isAdminOrSuperAdmin();
+      allow create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('trainings');
     }
 
     // Liczniki numerów certyfikatów szkoleniowych (tylko +1 na kurs; zapis w transakcji z publicTrainingCertificates)
@@ -498,7 +597,7 @@ service cloud.firestore {
     }
 
     match /system_events/{eventId} {
-      allow read, create, update, delete: if isAdminOrSuperAdmin();
+      allow read, create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('shop');
     }
 
     match /messageCategories/{categoryId} {
@@ -523,7 +622,7 @@ service cloud.firestore {
     // =============================================================================
     match /orders/{orderId} {
       // Admin może wszystko
-      allow read, create, update, delete: if isAdminOrSuperAdmin();
+      allow read, create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('shop');
       
       // Użytkownik może odczytywać tylko swoje zamówienia
       allow read: if isAuthenticated() && 

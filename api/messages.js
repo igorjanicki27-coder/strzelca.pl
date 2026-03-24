@@ -13,6 +13,11 @@ const {
   getSessionUser,
 } = require('./_sso-utils');
 const { firestoreValueToJsonable } = require('./_serialize-firestore');
+const {
+  getUserRoleProfile,
+  isAdminRoleProfile,
+  canAccessBackofficeScope,
+} = require('./_moderation');
 
 let dbManager = null;
 
@@ -134,11 +139,10 @@ function getRoutedSegments({ urlObj, queryObj }) {
 
 async function isAdminOrSuperAdmin(uid) {
   if (!uid) return false;
-  if (uid === SUPERADMIN_UID) return true;
   try {
     initAdmin();
-    const snap = await admin.firestore().collection('userProfiles').doc(uid).get();
-    return snap.exists && snap.data()?.role === 'admin';
+    const profile = await getUserRoleProfile(admin.firestore(), uid);
+    return isAdminRoleProfile(profile) || canAccessBackofficeScope(profile, 'contact');
   } catch {
     return false;
   }

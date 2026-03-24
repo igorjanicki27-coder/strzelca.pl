@@ -392,6 +392,31 @@
         </h1>
 
         <form id="registration-form">
+          <div class="form-section">
+            <div class="section-title">TYP KONTA</div>
+            <div class="radio-group" id="account-type-group">
+              <label class="radio-option">
+                <input
+                  type="radio"
+                  name="account-type"
+                  id="account-type-user"
+                  value="user"
+                  checked
+                />
+                <span>Zwykły użytkownik</span>
+              </label>
+              <label class="radio-option">
+                <input
+                  type="radio"
+                  name="account-type"
+                  id="account-type-company"
+                  value="company"
+                />
+                <span>Firma</span>
+              </label>
+            </div>
+          </div>
+
           <!-- Sekcja 1: DANE LOGOWANIA -->
           <div class="form-section">
             <div class="section-title">DANE LOGOWANIA</div>
@@ -478,7 +503,46 @@
 
           <!-- Sekcja 2: DANE STRZELCA -->
           <div class="form-section">
-            <div class="section-title">DANE STRZELCA</div>
+            <div class="section-title" id="account-details-title">
+              DANE STRZELCA
+            </div>
+
+            <div id="company-fields" class="hidden">
+              <div class="form-row">
+                <div>
+                  <label
+                    class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest field-required"
+                    >Nazwa firmy</label
+                  >
+                  <div class="strzelec-input-container">
+                    <input
+                      type="text"
+                      id="company-name"
+                      placeholder="np. Strzelca Sp. z o.o."
+                      maxlength="120"
+                    />
+                  </div>
+                  <div class="error-message" id="company-name-error"></div>
+                </div>
+
+                <div>
+                  <label
+                    class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest field-required"
+                    >NIP</label
+                  >
+                  <div class="strzelec-input-container">
+                    <input
+                      type="text"
+                      id="company-nip"
+                      placeholder="1234567890"
+                      inputmode="numeric"
+                      maxlength="13"
+                    />
+                  </div>
+                  <div class="error-message" id="company-nip-error"></div>
+                </div>
+              </div>
+            </div>
 
             <!-- Płeć -->
             <div class="mb-6">
@@ -547,6 +611,7 @@
               <div>
                 <label
                   class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest optional-field"
+                  id="street-label"
                   >Ulica</label
                 >
                 <div class="strzelec-input-container">
@@ -564,6 +629,7 @@
               <div>
                 <label
                   class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest optional-field"
+                  id="building-number-label"
                   >Nr budynku/lokalu</label
                 >
                 <div class="strzelec-input-container">
@@ -582,6 +648,7 @@
               <div>
                 <label
                   class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest optional-field"
+                  id="postal-code-label"
                   >Kod pocztowy</label
                 >
                 <div class="strzelec-input-container">
@@ -596,6 +663,7 @@
               <div>
                 <label
                   class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest optional-field"
+                  id="city-label"
                   >Miasto</label
                 >
                 <div class="strzelec-input-container">
@@ -1021,8 +1089,100 @@ const firebaseConfig = {
         element.style.display = "none";
       }
 
+      function b64EncodeUtf8(str) {
+        try {
+          const bytes = new TextEncoder().encode(String(str ?? ""));
+          let binary = "";
+          for (let i = 0; i < bytes.length; i++) {
+            binary += String.fromCharCode(bytes[i]);
+          }
+          return btoa(binary);
+        } catch (error) {
+          console.error("b64EncodeUtf8 failed:", error);
+          return "";
+        }
+      }
+
+      function getSelectedAccountType() {
+        return (
+          document.querySelector('input[name="account-type"]:checked')?.value ||
+          "user"
+        );
+      }
+
+      function normalizeNip(value) {
+        return String(value || "").replace(/\D/g, "").slice(0, 10);
+      }
+
+      function formatNipInput(value) {
+        const digits = normalizeNip(value);
+        if (digits.length <= 3) return digits;
+        if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+        if (digits.length <= 8) {
+          return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+        }
+        return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 8)}-${digits.slice(8)}`;
+      }
+
+      function updateAccountTypeUI() {
+        const accountType = getSelectedAccountType();
+        const isCompany = accountType === "company";
+        const companyFields = document.getElementById("company-fields");
+        const detailsTitle = document.getElementById("account-details-title");
+        const streetLabel = document.getElementById("street-label");
+        const buildingLabel = document.getElementById("building-number-label");
+        const postalLabel = document.getElementById("postal-code-label");
+        const cityLabel = document.getElementById("city-label");
+        const companyNameInput = document.getElementById("company-name");
+        const companyNipInput = document.getElementById("company-nip");
+
+        companyFields?.classList.toggle("hidden", !isCompany);
+
+        if (detailsTitle) {
+          detailsTitle.textContent = isCompany ? "DANE FIRMY" : "DANE STRZELCA";
+        }
+        if (streetLabel) streetLabel.textContent = isCompany ? "Ulica firmy" : "Ulica";
+        if (buildingLabel) {
+          buildingLabel.textContent = isCompany
+            ? "Nr budynku / lokalu firmy"
+            : "Nr budynku/lokalu";
+        }
+        if (postalLabel) {
+          postalLabel.textContent = isCompany ? "Kod pocztowy firmy" : "Kod pocztowy";
+        }
+        if (cityLabel) cityLabel.textContent = isCompany ? "Miasto firmy" : "Miasto";
+
+        if (companyNameInput) {
+          companyNameInput.required = isCompany;
+          companyNameInput.disabled = !isCompany;
+        }
+        if (companyNipInput) {
+          companyNipInput.required = isCompany;
+          companyNipInput.disabled = !isCompany;
+        }
+
+        if (!isCompany) {
+          hideError("company-name-error");
+          hideError("company-nip-error");
+        }
+      }
+
+      document
+        .querySelectorAll('input[name="account-type"]')
+        .forEach((input) => input.addEventListener("change", updateAccountTypeUI));
+
+      document
+        .getElementById("company-nip")
+        ?.addEventListener("input", (event) => {
+          event.target.value = formatNipInput(event.target.value);
+        });
+
+      updateAccountTypeUI();
+
       function validateForm() {
         let isValid = true;
+        const accountType = getSelectedAccountType();
+        const isCompany = accountType === "company";
 
         // Sprawdź hasła
         const password = document.getElementById("password").value;
@@ -1076,6 +1236,29 @@ const firebaseConfig = {
           isValid = false;
         } else {
           hideError("password-error");
+        }
+
+        if (isCompany) {
+          const companyName = document
+            .getElementById("company-name")
+            .value.trim();
+          const nip = normalizeNip(
+            document.getElementById("company-nip").value,
+          );
+
+          if (companyName.length < 2) {
+            showError("company-name-error", "Podaj nazwę firmy");
+            isValid = false;
+          } else {
+            hideError("company-name-error");
+          }
+
+          if (nip.length !== 10) {
+            showError("company-nip-error", "NIP musi mieć 10 cyfr");
+            isValid = false;
+          } else {
+            hideError("company-nip-error");
+          }
         }
 
         // Sprawdź zgody
@@ -4361,7 +4544,13 @@ const firebaseConfig = {
           isRegistering = true;
 
           try {
+            const accountType = getSelectedAccountType();
+            const isCompany = accountType === "company";
+            const normalizedNip = normalizeNip(
+              document.getElementById("company-nip").value,
+            );
             const formData = {
+              accountType,
               gender: document.querySelector('input[name="gender"]:checked')
                 .value,
               displayName: document.getElementById("display-name").value.trim(),
@@ -4391,7 +4580,11 @@ const firebaseConfig = {
               newsletter: document.getElementById("newsletter").checked,
               createdAt: new Date(),
               emailVerified: false,
-              role: "user",
+              role: isCompany ? "company" : "user",
+              companyName: isCompany
+                ? document.getElementById("company-name").value.trim()
+                : "",
+              nip: isCompany ? normalizedNip : "",
             };
 
             // 0. Sprawdź dostępność nazwy użytkownika przed utworzeniem konta
@@ -4428,30 +4621,37 @@ const firebaseConfig = {
               firstName: formData.firstName,
               lastName: formData.lastName,
               email: formData.email, // Email nie szyfrujemy dla funkcjonalności
-              phone: btoa(formData.phone), // Szyfrowanie base64 dla telefonu
+              phone: b64EncodeUtf8(formData.phone), // Szyfrowanie base64 dla telefonu
               parcelLocker: formData.parcelLocker
-                ? btoa(formData.parcelLocker)
+                ? b64EncodeUtf8(formData.parcelLocker)
                 : "",
               address: {
                 street: formData.address.street
-                  ? btoa(formData.address.street)
+                  ? b64EncodeUtf8(formData.address.street)
                   : "",
                 buildingNumber: formData.address.buildingNumber
-                  ? btoa(formData.address.buildingNumber)
+                  ? b64EncodeUtf8(formData.address.buildingNumber)
                   : "",
                 postalCode: formData.address.postalCode
-                  ? btoa(formData.address.postalCode)
+                  ? b64EncodeUtf8(formData.address.postalCode)
                   : "",
-                city: formData.address.city ? btoa(formData.address.city) : "",
+                city: formData.address.city
+                  ? b64EncodeUtf8(formData.address.city)
+                  : "",
               },
+              companyName: formData.companyName
+                ? b64EncodeUtf8(formData.companyName)
+                : "",
+              nip: formData.nip ? b64EncodeUtf8(formData.nip) : "",
               ageConfirmed: formData.ageConfirmed,
               termsAccepted: formData.termsAccepted,
               privacyAccepted: formData.privacyAccepted,
               newsletter: formData.newsletter,
               createdAt: formData.createdAt,
               emailVerified: false,
-              role: "user", // Domyślnie rola user - admin musi zmienić ręcznie w Firebase Console
+              role: formData.role,
               status: "active", // active, blocked, suspended
+              operatorScopes: [],
             };
 
             // Zapisz nazwę użytkownika w kolekcji displayNames (dla sprawdzania dostępności)
@@ -4494,6 +4694,9 @@ const firebaseConfig = {
                   firstName: formData.firstName,
                   lastName: formData.lastName,
                   gender: formData.gender,
+                  accountType: formData.accountType,
+                  companyName: formData.companyName,
+                  nip: formData.nip,
                   parcelLocker: formData.parcelLocker || "",
                   address: {
                     street: formData.address.street,
@@ -4558,6 +4761,9 @@ const firebaseConfig = {
               await setDoc(doc(db, "publicProfiles", user.uid), {
                 displayName: formData.displayName,
                 avatar: "",
+                role: formData.role,
+                operatorScopes: [],
+                emailVerified: false,
                 updatedAt: new Date(),
               });
             } catch (publicProfileError) {

@@ -177,9 +177,220 @@ const defaultTemplates = {
   </ul>
   <p>Jeśli masz pytania, skontaktuj się z nami przez system wiadomości lub mailowo: kontakt@strzelca.pl</p>
   <p>Pozdrawiamy,<br>Zespół strzelca.pl</p>
-</body>
+    </body>
 </html>`,
     variables: ['orderNumber', 'cancellationReason', 'updatedAt', 'orderDetails', 'total']
+  },
+  'order_status_wycena_zlozona': {
+    name: 'Status: Wycena złożona',
+    subject: 'Wycena dla zamówienia {{orderNumber}} jest gotowa - strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #c19a6b;">Wycena jest gotowa</h2>
+  <p>Dzień dobry,</p>
+  <p>Dla zamówienia <strong>{{orderNumber}}</strong> przygotowaliśmy wycenę.</p>
+  <p>W swoim profilu możesz ją teraz <strong>zaakceptować</strong> albo <strong>odrzucić</strong>.</p>
+  <ul>
+    <li><strong>Numer zamówienia:</strong> {{orderNumber}}</li>
+    <li><strong>Status:</strong> Wycena złożona</li>
+    <li><strong>Kwota:</strong> {{total}} zł</li>
+    <li><strong>Data aktualizacji:</strong> {{updatedAt}}</li>
+  </ul>
+  <p><a href="{{dashboardUrl}}" style="color:#c19a6b;">Przejdź do profilu</a></p>
+</body>
+</html>`,
+    variables: ['orderNumber', 'total', 'updatedAt', 'dashboardUrl']
+  },
+  'order_status_wycena_zaakceptowana': {
+    name: 'Status: Wycena zaakceptowana',
+    subject: 'Wycena dla zamówienia {{orderNumber}} została zaakceptowana - strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #16a34a;">Wycena zaakceptowana</h2>
+  <p>Dzień dobry,</p>
+  <p>Potwierdziliśmy akceptację wyceny dla zamówienia <strong>{{orderNumber}}</strong>.</p>
+  <p>Akceptacja wyceny jest wiążąca i oznacza zobowiązanie do opłacenia zamówienia.</p>
+  <p><a href="{{dashboardUrl}}" style="color:#c19a6b;">Zobacz zamówienie w profilu</a></p>
+</body>
+</html>`,
+    variables: ['orderNumber', 'dashboardUrl']
+  },
+  'order_status_wycena_odrzucona': {
+    name: 'Status: Wycena odrzucona',
+    subject: 'Wycena dla zamówienia {{orderNumber}} została odrzucona - strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #dc2626;">Wycena odrzucona</h2>
+  <p>Dzień dobry,</p>
+  <p>Wycena dla zamówienia <strong>{{orderNumber}}</strong> została odrzucona.</p>
+  {{#if quoteRejectedReason}}
+  <p><strong>Powód odrzucenia:</strong> {{quoteRejectedReason}}</p>
+  {{/if}}
+  <p><a href="{{dashboardUrl}}" style="color:#c19a6b;">Zobacz zamówienie w profilu</a></p>
+</body>
+</html>`,
+    variables: ['orderNumber', 'quoteRejectedReason', 'dashboardUrl']
+  },
+  'order_status_oczekuje_na_platnosc': {
+    name: 'Status: Oczekuje na płatność',
+    subject: 'Zamówienie {{orderNumber}} oczekuje na płatność - strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #c19a6b;">Oczekiwanie na płatność</h2>
+  <p>Dzień dobry,</p>
+  <p>Dla zamówienia <strong>{{orderNumber}}</strong> możesz już przejść do opłacenia zamówienia w swoim profilu.</p>
+  {{#if paymentUrl}}
+  <p><a href="{{paymentUrl}}" style="color:#c19a6b;">Przejdź do płatności</a></p>
+  {{/if}}
+  <p><a href="{{dashboardUrl}}" style="color:#c19a6b;">Otwórz profil</a></p>
+</body>
+</html>`,
+    variables: ['orderNumber', 'paymentUrl', 'dashboardUrl']
+  },
+  'order_status_weryfikowanie_platnosci': {
+    name: 'Status: Weryfikowanie płatności',
+    subject: 'Płatność za zamówienie {{orderNumber}} jest weryfikowana - strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #c19a6b;">Weryfikowanie płatności</h2>
+  <p>Dzień dobry,</p>
+  <p>Otrzymaliśmy informację o próbie opłacenia zamówienia <strong>{{orderNumber}}</strong>.</p>
+  <p>Administrator zweryfikuje płatność i zaktualizuje status zamówienia.</p>
+  <p><a href="{{dashboardUrl}}" style="color:#c19a6b;">Zobacz zamówienie w profilu</a></p>
+</body>
+</html>`,
+    variables: ['orderNumber', 'dashboardUrl']
+  },
+  'order_status_platnosc_zakonczona_niepowodzeniem': {
+    name: 'Status: Płatność zakończona niepowodzeniem',
+    subject: 'Płatność za zamówienie {{orderNumber}} nie została potwierdzona - strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #dc2626;">Płatność zakończona niepowodzeniem</h2>
+  <p>Dzień dobry,</p>
+  <p>Nie udało się potwierdzić płatności dla zamówienia <strong>{{orderNumber}}</strong>.</p>
+  <p>W profilu możesz ponowić płatność, klikając przycisk <strong>Opłać</strong>.</p>
+  <p><a href="{{dashboardUrl}}" style="color:#c19a6b;">Zobacz zamówienie w profilu</a></p>
+</body>
+</html>`,
+    variables: ['orderNumber', 'dashboardUrl']
+  },
+  'order_edited_by_user': {
+    name: 'Zamówienia — edycja przez klienta',
+    subject: 'Zamówienie {{orderNumber}} zostało zaktualizowane - strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #c19a6b;">Zamówienie zostało zaktualizowane</h2>
+  <p>Dzień dobry,</p>
+  <p>W zamówieniu <strong>{{orderNumber}}</strong> zapisano zmiany.</p>
+  <h3>Szczegóły zamówienia:</h3>
+  <ul>
+    <li><strong>Numer zamówienia:</strong> {{orderNumber}}</li>
+    <li><strong>Status:</strong> {{status}}</li>
+    <li><strong>Data aktualizacji:</strong> {{updatedAt}}</li>
+    <li><strong>Zamówienie:</strong> {{orderDetails}}</li>
+    {{#if notes}}<li><strong>Uwagi:</strong> {{notes}}</li>{{/if}}
+    <li><strong>Wartość:</strong> {{total}} zł</li>
+  </ul>
+  <p>Jeśli masz pytania, skontaktuj się z nami przez system wiadomości lub mailowo: kontakt@strzelca.pl</p>
+  <p>Pozdrawiamy,<br>Zespół strzelca.pl</p>
+</body>
+</html>`,
+    variables: ['orderNumber', 'status', 'updatedAt', 'orderDetails', 'notes', 'total']
+  },
+  'order_cancelled_by_user': {
+    name: 'Zamówienia — anulowanie przez klienta',
+    subject: 'Zamówienie {{orderNumber}} zostało anulowane przez klienta - strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #c19a6b;">Zamówienie zostało anulowane</h2>
+  <p>Dzień dobry,</p>
+  <p>Zamówienie <strong>{{orderNumber}}</strong> zostało anulowane przez klienta.</p>
+  {{#if cancellationReason}}
+  <p><strong>Powód anulowania:</strong> {{cancellationReason}}</p>
+  {{/if}}
+  <h3>Szczegóły zamówienia:</h3>
+  <ul>
+    <li><strong>Numer zamówienia:</strong> {{orderNumber}}</li>
+    <li><strong>Status:</strong> {{status}}</li>
+    <li><strong>Data aktualizacji:</strong> {{updatedAt}}</li>
+    <li><strong>Zamówienie:</strong> {{orderDetails}}</li>
+    <li><strong>Wartość:</strong> {{total}} zł</li>
+  </ul>
+  <p>Jeśli masz pytania, skontaktuj się z nami przez system wiadomości lub mailowo: kontakt@strzelca.pl</p>
+  <p>Pozdrawiamy,<br>Zespół strzelca.pl</p>
+</body>
+</html>`,
+    variables: ['orderNumber', 'status', 'cancellationReason', 'updatedAt', 'orderDetails', 'total']
+  },
+  'order_admin_created_by_user': {
+    name: 'Administrator — nowe zamówienie od użytkownika',
+    subject: 'Nowe zamówienie {{orderNumber}} zostało złożone',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color:#c19a6b;">Nowe zamówienie</h2>
+  <p>Użytkownik złożył nowe zamówienie <strong>{{orderNumber}}</strong>.</p>
+  <ul>
+    <li><strong>Klient:</strong> {{customerName}}</li>
+    <li><strong>E-mail:</strong> {{customerEmail}}</li>
+    <li><strong>Status:</strong> {{status}}</li>
+    <li><strong>Kwota:</strong> {{total}} zł</li>
+  </ul>
+  <p><strong>Zamówienie:</strong><br>{{orderDetails}}</p>
+</body>
+</html>`,
+    variables: ['orderNumber', 'customerName', 'customerEmail', 'status', 'total', 'orderDetails']
+  },
+  'order_admin_quote_accepted': {
+    name: 'Administrator — klient zaakceptował wycenę',
+    subject: 'Klient zaakceptował wycenę zamówienia {{orderNumber}}',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color:#16a34a;">Wycena zaakceptowana</h2>
+  <p>Klient zaakceptował wycenę zamówienia <strong>{{orderNumber}}</strong>.</p>
+  <ul>
+    <li><strong>Klient:</strong> {{customerName}}</li>
+    <li><strong>E-mail:</strong> {{customerEmail}}</li>
+    <li><strong>Kwota:</strong> {{total}} zł</li>
+  </ul>
+</body>
+</html>`,
+    variables: ['orderNumber', 'customerName', 'customerEmail', 'total']
+  },
+  'order_admin_quote_rejected': {
+    name: 'Administrator — klient odrzucił wycenę',
+    subject: 'Klient odrzucił wycenę zamówienia {{orderNumber}}',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color:#dc2626;">Wycena odrzucona</h2>
+  <p>Klient odrzucił wycenę dla zamówienia <strong>{{orderNumber}}</strong>.</p>
+  <ul>
+    <li><strong>Klient:</strong> {{customerName}}</li>
+    <li><strong>E-mail:</strong> {{customerEmail}}</li>
+  </ul>
+  {{#if quoteRejectedReason}}
+  <p><strong>Powód odrzucenia:</strong> {{quoteRejectedReason}}</p>
+  {{/if}}
+</body>
+</html>`,
+    variables: ['orderNumber', 'customerName', 'customerEmail', 'quoteRejectedReason']
+  },
+  'order_admin_payment_started': {
+    name: 'Administrator — użytkownik rozpoczął płatność',
+    subject: 'Zamówienie {{orderNumber}} oczekuje na weryfikację płatności',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color:#c19a6b;">Weryfikowanie płatności</h2>
+  <p>Użytkownik kliknął „Opłać” dla zamówienia <strong>{{orderNumber}}</strong>.</p>
+  <ul>
+    <li><strong>Klient:</strong> {{customerName}}</li>
+    <li><strong>E-mail:</strong> {{customerEmail}}</li>
+    <li><strong>Kwota:</strong> {{total}} zł</li>
+  </ul>
+  <p>Sprawdź płatność i ustaw status na <strong>W realizacji</strong> albo <strong>Płatność zakończona niepowodzeniem</strong>.</p>
+</body>
+</html>`,
+    variables: ['orderNumber', 'customerName', 'customerEmail', 'total']
   },
   'contact_form_auto_reply': {
     name: 'Automatyczna odpowiedź - Formularz kontaktowy',
@@ -341,9 +552,108 @@ const defaultTemplates = {
   <p><a href="{{profileUrl}}" style="color: #c19a6b;">Zobacz swój profil</a></p>
   <p style="font-size:13px;color:#666;">W razie pytań: {{supportEmail}}</p>
   <p>Pozdrawiamy,<br>Zespół strzelca.pl</p>
-</body>
+    </body>
 </html>`,
     variables: ['userGreeting', 'raterName', 'ratingLabel', 'ratingStars', 'comment', 'profileUrl', 'supportEmail']
+  },
+  'return_claim_created_verified': {
+    name: 'Zwroty/Reklamacje — utworzenie zgłoszenia zweryfikowanego',
+    subject: 'Zgłoszenie {{claimNumber}} zostało przesłane - strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #c19a6b;">Zgłoszenie zostało przesłane</h2>
+  <p>Dzień dobry {{firstName}} {{lastName}},</p>
+  <p>Otrzymaliśmy formularz <strong>{{claimType}}</strong> o numerze <strong>{{claimNumber}}</strong>.</p>
+  <p>Status początkowy: <strong>{{statusLabel}}</strong>.</p>
+  <p>Wgląd do zgłoszenia znajdziesz w swoim profilu: <a href="{{dashboardUrl}}" style="color: #c19a6b;">otwórz profil</a>.</p>
+  <p>Zwykle odpowiadamy w ciągu 7 dni.</p>
+  <p>Kontakt: {{supportEmail}}</p>
+</body>
+</html>`,
+    variables: ['claimNumber', 'claimType', 'firstName', 'lastName', 'statusLabel', 'dashboardUrl', 'supportEmail']
+  },
+  'return_claim_created_unverified': {
+    name: 'Zwroty/Reklamacje — utworzenie zgłoszenia niezweryfikowanego',
+    subject: 'Formularz {{claimNumber}} został zapisany - strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #c19a6b;">Formularz został zapisany</h2>
+  <p>Dzień dobry,</p>
+  <p>Wygenerowano formularz <strong>{{claimType}}</strong> o numerze <strong>{{claimNumber}}</strong>.</p>
+  <p>To zgłoszenie jest oznaczone jako <strong>{{verificationLabel}}</strong>.</p>
+  <p>Dołącz formularz do przesyłki zwrotnej i zachowaj numer sprawy do kontaktu.</p>
+  <p>Kontakt: {{supportEmail}}</p>
+</body>
+</html>`,
+    variables: ['claimNumber', 'claimType', 'verificationLabel', 'supportEmail']
+  },
+  'return_claim_edited_by_user': {
+    name: 'Zwroty/Reklamacje — edycja zgłoszenia przez klienta',
+    subject: 'Zgłoszenie {{claimNumber}} zostało zaktualizowane - strzelca.pl',
+    html: `<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #c19a6b;">Zgłoszenie zostało zaktualizowane</h2>
+  <p>Dzień dobry {{firstName}} {{lastName}},</p>
+  <p>W formularzu <strong>{{claimNumber}}</strong> zapisano zmiany.</p>
+  {{#if adminComment}}<p><strong>Opis zmian:</strong> {{adminComment}}</p>{{/if}}
+  <p><a href="{{dashboardUrl}}" style="color: #c19a6b;">Zobacz szczegóły zgłoszenia</a></p>
+</body>
+</html>`,
+    variables: ['claimNumber', 'firstName', 'lastName', 'adminComment', 'dashboardUrl']
+  },
+  'return_claim_w_trakcie_realizacji': {
+    name: 'Zwroty/Reklamacje — status: W trakcie realizacji',
+    subject: 'Zgłoszenie {{claimNumber}} jest w trakcie realizacji - strzelca.pl',
+    html: `<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;"><h2 style="color:#c19a6b;">Zgłoszenie w trakcie realizacji</h2><p>Status sprawy <strong>{{claimNumber}}</strong> został zmieniony na <strong>{{statusLabel}}</strong>.</p>{{#if adminComment}}<p><strong>Opis:</strong> {{adminComment}}</p>{{/if}}<p><a href="{{dashboardUrl}}" style="color:#c19a6b;">Zobacz zgłoszenie</a></p></body></html>`,
+    variables: ['claimNumber', 'statusLabel', 'adminComment', 'dashboardUrl']
+  },
+  'return_claim_zaproponowano_rozwiazanie': {
+    name: 'Zwroty/Reklamacje — status: Zaproponowano rozwiązanie',
+    subject: 'Nowa propozycja rozwiązania dla zgłoszenia {{claimNumber}} - strzelca.pl',
+    html: `<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;"><h2 style="color:#c19a6b;">Zaproponowano rozwiązanie</h2><p>Dla zgłoszenia <strong>{{claimNumber}}</strong> przygotowaliśmy propozycję rozwiązania.</p><p><strong>Treść propozycji:</strong> {{solutionText}}</p>{{#if adminComment}}<p><strong>Dodatkowy opis:</strong> {{adminComment}}</p>{{/if}}<p>W profilu możesz ją zaakceptować lub odrzucić: <a href="{{dashboardUrl}}" style="color:#c19a6b;">otwórz zgłoszenie</a>.</p></body></html>`,
+    variables: ['claimNumber', 'solutionText', 'adminComment', 'dashboardUrl']
+  },
+  'return_claim_propozycja_zaakceptowana': {
+    name: 'Zwroty/Reklamacje — status: Propozycja zaakceptowana',
+    subject: 'Propozycja dla zgłoszenia {{claimNumber}} została zaakceptowana - strzelca.pl',
+    html: `<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;"><h2 style="color:#16a34a;">Propozycja zaakceptowana</h2><p>Zgłoszenie <strong>{{claimNumber}}</strong> ma status <strong>{{statusLabel}}</strong>.</p><p>Dalsze informacje pojawią się w historii zgłoszenia.</p><p><a href="{{dashboardUrl}}" style="color:#c19a6b;">Zobacz zgłoszenie</a></p></body></html>`,
+    variables: ['claimNumber', 'statusLabel', 'dashboardUrl']
+  },
+  'return_claim_propozycja_odrzucona': {
+    name: 'Zwroty/Reklamacje — status: Propozycja odrzucona',
+    subject: 'Propozycja dla zgłoszenia {{claimNumber}} została odrzucona - strzelca.pl',
+    html: `<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;"><h2 style="color:#dc2626;">Propozycja odrzucona</h2><p>Zgłoszenie <strong>{{claimNumber}}</strong> ma status <strong>{{statusLabel}}</strong>.</p>{{#if userResponseReason}}<p><strong>Powód odrzucenia:</strong> {{userResponseReason}}</p>{{/if}}{{#if userResponseExpectations}}<p><strong>Oczekiwania klienta:</strong> {{userResponseExpectations}}</p>{{/if}}<p><a href="{{dashboardUrl}}" style="color:#c19a6b;">Zobacz zgłoszenie</a></p></body></html>`,
+    variables: ['claimNumber', 'statusLabel', 'userResponseReason', 'userResponseExpectations', 'dashboardUrl']
+  },
+  'return_claim_oczekiwanie_na_zwrot': {
+    name: 'Zwroty/Reklamacje — status: Oczekiwanie na zwrot',
+    subject: 'Zgłoszenie {{claimNumber}} oczekuje na zwrot towaru - strzelca.pl',
+    html: `<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;"><h2 style="color:#7c3aed;">Oczekiwanie na zwrot</h2><p>Zgłoszenie <strong>{{claimNumber}}</strong> ma status <strong>{{statusLabel}}</strong>.</p>{{#if adminComment}}<p><strong>Opis:</strong> {{adminComment}}</p>{{/if}}<p><a href="{{dashboardUrl}}" style="color:#c19a6b;">Zobacz zgłoszenie</a></p></body></html>`,
+    variables: ['claimNumber', 'statusLabel', 'adminComment', 'dashboardUrl']
+  },
+  'return_claim_rozpatrzono_pozytywnie': {
+    name: 'Zwroty/Reklamacje — status: Rozpatrzono pozytywnie',
+    subject: 'Zgłoszenie {{claimNumber}} rozpatrzono pozytywnie - strzelca.pl',
+    html: `<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;"><h2 style="color:#16a34a;">Zgłoszenie rozpatrzono pozytywnie</h2><p>Sprawa <strong>{{claimNumber}}</strong> została rozpatrzona pozytywnie.</p><p><strong>Uzasadnienie:</strong> {{justification}}</p><p><strong>Forma zwrotu:</strong> {{refundMethod}}</p>{{#if refundExtra}}<p><strong>Szczegóły formy zwrotu:</strong> {{refundExtra}}</p>{{/if}}<p><a href="{{dashboardUrl}}" style="color:#c19a6b;">Zobacz zgłoszenie</a></p></body></html>`,
+    variables: ['claimNumber', 'justification', 'refundMethod', 'refundExtra', 'dashboardUrl']
+  },
+  'return_claim_rozpatrzono_negatywnie': {
+    name: 'Zwroty/Reklamacje — status: Rozpatrzono negatywnie',
+    subject: 'Zgłoszenie {{claimNumber}} rozpatrzono negatywnie - strzelca.pl',
+    html: `<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;"><h2 style="color:#dc2626;">Zgłoszenie rozpatrzono negatywnie</h2><p>Sprawa <strong>{{claimNumber}}</strong> została rozpatrzona negatywnie.</p><p><strong>Uzasadnienie:</strong> {{justification}}</p><p><a href="{{dashboardUrl}}" style="color:#c19a6b;">Zobacz zgłoszenie</a></p></body></html>`,
+    variables: ['claimNumber', 'justification', 'dashboardUrl']
+  },
+  'return_claim_anulowano_przez_administratora': {
+    name: 'Zwroty/Reklamacje — status: Anulowano przez administratora',
+    subject: 'Zgłoszenie {{claimNumber}} zostało anulowane - strzelca.pl',
+    html: `<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;"><h2 style="color:#dc2626;">Zgłoszenie anulowane</h2><p>Zgłoszenie <strong>{{claimNumber}}</strong> zostało anulowane przez administratora.</p>{{#if adminComment}}<p><strong>Powód:</strong> {{adminComment}}</p>{{/if}}<p><a href="{{dashboardUrl}}" style="color:#c19a6b;">Zobacz zgłoszenie</a></p></body></html>`,
+    variables: ['claimNumber', 'adminComment', 'dashboardUrl']
+  },
+  'return_claim_anulowano_przez_klienta': {
+    name: 'Zwroty/Reklamacje — status: Anulowano przez klienta',
+    subject: 'Zgłoszenie {{claimNumber}} zostało anulowane przez klienta - strzelca.pl',
+    html: `<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;"><h2 style="color:#dc2626;">Zgłoszenie anulowane przez klienta</h2><p>Zgłoszenie <strong>{{claimNumber}}</strong> zostało anulowane przez klienta.</p><p><a href="{{dashboardUrl}}" style="color:#c19a6b;">Zobacz zgłoszenie</a></p></body></html>`,
+    variables: ['claimNumber', 'dashboardUrl']
   }
 };
 

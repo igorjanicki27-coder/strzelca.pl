@@ -11,8 +11,10 @@ const {
   syncEntryFromSource,
   deleteIndexEntry,
 } = require('./_search-index');
-
-const SUPERADMIN_UID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
+const {
+  getUserRoleProfile,
+  canAccessBackofficeScope,
+} = require('./_moderation');
 
 /** Zdjecia jak produkty w panelu admina: data URL / HTTPS w polu Firestore (bez Storage). */
 const BAZAR_MAX_IMAGES = 5;
@@ -68,14 +70,11 @@ const WOJEWODZTWA = [
 
 async function isAdmin(uid) {
   if (!uid) return false;
-  if (uid === SUPERADMIN_UID) return true;
   try {
     initAdmin();
     const db = admin.firestore();
-    const profileDoc = await db.collection('userProfiles').doc(uid).get();
-    if (!profileDoc.exists) return false;
-    const role = profileDoc.data()?.role;
-    return String(role || '').toLowerCase() === 'admin';
+    const profile = await getUserRoleProfile(db, uid);
+    return canAccessBackofficeScope(profile, 'bazaar');
   } catch (_) { return false; }
 }
 

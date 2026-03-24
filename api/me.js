@@ -56,7 +56,11 @@ module.exports = async (req, res) => {
     }
 
     const role = profile?.role || null;
-    const isAdmin = uid === SUPERADMIN_UID || role === "admin";
+    const isAdmin =
+      uid === SUPERADMIN_UID ||
+      role === "admin" ||
+      role === "moderator" ||
+      role === "operator";
 
     res.status(200).json({
       success: true,
@@ -71,4 +75,3 @@ module.exports = async (req, res) => {
     res.status(200).json({ success: true, authenticated: false });
   }
 };
-

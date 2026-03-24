@@ -157,7 +157,13 @@ async function getFirebaseApiKey() {
 
 function isAdminRole(role) {
   const value = String(role || "").toLowerCase();
-  return value === "admin" || value === "administrator" || value === "superadmin";
+  return (
+    value === "admin" ||
+    value === "administrator" ||
+    value === "superadmin" ||
+    value === "moderator" ||
+    value === "operator"
+  );
 }
 
 async function tryGetFirebaseSession() {

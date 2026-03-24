@@ -13,20 +13,11 @@ const {
   deleteIndexEntry,
   rebuildSearchIndex,
 } = require('./_search-index');
-
-const SUPERADMIN_UID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
-
-async function isAdminOrSuperAdmin(db, uid) {
-  if (!uid) return false;
-  if (uid === SUPERADMIN_UID) return true;
-  try {
-    const snap = await db.collection('userProfiles').doc(uid).get();
-    if (!snap.exists) return false;
-    return String(snap.data()?.role || '').toLowerCase() === 'admin';
-  } catch {
-    return false;
-  }
-}
+const {
+  getUserRoleProfile,
+  isAdminRoleProfile,
+  canManageSearchType,
+} = require('./_moderation');
 
 function isSupportedType(type) {
   return SEARCH_TYPES.includes(type);
@@ -64,7 +55,8 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const isAdmin = await isAdminOrSuperAdmin(db, sessionUser.uid);
+    const roleProfile = await getUserRoleProfile(db, sessionUser.uid);
+    const isAdmin = isAdminRoleProfile(roleProfile);
 
     if (action === 'reindex') {
       if (!isAdmin) {
@@ -94,7 +86,7 @@ module.exports = async (req, res) => {
       }
 
       const isSelfUserSync = type === TYPE_USER && sourceId === sessionUser.uid;
-      if (!isAdmin && !isSelfUserSync) {
+      if (!isAdmin && !isSelfUserSync && !canManageSearchType(roleProfile, type)) {
         res.status(403).json({ success: false, error: 'Forbidden' });
         return;
       }
@@ -133,7 +125,7 @@ module.exports = async (req, res) => {
       }
 
       const isSelfUserDelete = type === TYPE_USER && sourceId === sessionUser.uid;
-      if (!isAdmin && !isSelfUserDelete) {
+      if (!isAdmin && !isSelfUserDelete && !canManageSearchType(roleProfile, type)) {
         res.status(403).json({ success: false, error: 'Forbidden' });
         return;
       }
