@@ -149,28 +149,43 @@
         cursor: pointer;
       }
 
+      .top-search-row {
+        position: fixed;
+        top: 16px;
+        left: 0;
+        right: 0;
+        z-index: 55;
+        display: flex;
+        justify-content: center;
+        pointer-events: none;
+      }
+      .top-search-row-inner {
+        width: min(680px, 50vw);
+        pointer-events: auto;
+      }
       .spotlight-shell {
+        position: relative;
         background: linear-gradient(120deg, rgba(22, 22, 22, 0.78), rgba(10, 10, 10, 0.62));
         border: 1px solid rgba(193, 154, 107, 0.35);
-        border-radius: 20px;
+        border-radius: 16px;
         backdrop-filter: blur(14px);
         -webkit-backdrop-filter: blur(14px);
         box-shadow: 0 18px 45px rgba(0, 0, 0, 0.42);
-        overflow: hidden;
+        overflow: visible;
       }
       .spotlight-input-row {
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 12px 14px;
+        gap: 10px;
+        padding: 9px 11px;
       }
       .spotlight-input {
         background: transparent !important;
         border: none !important;
         color: #f5f5f5 !important;
-        padding: 6px 0 !important;
+        padding: 4px 0 !important;
         width: 100%;
-        font-size: 1rem;
+        font-size: 0.95rem;
       }
       .spotlight-input::placeholder {
         color: rgba(229, 229, 229, 0.48);
@@ -178,47 +193,69 @@
       .spotlight-input:focus {
         box-shadow: none;
       }
-      .spotlight-right {
-        display: none;
+      .spotlight-icon-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 11px;
+        border: 1px solid rgba(193, 154, 107, 0.25);
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(245, 245, 245, 0.68);
+        display: inline-flex;
         align-items: center;
-        gap: 10px;
-        white-space: nowrap;
+        justify-content: center;
+        transition: 0.2s ease;
       }
-      .spotlight-shell.is-active .spotlight-right {
-        display: flex;
+      .spotlight-icon-btn:hover,
+      .spotlight-icon-btn.is-active {
+        border-color: rgba(193, 154, 107, 0.72);
+        color: rgba(255, 255, 255, 0.95);
+        background: rgba(193, 154, 107, 0.15);
       }
-      .spotlight-select {
-        width: auto;
-        min-width: 160px;
-        background: rgba(0, 0, 0, 0.45) !important;
-        border: 1px solid rgba(193, 154, 107, 0.4) !important;
-        color: #efefef !important;
-        padding: 8px 10px !important;
-        border-radius: 10px;
+      .spotlight-filter-wrap {
+        position: relative;
       }
-      .spotlight-submit {
-        border: 1px solid rgba(193, 154, 107, 0.8);
-        background: rgba(193, 154, 107, 0.9);
-        color: #0a0a0a;
-        border-radius: 10px;
-        padding: 9px 14px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        font-size: 0.73rem;
+      .spotlight-filter-menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        width: 220px;
+        padding: 8px;
+        border-radius: 12px;
+        border: 1px solid rgba(193, 154, 107, 0.25);
+        background: rgba(8, 8, 8, 0.92);
+        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.42);
+        z-index: 70;
       }
-      .spotlight-submit:hover {
-        background: #fff;
+      .spotlight-filter-item {
+        width: 100%;
+        text-align: left;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: rgba(236, 236, 236, 0.88);
+        padding: 8px 10px;
+        font-size: 0.82rem;
+      }
+      .spotlight-filter-item:hover,
+      .spotlight-filter-item.is-active {
+        background: rgba(193, 154, 107, 0.14);
+        border-color: rgba(193, 154, 107, 0.3);
       }
       .spotlight-results {
-        border-top: 1px solid rgba(193, 154, 107, 0.22);
-        background: rgba(5, 5, 5, 0.62);
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        background: rgba(7, 7, 7, 0.78);
+        border: 1px solid rgba(193, 154, 107, 0.22);
+        border-radius: 14px;
         max-height: min(55vh, 520px);
         overflow-y: auto;
-        padding: 12px 12px 14px;
+        padding: 10px 10px 12px;
+        z-index: 68;
       }
       .spotlight-group {
-        margin-bottom: 12px;
+        margin-bottom: 10px;
       }
       .spotlight-group-title {
         font-size: 0.72rem;
@@ -258,15 +295,6 @@
         font-size: 0.84rem;
         color: rgba(229, 229, 229, 0.66);
       }
-      .spotlight-shortcut {
-        font-size: 0.65rem;
-        color: rgba(229, 229, 229, 0.55);
-        border: 1px solid rgba(229, 229, 229, 0.25);
-        border-radius: 8px;
-        padding: 4px 7px;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-      }
       .global-modal-shell {
         background: rgba(8, 8, 8, 0.8);
         border: 1px solid rgba(193, 154, 107, 0.45);
@@ -279,6 +307,15 @@
         height: min(86vh, 920px);
         border: none;
         background: #090909;
+      }
+      @media (max-width: 900px) {
+        .top-search-row {
+          top: 72px;
+          z-index: 45;
+        }
+        .top-search-row-inner {
+          width: min(94vw, 680px);
+        }
       }
     </style>
 
@@ -336,26 +373,36 @@
       <div id="login-button" class="fixed top-4 right-4 z-50">
         <a
           href="https://konto.strzelca.pl/login.html"
-          class="text-coyote w-10 h-10 rounded-full flex items-center justify-center hover:text-white hover:bg-coyote/20 transition"
+          class="text-coyote w-12 h-12 rounded-full flex items-center justify-center hover:text-white hover:bg-coyote/20 transition"
           title="Zaloguj się"
         >
           <i class="fa-solid fa-sign-in-alt text-lg"></i>
         </a>
       </div>
 
-      <header class="container mx-auto px-6 text-center pt-12 md:pt-20">
-        <h1
-          class="text-4xl md:text-6xl font-black uppercase italic font-[Orbitron] tracking-tighter"
-        >
-          STREFA STRZELCA<span class="coyote-text">.PL</span>
-        </h1>
-      </header>
-
-      <main class="container mx-auto px-6 py-12 flex-grow flex items-center">
-        <div class="w-full max-w-7xl mx-auto">
-          <section id="spotlight-search" class="spotlight-shell mb-7">
+      <div class="top-search-row">
+        <div class="top-search-row-inner">
+          <section id="spotlight-search" class="spotlight-shell">
             <div class="spotlight-input-row">
-              <i class="fa-solid fa-magnifying-glass text-zinc-400"></i>
+              <div class="spotlight-filter-wrap">
+                <button
+                  id="spotlight-filter-toggle"
+                  class="spotlight-icon-btn"
+                  type="button"
+                  aria-label="Filtr kategorii"
+                  title="Filtr kategorii"
+                >
+                  <i class="fa-solid fa-sliders"></i>
+                </button>
+                <div id="spotlight-filter-menu" class="spotlight-filter-menu hidden">
+                  <button type="button" class="spotlight-filter-item is-active" data-category="all">Wszystko</button>
+                  <button type="button" class="spotlight-filter-item" data-category="user">Użytkownicy</button>
+                  <button type="button" class="spotlight-filter-item" data-category="shop">Sklep</button>
+                  <button type="button" class="spotlight-filter-item" data-category="event">Wydarzenia</button>
+                  <button type="button" class="spotlight-filter-item" data-category="blog">Blog</button>
+                  <button type="button" class="spotlight-filter-item" data-category="bazar">Bazar</button>
+                </div>
+              </div>
               <input
                 id="spotlight-search-input"
                 class="spotlight-input"
@@ -365,21 +412,25 @@
                 placeholder="Szukaj: użytkownicy, sklep, wydarzenia, blog, bazar..."
                 aria-label="Wyszukiwarka globalna"
               />
-              <span class="spotlight-shortcut">⌘/Ctrl + K</span>
-              <div class="spotlight-right" id="spotlight-right-controls">
-                <select id="spotlight-category" class="spotlight-select" aria-label="Kategoria">
-                  <option value="all">Wszystko</option>
-                  <option value="user">Użytkownicy</option>
-                  <option value="shop">Sklep</option>
-                  <option value="event">Wydarzenia</option>
-                  <option value="blog">Blog</option>
-                  <option value="bazar">Bazar</option>
-                </select>
-                <button id="spotlight-submit" class="spotlight-submit" type="button">Szukaj</button>
-              </div>
+              <button id="spotlight-submit" class="spotlight-icon-btn" type="button" aria-label="Szukaj">
+                <i class="fa-solid fa-magnifying-glass"></i>
+              </button>
             </div>
             <div id="spotlight-results" class="spotlight-results hidden"></div>
           </section>
+        </div>
+      </div>
+
+      <header class="container mx-auto px-6 text-center pt-24 md:pt-28">
+        <h1
+          class="text-4xl md:text-6xl font-black uppercase italic font-[Orbitron] tracking-tighter"
+        >
+          STREFA STRZELCA<span class="coyote-text">.PL</span>
+        </h1>
+      </header>
+
+      <main class="container mx-auto px-6 py-12 flex-grow flex items-center">
+        <div class="w-full max-w-7xl mx-auto">
           <div
             class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 max-w-7xl mx-auto w-full"
           >
@@ -696,13 +747,15 @@
         activeEntries: [],
         lastFullSignature: "",
         fullSearchCache: new Map(),
+        selectedCategory: "all",
       };
 
       const spotlightEls = {
         shell: null,
         input: null,
         submit: null,
-        category: null,
+        filterToggle: null,
+        filterMenu: null,
         results: null,
         modal: null,
         modalFrame: null,
@@ -763,23 +816,51 @@
       }
 
       function activeSearchTypes() {
-        const selected = spotlightEls.category?.value || "all";
+        const selected = spotlightState.selectedCategory || "all";
         if (selected === "all") return visibleSearchTypes();
         if (selected === "user" && !userSearchVisible()) return [];
         return visibleSearchTypes().includes(selected) ? [selected] : [];
       }
 
       function updateSearchCategoryOptions() {
-        const select = spotlightEls.category;
-        if (!select) return;
-        const current = select.value || "all";
-        const userOption = select.querySelector('option[value="user"]');
-        if (userOption) {
-          userOption.hidden = !userSearchVisible();
+        const menu = spotlightEls.filterMenu;
+        if (!menu) return;
+        const current = spotlightState.selectedCategory || "all";
+        const userItem = menu.querySelector('[data-category="user"]');
+        if (userItem) {
+          userItem.classList.toggle("hidden", !userSearchVisible());
         }
         if (!userSearchVisible() && current === "user") {
-          select.value = "all";
+          spotlightState.selectedCategory = "all";
+          spotlightState.lastFullSignature = "";
         }
+        refreshFilterMenuSelection();
+      }
+
+      function refreshFilterMenuSelection() {
+        const menu = spotlightEls.filterMenu;
+        if (!menu) return;
+        const selected = spotlightState.selectedCategory || "all";
+        menu.querySelectorAll(".spotlight-filter-item").forEach((item) => {
+          const cat = item.getAttribute("data-category") || "all";
+          item.classList.toggle("is-active", cat === selected);
+        });
+        if (spotlightEls.filterToggle) {
+          const label = SEARCH_TYPE_LABEL[selected] || "Wszystko";
+          spotlightEls.filterToggle.title = `Filtr: ${label}`;
+        }
+      }
+
+      function closeFilterMenu() {
+        spotlightEls.filterMenu?.classList.add("hidden");
+        spotlightEls.filterToggle?.classList.remove("is-active");
+      }
+
+      function toggleFilterMenu() {
+        if (!spotlightEls.filterMenu) return;
+        const willOpen = spotlightEls.filterMenu.classList.contains("hidden");
+        spotlightEls.filterMenu.classList.toggle("hidden", !willOpen);
+        spotlightEls.filterToggle?.classList.toggle("is-active", willOpen);
       }
 
       function searchEntryKey(entry) {
@@ -1063,7 +1144,7 @@
           for (const item of recentItems
             .slice()
             .sort((a, b) => Number(b.clicks || 0) - Number(a.clicks || 0))
-            .slice(0, 8)) {
+            .slice(0, 5)) {
             suggestionItems.push({
               ...item,
               popularity: Number(item.clicks || 0),
@@ -1072,7 +1153,7 @@
           }
 
           const queries = getStoredRecentQueries().slice(0, 5);
-          if (queries.length && suggestionItems.length < 8) {
+          if (queries.length && suggestionItems.length < 5) {
             for (const qText of queries) {
               suggestionItems.push({
                 type: "query",
@@ -1084,6 +1165,7 @@
                 popularity: 0,
                 source: "query",
               });
+              if (suggestionItems.length >= 5) break;
             }
           }
         } else {
@@ -1137,21 +1219,20 @@
             meta: item.meta || {},
             tokens: coerceArray(item.tokens),
           }));
-          grouped.push({ type: "suggestions", label: "Szybkie sugestie", items: normalizedEntries.slice(0, 12) });
+          grouped.push({ type: "suggestions", label: "Ostatnie", items: normalizedEntries.slice(0, 5) });
         }
 
         const queryItems = deduped.filter((x) => x.type === "query");
-        if (queryItems.length) {
+        if (queryItems.length && !grouped.length) {
           grouped.push({
             type: "queries",
             label: "Ostatnie zapytania",
-            items: queryItems.slice(0, 4),
+            items: queryItems.slice(0, 5),
           });
         }
 
         if (!grouped.length) {
-          spotlightEls.results.innerHTML = '<div class="spotlight-empty">Wpisz minimum 3 znaki, aby wyszukać.</div>';
-          spotlightEls.results.classList.remove("hidden");
+          spotlightEls.results.classList.add("hidden");
           spotlightState.activeEntries = [];
           spotlightState.selectionIndex = -1;
           return;
@@ -1160,10 +1241,9 @@
         renderSpotlightGroups(grouped);
       }
 
-      async function runFullSearch() {
+      async function runFullSearch({ persistQuery = false } = {}) {
         const input = spotlightEls.input;
-        const category = spotlightEls.category;
-        if (!input || !category) return;
+        if (!input) return;
 
         const raw = input.value || "";
         const norm = normalizeSearchText(raw);
@@ -1172,7 +1252,7 @@
           return;
         }
 
-        const selectedCategory = category.value || "all";
+        const selectedCategory = spotlightState.selectedCategory || "all";
         const signature = spotlightSignature(norm, selectedCategory);
         if (spotlightState.lastFullSignature === signature && spotlightState.fullSearchCache.has(signature)) {
           renderSpotlightGroups(spotlightState.fullSearchCache.get(signature));
@@ -1197,7 +1277,7 @@
         if (nearCachedGroups) {
           spotlightState.lastFullSignature = signature;
           spotlightState.fullSearchCache.set(signature, nearCachedGroups);
-          pushRecentQuery(raw);
+          if (persistQuery) pushRecentQuery(raw);
           renderSpotlightGroups(nearCachedGroups);
           return;
         }
@@ -1229,7 +1309,7 @@
         }
 
         mergeIntoCache(flat);
-        pushRecentQuery(raw);
+        if (persistQuery) pushRecentQuery(raw);
         renderSpotlightGroups(grouped);
       }
 
@@ -1271,7 +1351,7 @@
 
         if (entry.type === "query") {
           spotlightEls.input.value = entry.title || "";
-          runFullSearch();
+          runFullSearch({ persistQuery: true });
           return;
         }
 
@@ -1308,21 +1388,27 @@
         entries[next].element.scrollIntoView({ block: "nearest" });
       }
 
-      function scheduleLocalSuggestions() {
+      function scheduleSearch() {
         if (spotlightState.typingTimer) {
           clearTimeout(spotlightState.typingTimer);
         }
-        spotlightState.typingTimer = setTimeout(() => {
+        spotlightState.typingTimer = setTimeout(async () => {
           const queryText = spotlightEls.input?.value || "";
-          renderLocalSuggestions(queryText);
-        }, 210);
+          const norm = normalizeSearchText(queryText);
+          if (norm.length < SEARCH_MIN_CHARS) {
+            renderLocalSuggestions(queryText);
+            return;
+          }
+          await runFullSearch({ persistQuery: false });
+        }, 230);
       }
 
       function initSpotlightSearch() {
         spotlightEls.shell = document.getElementById("spotlight-search");
         spotlightEls.input = document.getElementById("spotlight-search-input");
         spotlightEls.submit = document.getElementById("spotlight-submit");
-        spotlightEls.category = document.getElementById("spotlight-category");
+        spotlightEls.filterToggle = document.getElementById("spotlight-filter-toggle");
+        spotlightEls.filterMenu = document.getElementById("spotlight-filter-menu");
         spotlightEls.results = document.getElementById("spotlight-results");
         spotlightEls.modal = document.getElementById("global-modal");
         spotlightEls.modalFrame = document.getElementById("global-modal-frame");
@@ -1331,14 +1417,14 @@
         if (!spotlightEls.shell || !spotlightEls.input || !spotlightEls.results) return;
 
         updateSearchCategoryOptions();
+        refreshFilterMenuSelection();
 
         spotlightEls.input.addEventListener("focus", () => {
-          spotlightEls.shell.classList.add("is-active");
           renderLocalSuggestions(spotlightEls.input.value || "");
         });
 
         spotlightEls.input.addEventListener("input", () => {
-          scheduleLocalSuggestions();
+          scheduleSearch();
         });
 
         spotlightEls.input.addEventListener("keydown", async (event) => {
@@ -1364,20 +1450,41 @@
                 return;
               }
             }
-            await runFullSearch();
+            await runFullSearch({ persistQuery: true });
             return;
           }
           if (event.key === "Escape") {
             spotlightEls.results.classList.add("hidden");
+            closeFilterMenu();
             setSpotlightSelection(-1);
             return;
           }
         });
 
-        spotlightEls.submit?.addEventListener("click", () => runFullSearch());
-        spotlightEls.category?.addEventListener("change", () => {
+        spotlightEls.submit?.addEventListener("click", () => runFullSearch({ persistQuery: true }));
+
+        spotlightEls.filterToggle?.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          toggleFilterMenu();
+        });
+
+        spotlightEls.filterMenu?.addEventListener("click", (event) => {
+          const button = event.target?.closest?.(".spotlight-filter-item");
+          if (!button) return;
+          const nextCategory = String(button.getAttribute("data-category") || "all");
+          if (nextCategory === "user" && !userSearchVisible()) return;
+          spotlightState.selectedCategory = nextCategory;
           spotlightState.lastFullSignature = "";
-          renderLocalSuggestions(spotlightEls.input.value || "");
+          closeFilterMenu();
+          refreshFilterMenuSelection();
+          const raw = spotlightEls.input.value || "";
+          const norm = normalizeSearchText(raw);
+          if (norm.length >= SEARCH_MIN_CHARS) {
+            void runFullSearch({ persistQuery: false });
+          } else {
+            renderLocalSuggestions(raw);
+          }
         });
 
         spotlightEls.modalClose?.addEventListener("click", closeGlobalModal);
@@ -1392,16 +1499,6 @@
         });
 
         document.addEventListener("keydown", (event) => {
-          const isMac = navigator.platform.toUpperCase().includes("MAC");
-          const shortcutPressed = (isMac && event.metaKey && event.key.toLowerCase() === "k") || (!isMac && event.ctrlKey && event.key.toLowerCase() === "k");
-          if (shortcutPressed) {
-            event.preventDefault();
-            spotlightEls.input.focus();
-            spotlightEls.input.select();
-            spotlightEls.shell.classList.add("is-active");
-            renderLocalSuggestions(spotlightEls.input.value || "");
-            return;
-          }
           if (event.key === "Escape" && !spotlightEls.modal?.classList.contains("hidden")) {
             closeGlobalModal();
           }
@@ -1409,8 +1506,8 @@
 
         document.addEventListener("click", (event) => {
           if (!spotlightEls.shell.contains(event.target)) {
-            spotlightEls.shell.classList.remove("is-active");
             spotlightEls.results.classList.add("hidden");
+            closeFilterMenu();
             setSpotlightSelection(-1);
           }
         });
