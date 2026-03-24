@@ -25,8 +25,9 @@
     <!-- Quill.js Rich Text Editor -->
     <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.7/quill.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quill-image-resize-module@3.0.0/image-resize.min.js"></script>
     <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-24-2" />
     <style>
       :root {
         --coyote: #c19a6b;
@@ -3727,7 +3728,8 @@
 
           const data = await res.json().catch(() => ({}));
           if (!res.ok || data?.success !== true) {
-            throw new Error(data?.error || `HTTP ${res.status}`);
+            const detail = data?.detail ? `: ${data.detail}` : "";
+            throw new Error(`${data?.error || `HTTP ${res.status}`}${detail}`);
           }
 
           const summaryRows = Array.isArray(data?.data?.summary) ? data.data.summary : [];
@@ -8329,10 +8331,45 @@
           }
 
           Quill.register("modules/clipboard", StrzelcaAdminClipboard, true);
+          if (typeof ImageResize !== "undefined") {
+            Quill.register("modules/imageResize", ImageResize);
+          }
         } catch (regErr) {
           console.warn("[admin] Rejestracja Quill clipboard:", regErr);
         }
       })();
+
+      function enableRichTextSpellcheck(quillInstance) {
+        if (!quillInstance || !quillInstance.root) return;
+        quillInstance.root.setAttribute("spellcheck", "true");
+        quillInstance.root.setAttribute("lang", "pl");
+      }
+
+      function createQuillModules(toolbarConfig, toolbarHandlers) {
+        const modules = {
+          clipboard: {
+            // Stabilniejsze wklejanie z Worda / stron www (unika „dopasowywania wizualnego”, które często psuje treść).
+            matchVisual: false,
+          },
+        };
+
+        if (toolbarHandlers && Object.keys(toolbarHandlers).length) {
+          modules.toolbar = {
+            container: toolbarConfig,
+            handlers: toolbarHandlers,
+          };
+        } else {
+          modules.toolbar = toolbarConfig;
+        }
+
+        if (typeof ImageResize !== "undefined") {
+          modules.imageResize = {
+            modules: ["Resize", "DisplaySize", "Toolbar"],
+          };
+        }
+
+        return modules;
+      }
 
       // Wspólny pasek narzędzi Quill (używany też z custom handlerem obrazka w wydarzeniach).
       const quillDescriptionToolbar = [
@@ -8349,13 +8386,7 @@
       // Wspólna konfiguracja Quill dla opisów (sklep, wydarzenia, itd.)
       const quillDescriptionEditorConfig = {
         theme: "snow",
-        modules: {
-          clipboard: {
-            // Stabilniejsze wklejanie z Worda / stron www (unika „dopasowywania wizualnego”, które często psuje treść).
-            matchVisual: false,
-          },
-          toolbar: quillDescriptionToolbar,
-        },
+        modules: createQuillModules(quillDescriptionToolbar),
       };
 
       // Inicjalizacja Quill Editor dla produktów
@@ -8378,6 +8409,7 @@
           ...quillDescriptionEditorConfig,
           placeholder: "Opis produktu...",
         });
+        enableRichTextSpellcheck(productQuill);
         editorElement.removeAttribute("contenteditable");
       }
 
@@ -8394,37 +8426,32 @@
         // Tutaj: wybór pliku + kompresja (ta sama ścieżka co przy zdjęciach produktów).
         eventQuill = new Quill("#event-description-editor", {
           theme: "snow",
-          modules: {
-            clipboard: quillDescriptionEditorConfig.modules.clipboard,
-            toolbar: {
-              container: quillDescriptionToolbar,
-              handlers: {
-                image: function () {
-                  const quill = this.quill;
-                  const input = document.createElement("input");
-                  input.type = "file";
-                  input.accept = "image/*";
-                  input.click();
-                  input.onchange = async () => {
-                    const file = input.files && input.files[0];
-                    if (!file) return;
-                    try {
-                      const base64 = await compressProductImageToBase64(file, 900, 0.68);
-                      const range = quill.getSelection(true);
-                      const idx = range ? range.index : Math.max(0, quill.getLength() - 1);
-                      quill.insertEmbed(idx, "image", base64, "user");
-                      quill.setSelection(idx + 1, 0, "silent");
-                    } catch (err) {
-                      const msg = err && err.message ? err.message : "Nie udało się dodać zdjęcia.";
-                      showNotification(msg, "error");
-                    }
-                  };
-                },
-              },
+          modules: createQuillModules(quillDescriptionToolbar, {
+            image: function () {
+              const quill = this.quill;
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = "image/*";
+              input.click();
+              input.onchange = async () => {
+                const file = input.files && input.files[0];
+                if (!file) return;
+                try {
+                  const base64 = await compressProductImageToBase64(file, 900, 0.68);
+                  const range = quill.getSelection(true);
+                  const idx = range ? range.index : Math.max(0, quill.getLength() - 1);
+                  quill.insertEmbed(idx, "image", base64, "user");
+                  quill.setSelection(idx + 1, 0, "silent");
+                } catch (err) {
+                  const msg = err && err.message ? err.message : "Nie udało się dodać zdjęcia.";
+                  showNotification(msg, "error");
+                }
+              };
             },
-          },
+          }),
           placeholder: "Opis wydarzenia...",
         });
+        enableRichTextSpellcheck(eventQuill);
         editorElement.removeAttribute("contenteditable");
       }
 
@@ -8440,6 +8467,7 @@
           ...quillDescriptionEditorConfig,
           placeholder: "Treść wpisu...",
         });
+        enableRichTextSpellcheck(blogQuill);
         editorElement.removeAttribute("contenteditable");
       }
 
@@ -10342,21 +10370,10 @@
         host.innerHTML = "";
         charityActionQuill = new Quill("#charity-description-editor", {
           theme: "snow",
-          modules: {
-            clipboard: { matchVisual: false },
-            toolbar: [
-              [{ header: [1, 2, 3, 4, 5, 6, false] }],
-              ["bold", "italic", "underline", "strike"],
-              [{ color: [] }, { background: [] }],
-              [{ list: "ordered" }, { list: "bullet" }],
-              [{ align: [] }],
-              ["link", "image", "video"],
-              ["blockquote", "code-block"],
-              ["clean"],
-            ],
-          },
+          modules: createQuillModules(quillDescriptionToolbar),
           placeholder: "Opis akcji charytatywnej...",
         });
+        enableRichTextSpellcheck(charityActionQuill);
         charityActionQuill.root.innerHTML = html || "";
         host.removeAttribute("contenteditable");
       }
@@ -10367,21 +10384,10 @@
         host.innerHTML = "";
         pinnedDonationsQuill = new Quill("#pinned-donations-description-editor", {
           theme: "snow",
-          modules: {
-            clipboard: { matchVisual: false },
-            toolbar: [
-              [{ header: [1, 2, 3, 4, 5, 6, false] }],
-              ["bold", "italic", "underline", "strike"],
-              [{ color: [] }, { background: [] }],
-              [{ list: "ordered" }, { list: "bullet" }],
-              [{ align: [] }],
-              ["link", "image", "video"],
-              ["blockquote", "code-block"],
-              ["clean"],
-            ],
-          },
+          modules: createQuillModules(quillDescriptionToolbar),
           placeholder: "Opis kafelka wpłat...",
         });
+        enableRichTextSpellcheck(pinnedDonationsQuill);
         pinnedDonationsQuill.root.innerHTML = html || "";
         host.removeAttribute("contenteditable");
       }
@@ -21233,6 +21239,8 @@
               id="training-public-description"
               class="editor-content min-h-[200px]"
               contenteditable="true"
+              spellcheck="true"
+              lang="pl"
               placeholder="Opis szkolenia widoczny dla wszystkich..."
             ></div>
           </div>
@@ -21499,6 +21507,14 @@
     </div>
     <!-- Funkcje formatowania tekstu dla edytorów szkoleń -->
     <script>
+      // Natywny spellcheck przeglądarki dla wszystkich edytorów contenteditable.
+      document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll('[contenteditable="true"]').forEach((editor) => {
+          editor.setAttribute("spellcheck", "true");
+          if (!editor.getAttribute("lang")) editor.setAttribute("lang", "pl");
+        });
+      });
+
       // Funkcja formatowania tekstu z obsługą różnych edytorów
       window.formatText = function(command, elementId) {
         const editor = elementId ? document.getElementById(elementId) : document.activeElement;
@@ -21527,17 +21543,31 @@
         const url = prompt('Wprowadź URL obrazu:');
         if (url) {
           targetEditor.focus();
+          const imageWrapper = document.createElement('span');
+          imageWrapper.contentEditable = "false";
+          imageWrapper.style.display = 'inline-block';
+          imageWrapper.style.resize = 'both';
+          imageWrapper.style.overflow = 'hidden';
+          imageWrapper.style.maxWidth = '100%';
+          imageWrapper.style.minWidth = '80px';
+          imageWrapper.style.minHeight = '40px';
+          imageWrapper.style.verticalAlign = 'top';
+
           const img = document.createElement('img');
           img.src = url;
-          img.style.maxWidth = '100%';
-          img.style.height = 'auto';
+          img.style.display = 'block';
+          img.style.width = '100%';
+          img.style.height = '100%';
+          img.style.objectFit = 'contain';
+          imageWrapper.appendChild(img);
+
           const selection = window.getSelection();
           if (selection.rangeCount > 0) {
             const range = selection.getRangeAt(0);
             range.deleteContents();
-            range.insertNode(img);
+            range.insertNode(imageWrapper);
           } else {
-            targetEditor.appendChild(img);
+            targetEditor.appendChild(imageWrapper);
           }
         }
       };

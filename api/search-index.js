@@ -146,6 +146,10 @@ module.exports = async (req, res) => {
     res.status(400).json({ success: false, error: 'Unsupported action' });
   } catch (error) {
     console.error('search-index API error:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      detail: String(error?.message || error || ''),
+    });
   }
 };

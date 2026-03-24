@@ -363,19 +363,6 @@ async function syncEntryFromSource({ db, admin, type, sourceId, emailVerified = 
   return { synced: true, deleted: false };
 }
 
-async function listAllVerifiedUids(admin) {
-  const out = new Set();
-  let pageToken;
-  do {
-    const page = await admin.auth().listUsers(1000, pageToken);
-    for (const u of page.users || []) {
-      if (u.emailVerified === true) out.add(u.uid);
-    }
-    pageToken = page.pageToken;
-  } while (pageToken);
-  return out;
-}
-
 function chunk(arr, size) {
   const out = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
@@ -384,27 +371,25 @@ function chunk(arr, size) {
 
 async function fetchAllSourceEntries(db, admin, type) {
   if (type === TYPE_USER) {
-    const verifiedUids = await listAllVerifiedUids(admin);
-    const publicSnap = await db.collection('publicProfiles').get();
+    const [publicSnap, userSnap] = await Promise.all([
+      db.collection('publicProfiles').get(),
+      db.collection('userProfiles').get(),
+    ]);
+
+    const publicProfiles = new Map(publicSnap.docs.map((d) => [d.id, d.data()]));
+    const userProfiles = new Map(userSnap.docs.map((d) => [d.id, d.data()]));
+    const allUids = new Set([...publicProfiles.keys(), ...userProfiles.keys()]);
     const items = [];
-    const userIds = publicSnap.docs.map((d) => d.id);
-    const userProfiles = new Map();
 
-    for (const group of chunk(userIds, 50)) {
-      const snaps = await Promise.all(group.map((uid) => db.collection('userProfiles').doc(uid).get()));
-      for (const snap of snaps) {
-        userProfiles.set(snap.id, snap.exists ? snap.data() : null);
-      }
-    }
-
-    for (const d of publicSnap.docs) {
+    for (const uid of allUids) {
+      const userProfile = userProfiles.get(uid) || null;
       items.push({
-        sourceId: d.id,
+        sourceId: uid,
         data: null,
         ctx: {
-          publicProfile: d.data(),
-          userProfile: userProfiles.get(d.id) || null,
-          emailVerified: verifiedUids.has(d.id),
+          publicProfile: publicProfiles.get(uid) || null,
+          userProfile,
+          emailVerified: userProfile?.emailVerified === true,
         },
       });
     }

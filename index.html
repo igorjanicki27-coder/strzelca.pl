@@ -197,8 +197,8 @@
         width: 40px;
         height: 40px;
         border-radius: 11px;
-        border: 1px solid rgba(193, 154, 107, 0.25);
-        background: rgba(255, 255, 255, 0.06);
+        border: none;
+        background: transparent;
         color: rgba(245, 245, 245, 0.68);
         display: inline-flex;
         align-items: center;
@@ -207,12 +207,26 @@
       }
       .spotlight-icon-btn:hover,
       .spotlight-icon-btn.is-active {
-        border-color: rgba(193, 154, 107, 0.72);
         color: rgba(255, 255, 255, 0.95);
-        background: rgba(193, 154, 107, 0.15);
       }
       .spotlight-filter-wrap {
         position: relative;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.18s ease;
+      }
+      .spotlight-shell.is-engaged .spotlight-filter-wrap {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .spotlight-filter-toggle {
+        color: rgba(161, 161, 170, 0.9);
+      }
+      .spotlight-submit-btn {
+        color: rgba(193, 154, 107, 0.42);
+      }
+      .spotlight-shell.is-engaged .spotlight-submit-btn {
+        color: rgba(193, 154, 107, 0.95);
       }
       .spotlight-filter-menu {
         position: absolute;
@@ -320,7 +334,7 @@
     </style>
 
     <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-21-3" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-24-2" />
 
     <!-- Cookies/zgody + warunkowe ładowanie analityki -->
     <script src="https://strzelca.pl/consent.js?v=2026-02-06-1"></script>
@@ -387,12 +401,12 @@
               <div class="spotlight-filter-wrap">
                 <button
                   id="spotlight-filter-toggle"
-                  class="spotlight-icon-btn"
+                  class="spotlight-icon-btn spotlight-filter-toggle"
                   type="button"
                   aria-label="Filtr kategorii"
                   title="Filtr kategorii"
                 >
-                  <i class="fa-solid fa-sliders"></i>
+                  <i class="fa-solid fa-filter"></i>
                 </button>
                 <div id="spotlight-filter-menu" class="spotlight-filter-menu hidden">
                   <button type="button" class="spotlight-filter-item is-active" data-category="all">Wszystko</button>
@@ -412,8 +426,8 @@
                 placeholder="Szukaj: użytkownicy, sklep, wydarzenia, blog, bazar..."
                 aria-label="Wyszukiwarka globalna"
               />
-              <button id="spotlight-submit" class="spotlight-icon-btn" type="button" aria-label="Szukaj">
-                <i class="fa-solid fa-magnifying-glass"></i>
+              <button id="spotlight-submit" class="spotlight-icon-btn spotlight-submit-btn" type="button" aria-label="Szukaj">
+                <i class="fa-solid fa-paper-plane"></i>
               </button>
             </div>
             <div id="spotlight-results" class="spotlight-results hidden"></div>
@@ -863,6 +877,10 @@
         spotlightEls.filterToggle?.classList.toggle("is-active", willOpen);
       }
 
+      function setSearchEngaged(active) {
+        spotlightEls.shell?.classList.toggle("is-engaged", active === true);
+      }
+
       function searchEntryKey(entry) {
         return `${entry.type}:${entry.sourceId || entry.slug || entry.title || ""}`;
       }
@@ -1287,12 +1305,14 @@
 
         const perTypeQueryLimit =
           selectedCategory === "all" ? SEARCH_FETCH_LIMIT_ALL : SEARCH_FETCH_LIMIT_SINGLE;
+        const queryErrors = [];
         const resultsByType = await Promise.all(
           types.map(async (type) => {
             try {
               const rows = await runCategorySearch(type, primaryKey, tokens, perTypeQueryLimit);
               return rows;
             } catch (e) {
+              queryErrors.push(e);
               console.warn("search query failed:", type, e?.message || e);
               return [];
             }
@@ -1300,6 +1320,20 @@
         );
 
         const flat = resultsByType.flat();
+        if (!flat.length && queryErrors.length === types.length) {
+          const missingIndex = queryErrors.some((err) => {
+            const code = String(err?.code || "");
+            const msg = String(err?.message || "").toLowerCase();
+            return code.includes("failed-precondition") || msg.includes("index");
+          });
+          if (missingIndex) {
+            spotlightEls.results.innerHTML =
+              '<div class="spotlight-empty">Indeks wyszukiwania nie jest jeszcze gotowy. Dokończ budowę indeksów Firestore i uruchom reindex.</div>';
+            spotlightEls.results.classList.remove("hidden");
+            return;
+          }
+        }
+
         const grouped = groupAndLimitEntries(flat, selectedCategory, norm, tokens);
         spotlightState.lastFullSignature = signature;
         spotlightState.fullSearchCache.set(signature, grouped);
@@ -1420,6 +1454,7 @@
         refreshFilterMenuSelection();
 
         spotlightEls.input.addEventListener("focus", () => {
+          setSearchEngaged(true);
           renderLocalSuggestions(spotlightEls.input.value || "");
         });
 
@@ -1461,11 +1496,15 @@
           }
         });
 
-        spotlightEls.submit?.addEventListener("click", () => runFullSearch({ persistQuery: true }));
+        spotlightEls.submit?.addEventListener("click", () => {
+          setSearchEngaged(true);
+          runFullSearch({ persistQuery: true });
+        });
 
         spotlightEls.filterToggle?.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
+          setSearchEngaged(true);
           toggleFilterMenu();
         });
 
@@ -1508,6 +1547,7 @@
           if (!spotlightEls.shell.contains(event.target)) {
             spotlightEls.results.classList.add("hidden");
             closeFilterMenu();
+            setSearchEngaged(false);
             setSpotlightSelection(-1);
           }
         });
