@@ -438,6 +438,7 @@ function makeStyles() {
     }
     .search {
       width: 100%;
+      box-sizing: border-box;
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.14);
       background: rgba(0,0,0,0.55);
@@ -1325,10 +1326,7 @@ async function main() {
   leftTop.className = "leftTop";
   const searchInput = document.createElement("input");
   searchInput.className = "search";
-  searchInput.placeholder = "Szukaj (rozmowy + nick)…";
-  const hint = document.createElement("div");
-  hint.className = "smallHint";
-  hint.textContent = "Filtruje na żywo: rozmowy, a niżej użytkownicy.";
+  searchInput.placeholder = "Szukaj ...";
   const newMsgBtn = document.createElement("button");
   newMsgBtn.className = "ghost";
   newMsgBtn.type = "button";
@@ -1337,7 +1335,6 @@ async function main() {
   newMsgBtn.innerHTML = '<span style="margin-right: 6px;">+</span> Nowa wiadomość';
   newMsgBtn.setAttribute("aria-label", "Nowa wiadomość");
   leftTop.appendChild(searchInput);
-  leftTop.appendChild(hint);
   leftTop.appendChild(newMsgBtn);
 
   const convList = document.createElement("div");
@@ -1915,7 +1912,7 @@ async function main() {
     if (!items || items.length === 0) {
       const empty = document.createElement("div");
       empty.className = "empty";
-      empty.textContent = "Brak wiadomości. Napisz pierwszą wiadomość.";
+      empty.textContent = "Rozpocznij rozmowę!";
       msgs.appendChild(empty);
       return;
     }

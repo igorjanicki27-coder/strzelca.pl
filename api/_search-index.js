@@ -369,8 +369,27 @@ function chunk(arr, size) {
   return out;
 }
 
+async function listAllVerifiedUidsSafe(admin) {
+  try {
+    const out = new Set();
+    let pageToken;
+    do {
+      const page = await admin.auth().listUsers(1000, pageToken);
+      for (const u of page.users || []) {
+        if (u.emailVerified === true) out.add(u.uid);
+      }
+      pageToken = page.pageToken;
+    } while (pageToken);
+    return out;
+  } catch (e) {
+    console.warn('listAllVerifiedUidsSafe fallback:', e?.message || e);
+    return null;
+  }
+}
+
 async function fetchAllSourceEntries(db, admin, type) {
   if (type === TYPE_USER) {
+    const verifiedUids = await listAllVerifiedUidsSafe(admin);
     const [publicSnap, userSnap] = await Promise.all([
       db.collection('publicProfiles').get(),
       db.collection('userProfiles').get(),
@@ -389,7 +408,9 @@ async function fetchAllSourceEntries(db, admin, type) {
         ctx: {
           publicProfile: publicProfiles.get(uid) || null,
           userProfile,
-          emailVerified: userProfile?.emailVerified === true,
+          emailVerified: verifiedUids
+            ? verifiedUids.has(uid)
+            : userProfile?.emailVerified === true,
         },
       });
     }

@@ -196,24 +196,6 @@
             outline-offset: 1px;
         }
 
-        /* Kontener PDF trzymamy poza ekranem (bez mignięcia w UI),
-           ale nadal w DOM, żeby html2canvas mógł go poprawnie zrenderować. */
-        .return-claim-pdf-root--capture {
-            position: fixed;
-            left: -10000px;
-            top: 0;
-            width: 210mm;
-            min-width: 210mm;
-            max-width: none;
-            box-sizing: border-box;
-            z-index: -1;
-            pointer-events: none;
-            opacity: 1;
-            overflow: visible;
-            color-scheme: light;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }
     </style>
     <!-- Wspólne poprawki responsywności -->
     <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-24-2" />
@@ -764,21 +746,33 @@
                     </div>
                     <div class="flex justify-center pt-1">
                         <button type="submit" id="return-claim-form-submit" class="doc-catalog-btn border-0 min-w-[12rem] px-6">
-                            <i class="fas fa-check"></i> Zatwierdź
+                            <i class="fas fa-eye"></i> Podglad
                         </button>
                     </div>
                 </form>
+                <div id="return-claim-preview" class="hidden">
+                    <p class="text-sm text-zinc-400 mb-3">
+                        Sprawdz gotowy dokument. Jesli wszystko sie zgadza, pobierz PDF. W przeciwnym razie wroc do edycji.
+                    </p>
+                    <div class="rounded-2xl overflow-hidden border border-zinc-700 bg-zinc-950">
+                        <iframe
+                            id="return-claim-preview-frame"
+                            title="Podglad formularza zwrotu lub reklamacji"
+                            class="block w-full h-[70vh] bg-white"
+                        ></iframe>
+                    </div>
+                    <div class="flex flex-col sm:flex-row justify-center gap-3 pt-4">
+                        <button type="button" id="return-claim-preview-edit" class="doc-catalog-btn doc-catalog-btn--ghost border-0 min-w-[12rem] px-6">
+                            <i class="fas fa-pen"></i> Zmien
+                        </button>
+                        <button type="button" id="return-claim-preview-download" class="doc-catalog-btn border-0 min-w-[12rem] px-6">
+                            <i class="fas fa-download"></i> Akceptuj i pobierz
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-
-    <!-- Ukryty szablon HTML → html2pdf (musi mieć realne wymiary w viewport na czas zrzutu) -->
-    <div
-        id="return-claim-pdf-root"
-        aria-hidden="true"
-        class="return-claim-pdf-root--capture"
-        style="padding:0;background:transparent;color:#18181b;color-scheme:light;"
-    ></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
@@ -1286,7 +1280,11 @@ const firebaseConfig = {
         function initReturnClaimForm(authRef, dbRef) {
             const modal = document.getElementById("return-claim-form-modal");
             const form = document.getElementById("return-claim-form");
-            const pdfRoot = document.getElementById("return-claim-pdf-root");
+            const previewWrap = document.getElementById("return-claim-preview");
+            const previewFrame = document.getElementById("return-claim-preview-frame");
+            const previewEditBtn = document.getElementById("return-claim-preview-edit");
+            const previewDownloadBtn = document.getElementById("return-claim-preview-download");
+            const modalTitle = document.getElementById("return-claim-form-title");
             const wrapOpis = document.getElementById("rc-wrap-opis");
             const wrapPowod = document.getElementById("rc-wrap-powod");
             const opisEl = document.getElementById("rc-opis");
@@ -1297,7 +1295,7 @@ const firebaseConfig = {
             const wrapOrderPick = document.getElementById("rc-wrap-order-pick");
             const imieInput = document.getElementById("rc-imie");
             const nazwiskoInput = document.getElementById("rc-nazwisko");
-            if (!modal || !form || !pdfRoot) return;
+            if (!modal || !form || !previewWrap || !previewFrame || !previewEditBtn || !previewDownloadBtn || !modalTitle) return;
 
             /** Pobranie PDF bez modala / iframe (unika problemów wbudowanego viewer). */
             function triggerReturnClaimPdfDownload(blob, filename) {
@@ -1341,6 +1339,8 @@ const firebaseConfig = {
             }
 
             let rcFormPopulateGeneration = 0;
+            let rcPreviewPayload = null;
+            let rcPreviewFilename = "";
 
             const RC_PDF_COOLDOWN_MS = 60_000;
             const RC_PDF_LAST_STORAGE_KEY = "strzelca_return_claim_pdf_last_ts";
@@ -1412,6 +1412,20 @@ const firebaseConfig = {
             function syncReturnClaimRateLimitOnFormOpen() {
                 updateReturnClaimRateLimitNotice();
                 ensureReturnClaimRateLimitTicker();
+            }
+
+            function setReturnClaimModalMode(mode) {
+                const previewMode = mode === "preview";
+                form.classList.toggle("hidden", previewMode);
+                previewWrap.classList.toggle("hidden", !previewMode);
+                modalTitle.textContent = previewMode ? "Podglad formularza" : "Zwrot / reklamacja";
+            }
+
+            function resetReturnClaimPreview() {
+                rcPreviewPayload = null;
+                rcPreviewFilename = "";
+                previewFrame.srcdoc = "";
+                setReturnClaimModalMode("form");
             }
 
             function esc(s) {
@@ -1549,6 +1563,7 @@ const firebaseConfig = {
 
             function closeReturnClaimForm() {
                 stopReturnClaimRateLimitTicker();
+                resetReturnClaimPreview();
                 if (!modal.classList.contains("hidden")) {
                     modal.classList.add("hidden");
                     modal.setAttribute("aria-hidden", "true");
@@ -1616,6 +1631,7 @@ const firebaseConfig = {
                 rcFormPopulateGeneration++;
                 const generation = rcFormPopulateGeneration;
 
+                resetReturnClaimPreview();
                 form.reset();
                 resetOrderPickUi();
                 const first = form.querySelector('input[name="rc-type"][value="zwrot"]');
@@ -1637,28 +1653,24 @@ const firebaseConfig = {
                 }
             }
 
-            function ensureReturnClaimPdfStylesheet() {
-                return new Promise((resolve) => {
-                    const id = "strzelca-rc-pdf-form-styles";
-                    if (document.getElementById(id)) {
-                        resolve();
-                        return;
-                    }
+            let rcFormResourcesPromise = null;
+            function loadReturnClaimFormResources() {
+                if (rcFormResourcesPromise) return rcFormResourcesPromise;
+                rcFormResourcesPromise = (async () => {
                     const formBase = new URL("Generowanie formularza/", window.location.href).href;
-                    const link = document.createElement("link");
-                    link.id = id;
-                    link.rel = "stylesheet";
-                    link.href = `${formBase}styles.css`;
-                    link.onload = link.onerror = () => resolve();
-                    document.head.appendChild(link);
-                });
+                    const [templateRes, stylesRes] = await Promise.all([
+                        fetch(`${formBase}formularz.html`, { cache: "no-store" }),
+                        fetch(`${formBase}styles.css`, { cache: "force-cache" }),
+                    ]);
+                    if (!templateRes.ok) throw new Error(`Template HTTP ${templateRes.status}`);
+                    if (!stylesRes.ok) throw new Error(`Styles HTTP ${stylesRes.status}`);
+                    const [templateHtml, stylesCss] = await Promise.all([templateRes.text(), stylesRes.text()]);
+                    return { formBase, templateHtml, stylesCss };
+                })();
+                return rcFormResourcesPromise;
             }
 
-            function cleanupReturnClaimPdfStylesheet() {
-                document.getElementById("strzelca-rc-pdf-form-styles")?.remove();
-            }
-
-            function waitReturnClaimPdfImages(root) {
+            function waitReturnClaimImagesLoaded(root) {
                 const imgs = [...root.querySelectorAll("img")];
                 return Promise.all(
                     imgs.map((img) =>
@@ -1671,14 +1683,8 @@ const firebaseConfig = {
                 );
             }
 
-            async function buildReturnClaimPdfRootInnerHtml(opts) {
-                await ensureReturnClaimPdfStylesheet();
-                const formBase = new URL("Generowanie formularza/", window.location.href).href;
-                const res = await fetch(`${formBase}formularz.html`, { cache: "no-store" });
-                if (!res.ok) throw new Error("HTTP " + res.status);
-                let raw = await res.text();
-                raw = raw.replace(/href="styles\.css"/i, `href="${formBase}styles.css"`);
-                raw = raw.replace(/src="assets\//g, `src="${formBase}assets/`);
+            function renderReturnClaimTemplate(templateHtml, opts) {
+                let raw = String(templateHtml || "");
                 const ch = (v) => (v ? "checked" : "");
                 const {
                     typ,
@@ -1715,6 +1721,81 @@ const firebaseConfig = {
                 if (!wrap) throw new Error("Nieprawidłowy szablon formularza PDF");
                 wrap.id = "rc-pdf-inner";
                 return wrap.outerHTML;
+            }
+
+            async function buildReturnClaimPreviewDocument(payload) {
+                const { templateHtml, stylesCss, formBase } = await loadReturnClaimFormResources();
+                const renderedBody = renderReturnClaimTemplate(templateHtml, payload);
+                const sanitizedCss = String(stylesCss || "").replace(/@media print\s*\{[\s\S]*$/, "");
+                return `<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base href="${escapeAttr(formBase)}" />
+  <style>
+${sanitizedCss}
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #161616;
+}
+body {
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+}
+.page-wrap {
+  min-height: 0;
+  padding: 0;
+}
+.form-page {
+  background: transparent;
+}
+.form-document {
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+}
+  </style>
+</head>
+<body>
+${renderedBody}
+</body>
+</html>`;
+            }
+
+            function waitForPreviewFrameLoad(frame, srcdoc) {
+                return new Promise((resolve, reject) => {
+                    let settled = false;
+                    const done = (err) => {
+                        if (settled) return;
+                        settled = true;
+                        frame.removeEventListener("load", onLoad);
+                        clearTimeout(tid);
+                        if (err) reject(err);
+                        else resolve();
+                    };
+                    const onLoad = () => done();
+                    const tid = window.setTimeout(() => done(new Error("Timeout ladowania podgladu formularza")), 15000);
+                    frame.addEventListener("load", onLoad, { once: true });
+                    frame.srcdoc = srcdoc;
+                });
+            }
+
+            async function showReturnClaimPreview(payload) {
+                const previewDoc = await buildReturnClaimPreviewDocument(payload);
+                await waitForPreviewFrameLoad(previewFrame, previewDoc);
+                if (modal.classList.contains("hidden")) return;
+                const frameDoc = previewFrame.contentDocument;
+                if (!frameDoc) throw new Error("Brak dokumentu podgladu formularza");
+                await waitReturnClaimImagesLoaded(frameDoc);
+                try {
+                    if (previewFrame.contentWindow?.document?.fonts?.ready) {
+                        await previewFrame.contentWindow.document.fonts.ready;
+                    }
+                } catch (_) {
+                    /* ignore */
+                }
+                setReturnClaimModalMode("preview");
             }
 
             async function logReturnFormActivityToStrzelca(fields) {
@@ -1777,11 +1858,6 @@ const firebaseConfig = {
                     alert("Uzupełnij powód zwrotu.");
                     return;
                 }
-                if (typeof html2pdf !== "function") {
-                    alert("Biblioteka PDF nie została wczytana. Odśwież stronę i spróbuj ponownie.");
-                    return;
-                }
-
                 const coolMs = getReturnClaimCooldownRemainingMs();
                 if (coolMs > 0) {
                     updateReturnClaimRateLimitNotice();
@@ -1804,48 +1880,13 @@ const firebaseConfig = {
                 const powodHtml = typ === "zwrot" ? esc(powod) : "— (pole dotyczy wyłącznie zwrotu)";
                 const dodatkoweHtml = dodatkowe ? esc(dodatkowe) : "—";
 
-                const pdfFilename = `strzelca-zwrot-reklamacja-${Date.now()}.pdf`;
-                const opt = {
-                    margin: [6, 6, 6, 6],
-                    filename: pdfFilename,
-                    image: { type: "jpeg", quality: 0.92 },
-                    html2canvas: {
-                        scale: 1.5,
-                        useCORS: true,
-                        logging: false,
-                        backgroundColor: null,
-                        scrollX: 0,
-                        scrollY: 0,
-                        allowTaint: false,
-                        onclone(clonedDoc) {
-                            try {
-                                if (!clonedDoc?.getElementById) return;
-                                const node = clonedDoc.getElementById("return-claim-pdf-root");
-                                if (node?.style) {
-                                    node.style.cssText =
-                                        "position:relative;left:0;top:0;opacity:1;z-index:0;box-sizing:border-box;width:210mm;min-width:210mm;max-width:none;height:auto;min-height:0;max-height:none;overflow:visible;background:transparent;color:#18181b;padding:0;color-scheme:light;-webkit-print-color-adjust:exact;print-color-adjust:exact;forced-color-adjust:none;-webkit-forced-color-adjust:none;";
-                                }
-                                const inner = clonedDoc.getElementById("rc-pdf-inner");
-                                if (inner?.style) {
-                                    inner.style.color = "#18181b";
-                                    inner.style.backgroundColor = "transparent";
-                                }
-                            } catch (_) {
-                                /* ignore */
-                            }
-                        },
-                    },
-                    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-                    pagebreak: { mode: ["css", "legacy"] },
-                };
-
                 const btn = document.getElementById("return-claim-form-submit");
                 try {
                     if (btn) {
                         btn.disabled = true;
                         btn.setAttribute("aria-busy", "true");
                     }
-                    pdfRoot.innerHTML = await buildReturnClaimPdfRootInnerHtml({
+                    const payload = {
                         typ,
                         generatedAt,
                         imie,
@@ -1857,38 +1898,17 @@ const firebaseConfig = {
                         powodHtml,
                         zadanie,
                         dodatkoweHtml,
-                    });
-                    await waitReturnClaimPdfImages(pdfRoot);
-                    try {
-                        if (document.fonts?.ready) {
-                            await document.fonts.ready;
-                        }
-                    } catch (_) {
-                        /* starsze przeglądarki / brak Font Loading API */
-                    }
-                    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-                    const blob = await html2pdf().set(opt).from(pdfRoot).outputPdf("blob");
-                    writeLastReturnClaimPdfAt(Date.now());
-                    void logReturnFormActivityToStrzelca({
-                        type: typ,
-                        imie,
-                        nazwisko,
-                        zamowienie: zam,
-                        faktura,
-                        zadanie,
-                        dodatkowe,
-                        opis: typ === "reklamacja" ? opis : "",
-                        powod: typ === "zwrot" ? powod : "",
-                    }).catch(() => {});
-                    closeReturnClaimForm();
-                    triggerReturnClaimPdfDownload(blob, pdfFilename);
-                    pdfRoot.innerHTML = "";
+                        opisRaw: opis,
+                        powodRaw: powod,
+                        dodatkoweRaw: dodatkowe,
+                    };
+                    rcPreviewPayload = payload;
+                    rcPreviewFilename = `strzelca-zwrot-reklamacja-${Date.now()}.pdf`;
+                    await showReturnClaimPreview(payload);
                 } catch (e) {
                     console.error(e);
-                    alert("Nie udało się wygenerować pliku PDF. Spróbuj ponownie.");
+                    alert("Nie udało się przygotować podgladu formularza. Spróbuj ponownie.");
                 } finally {
-                    pdfRoot.innerHTML = "";
-                    cleanupReturnClaimPdfStylesheet();
                     if (btn) {
                         btn.removeAttribute("aria-busy");
                         btn.disabled = getReturnClaimCooldownRemainingMs() > 0;
@@ -1902,6 +1922,90 @@ const firebaseConfig = {
             zamowienieInput?.addEventListener("input", () => {
                 if (!zamowienieInput || zamowienieInput.readOnly) return;
                 if (orderSelect && orderSelect.value) orderSelect.value = "";
+            });
+
+            previewEditBtn.addEventListener("click", () => {
+                setReturnClaimModalMode("form");
+            });
+
+            previewDownloadBtn.addEventListener("click", async () => {
+                if (!rcPreviewPayload) return;
+                if (typeof html2pdf !== "function") {
+                    alert("Biblioteka PDF nie została wczytana. Odśwież stronę i spróbuj ponownie.");
+                    return;
+                }
+
+                const coolMs = getReturnClaimCooldownRemainingMs();
+                if (coolMs > 0) {
+                    setReturnClaimModalMode("form");
+                    updateReturnClaimRateLimitNotice();
+                    ensureReturnClaimRateLimitTicker();
+                    document.getElementById("rc-rate-limit-notice")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                    return;
+                }
+
+                const sourceDoc = previewFrame.contentDocument;
+                const sourceNode = sourceDoc?.querySelector(".form-document");
+                if (!sourceDoc || !sourceNode) {
+                    alert("Nie udało się odczytać podgladu formularza. Spróbuj ponownie.");
+                    return;
+                }
+
+                try {
+                    previewDownloadBtn.disabled = true;
+                    previewDownloadBtn.setAttribute("aria-busy", "true");
+                    await waitReturnClaimImagesLoaded(sourceDoc);
+                    try {
+                        if (previewFrame.contentWindow?.document?.fonts?.ready) {
+                            await previewFrame.contentWindow.document.fonts.ready;
+                        }
+                    } catch (_) {
+                        /* ignore */
+                    }
+
+                    const blob = await html2pdf()
+                        .set({
+                            margin: 0,
+                            filename: rcPreviewFilename || `strzelca-zwrot-reklamacja-${Date.now()}.pdf`,
+                            image: { type: "jpeg", quality: 0.98 },
+                            html2canvas: {
+                                scale: 2,
+                                useCORS: true,
+                                logging: false,
+                                backgroundColor: "#faf6ef",
+                                scrollX: 0,
+                                scrollY: 0,
+                                windowWidth: 794,
+                                windowHeight: 1123,
+                            },
+                            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+                            pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+                        })
+                        .from(sourceNode)
+                        .outputPdf("blob");
+
+                    writeLastReturnClaimPdfAt(Date.now());
+                    void logReturnFormActivityToStrzelca({
+                        type: rcPreviewPayload.typ,
+                        imie: rcPreviewPayload.imie,
+                        nazwisko: rcPreviewPayload.nazwisko,
+                        zamowienie: rcPreviewPayload.zam,
+                        faktura: rcPreviewPayload.faktura,
+                        zadanie: rcPreviewPayload.zadanie,
+                        dodatkowe: rcPreviewPayload.dodatkoweRaw || "",
+                        opis: rcPreviewPayload.typ === "reklamacja" ? rcPreviewPayload.opisRaw || "" : "",
+                        powod: rcPreviewPayload.typ === "zwrot" ? rcPreviewPayload.powodRaw || "" : "",
+                    }).catch(() => {});
+
+                    closeReturnClaimForm();
+                    triggerReturnClaimPdfDownload(blob, rcPreviewFilename);
+                } catch (e) {
+                    console.error(e);
+                    alert("Nie udało się wygenerować pliku PDF. Spróbuj ponownie.");
+                } finally {
+                    previewDownloadBtn.removeAttribute("aria-busy");
+                    previewDownloadBtn.disabled = false;
+                }
             });
 
             document.getElementById("return-claim-form-overlay")?.addEventListener("click", closeReturnClaimForm);
@@ -2216,5 +2320,6 @@ const firebaseConfig = {
       type="module"
       src="https://strzelca.pl/messages-widget.mjs?v=2026-03-23-1"
     ></script>
+    <script type="module" src="https://strzelca.pl/global-search-widget.mjs?v=2026-03-24-1"></script>
   </body>
 </html>

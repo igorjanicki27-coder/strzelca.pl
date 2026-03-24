@@ -114,11 +114,8 @@
       #event-registration-deadline-field-block.is-registration-deadline-off #event-registration-deadline-label {
         color: #71717a !important;
       }
-      #event-registration-deadline-hint-row.is-registration-deadline-off .event-registration-deadline-hint-extra {
-        color: #52525b !important;
-        opacity: 0.75;
-      }
-      #event-registration-deadline:disabled {
+      #event-registration-deadline-date:disabled,
+      #event-registration-deadline-time:disabled {
         opacity: 0.55 !important;
         color: #71717a !important;
         background: #0c0c0e !important;
@@ -9939,56 +9936,8 @@
               <form id="event-form" class="space-y-4">
                 <input type="hidden" id="event-id" value="${event ? event.id : ""}" />
 
-                <div>
-                  <label class="block text-sm font-medium mb-2">Tytuł wydarzenia *</label>
-                  <input
-                    type="text"
-                    id="event-title"
-                    placeholder="Nazwa wydarzenia"
-                    value="${event ? (event.title || "") : ""}"
-                    required
-                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
-                  />
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-4">
                   <div class="min-w-0">
-                    <label class="block text-sm font-medium mb-2" for="event-date">Rozpoczęcie *</label>
-                    <input
-                      type="datetime-local"
-                      id="event-date"
-                      value="${event ? formatDateTimeForInput(event.dateObj) : ""}"
-                      required
-                      class="w-full min-w-0 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
-                    />
-                  </div>
-                  <div class="min-w-0">
-                    <label class="block text-sm font-medium mb-2" for="event-end-date">Zakończenie wydarzenia *</label>
-                    <input
-                      type="datetime-local"
-                      id="event-end-date"
-                      value="${event ? formatDateTimeForInput(event.endDateObj || event.dateObj) : ""}"
-                      required
-                      class="w-full min-w-0 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
-                    />
-                  </div>
-                  <div id="event-registration-deadline-field-block" class="min-w-0 md:col-span-2 xl:col-span-1 ${event && event.registrationDeadlineEnabled ? "" : "is-registration-deadline-off"}">
-                    <label id="event-registration-deadline-label" for="event-registration-deadline" class="block text-sm font-medium mb-2">Zakończenie zapisów</label>
-                    <input
-                      type="datetime-local"
-                      id="event-registration-deadline"
-                      value="${event && event.registrationDeadlineEnabled && event.registrationDeadlineObj ? formatDateTimeForInput(event.registrationDeadlineObj) : ""}"
-                      class="w-full min-w-0 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
-                    />
-                  </div>
-                </div>
-                <p id="event-registration-deadline-hint-row" class="text-xs text-zinc-500 -mt-1 ${event && event.registrationDeadlineEnabled ? "" : "is-registration-deadline-off"}">
-                  <span class="event-date-hints-main">Po zakończeniu wydarzenia (środkowa data) status „zakończone” na stronie i w filtrach.</span>
-                  <span class="event-registration-deadline-hint-extra"> Termin zapisów (trzecia kolumna) włącz checkboxem obok kategorii — do końca wydarzenia przycisk „Zapisy zamknięte”, potem „Wydarzenie zakończone”.</span>
-                </p>
-
-                <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:gap-6">
-                  <div class="flex-1 min-w-0">
                     <label class="block text-sm font-medium mb-2" for="event-category">Kategoria</label>
                     <select
                       id="event-category"
@@ -10000,38 +9949,126 @@
                       <option value="inne" ${normalizedCategory === "inne" ? "selected" : ""}>Inne</option>
                     </select>
                   </div>
-                  <div class="flex items-center gap-2 shrink-0 lg:pb-2">
+                  <div class="min-w-0">
+                    <label class="block text-sm font-medium mb-2" for="event-title">Tytuł wydarzenia *</label>
                     <input
-                      type="checkbox"
-                      id="event-registration-deadline-enabled"
-                      ${event && event.registrationDeadlineEnabled ? "checked" : ""}
-                      class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote"
+                      type="text"
+                      id="event-title"
+                      placeholder="Nazwa wydarzenia"
+                      value="${event ? (event.title || "") : ""}"
+                      required
+                      class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
                     />
-                    <label for="event-registration-deadline-enabled" class="text-sm cursor-pointer select-none leading-snug">Ustal termin zamknięcia zapisów</label>
                   </div>
                 </div>
 
-                <div>
-                  <label class="block text-sm font-medium mb-2">Lokalizacja</label>
-                  <input
-                    type="text"
-                    id="event-location"
-                    placeholder="np. Strzelnica Warszawa, ul. Przykładowa 1"
-                    value="${event ? (event.location || "") : ""}"
-                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
-                  />
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div class="min-w-0">
+                    <label class="block text-sm font-medium mb-2" for="event-date-date">Rozpoczęcie *</label>
+                    <div class="grid grid-cols-[minmax(0,1fr)_120px] gap-2">
+                      <input
+                        type="date"
+                        id="event-date-date"
+                        value="${event ? formatDateForInput(event.dateObj) : ""}"
+                        required
+                        class="w-full min-w-0 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                      />
+                      <input
+                        type="time"
+                        id="event-date-time"
+                        value="${event ? formatTimeForInput(event.dateObj) : ""}"
+                        required
+                        step="300"
+                        class="w-full min-w-0 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                      />
+                    </div>
+                    <input
+                      type="hidden"
+                      id="event-date"
+                      value="${event ? formatDateTimeForInput(event.dateObj) : ""}"
+                    />
+                  </div>
+                  <div class="min-w-0">
+                    <label class="block text-sm font-medium mb-2" for="event-end-date-date">Zakończenie wydarzenia *</label>
+                    <div class="grid grid-cols-[minmax(0,1fr)_120px] gap-2">
+                      <input
+                        type="date"
+                        id="event-end-date-date"
+                        value="${event ? formatDateForInput(event.endDateObj || event.dateObj) : ""}"
+                        required
+                        class="w-full min-w-0 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                      />
+                      <input
+                        type="time"
+                        id="event-end-date-time"
+                        value="${event ? formatTimeForInput(event.endDateObj || event.dateObj) : ""}"
+                        required
+                        step="300"
+                        class="w-full min-w-0 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                      />
+                    </div>
+                    <input
+                      type="hidden"
+                      id="event-end-date"
+                      value="${event ? formatDateTimeForInput(event.endDateObj || event.dateObj) : ""}"
+                    />
+                  </div>
+                  <div id="event-registration-deadline-field-block" class="min-w-0 ${event && event.registrationDeadlineEnabled ? "" : "is-registration-deadline-off"}">
+                    <label id="event-registration-deadline-label" for="event-registration-deadline-enabled" class="flex items-center gap-2 text-sm font-medium mb-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        id="event-registration-deadline-enabled"
+                        ${event && event.registrationDeadlineEnabled ? "checked" : ""}
+                        class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote"
+                      />
+                      <span>Ustal datę zakończenia zapisów</span>
+                    </label>
+                    <div class="grid grid-cols-[minmax(0,1fr)_120px] gap-2">
+                      <input
+                        type="date"
+                        id="event-registration-deadline-date"
+                        value="${event && event.registrationDeadlineEnabled && event.registrationDeadlineObj ? formatDateForInput(event.registrationDeadlineObj) : ""}"
+                        class="w-full min-w-0 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                      />
+                      <input
+                        type="time"
+                        id="event-registration-deadline-time"
+                        value="${event && event.registrationDeadlineEnabled && event.registrationDeadlineObj ? formatTimeForInput(event.registrationDeadlineObj) : ""}"
+                        step="300"
+                        class="w-full min-w-0 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                      />
+                    </div>
+                    <input
+                      type="hidden"
+                      id="event-registration-deadline"
+                      value="${event && event.registrationDeadlineEnabled && event.registrationDeadlineObj ? formatDateTimeForInput(event.registrationDeadlineObj) : ""}"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label class="block text-sm font-medium mb-2">Link „Weź udział” (URL zapisów)</label>
-                  <input
-                    type="url"
-                    id="event-participation-url"
-                    placeholder="https://… (opcjonalnie — bez linku pokaże się informacja o kontakcie)"
-                    value="${event ? escapeHtml(event.participationUrl || "") : ""}"
-                    class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
-                  />
-                  <p class="text-xs text-zinc-500 mt-1">Działa jak przycisk „Wesprzyj” w pomocy: pusty adres = komunikat z możliwością kontaktu.</p>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div class="min-w-0">
+                    <label class="block text-sm font-medium mb-2" for="event-location">Lokalizacja</label>
+                    <input
+                      type="text"
+                      id="event-location"
+                      placeholder="np. Strzelnica Warszawa, ul. Przykładowa 1"
+                      value="${event ? (event.location || "") : ""}"
+                      class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                    />
+                  </div>
+
+                  <div class="min-w-0">
+                    <label class="block text-sm font-medium mb-2" for="event-participation-url">Link „Weź udział” (URL zapisów)</label>
+                    <input
+                      type="url"
+                      id="event-participation-url"
+                      placeholder="https://… (opcjonalnie — bez linku pokaże się informacja o kontakcie)"
+                      value="${event ? escapeHtml(event.participationUrl || "") : ""}"
+                      class="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                    />
+                    <p class="text-xs text-zinc-500 mt-1">Działa jak przycisk „Wesprzyj” w pomocy: pusty adres = komunikat z możliwością kontaktu.</p>
+                  </div>
                 </div>
 
                 <div>
@@ -10043,24 +10080,26 @@
                   ></div>
                 </div>
 
-                <div class="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="event-pinned"
-                    ${event && event.pinned ? "checked" : ""}
-                    class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote"
-                  />
-                  <label for="event-pinned" class="text-sm">Przypnij wydarzenie (będzie wyświetlane na górze)</label>
-                </div>
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+                  <label for="event-published" class="flex items-center gap-2 text-sm cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      id="event-published"
+                      ${event && event.published !== false ? "checked" : (!event ? "checked" : "")}
+                      class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote"
+                    />
+                    <span>Opublikuj wydarzenie</span>
+                  </label>
 
-                <div class="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="event-published"
-                    ${event && event.published !== false ? "checked" : (!event ? "checked" : "")}
-                    class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote"
-                  />
-                  <label for="event-published" class="text-sm">Opublikuj wydarzenie</label>
+                  <label for="event-pinned" class="flex items-center gap-2 text-sm cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      id="event-pinned"
+                      ${event && event.pinned ? "checked" : ""}
+                      class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote"
+                    />
+                    <span>Przypnij wydarzenie (będzie wyświetlane na górze)</span>
+                  </label>
                 </div>
 
                 <div class="flex space-x-4 pt-4">
@@ -10089,22 +10128,100 @@
 
         const regDeadlineCb = document.getElementById("event-registration-deadline-enabled");
         const regDeadlineInp = document.getElementById("event-registration-deadline");
+        const regDeadlineDateInp = document.getElementById("event-registration-deadline-date");
+        const regDeadlineTimeInp = document.getElementById("event-registration-deadline-time");
         const regDeadlineBlock = document.getElementById("event-registration-deadline-field-block");
-        const regDeadlineHintRow = document.getElementById("event-registration-deadline-hint-row");
+        const eventDateInput = document.getElementById("event-date");
+        const eventDateDateInput = document.getElementById("event-date-date");
+        const eventDateTimeInput = document.getElementById("event-date-time");
+        const eventEndDateInput = document.getElementById("event-end-date");
+        const eventEndDateDateInput = document.getElementById("event-end-date-date");
+        const eventEndDateTimeInput = document.getElementById("event-end-date-time");
+        const syncSplitDateTimeField = (dateInput, timeInput, hiddenInput) => {
+          if (!dateInput || !timeInput || !hiddenInput) return;
+          hiddenInput.value = combineDateAndTimeForInput(dateInput.value, timeInput.value);
+        };
+        const toggleDateTimePairRequired = (dateInput, timeInput, required) => {
+          if (!dateInput || !timeInput) return;
+          if (required) {
+            dateInput.setAttribute("required", "");
+            timeInput.setAttribute("required", "");
+          } else {
+            dateInput.removeAttribute("required");
+            timeInput.removeAttribute("required");
+          }
+        };
+        const toggleDateTimePairDisabled = (dateInput, timeInput, disabled) => {
+          if (!dateInput || !timeInput) return;
+          dateInput.disabled = disabled;
+          timeInput.disabled = disabled;
+        };
+        const attachDateTimePairSync = (dateInput, timeInput, hiddenInput) => {
+          if (!dateInput || !timeInput || !hiddenInput) return;
+          const sync = () => syncSplitDateTimeField(dateInput, timeInput, hiddenInput);
+          dateInput.addEventListener("input", sync);
+          dateInput.addEventListener("change", sync);
+          timeInput.addEventListener("input", sync);
+          timeInput.addEventListener("change", sync);
+          sync();
+        };
+        const attachNativePickerTrigger = (input) => {
+          if (!input || typeof input.showPicker !== "function") return;
+          const openPicker = () => {
+            try {
+              input.showPicker();
+            } catch (error) {}
+          };
+          input.addEventListener("click", openPicker);
+        };
         const syncEventRegistrationDeadlineField = () => {
           if (!regDeadlineCb || !regDeadlineInp) return;
           const on = regDeadlineCb.checked;
           regDeadlineInp.disabled = !on;
+          toggleDateTimePairDisabled(regDeadlineDateInp, regDeadlineTimeInp, !on);
           regDeadlineBlock?.classList.toggle("is-registration-deadline-off", !on);
-          regDeadlineHintRow?.classList.toggle("is-registration-deadline-off", !on);
           if (!on) {
             regDeadlineInp.removeAttribute("required");
+            regDeadlineInp.value = "";
+            toggleDateTimePairRequired(regDeadlineDateInp, regDeadlineTimeInp, false);
           } else {
             regDeadlineInp.setAttribute("required", "");
+            toggleDateTimePairRequired(regDeadlineDateInp, regDeadlineTimeInp, true);
+            syncSplitDateTimeField(regDeadlineDateInp, regDeadlineTimeInp, regDeadlineInp);
           }
         };
+        const syncEventEndDateField = () => {
+          if (!eventDateInput || !eventEndDateInput || !eventDateDateInput || !eventDateTimeInput || !eventEndDateDateInput || !eventEndDateTimeInput) return;
+          syncSplitDateTimeField(eventDateDateInput, eventDateTimeInput, eventDateInput);
+          syncSplitDateTimeField(eventEndDateDateInput, eventEndDateTimeInput, eventEndDateInput);
+          const startValue = eventDateInput.value;
+          const endValue = eventEndDateInput.value;
+          if (!startValue || !endValue) return;
+          const startDate = new Date(startValue);
+          const endDate = new Date(endValue);
+          if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return;
+          if (endDate.getTime() < startDate.getTime()) {
+            eventEndDateDateInput.value = formatDateForInput(startDate);
+            eventEndDateTimeInput.value = formatTimeForInput(startDate);
+            eventEndDateInput.value = formatDateTimeForInput(startDate);
+          }
+        };
+        attachDateTimePairSync(eventDateDateInput, eventDateTimeInput, eventDateInput);
+        attachDateTimePairSync(eventEndDateDateInput, eventEndDateTimeInput, eventEndDateInput);
+        attachDateTimePairSync(regDeadlineDateInp, regDeadlineTimeInp, regDeadlineInp);
+        attachNativePickerTrigger(eventDateDateInput);
+        attachNativePickerTrigger(eventDateTimeInput);
+        attachNativePickerTrigger(eventEndDateDateInput);
+        attachNativePickerTrigger(eventEndDateTimeInput);
+        attachNativePickerTrigger(regDeadlineDateInp);
+        attachNativePickerTrigger(regDeadlineTimeInp);
         regDeadlineCb?.addEventListener("change", syncEventRegistrationDeadlineField);
+        eventDateDateInput?.addEventListener("input", syncEventEndDateField);
+        eventDateDateInput?.addEventListener("change", syncEventEndDateField);
+        eventDateTimeInput?.addEventListener("input", syncEventEndDateField);
+        eventDateTimeInput?.addEventListener("change", syncEventEndDateField);
         syncEventRegistrationDeadlineField();
+        syncEventEndDateField();
 
         // Dodaj obsługę formularza
         const form = document.getElementById("event-form");
@@ -10138,6 +10255,28 @@
         const hours = String(d.getHours()).padStart(2, "0");
         const minutes = String(d.getMinutes()).padStart(2, "0");
         return `${year}-${month}-${day}T${hours}:${minutes}`;
+      }
+
+      function formatDateForInput(date) {
+        if (!date) return "";
+        const d = date instanceof Date ? date : new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+
+      function formatTimeForInput(date) {
+        if (!date) return "";
+        const d = date instanceof Date ? date : new Date(date);
+        const hours = String(d.getHours()).padStart(2, "0");
+        const minutes = String(d.getMinutes()).padStart(2, "0");
+        return `${hours}:${minutes}`;
+      }
+
+      function combineDateAndTimeForInput(dateValue, timeValue) {
+        if (!dateValue || !timeValue) return "";
+        return `${dateValue}T${timeValue}`;
       }
 
       window.closeEventFormModal = () => {
