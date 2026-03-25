@@ -48,8 +48,8 @@ function sanitizeModerationReason(input) {
   return text;
 }
 
-function buildPostLikeId(postId, userId) {
-  return `${postId}_${userId}`;
+function buildEventLikeId(eventId, userId) {
+  return `${eventId}_${userId}`;
 }
 
 function buildCommentLikeId(commentId, userId) {
@@ -76,22 +76,22 @@ async function getActorProfile(db, uid, fallbackEmail = '') {
   };
 }
 
-function canModerateBlogComments(roleProfile) {
-  return isAdminRoleProfile(roleProfile) || isModeratorRoleProfile(roleProfile) || hasOperatorScope(roleProfile, 'blog');
+function canModerateEventComments(roleProfile) {
+  return isAdminRoleProfile(roleProfile) || isModeratorRoleProfile(roleProfile) || hasOperatorScope(roleProfile, 'events');
 }
 
 async function handleCreateComment(db, actor, body) {
-  const postId = cleanString(body.postId, 128);
+  const eventId = cleanString(body.eventId, 128);
   const parentId = cleanString(body.parentId, 128);
-  if (!postId) throw new Error('Brak postId.');
+  if (!eventId) throw new Error('Brak eventId.');
   const content = sanitizeComment(body.content || '');
 
-  const postRef = db.collection('blogPosts').doc(postId);
-  const postSnap = await postRef.get();
-  if (!postSnap.exists) throw new Error('Wpis nie istnieje.');
+  const eventRef = db.collection('events').doc(eventId);
+  const eventSnap = await eventRef.get();
+  if (!eventSnap.exists) throw new Error('Wydarzenie nie istnieje.');
 
-  const latestCommentSnap = await db.collection('blogPostComments')
-    .where('postId', '==', postId)
+  const latestCommentSnap = await db.collection('eventComments')
+    .where('eventId', '==', eventId)
     .where('userId', '==', actor.uid)
     .orderBy('createdAt', 'desc')
     .limit(1)
@@ -104,7 +104,7 @@ async function handleCreateComment(db, actor, body) {
       const diff = Date.now() - latestDate.getTime();
       if (diff < COMMENT_COOLDOWN_MS) {
         const remainingSeconds = Math.ceil((COMMENT_COOLDOWN_MS - diff) / 1000);
-        const error = new Error('Możesz dodać kolejny komentarz do tego wpisu za kilka minut.');
+        const error = new Error('Możesz dodać kolejny komentarz do tego wydarzenia za kilka minut.');
         error.code = 'comment_cooldown';
         error.remainingSeconds = remainingSeconds;
         throw error;
@@ -114,19 +114,19 @@ async function handleCreateComment(db, actor, body) {
 
   let parentData = null;
   if (parentId) {
-    const parentSnap = await db.collection('blogPostComments').doc(parentId).get();
+    const parentSnap = await db.collection('eventComments').doc(parentId).get();
     if (!parentSnap.exists) throw new Error('Komentarz nadrzędny nie istnieje.');
     parentData = { id: parentSnap.id, ...parentSnap.data() };
-    if (String(parentData.postId || '') !== postId) {
-      throw new Error('Komentarz nadrzędny należy do innego wpisu.');
+    if (String(parentData.eventId || '') !== eventId) {
+      throw new Error('Komentarz nadrzędny należy do innego wydarzenia.');
     }
   }
 
-  const commentRef = db.collection('blogPostComments').doc();
+  const commentRef = db.collection('eventComments').doc();
   const now = admin.firestore.FieldValue.serverTimestamp();
   await db.runTransaction(async (tx) => {
     tx.set(commentRef, {
-      postId,
+      eventId,
       parentId: parentId || '',
       userId: actor.uid,
       userDisplayName: actor.displayName,
@@ -143,37 +143,37 @@ async function handleCreateComment(db, actor, body) {
       createdAt: now,
       editHistory: [],
     });
-    tx.update(postRef, {
+    tx.update(eventRef, {
       commentCount: admin.firestore.FieldValue.increment(1),
       updatedAt: now,
     });
     if (parentId) {
-      tx.update(db.collection('blogPostComments').doc(parentId), {
+      tx.update(db.collection('eventComments').doc(parentId), {
         replyCount: admin.firestore.FieldValue.increment(1),
       });
     }
   });
 
   if (parentData && parentData.userId && parentData.userId !== actor.uid) {
-    const postTitle = cleanString(postSnap.data()?.title || 'wpisu na blogu', 160);
+    const eventTitle = cleanString(eventSnap.data()?.title || 'wydarzenia', 160);
     try {
       await createUserNotification(db, {
         userId: parentData.userId,
         title: 'Nowa odpowiedź na Twój komentarz',
         bodyHtml: `
-          <p><strong>${escapeHtml(actor.displayName)}</strong> odpowiedział na Twój komentarz pod wpisem <strong>${escapeHtml(postTitle)}</strong>.</p>
+          <p><strong>${escapeHtml(actor.displayName)}</strong> odpowiedział na Twój komentarz pod wydarzeniem <strong>${escapeHtml(eventTitle)}</strong>.</p>
           <p>${content.html}</p>
         `,
-        category: 'blog',
-        linkUrl: `https://blog.strzelca.pl/?open=${encodeURIComponent(postId)}`,
-        linkLabel: 'Otwórz wpis',
-        sourceType: 'blog_comment_reply',
+        category: 'events',
+        linkUrl: `https://wydarzenia.strzelca.pl/?open=${encodeURIComponent(eventId)}`,
+        linkLabel: 'Otwórz wydarzenie',
+        sourceType: 'event_comment_reply',
         sourceId: commentRef.id,
         createdById: actor.uid,
         createdByName: actor.displayName,
       });
     } catch (notificationError) {
-      console.warn('blog reply notification:', notificationError);
+      console.warn('event reply notification:', notificationError);
     }
   }
 
@@ -187,7 +187,7 @@ async function handleEditComment(db, actor, body) {
   const commentId = cleanString(body.commentId, 128);
   if (!commentId) throw new Error('Brak commentId.');
   const nextContent = sanitizeComment(body.content || '');
-  const commentRef = db.collection('blogPostComments').doc(commentId);
+  const commentRef = db.collection('eventComments').doc(commentId);
   const commentSnap = await commentRef.get();
   if (!commentSnap.exists) throw new Error('Komentarz nie istnieje.');
   const comment = commentSnap.data() || {};
@@ -221,12 +221,12 @@ async function handleEditComment(db, actor, body) {
 async function handleDeleteComment(db, actor, actorRoleProfile, body) {
   const commentId = cleanString(body.commentId, 128);
   if (!commentId) throw new Error('Brak commentId.');
-  if (!canModerateBlogComments(actorRoleProfile)) {
-    throw new Error('Brak uprawnień do moderacji komentarzy bloga.');
+  if (!canModerateEventComments(actorRoleProfile)) {
+    throw new Error('Brak uprawnień do moderacji komentarzy wydarzeń.');
   }
   const reason = sanitizeModerationReason(body.reason || '');
 
-  const commentRef = db.collection('blogPostComments').doc(commentId);
+  const commentRef = db.collection('eventComments').doc(commentId);
   const commentSnap = await commentRef.get();
   if (!commentSnap.exists) throw new Error('Komentarz nie istnieje.');
   const comment = commentSnap.data() || {};
@@ -245,12 +245,12 @@ async function handleDeleteComment(db, actor, actorRoleProfile, body) {
       deletedByRole: actor.role,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
-    tx.update(db.collection('blogPosts').doc(comment.postId), {
+    tx.update(db.collection('events').doc(comment.eventId), {
       commentCount: admin.firestore.FieldValue.increment(-1),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     if (comment.parentId) {
-      tx.update(db.collection('blogPostComments').doc(comment.parentId), {
+      tx.update(db.collection('eventComments').doc(comment.parentId), {
         replyCount: admin.firestore.FieldValue.increment(-1),
       });
     }
@@ -262,36 +262,36 @@ async function handleDeleteComment(db, actor, actorRoleProfile, body) {
         userId: comment.userId,
         title: 'Twój komentarz został usunięty',
         bodyHtml: `
-          <p>Twój komentarz pod wpisem na blogu został usunięty przez moderację.</p>
+          <p>Twój komentarz pod wydarzeniem został usunięty przez moderację.</p>
           <p><strong>Powód:</strong> ${escapeHtml(reason)}</p>
         `,
-        category: 'blog',
-        linkUrl: comment.postId ? `https://blog.strzelca.pl/?open=${encodeURIComponent(comment.postId)}` : '',
-        linkLabel: 'Otwórz wpis',
-        sourceType: 'blog_comment_deleted',
+        category: 'events',
+        linkUrl: comment.eventId ? `https://wydarzenia.strzelca.pl/?open=${encodeURIComponent(comment.eventId)}` : '',
+        linkLabel: 'Otwórz wydarzenie',
+        sourceType: 'event_comment_deleted',
         sourceId: commentId,
         createdById: actor.uid,
         createdByName: actor.displayName,
       });
     } catch (notificationError) {
-      console.warn('blog delete notification:', notificationError);
+      console.warn('event delete notification:', notificationError);
     }
   }
 
   return { commentId, reason };
 }
 
-async function handleTogglePostLike(db, actor, body) {
-  const postId = cleanString(body.postId, 128);
-  if (!postId) throw new Error('Brak postId.');
-  const postRef = db.collection('blogPosts').doc(postId);
-  const likeRef = db.collection('blogPostLikes').doc(buildPostLikeId(postId, actor.uid));
+async function handleToggleEventLike(db, actor, body) {
+  const eventId = cleanString(body.eventId, 128);
+  if (!eventId) throw new Error('Brak eventId.');
+  const eventRef = db.collection('events').doc(eventId);
+  const likeRef = db.collection('eventLikes').doc(buildEventLikeId(eventId, actor.uid));
 
   const result = await db.runTransaction(async (tx) => {
-    const [postSnap, likeSnap] = await Promise.all([tx.get(postRef), tx.get(likeRef)]);
-    if (!postSnap.exists) throw new Error('Wpis nie istnieje.');
+    const [eventSnap, likeSnap] = await Promise.all([tx.get(eventRef), tx.get(likeRef)]);
+    if (!eventSnap.exists) throw new Error('Wydarzenie nie istnieje.');
     const currentlyLiked = likeSnap.exists;
-    tx.update(postRef, {
+    tx.update(eventRef, {
       likeCount: admin.firestore.FieldValue.increment(currentlyLiked ? -1 : 1),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
@@ -299,12 +299,12 @@ async function handleTogglePostLike(db, actor, body) {
       tx.delete(likeRef);
     } else {
       tx.set(likeRef, {
-        postId,
+        eventId,
         userId: actor.uid,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     }
-    const currentCount = Number(postSnap.data()?.likeCount || 0);
+    const currentCount = Number(eventSnap.data()?.likeCount || 0);
     return {
       liked: !currentlyLiked,
       likeCount: Math.max(0, currentCount + (currentlyLiked ? -1 : 1)),
@@ -317,7 +317,7 @@ async function handleTogglePostLike(db, actor, body) {
 async function handleToggleCommentLike(db, actor, body) {
   const commentId = cleanString(body.commentId, 128);
   if (!commentId) throw new Error('Brak commentId.');
-  const commentRef = db.collection('blogPostComments').doc(commentId);
+  const commentRef = db.collection('eventComments').doc(commentId);
 
   const result = await db.runTransaction(async (tx) => {
     const commentSnap = await tx.get(commentRef);
@@ -327,7 +327,7 @@ async function handleToggleCommentLike(db, actor, body) {
       throw new Error('Nie można polubić usuniętego komentarza.');
     }
 
-    const likeRef = db.collection('blogCommentLikes').doc(buildCommentLikeId(commentId, actor.uid));
+    const likeRef = db.collection('eventCommentLikes').doc(buildCommentLikeId(commentId, actor.uid));
     const likeSnap = await tx.get(likeRef);
     const currentlyLiked = likeSnap.exists;
 
@@ -341,7 +341,7 @@ async function handleToggleCommentLike(db, actor, body) {
     } else {
       tx.set(likeRef, {
         commentId,
-        postId: cleanString(comment.postId || '', 128),
+        eventId: cleanString(comment.eventId || '', 128),
         userId: actor.uid,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
@@ -387,8 +387,8 @@ module.exports = async (req, res) => {
       case 'comment.delete':
         data = await handleDeleteComment(db, actor, actorRoleProfile, body);
         break;
-      case 'post.toggleLike':
-        data = await handleTogglePostLike(db, actor, body);
+      case 'event.toggleLike':
+        data = await handleToggleEventLike(db, actor, body);
         break;
       case 'comment.toggleLike':
         data = await handleToggleCommentLike(db, actor, body);
@@ -399,11 +399,11 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    console.error('blog-interactions:', error);
+    console.error('event-interactions:', error);
     const status = error?.code === 'comment_cooldown' ? 429 : 400;
     return res.status(status).json({
       success: false,
-      error: error?.message || 'Błąd bloga',
+      error: error?.message || 'Błąd wydarzeń',
       code: error?.code || null,
       remainingSeconds: error?.remainingSeconds || null,
     });

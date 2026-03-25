@@ -32,14 +32,26 @@
     <style>
       :root {
         --coyote: #c19a6b;
+        --page-bg: #16181d;
+        --page-bg-soft: #20242d;
+        --panel-surface: rgba(27, 31, 39, 0.84);
+        --panel-surface-strong: rgba(34, 40, 51, 0.92);
+        --panel-surface-elevated: rgba(243, 236, 223, 0.06);
+        --panel-border: rgba(255, 244, 224, 0.12);
+        --panel-border-strong: rgba(193, 154, 107, 0.24);
+        --text-primary: #f5f1e8;
+        --text-secondary: #d5d0c5;
+        --text-muted: #a9a59d;
+        --shadow-soft: 0 20px 50px rgba(7, 9, 13, 0.28);
+        --shadow-card: 0 14px 36px rgba(8, 10, 15, 0.22);
       }
 
       /* Ustawienie tła na elemencie html dla Safari */
       html {
-        background-color: #0a0a0a;
+        background-color: var(--page-bg);
         background-image:
           var(--strzelca-bg-vignette),
-          linear-gradient(rgba(10, 10, 10, 0.6), #0a0a0a),
+          linear-gradient(rgba(20, 24, 31, 0.64), rgba(20, 24, 31, 0.92)),
           url("/tlo.png");
         background-size: cover, cover, cover;
         background-position: center center, center top, center top;
@@ -66,7 +78,7 @@
       body {
         font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         background: transparent; /* Przejrzyste tło, żeby pokazać tło html */
-        color: #e5e5e5;
+        color: var(--text-primary);
         margin: 0;
         padding: 0;
         width: 100%;
@@ -95,20 +107,22 @@
       input,
       select,
       textarea {
-        background: #111 !important;
-        border: 1px solid #222 !important;
-        color: white !important;
+        background: rgba(248, 245, 239, 0.08) !important;
+        border: 1px solid rgba(255, 244, 224, 0.12) !important;
+        color: var(--text-primary) !important;
         padding: 12px 16px !important;
-        border-radius: 8px;
+        border-radius: 14px;
         width: 100%;
         outline: none;
-        transition: 0.3s;
+        transition: 0.25s ease;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
       }
       input:focus,
       select:focus,
       textarea:focus {
-        border-color: var(--coyote) !important;
-        background: #161616 !important;
+        border-color: rgba(193, 154, 107, 0.82) !important;
+        background: rgba(248, 245, 239, 0.12) !important;
+        box-shadow: 0 0 0 4px rgba(193, 154, 107, 0.14);
       }
 
       /* Formularz wydarzenia: pole daty zapisów wyłączone, gdy checkbox odznaczony */
@@ -233,12 +247,12 @@
       }
 
       .loading-content {
-        background: #111;
-        border: 1px solid var(--coyote);
-        border-radius: 12px;
+        background: var(--panel-surface-strong);
+        border: 1px solid var(--panel-border-strong);
+        border-radius: 20px;
         padding: 24px;
         text-align: center;
-        box-shadow: 0 0 30px rgba(193, 154, 107, 0.3);
+        box-shadow: var(--shadow-soft);
       }
 
       .loading-spinner-large {
@@ -297,14 +311,18 @@
       }
 
       .admin-card {
-        background: #111;
-        border: 1px solid #222;
-        border-radius: 12px;
+        background:
+          linear-gradient(180deg, rgba(255, 248, 235, 0.055), rgba(255, 248, 235, 0.018)),
+          var(--panel-surface);
+        border: 1px solid var(--panel-border);
+        border-radius: 24px;
         padding: 24px;
-        transition: 0.3s;
+        transition: border-color 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease;
+        box-shadow: var(--shadow-card);
       }
       .admin-card:hover {
-        border-color: var(--coyote);
+        border-color: var(--panel-border-strong);
+        transform: translateY(-1px);
       }
 
       /* Pasek list: statystyki + filtry (wydarzenia / blog / pomoc) */
@@ -446,10 +464,177 @@
 
       /* Styl dla górnego paska nawigacji */
       .top-nav {
-        background: rgba(0, 0, 0, 0.4);
+        background:
+          linear-gradient(180deg, rgba(37, 43, 54, 0.94), rgba(27, 31, 39, 0.88));
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        border-bottom: 1px solid rgba(255, 244, 224, 0.08);
+        box-shadow: 0 10px 30px rgba(8, 10, 15, 0.18);
+      }
+
+      .admin-shell {
+        width: min(100%, 1680px);
+        margin: 0 auto;
+      }
+
+      .top-nav-inner {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+      }
+
+      .top-nav-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .admin-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.9rem;
+        min-width: 0;
+      }
+
+      .admin-brand-badge {
+        width: 48px;
+        height: 48px;
+        border-radius: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, rgba(193, 154, 107, 0.32), rgba(255, 248, 235, 0.08));
+        border: 1px solid rgba(193, 154, 107, 0.3);
+        color: var(--coyote);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      }
+
+      .admin-brand-copy {
+        min-width: 0;
+      }
+
+      .admin-brand-title {
+        font-size: 1.1rem;
+        line-height: 1.15;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        color: #fff9ef;
+      }
+
+      .admin-brand-subtitle {
+        margin-top: 0.2rem;
+        color: var(--text-secondary);
+        font-size: 0.88rem;
+      }
+
+      .admin-utility-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-shrink: 0;
+      }
+
+      .header-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        min-height: 44px;
+        padding: 0.7rem 1rem;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 244, 224, 0.12);
+        background: rgba(248, 245, 239, 0.06);
+        color: var(--text-primary);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+      }
+
+      .header-chip strong {
+        display: block;
+        font-size: 0.95rem;
+        line-height: 1.1;
+      }
+
+      .header-chip span {
+        display: block;
+        margin-top: 0.1rem;
+        font-size: 0.78rem;
+        color: var(--text-muted);
+      }
+
+      .header-chip-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(193, 154, 107, 0.16);
+        color: var(--coyote);
+      }
+
+      .icon-btn {
+        width: 44px;
+        height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 244, 224, 0.12);
+        background: rgba(248, 245, 239, 0.05);
+        color: var(--text-secondary);
+        transition: 0.2s ease;
+      }
+
+      .icon-btn:hover {
+        color: #fff;
+        border-color: rgba(193, 154, 107, 0.4);
+        background: rgba(193, 154, 107, 0.12);
+      }
+
+      .icon-btn.icon-btn-danger:hover {
+        color: #fecaca;
+        border-color: rgba(239, 68, 68, 0.35);
+        background: rgba(127, 29, 29, 0.28);
+      }
+
+      .nav-shell {
+        display: grid;
+        gap: 0.85rem;
+      }
+
+      .nav-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+      }
+
+      .nav-group-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
+      .nav-group-label {
+        font-size: 0.74rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(255, 244, 224, 0.65);
+      }
+
+      .nav-hint {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+
+      .nav-scroll {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        overflow-x: auto;
+        padding-bottom: 0.2rem;
       }
 
       /* Liquid Glass Effect */
@@ -482,8 +667,8 @@
 
       /* Style dla zakładek w poziomie */
       #tabs-container .nav-item {
-        padding: 8px 12px;
-        border-radius: 12px;
+        padding: 10px 14px;
+        border-radius: 16px;
         margin: 2px 0;
         font-size: 13px;
         white-space: nowrap;
@@ -511,7 +696,7 @@
 
       /* Rozwijane menu stron w poziomie */
       .nav-submenu {
-        background: rgba(0, 0, 0, 0.95);
+        background: rgba(21, 24, 31, 0.96);
         backdrop-filter: blur(20px);
         border-top: 1px solid rgba(255, 255, 255, 0.08);
         max-height: 0;
@@ -561,40 +746,47 @@
       /* Kompaktowy sidebar */
       .compact-sidebar {
         width: 64px;
-        background: rgba(0, 0, 0, 0.2);
+        background: rgba(21, 24, 31, 0.55);
         backdrop-filter: blur(20px);
-        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        border-right: 1px solid rgba(255, 244, 224, 0.08);
       }
 
       .nav-item {
-        padding: 10px 13px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        min-height: 48px;
+        padding: 0.78rem 1rem;
         cursor: pointer;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        font-weight: 300;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-radius: 16px;
-        margin: 3px 12px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        border-radius: 18px;
+        margin: 0;
         position: relative;
         overflow: hidden;
         backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 244, 224, 0.08);
+        background: rgba(248, 245, 239, 0.045);
+        color: var(--text-secondary);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
       }
       .nav-item:hover {
-        background: rgba(193, 154, 107, 0.08);
-        color: rgba(193, 154, 107, 0.95);
-        transform: translateX(2px) scale(1.01);
+        background: rgba(193, 154, 107, 0.12);
+        color: #fff4e1;
+        transform: translateY(-1px);
         box-shadow:
-          0 4px 16px rgba(193, 154, 107, 0.12),
-          0 0 0 1px rgba(193, 154, 107, 0.1);
+          0 8px 24px rgba(193, 154, 107, 0.1),
+          0 0 0 1px rgba(193, 154, 107, 0.08);
       }
       .nav-item.active {
-        background: rgba(193, 154, 107, 0.06);
-        color: rgba(193, 154, 107, 0.9);
+        background: linear-gradient(135deg, rgba(193, 154, 107, 0.24), rgba(193, 154, 107, 0.1));
+        color: #fff6e8;
         box-shadow:
-          0 0 24px rgba(193, 154, 107, 0.15),
-          0 2px 8px rgba(193, 154, 107, 0.1),
+          0 12px 30px rgba(193, 154, 107, 0.12),
+          0 2px 8px rgba(193, 154, 107, 0.08),
           inset 0 1px 0 rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(193, 154, 107, 0.15);
+        border: 1px solid rgba(193, 154, 107, 0.28);
       }
 
       .admin-name {
@@ -608,22 +800,22 @@
       }
 
       .editor-content {
-        background: #161616;
-        border: 1px solid #222;
-        border-radius: 8px;
+        background: rgba(248, 245, 239, 0.06);
+        border: 1px solid rgba(255, 244, 224, 0.1);
+        border-radius: 16px;
         max-width: 100%;
         box-sizing: border-box;
         word-wrap: break-word;
         overflow-wrap: break-word;
         padding: 16px;
         min-height: 200px;
-        color: white;
+        color: var(--text-primary);
       }
 
       .toolbar {
-        background: #111;
-        border: 1px solid #222;
-        border-radius: 8px;
+        background: rgba(248, 245, 239, 0.05);
+        border: 1px solid rgba(255, 244, 224, 0.08);
+        border-radius: 16px;
         padding: 10px;
         margin-bottom: 8px;
         display: flex;
@@ -631,9 +823,9 @@
         gap: 8px;
       }
       .toolbar button {
-        background: #222;
-        border: 1px solid #333;
-        color: white;
+        background: rgba(248, 245, 239, 0.06);
+        border: 1px solid rgba(255, 244, 224, 0.08);
+        color: var(--text-primary);
         padding: 10px 14px;
         border-radius: 6px;
         cursor: pointer;
@@ -655,7 +847,7 @@
         transform: translateY(0);
       }
 
-      /* Quill Editor Styles - Dark Theme */
+      /* Quill Editor Styles - Soft dark theme */
       /* Produkt: .ql-container jest na tym samym węźle co #product-description-editor; pasek — rodzeństwo w #product-description-quill-host */
       #product-description-editor.ql-container,
       #blog-content-editor .ql-container,
@@ -664,10 +856,10 @@
       #event-description-editor .ql-container,
       #notification-message-editor .ql-container,
       #info-message-editor .ql-container {
-        background: #161616;
-        border: 1px solid #222;
-        border-radius: 0 0 8px 8px;
-        color: white;
+        background: rgba(248, 245, 239, 0.06);
+        border: 1px solid rgba(255, 244, 224, 0.08);
+        border-radius: 0 0 16px 16px;
+        color: var(--text-primary);
         font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       }
 
@@ -679,7 +871,7 @@
       #notification-message-editor .ql-editor,
       #info-message-editor .ql-editor {
         min-height: 300px;
-        color: white;
+        color: var(--text-primary);
       }
 
       #charity-description-editor .ql-editor,
@@ -712,9 +904,9 @@
       #event-description-editor .ql-toolbar,
       #notification-message-editor .ql-toolbar,
       #info-message-editor .ql-toolbar {
-        background: #111;
-        border: 1px solid #222;
-        border-radius: 8px 8px 0 0;
+        background: rgba(248, 245, 239, 0.05);
+        border: 1px solid rgba(255, 244, 224, 0.08);
+        border-radius: 16px 16px 0 0;
         padding: 10px;
       }
 
@@ -973,6 +1165,171 @@
       .conversation-item:hover {
         transform: translateX(2px);
       }
+
+      #main-content {
+        padding-inline: clamp(1rem, 2.8vw, 2.25rem);
+        padding-block: 1rem 2rem;
+      }
+
+      #main-content > .tab-content {
+        max-width: 1440px;
+        margin: 0 auto;
+      }
+
+      .mobile-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(10, 12, 16, 0.56);
+        backdrop-filter: blur(4px);
+        z-index: 70;
+      }
+
+      .mobile-sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        width: min(88vw, 360px);
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        z-index: 120;
+        padding: 1rem;
+      }
+
+      .mobile-sidebar.open {
+        transform: translateX(0);
+      }
+
+      .mobile-sidebar-panel {
+        height: 100%;
+        overflow-y: auto;
+        border-radius: 28px;
+        border: 1px solid rgba(255, 244, 224, 0.12);
+        background:
+          linear-gradient(180deg, rgba(40, 46, 58, 0.96), rgba(24, 28, 36, 0.96));
+        box-shadow: 0 24px 60px rgba(4, 6, 10, 0.4);
+        padding: 1rem;
+      }
+
+      .mobile-sidebar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+
+      .mobile-sidebar-title {
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: rgba(255, 244, 224, 0.62);
+      }
+
+      .mobile-sidebar-list {
+        display: grid;
+        gap: 0.65rem;
+      }
+
+      .mobile-sidebar-section {
+        display: grid;
+        gap: 0.55rem;
+      }
+
+      .mobile-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        width: 100%;
+        min-height: 50px;
+        padding: 0.8rem 0.95rem;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 244, 224, 0.08);
+        background: rgba(248, 245, 239, 0.05);
+        color: var(--text-secondary);
+        text-align: left;
+        transition: 0.2s ease;
+      }
+
+      .mobile-nav-item:hover,
+      .mobile-nav-item.active {
+        border-color: rgba(193, 154, 107, 0.28);
+        background: linear-gradient(135deg, rgba(193, 154, 107, 0.22), rgba(193, 154, 107, 0.08));
+        color: #fff6e8;
+      }
+
+      @media (max-width: 767px) {
+        body {
+          font-size: 15px;
+        }
+
+        .top-nav-inner {
+          padding: 0.9rem 0.85rem 1rem;
+          gap: 0.85rem;
+        }
+
+        .top-nav-bar {
+          align-items: flex-start;
+        }
+
+        .admin-brand-badge {
+          width: 42px;
+          height: 42px;
+          border-radius: 15px;
+        }
+
+        .admin-brand-title {
+          font-size: 1rem;
+        }
+
+        .admin-brand-subtitle {
+          font-size: 0.8rem;
+        }
+
+        .header-chip {
+          display: none;
+        }
+
+        .nav-shell {
+          gap: 0.75rem;
+        }
+
+        .nav-group-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.25rem;
+        }
+
+        .nav-hint {
+          font-size: 0.74rem;
+        }
+
+        .nav-scroll {
+          padding-bottom: 0.1rem;
+        }
+
+        .nav-item {
+          min-height: 44px;
+          padding: 0.72rem 0.9rem;
+          border-radius: 16px;
+          font-size: 0.92rem;
+        }
+
+        .admin-card {
+          padding: 18px;
+          border-radius: 20px;
+        }
+
+        #main-content {
+          padding-inline: 0.9rem;
+          padding-block: 0.9rem 1.5rem;
+        }
+
+        input,
+        select,
+        textarea {
+          font-size: 16px !important;
+        }
+      }
     </style>
 
     <!-- Cookies/zgody + warunkowe ładowanie analityki -->
@@ -1043,135 +1400,254 @@
 
     <!-- Główny panel administracyjny -->
     <div id="admin-panel" class="hidden h-full flex flex-col">
-      <!-- Górny pasek nawigacji -->
-      <div class="bg-black/40 backdrop-blur-xl border-b border-zinc-700/50 sticky top-0 z-50">
-        <div class="flex items-center justify-between px-4 py-3">
-          <!-- Strzałka cofająca -->
-          <div class="flex items-center space-x-4">
+      <div id="mobile-overlay" class="mobile-overlay hidden md:hidden" onclick="toggleSidebar(false)"></div>
+      <aside id="mobile-sidebar" class="mobile-sidebar md:hidden" aria-label="Nawigacja mobilna">
+        <div class="mobile-sidebar-panel">
+          <div class="mobile-sidebar-header">
+            <div>
+              <div class="mobile-sidebar-title">Menu panelu</div>
+              <div class="text-sm text-zinc-300 mt-1">Przejdź szybko do wybranej sekcji.</div>
+            </div>
             <button
-              onclick="toggleSidebar()"
-              class="md:hidden text-zinc-400 hover:text-white transition p-2"
-              id="mobile-menu-btn"
+              type="button"
+              class="icon-btn"
+              aria-label="Zamknij menu"
+              onclick="toggleSidebar(false)"
             >
-              <i class="fa-solid fa-bars text-lg"></i>
+              <i class="fa-solid fa-xmark"></i>
             </button>
-            <a
-              href="https://strzelca.pl"
-              aria-label="Powrót do centrum dowodzenia"
-              class="hidden md:flex text-zinc-400 hover:text-white transition p-2"
-            >
-              <i class="fa-solid fa-arrow-left text-lg"></i>
-            </a>
           </div>
 
-          <!-- Panel Admina na środku -->
-          <div class="flex items-center space-x-3">
-              <i class="fa-solid fa-crown text-coyote text-xl"></i>
-            <span class="text-white font-bold text-lg">Panel Admina</span>
+          <div class="mobile-sidebar-list">
+            <div class="mobile-sidebar-section">
+              <div class="nav-group-label">Centrum</div>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="dashboard">
+                <i class="fa-solid fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+              </button>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="messages">
+                <i class="fa-solid fa-comments"></i>
+                <span>Wiadomości</span>
+              </button>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="orders">
+                <i class="fa-solid fa-shopping-bag"></i>
+                <span>Zamówienia</span>
+              </button>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="invoices">
+                <i class="fa-solid fa-file-invoice"></i>
+                <span>Faktury</span>
+              </button>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="returns">
+                <i class="fa-solid fa-rotate-left"></i>
+                <span>Zwroty</span>
+              </button>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="users">
+                <i class="fa-solid fa-users"></i>
+                <span>Użytkownicy</span>
+              </button>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="newsletter">
+                <i class="fa-solid fa-envelope-open"></i>
+                <span>Newsletter</span>
+              </button>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="notifications">
+                <i class="fa-solid fa-bell"></i>
+                <span>Powiadomienia</span>
+              </button>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="status">
+                <i class="fa-solid fa-server"></i>
+                <span>Status</span>
+              </button>
             </div>
 
-          <!-- Profil administratora (kompaktowy) -->
-          <div class="flex items-center space-x-3">
-            <div class="hidden sm:flex items-center space-x-2 text-sm">
-              <span id="admin-display-name-compact" class="text-white font-medium"></span>
+            <div class="mobile-sidebar-section">
+              <div class="nav-group-label">Strony i treści</div>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="products">
+                <i class="fa-solid fa-shopping-cart"></i>
+                <span>Sklep</span>
+              </button>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="bazar">
+                <i class="fa-solid fa-store"></i>
+                <span>Bazar</span>
+              </button>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="szkolenia">
+                <i class="fa-solid fa-graduation-cap"></i>
+                <span>Szkolenia</span>
+              </button>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="events">
+                <i class="fa-solid fa-calendar-alt"></i>
+                <span>Wydarzenia</span>
+              </button>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="blog">
+                <i class="fa-solid fa-blog"></i>
+                <span>Blog</span>
+              </button>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="charity">
+                <i class="fa-solid fa-heart"></i>
+                <span>Pomoc</span>
+              </button>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="dokumenty">
+                <i class="fa-solid fa-file-pdf"></i>
+                <span>Dokumenty</span>
+              </button>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="email-templates">
+                <i class="fa-solid fa-envelope"></i>
+                <span>Szablony maili</span>
+              </button>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="promo-codes">
+                <i class="fa-solid fa-ticket"></i>
+                <span>Kody</span>
+              </button>
             </div>
-            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-coyote/20 to-zinc-600/40 flex items-center justify-center border border-zinc-500/20">
-              <i class="fa-solid fa-user-shield text-coyote text-sm"></i>
-          </div>
-          <button
-            onclick="logoutAdmin()"
-              class="text-zinc-400 hover:text-red-400 transition p-2"
-              title="Wyloguj"
-          >
-              <i class="fa-solid fa-sign-out-alt text-sm"></i>
-          </button>
           </div>
         </div>
+      </aside>
 
-        <!-- Pasek zakładek -->
-        <nav class="px-4 pb-3">
-          <!-- Pierwsza linia: Zarządzanie po lewej, status po prawej -->
-          <div class="flex items-center justify-between mb-2">
-            <div class="flex items-center space-x-4">
-              <div class="nav-item" data-tab="dashboard">
-                <i class="fa-solid fa-tachometer-alt mr-2"></i>
-                Dashboard
+      <!-- Górny pasek nawigacji -->
+      <div class="top-nav sticky top-0 z-50">
+        <div class="admin-shell top-nav-inner">
+          <div class="top-nav-bar">
+            <div class="admin-brand">
+              <button
+                onclick="toggleSidebar()"
+                class="icon-btn md:hidden"
+                id="mobile-menu-btn"
+                aria-label="Otwórz menu panelu"
+              >
+                <i class="fa-solid fa-bars"></i>
+              </button>
+              <a
+                href="https://strzelca.pl"
+                aria-label="Powrót do centrum dowodzenia"
+                class="icon-btn hidden md:inline-flex"
+              >
+                <i class="fa-solid fa-arrow-left"></i>
+              </a>
+              <div class="admin-brand-badge">
+                <i class="fa-solid fa-crown text-lg"></i>
               </div>
-              <div class="nav-item" data-tab="messages">
-                <i class="fa-solid fa-comments mr-2"></i>
-                Wiadomości
-              </div>
-              <div class="nav-item" data-tab="orders">
-                <i class="fa-solid fa-shopping-bag mr-2"></i>
-                Zamówienia
-              </div>
-              <div class="nav-item" data-tab="invoices">
-                <i class="fa-solid fa-file-invoice mr-2"></i>
-                Faktury
-              </div>
-              <div class="nav-item" data-tab="returns">
-                <i class="fa-solid fa-rotate-left mr-2"></i>
-                Zwroty
-              </div>
-              <div class="nav-item" data-tab="users">
-                <i class="fa-solid fa-users mr-2"></i>
-                Użytkownicy
-              </div>
-              <div class="nav-item" data-tab="newsletter">
-                <i class="fa-solid fa-envelope-open mr-2"></i>
-                Newsletter
-              </div>
-              <div class="nav-item" data-tab="notifications">
-                <i class="fa-solid fa-bell mr-2"></i>
-                Powiadomienia
+              <div class="admin-brand-copy">
+                <div class="admin-brand-title">Panel Administracyjny</div>
+                <div class="admin-brand-subtitle">
+                  <span id="current-tab-label">Dashboard</span>
+                  <span class="hidden sm:inline"> • </span>
+                  <span id="current-tab-description">Najważniejsze dane i szybkie wejście do sekcji.</span>
+                </div>
               </div>
             </div>
-            <div class="nav-item" data-tab="status">
-              <i class="fa-solid fa-server mr-2"></i>
-              <span id="status-tab-text">Status</span>
+
+            <div class="admin-utility-actions">
+              <div class="header-chip">
+                <div class="header-chip-icon">
+                  <i class="fa-solid fa-user-shield"></i>
+                </div>
+                <div>
+                  <strong id="admin-display-name-compact">Administrator</strong>
+                  <span>Aktywna sesja</span>
+                </div>
+              </div>
+              <button
+                onclick="logoutAdmin()"
+                class="icon-btn icon-btn-danger"
+                title="Wyloguj"
+                aria-label="Wyloguj"
+              >
+                <i class="fa-solid fa-sign-out-alt"></i>
+              </button>
             </div>
           </div>
 
-          <!-- Druga linia: Zakładki stron -->
-          <div class="flex items-center justify-start space-x-8 overflow-x-auto scrollbar-hide" id="tabs-container">
-            <div class="nav-item" data-tab="products">
-              <i class="fa-solid fa-shopping-cart mr-2"></i>
-              Sklep
+          <nav class="nav-shell" aria-label="Główna nawigacja panelu">
+            <div class="nav-group">
+              <div class="nav-group-header">
+                <div class="nav-group-label">Operacje i obsługa</div>
+                <div class="nav-hint">Najczęściej używane sekcje administracyjne</div>
+              </div>
+              <div class="nav-scroll hide-scrollbar">
+                <div class="nav-item" data-tab="dashboard">
+                  <i class="fa-solid fa-tachometer-alt"></i>
+                  Dashboard
+                </div>
+                <div class="nav-item" data-tab="messages">
+                  <i class="fa-solid fa-comments"></i>
+                  Wiadomości
+                </div>
+                <div class="nav-item" data-tab="orders">
+                  <i class="fa-solid fa-shopping-bag"></i>
+                  Zamówienia
+                </div>
+                <div class="nav-item" data-tab="invoices">
+                  <i class="fa-solid fa-file-invoice"></i>
+                  Faktury
+                </div>
+                <div class="nav-item" data-tab="returns">
+                  <i class="fa-solid fa-rotate-left"></i>
+                  Zwroty
+                </div>
+                <div class="nav-item" data-tab="users">
+                  <i class="fa-solid fa-users"></i>
+                  Użytkownicy
+                </div>
+                <div class="nav-item" data-tab="newsletter">
+                  <i class="fa-solid fa-envelope-open"></i>
+                  Newsletter
+                </div>
+                <div class="nav-item" data-tab="notifications">
+                  <i class="fa-solid fa-bell"></i>
+                  Powiadomienia
+                </div>
+                <div class="nav-item" data-tab="status">
+                  <i class="fa-solid fa-server"></i>
+                  <span id="status-tab-text">Status</span>
+                </div>
+              </div>
             </div>
-            <div class="nav-item" data-tab="bazar">
-              <i class="fa-solid fa-store mr-2"></i>
-              Bazar
+
+            <div class="nav-group">
+              <div class="nav-group-header">
+                <div class="nav-group-label">Strony i treści</div>
+                <div class="nav-hint">Sekcje publiczne, treści i automaty komunikacji</div>
+              </div>
+              <div class="nav-scroll scrollbar-hide" id="tabs-container">
+                <div class="nav-item" data-tab="products">
+                  <i class="fa-solid fa-shopping-cart"></i>
+                  Sklep
+                </div>
+                <div class="nav-item" data-tab="bazar">
+                  <i class="fa-solid fa-store"></i>
+                  Bazar
+                </div>
+                <div class="nav-item" data-tab="szkolenia">
+                  <i class="fa-solid fa-graduation-cap"></i>
+                  Szkolenia
+                </div>
+                <div class="nav-item" data-tab="events">
+                  <i class="fa-solid fa-calendar-alt"></i>
+                  Wydarzenia
+                </div>
+                <div class="nav-item" data-tab="blog">
+                  <i class="fa-solid fa-blog"></i>
+                  Blog
+                </div>
+                <div class="nav-item" data-tab="charity">
+                  <i class="fa-solid fa-heart"></i>
+                  Pomoc
+                </div>
+                <div class="nav-item" data-tab="dokumenty">
+                  <i class="fa-solid fa-file-pdf"></i>
+                  Dokumenty
+                </div>
+                <div class="nav-item" data-tab="email-templates">
+                  <i class="fa-solid fa-envelope"></i>
+                  Szablony maili
+                </div>
+                <div class="nav-item" data-tab="promo-codes">
+                  <i class="fa-solid fa-ticket"></i>
+                  Kody
+                </div>
+              </div>
             </div>
-            <div class="nav-item" data-tab="szkolenia">
-              <i class="fa-solid fa-graduation-cap mr-2"></i>
-              Szkolenia
-            </div>
-            <div class="nav-item" data-tab="events">
-              <i class="fa-solid fa-calendar-alt mr-2"></i>
-              Wydarzenia
-            </div>
-            <div class="nav-item" data-tab="blog">
-              <i class="fa-solid fa-blog mr-2"></i>
-              Blog
-            </div>
-            <div class="nav-item" data-tab="charity">
-              <i class="fa-solid fa-heart mr-2"></i>
-              Pomoc
-            </div>
-            <div class="nav-item" data-tab="dokumenty">
-              <i class="fa-solid fa-file-pdf mr-2"></i>
-              Dokumenty
-            </div>
-            <div class="nav-item" data-tab="email-templates">
-              <i class="fa-solid fa-envelope mr-2"></i>
-              Szablony maili
-            </div>
-            <div class="nav-item" data-tab="promo-codes">
-              <i class="fa-solid fa-ticket mr-2"></i>
-              Kody
-            </div>
-          </div>
-        </nav>
+          </nav>
+        </div>
       </div>
 
       <!-- Główna zawartość -->
@@ -1790,7 +2266,7 @@
             </div>
 
             <!-- Lista wydarzeń -->
-          <div class="admin-card">
+            <div class="admin-card">
             <div id="events-list" class="space-y-4">
                 <!-- Wydarzenia będą ładowane dynamicznie -->
             </div>
@@ -1809,6 +2285,19 @@
                 ></i>
                 <p>Brak wydarzeń do wyświetlenia</p>
               </div>
+            </div>
+
+            <div class="admin-card mt-8">
+              <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between mb-4">
+                <div>
+                  <h3 class="text-xl font-bold">Komentarze wydarzeń</h3>
+                  <p class="text-sm text-zinc-400 mt-1">Najnowsze komentarze do wydarzeń. Administrator, moderator i operator wydarzeń mogą je usuwać.</p>
+                </div>
+                <button type="button" onclick="loadEventCommentsModeration()" class="text-zinc-400 hover:text-coyote transition p-2" title="Odśwież komentarze wydarzeń">
+                  <i class="fa-solid fa-rotate text-base"></i>
+                </button>
+              </div>
+              <div id="event-comments-moderation-list" class="space-y-3"></div>
             </div>
 
             <div class="mt-6">
@@ -4493,6 +4982,26 @@
 
       let currentUser = null;
       let currentTab = "dashboard";
+      const TAB_META = {
+        dashboard: { label: "Dashboard", description: "Najważniejsze dane i szybkie wejście do sekcji." },
+        messages: { label: "Wiadomości", description: "Obsługa kontaktu, rozmów i odpowiedzi." },
+        orders: { label: "Zamówienia", description: "Realizacja zamówień i kontrola statusów." },
+        invoices: { label: "Faktury", description: "Dokumenty sprzedaży i rozliczenia." },
+        returns: { label: "Zwroty", description: "Zwroty, reklamacje i obsługa posprzedażowa." },
+        users: { label: "Użytkownicy", description: "Profile, role i uprawnienia kont." },
+        newsletter: { label: "Newsletter", description: "Tworzenie i wysyłka komunikacji mailowej." },
+        notifications: { label: "Powiadomienia", description: "Komunikaty i ważne ogłoszenia systemowe." },
+        status: { label: "Status", description: "Monitoring usług, domen i indeksów." },
+        products: { label: "Sklep", description: "Produkty, opisy i sprzedaż sklepu." },
+        bazar: { label: "Bazar", description: "Ogłoszenia i oferty użytkowników." },
+        szkolenia: { label: "Szkolenia", description: "Materiały, dostęp i kursy online." },
+        events: { label: "Wydarzenia", description: "Eventy, zapisy i harmonogram." },
+        blog: { label: "Blog", description: "Wpisy, szkice i publikacja treści." },
+        charity: { label: "Pomoc", description: "Zbiórki i materiały pomocowe." },
+        dokumenty: { label: "Dokumenty", description: "Pliki, formularze i publikacje PDF." },
+        "email-templates": { label: "Szablony maili", description: "Gotowe wiadomości i treści transakcyjne." },
+        "promo-codes": { label: "Kody", description: "Promocje, zniżki i kody dostępowe." },
+      };
       let currentUserFilter = "all";
       let usersList = [];
       let productsList = [];
@@ -4530,6 +5039,14 @@
         trainings: "Operator ds. szkoleń",
         bazaar: "Operator ds. bazaru",
       };
+
+      function updateCurrentTabMeta(tabName) {
+        const meta = TAB_META[tabName] || TAB_META.dashboard;
+        const titleEl = document.getElementById("current-tab-label");
+        const descEl = document.getElementById("current-tab-description");
+        if (titleEl) titleEl.textContent = meta.label;
+        if (descEl) descEl.textContent = meta.description;
+      }
       const OPERATOR_SCOPE_SHORT_LABELS = {
         users: "użytkowników",
         contact: "kontaktu",
@@ -4706,6 +5223,11 @@
         const allowedTabs = new Set(getAllowedAdminTabs());
         document.querySelectorAll(".nav-item").forEach((item) => {
           const tab = item.getAttribute("data-tab");
+          const visible = allowedTabs.has(tab);
+          item.classList.toggle("hidden", !visible);
+        });
+        document.querySelectorAll(".mobile-nav-item").forEach((item) => {
+          const tab = item.getAttribute("data-mobile-tab");
           const visible = allowedTabs.has(tab);
           item.classList.toggle("hidden", !visible);
         });
@@ -5350,6 +5872,9 @@
         document.querySelectorAll(".nav-item").forEach((item) => {
           item.classList.remove("active");
         });
+        document.querySelectorAll(".mobile-nav-item").forEach((item) => {
+          item.classList.remove("active");
+        });
         document.querySelectorAll(".nav-submenu-item").forEach((item) => {
           item.classList.remove("active");
         });
@@ -5365,11 +5890,15 @@
         } else if (mainTab) {
           mainTab.classList.add("active");
         }
+        const mobileTab = document.querySelector(`.mobile-nav-item[data-mobile-tab="${tabName}"]`);
+        if (mobileTab) mobileTab.classList.add("active");
 
         document.querySelectorAll(".tab-content").forEach((content) => {
           content.classList.remove("active");
         });
         document.getElementById(`tab-${tabName}`).classList.add("active");
+        updateCurrentTabMeta(tabName);
+        toggleSidebar(false);
 
         // Dodatkowe akcje dla konkretnych zakładek
         if (tabName === "status") {
@@ -5538,17 +6067,24 @@
 
 
       // Funkcja do przełączania sidebar na mobile
-      function toggleSidebar() {
+      function toggleSidebar(forceState = null) {
         const sidebar = document.getElementById("mobile-sidebar");
         const overlay = document.getElementById("mobile-overlay");
 
         if (sidebar && overlay) {
-          if (sidebar.classList.contains("open")) {
+          const shouldOpen =
+            typeof forceState === "boolean"
+              ? forceState
+              : !sidebar.classList.contains("open");
+
+          if (!shouldOpen) {
             sidebar.classList.remove("open");
             overlay.classList.add("hidden");
+            document.body.style.overflow = "";
           } else {
             sidebar.classList.add("open");
             overlay.classList.remove("hidden");
+            document.body.style.overflow = "hidden";
           }
         }
       }
@@ -5570,6 +6106,13 @@
       document.querySelectorAll(".nav-item").forEach((item) => {
         item.addEventListener("click", () => {
           const tab = item.getAttribute("data-tab");
+          switchTab(tab);
+        });
+      });
+
+      document.querySelectorAll(".mobile-nav-item").forEach((item) => {
+        item.addEventListener("click", () => {
+          const tab = item.getAttribute("data-mobile-tab");
           switchTab(tab);
         });
       });
@@ -11096,6 +11639,7 @@
 
           renderEventsList();
           updateEventsStats();
+          loadEventCommentsModeration();
 
           if (loadingEl) loadingEl.classList.add("hidden");
           if (eventsList.length === 0 && emptyEl) {
@@ -17253,6 +17797,55 @@
         throw lastError || new Error("Nie udało się połączyć z API komentarzy bloga.");
       }
 
+      async function fetchEventInteractionsAdminApi(bodyObject) {
+        let authToken = null;
+        try {
+          if (typeof auth !== "undefined" && auth?.currentUser) {
+            authToken = await auth.currentUser.getIdToken();
+          }
+        } catch (_) {}
+
+        const headers = {
+          "Content-Type": "application/json",
+          "X-Admin-Panel": "true",
+        };
+        if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
+
+        let urls;
+        try {
+          const host = typeof location !== "undefined" ? location.hostname : "";
+          if (host === "strzelca.pl") {
+            urls = ["/api/event-interactions"];
+          } else if (host === "localhost" || host === "127.0.0.1") {
+            urls = ["/api/event-interactions", "https://strzelca.pl/api/event-interactions"];
+          } else {
+            urls = ["https://strzelca.pl/api/event-interactions", "/api/event-interactions"];
+          }
+        } catch (_) {
+          urls = ["/api/event-interactions", "https://strzelca.pl/api/event-interactions"];
+        }
+
+        let lastError = null;
+        for (const url of urls) {
+          try {
+            const response = await fetch(url, {
+              method: "POST",
+              headers,
+              credentials: "include",
+              body: JSON.stringify(bodyObject),
+            });
+            const data = await response.json().catch(() => null);
+            if (!response.ok || !data?.success) {
+              throw new Error(data?.error || `HTTP ${response.status}`);
+            }
+            return data.data || {};
+          } catch (error) {
+            lastError = error;
+          }
+        }
+        throw lastError || new Error("Nie udało się połączyć z API komentarzy wydarzeń.");
+      }
+
       window.loadBlogCommentsModeration = async () => {
         const container = document.getElementById("blog-comments-moderation-list");
         if (!container) return;
@@ -17301,15 +17894,90 @@
       window.moderateDeleteBlogComment = async (commentId) => {
         if (!commentId) return;
         if (!confirm("Czy na pewno chcesz usunąć ten komentarz z bloga?")) return;
+        const reason = window.prompt("Podaj powód usunięcia komentarza:", "");
+        if (reason == null) return;
+        if (!reason.trim()) {
+          showNotification("Powód usunięcia komentarza jest wymagany.", "error");
+          return;
+        }
         try {
           await fetchBlogInteractionsAdminApi({
             action: "comment.delete",
             commentId,
+            reason,
           });
           showNotification("Komentarz został usunięty.", "success");
           await loadBlogPosts();
         } catch (error) {
           console.error("moderateDeleteBlogComment:", error);
+          showNotification(error.message || "Nie udało się usunąć komentarza.", "error");
+        }
+      };
+
+      window.loadEventCommentsModeration = async () => {
+        const container = document.getElementById("event-comments-moderation-list");
+        if (!container) return;
+        container.innerHTML = '<div class="text-zinc-500">Ładowanie komentarzy...</div>';
+
+        try {
+          const snapshot = await getDocs(query(collection(db, "eventComments"), orderBy("createdAt", "desc"), limit(50)));
+          const comments = snapshot.docs
+            .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+            .filter((comment) => comment.status !== "deleted");
+
+          if (!comments.length) {
+            container.innerHTML = '<div class="text-zinc-500">Brak komentarzy do moderacji.</div>';
+            return;
+          }
+
+          const eventTitleMap = new Map(eventsList.map((event) => [event.id, event.title || "Bez tytułu"]));
+          container.innerHTML = comments
+            .map((comment) => `
+              <div class="rounded-xl border border-zinc-700 bg-zinc-900/50 p-4">
+                <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div class="min-w-0">
+                    <div class="text-sm text-zinc-400">
+                      <span class="text-white font-semibold">${escapeHtml(comment.userDisplayName || "Użytkownik")}</span>
+                      • ${escapeHtml(formatAdminDateTime(comment.createdAt))}
+                      • wydarzenie: <span class="text-coyote">${escapeHtml(eventTitleMap.get(comment.eventId) || comment.eventId || "Nieznane wydarzenie")}</span>
+                    </div>
+                    <div class="mt-3 text-sm text-zinc-200 whitespace-pre-wrap break-words">${escapeHtml(comment.contentText || "")}</div>
+                    <div class="mt-2 text-xs text-zinc-500">Polubienia: ${Number(comment.likeCount || 0)} • Odpowiedzi: ${Number(comment.replyCount || 0)}</div>
+                  </div>
+                  <div class="shrink-0">
+                    <button type="button" onclick="moderateDeleteEventComment('${comment.id}')" class="px-4 py-2 border border-red-500/40 text-red-300 rounded-lg hover:bg-red-500/10 transition">
+                      <i class="fa-solid fa-trash mr-2"></i>Usuń
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `)
+            .join("");
+        } catch (error) {
+          console.error("loadEventCommentsModeration:", error);
+          container.innerHTML = '<div class="text-red-400">Nie udało się wczytać komentarzy wydarzeń.</div>';
+        }
+      };
+
+      window.moderateDeleteEventComment = async (commentId) => {
+        if (!commentId) return;
+        if (!confirm("Czy na pewno chcesz usunąć ten komentarz do wydarzenia?")) return;
+        const reason = window.prompt("Podaj powód usunięcia komentarza:", "");
+        if (reason == null) return;
+        if (!reason.trim()) {
+          showNotification("Powód usunięcia komentarza jest wymagany.", "error");
+          return;
+        }
+        try {
+          await fetchEventInteractionsAdminApi({
+            action: "comment.delete",
+            commentId,
+            reason,
+          });
+          showNotification("Komentarz został usunięty.", "success");
+          await loadEvents();
+        } catch (error) {
+          console.error("moderateDeleteEventComment:", error);
           showNotification(error.message || "Nie udało się usunąć komentarza.", "error");
         }
       };

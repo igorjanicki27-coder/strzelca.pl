@@ -1130,10 +1130,6 @@
                   Wybierz rodzaj zgłoszenia
                 </p>
               </div>
-              <div class="max-w-sm text-left text-xs leading-relaxed text-zinc-500 md:text-right">
-                Korzystasz z tego samego rytmu, co przy składaniu zamówienia:
-                krok po kroku, bez przewijania przez cały formularz naraz.
-              </div>
             </div>
             <div
               id="return-claim-step-indicators"
@@ -1220,11 +1216,8 @@
                 <div class="rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6">
                   <div class="mb-4 flex flex-col gap-1">
                     <h3 class="text-lg font-bold text-white">Dane kontaktowe</h3>
-                    <p class="text-sm text-zinc-500">
-                      Jeśli jesteś zalogowany, część pól uzupełnimy automatycznie z profilu.
-                    </p>
                   </div>
-                  <div class="grid gap-4 md:grid-cols-2">
+                  <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label
                         for="rc-imie"
@@ -1255,7 +1248,7 @@
                         class="w-full rounded-2xl border border-zinc-700/80 bg-zinc-950/75 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500"
                       />
                     </div>
-                    <div class="md:col-span-2">
+                    <div>
                       <label
                         for="rc-email"
                         class="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500"
@@ -1270,7 +1263,7 @@
                         class="w-full rounded-2xl border border-zinc-700/80 bg-zinc-950/75 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 read-only:cursor-default read-only:bg-zinc-900/90 read-only:text-zinc-400"
                       />
                     </div>
-                    <div class="md:col-span-2">
+                    <div>
                       <label
                         for="rc-telefon"
                         class="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500"
@@ -1295,7 +1288,7 @@
                       Ten rachunek wykorzystasz przy ewentualnym przelewie zwrotnym.
                     </p>
                   </div>
-                  <div class="grid gap-4 md:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
+                  <div class="grid gap-4 sm:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
                     <div>
                       <label
                         for="rc-ulica"
@@ -1315,7 +1308,7 @@
                       <label
                         for="rc-budynek"
                         class="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500"
-                        >Budynek *</label
+                        >Budynek / lokal *</label
                       >
                       <input
                         id="rc-budynek"
@@ -1326,20 +1319,12 @@
                         class="w-full rounded-2xl border border-zinc-700/80 bg-zinc-950/75 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500"
                       />
                     </div>
-                    <div>
-                      <label
-                        for="rc-lokal"
-                        class="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500"
-                        >Lokal</label
-                      >
-                      <input
-                        id="rc-lokal"
-                        name="rc-lokal"
-                        type="text"
-                        autocomplete="address-line2"
-                        class="w-full rounded-2xl border border-zinc-700/80 bg-zinc-950/75 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500"
-                      />
-                    </div>
+                    <input
+                      id="rc-lokal"
+                      name="rc-lokal"
+                      type="hidden"
+                      autocomplete="address-line2"
+                    />
                     <div>
                       <label
                         for="rc-kod"
@@ -1356,7 +1341,7 @@
                         class="w-full rounded-2xl border border-zinc-700/80 bg-zinc-950/75 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500"
                       />
                     </div>
-                    <div class="md:col-span-2">
+                    <div>
                       <label
                         for="rc-miasto"
                         class="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500"
@@ -1385,6 +1370,7 @@
                       autocomplete="iban"
                       spellcheck="false"
                       placeholder="PL00 0000 0000 0000 0000 0000 0000"
+                      maxlength="35"
                       class="w-full rounded-2xl border border-zinc-700/80 bg-zinc-950/75 px-4 py-3 text-sm font-mono tracking-wide text-zinc-100 placeholder:text-zinc-500 tabular-nums"
                     />
                     <input id="rc-konto" name="rc-konto" type="hidden" />
@@ -2732,27 +2718,33 @@
           return `${digits.slice(0, 2)}-${digits.slice(2)}`;
         }
 
-        /** Zwraca zwarty zapis: 26 cyfr albo PL + 26 cyfr (w trakcie wpisywania — krótszy, tylko do ukrytego pola). */
+        function sanitizeReturnClaimPhoneInput(value) {
+          const raw = String(value || "").replace(/[^\d+\-\s]/g, "");
+          const startsWithPlus = raw.trimStart().startsWith("+");
+          const withoutPlus = raw.replace(/\+/g, "");
+          return startsWithPlus ? `+${withoutPlus}` : withoutPlus;
+        }
+
         function sanitizeReturnClaimBankFieldInput(str) {
-          let s = String(str || "")
-            .replace(/[\s-]+/g, "")
+          const raw = String(str || "")
             .toUpperCase()
             .replace(/[^A-Z0-9]/g, "");
-          if (s.startsWith("PL")) {
-            return "PL" + s.slice(2).replace(/\D/g, "").slice(0, 26);
-          }
-          return s.replace(/\D/g, "").slice(0, 26);
+          const digits = raw.replace(/\D/g, "").slice(0, 26);
+          return `PL${digits}`;
         }
 
         function formatPolishIbanSpaced(compact) {
-          const s = String(compact || "")
-            .replace(/[\s-]+/g, "")
-            .toUpperCase();
-          let body = "";
-          if (/^PL\d{26}$/.test(s)) body = s.slice(2);
-          else if (/^\d{26}$/.test(s)) body = s;
-          else return null;
-          return `PL ${body.slice(0, 2)} ${body.slice(2, 6)} ${body.slice(6, 10)} ${body.slice(10, 14)} ${body.slice(14, 18)} ${body.slice(18, 22)} ${body.slice(22, 26)}`;
+          const normalized = sanitizeReturnClaimBankFieldInput(compact);
+          const body = normalized.slice(2);
+          if (!body) return "PL ";
+          const groups = [];
+          if (body.length > 0) groups.push(body.slice(0, 2));
+          let rest = body.slice(2);
+          while (rest.length > 0) {
+            groups.push(rest.slice(0, 4));
+            rest = rest.slice(4);
+          }
+          return `PL ${groups.join(" ")}`.trimEnd();
         }
 
         function updateReturnClaimBankAccountHidden() {
@@ -2764,17 +2756,8 @@
           const raw = String(value || "")
             .replace(/[\s-]+/g, "")
             .toUpperCase();
-          if (!raw) {
-            kontoIbanInput.value = "";
-            kontoHiddenInput.value = "";
-            return;
-          }
-          let compact = raw;
-          if (/^\d{26}$/.test(raw)) compact = `PL${raw}`;
-          else if (!/^PL\d{0,26}$/.test(raw))
-            compact = sanitizeReturnClaimBankFieldInput(raw);
-          const spaced = formatPolishIbanSpaced(compact);
-          kontoIbanInput.value = spaced || compact;
+          const compact = raw ? sanitizeReturnClaimBankFieldInput(raw) : "PL";
+          kontoIbanInput.value = formatPolishIbanSpaced(compact);
           updateReturnClaimBankAccountHidden();
         }
 
@@ -2782,16 +2765,18 @@
           const raw = String(value || "")
             .replace(/\s+/g, "")
             .toUpperCase();
-          if (!raw) throw new Error("Numer konta jest wymagany.");
+          if (!raw || raw === "PL")
+            throw new Error("Numer konta jest wymagany.");
           let iban = raw;
-          if (/^\d{26}$/.test(raw)) {
-            iban = `PL${raw}`;
+          if (/^\d{1,26}$/.test(raw)) iban = `PL${raw}`;
+          if (!iban.startsWith("PL")) {
+            throw new Error("Podaj numer konta w formacie IBAN zaczynającym się od PL.");
           }
-          if (!/^PL\d{26}$/.test(iban)) {
-            throw new Error(
-              "Podaj polski numer konta lub IBAN rozpoczynajacy sie od PL.",
-            );
+          const digits = iban.slice(2).replace(/\D/g, "");
+          if (digits.length !== 26) {
+            throw new Error("Numer konta musi zawierać 26 cyfr po prefiksie PL.");
           }
+          iban = `PL${digits}`;
           const moved = iban.slice(4) + iban.slice(0, 4);
           let remainder = 0;
           for (const ch of moved) {
@@ -3136,7 +3121,7 @@
               { el: emailInput, msg: "Uzupełnij adres e-mail." },
               { el: telefonInput, msg: "Uzupełnij numer telefonu." },
               { el: ulicaInput, msg: "Uzupełnij ulicę." },
-              { el: budynekInput, msg: "Uzupełnij numer budynku." },
+              { el: budynekInput, msg: "Uzupełnij numer budynku / lokalu." },
               { el: kodInput, msg: "Uzupełnij kod pocztowy." },
               { el: miastoInput, msg: "Uzupełnij miejscowość." },
             ];
@@ -3240,13 +3225,21 @@
             }
             if (autofill) {
               if (telefonInput && autofill.phone)
-                telefonInput.value = autofill.phone;
+                telefonInput.value = sanitizeReturnClaimPhoneInput(
+                  autofill.phone,
+                );
               if (ulicaInput && autofill.address?.street)
                 ulicaInput.value = autofill.address.street;
-              if (budynekInput && autofill.address?.buildingNumber)
-                budynekInput.value = autofill.address.buildingNumber;
-              if (lokalInput && autofill.address?.apartmentNumber)
-                lokalInput.value = autofill.address.apartmentNumber;
+              if (budynekInput) {
+                const buildingCombined = [
+                  autofill.address?.buildingNumber || "",
+                  autofill.address?.apartmentNumber || "",
+                ]
+                  .filter(Boolean)
+                  .join("/");
+                if (buildingCombined) budynekInput.value = buildingCombined;
+              }
+              if (lokalInput) lokalInput.value = "";
               if (kodInput && autofill.address?.postalCode)
                 kodInput.value = normalizePostalCode(
                   autofill.address.postalCode,
@@ -3323,10 +3316,6 @@
           rcPendingImageAttachments = [];
           zdjeciaInput.value = "";
           renderReturnClaimImagePreview();
-          const first = form.querySelector(
-            'input[name="rc-type"][value="zwrot"]',
-          );
-          if (first) first.checked = true;
           updateRcTypeFields();
 
           if (imieInput) imieInput.value = "";
@@ -3811,26 +3800,49 @@ ${renderedBody}
 
         form
           .querySelectorAll('input[name="rc-type"]')
-          .forEach((r) => r.addEventListener("change", updateRcTypeFields));
+          .forEach((r) =>
+            r.addEventListener("change", () => {
+              updateRcTypeFields();
+              const selectedType =
+                form.querySelector('input[name="rc-type"]:checked')?.value ||
+                "";
+              if (
+                rcWizardStep === 0 &&
+                (selectedType === "zwrot" || selectedType === "reklamacja")
+              ) {
+                rcWizardStep = 1;
+                refreshReturnClaimWizardView();
+              }
+            }),
+          );
 
         orderSelect?.addEventListener("change", onOrderSelectChange);
         zamowienieInput?.addEventListener("input", () => {
           if (!zamowienieInput || zamowienieInput.readOnly) return;
           if (orderSelect && orderSelect.value) orderSelect.value = "";
         });
+        telefonInput?.addEventListener("input", () => {
+          telefonInput.value = sanitizeReturnClaimPhoneInput(
+            telefonInput.value,
+          );
+        });
         kodInput.addEventListener("input", () => {
           kodInput.value = normalizePostalCode(kodInput.value);
         });
         kontoIbanInput.addEventListener("input", () => {
-          kontoIbanInput.value = sanitizeReturnClaimBankFieldInput(
+          kontoIbanInput.value = formatPolishIbanSpaced(
             kontoIbanInput.value,
           );
           updateReturnClaimBankAccountHidden();
         });
+        kontoIbanInput.addEventListener("focus", () => {
+          if (!String(kontoIbanInput.value || "").trim()) {
+            kontoIbanInput.value = "PL ";
+            updateReturnClaimBankAccountHidden();
+          }
+        });
         kontoIbanInput.addEventListener("blur", () => {
-          const s = sanitizeReturnClaimBankFieldInput(kontoIbanInput.value);
-          const spaced = formatPolishIbanSpaced(s);
-          if (spaced) kontoIbanInput.value = spaced;
+          kontoIbanInput.value = formatPolishIbanSpaced(kontoIbanInput.value);
           updateReturnClaimBankAccountHidden();
         });
         zdjeciaPreview.addEventListener("click", (event) => {

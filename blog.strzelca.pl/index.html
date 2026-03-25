@@ -1496,6 +1496,7 @@ const firebaseConfig = {
         })();
 
         let currentUser = null;
+        let currentUserProfile = null;
 
         // Funkcja pomocnicza do generowania domyślnego awatara
         function getDefaultAvatar(gender) {
@@ -1553,6 +1554,7 @@ const firebaseConfig = {
                 try {
                     const cached = getHeaderProfileFromCache(user.uid);
                     const fallbackName = user.displayName || user.email.split("@")[0];
+                    currentUserProfile = cached ? { uid: user.uid, ...cached } : null;
 
                     if (cached) {
                         if (userDisplayName) {
@@ -1572,50 +1574,79 @@ const firebaseConfig = {
                         if (userAvatar) {
                             userAvatar.innerHTML = getDefaultAvatar();
                         }
+                    }
 
-                        const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
-                        if (profileDoc.exists()) {
-                            const userProfile = profileDoc.data();
-                            setHeaderProfileCache(user.uid, {
-                                displayName: userProfile.displayName || "",
-                                avatar: userProfile.avatar || "",
-                                gender: userProfile.gender ?? null,
-                                role: userProfile.role || "user",
-                                profileExists: true,
-                            });
-                            if (userProfile.displayName && userDisplayName) {
-                                userDisplayName.textContent = userProfile.displayName;
+                    const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
+                    if (profileDoc.exists()) {
+                        const userProfile = profileDoc.data();
+                        currentUserProfile = { uid: user.uid, ...userProfile };
+                        setHeaderProfileCache(user.uid, {
+                            displayName: userProfile.displayName || "",
+                            avatar: userProfile.avatar || "",
+                            gender: userProfile.gender ?? null,
+                            role: userProfile.role || "user",
+                            profileExists: true,
+                        });
+                        if (userProfile.displayName && userDisplayName) {
+                            userDisplayName.textContent = userProfile.displayName;
+                        }
+                        if (userAvatar) {
+                            if (userProfile.avatar) {
+                                userAvatar.innerHTML = `<img src="${userProfile.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
+                            } else {
+                                userAvatar.innerHTML = getDefaultAvatar(userProfile.gender);
                             }
-                            if (userAvatar) {
-                                if (userProfile.avatar) {
-                                    userAvatar.innerHTML = `<img src="${userProfile.avatar}" alt="Avatar" class="w-full h-full rounded-full object-cover">`;
-                                } else {
-                                    userAvatar.innerHTML = getDefaultAvatar(userProfile.gender);
-                                }
-                            }
-                        } else {
-                            setHeaderProfileCache(user.uid, {
-                                displayName: fallbackName,
-                                avatar: "",
-                                gender: null,
-                                role: "user",
-                                profileExists: false,
-                            });
-                            if (userAvatar) {
-                                userAvatar.innerHTML = getDefaultAvatar();
-                            }
+                        }
+                    } else {
+                        currentUserProfile = {
+                            uid: user.uid,
+                            displayName: fallbackName,
+                            avatar: "",
+                            gender: null,
+                            role: "user",
+                            profileExists: false,
+                        };
+                        setHeaderProfileCache(user.uid, {
+                            displayName: fallbackName,
+                            avatar: "",
+                            gender: null,
+                            role: "user",
+                            profileExists: false,
+                        });
+                        if (userAvatar) {
+                            userAvatar.innerHTML = getDefaultAvatar();
                         }
                     }
                 } catch (error) {
                     console.error("Error loading user profile:", error);
+                    if (!currentUserProfile) {
+                        currentUserProfile = {
+                            uid: user.uid,
+                            displayName: user.displayName || user.email.split("@")[0],
+                            role: "user",
+                        };
+                    }
                     if (userAvatar) {
                         userAvatar.innerHTML = getDefaultAvatar();
                     }
                 }
+                window.setTimeout(() => {
+                    if (currentBlogDetailId && currentBlogComments.length) {
+                        renderBlogComments();
+                        updateBlogCommentComposerState();
+                    }
+                }, 0);
             } else {
                 // Użytkownik niezalogowany
+                currentUserProfile = null;
                 if (loginBtn) loginBtn.classList.remove("hidden");
                 if (userPanel) userPanel.classList.add("hidden");
+                window.setTimeout(() => {
+                    if (currentBlogDetailId && currentBlogComments.length) {
+                        renderBlogComments();
+                        updateBlogCommentComposerState();
+                    }
+                }, 0);
             }
         }
 
@@ -1751,6 +1782,20 @@ const firebaseConfig = {
 
         function nl2brSafe(text) {
             return escapeHtml(String(text || "")).replace(/\n/g, "<br>");
+        }
+
+        function clientHasScope(scope) {
+            const scopes = Array.isArray(currentUserProfile?.operatorScopes)
+                ? currentUserProfile.operatorScopes
+                : Array.isArray(currentUserProfile?.moderatorScopes)
+                    ? currentUserProfile.moderatorScopes
+                    : [];
+            return scopes.includes(scope);
+        }
+
+        function canModerateBlogCommentsOnClient() {
+            const role = String(currentUserProfile?.role || "").toLowerCase();
+            return role === "admin" || role === "moderator" || (role === "operator" && clientHasScope("blog"));
         }
 
         function findBlogCommentById(commentId, list = currentBlogComments) {
@@ -1921,6 +1966,7 @@ const firebaseConfig = {
 
         function renderBlogCommentItem(comment, depth = 0) {
             const canEdit = currentUser && currentUser.uid === comment.userId && comment.status === "active";
+            const canDelete = canModerateBlogCommentsOnClient() && comment.status === "active";
             const isDeleted = comment.status === "deleted";
             const liked = currentBlogCommentLikes.has(comment.id);
             const avatarHtml = comment.userAvatar
@@ -1940,6 +1986,11 @@ const firebaseConfig = {
                                 </div>
                             </div>
                         </div>
+                        ${canDelete ? `
+                            <button type="button" class="blog-comment-action" data-comment-delete="${escapeHtml(comment.id)}" title="Usuń komentarz">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        ` : ''}
                     </div>
                     <div class="blog-comment-content">${isDeleted ? '<em>Komentarz usunięty przez moderację.</em>' : nl2brSafe(comment.contentText || '')}</div>
                     <div class="blog-comment-actions">
@@ -2014,6 +2065,35 @@ const firebaseConfig = {
                         text: comment.contentText || "",
                         banner: "Edytujesz swój komentarz. Historia zmian będzie dostępna pod etykietą „Edytowany”.",
                     });
+                });
+            });
+
+            document.querySelectorAll("[data-comment-delete]").forEach((button) => {
+                button.addEventListener("click", async () => {
+                    const commentId = button.getAttribute("data-comment-delete") || "";
+                    if (!commentId) return;
+                    if (!confirm("Czy na pewno chcesz usunąć ten komentarz?")) return;
+                    const reason = window.prompt("Podaj powód usunięcia komentarza:", "");
+                    if (reason == null) return;
+                    if (!reason.trim()) {
+                        showNotification("Powód usunięcia komentarza jest wymagany.");
+                        return;
+                    }
+                    try {
+                        await fetchBlogInteractionsApi({
+                            action: "comment.delete",
+                            commentId,
+                            reason,
+                        });
+                        const post = allEvents.find((entry) => entry.id === currentBlogDetailId);
+                        updateBlogPostStatsInLocalState(currentBlogDetailId, {
+                            commentCount: Math.max(0, Number(post?.commentCount || 0) - 1),
+                        });
+                        await loadBlogPostInteractions(currentBlogDetailId);
+                        showNotification("Komentarz został usunięty.");
+                    } catch (error) {
+                        showNotification(error.message || "Nie udało się usunąć komentarza.");
+                    }
                 });
             });
 
