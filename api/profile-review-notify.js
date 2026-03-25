@@ -10,6 +10,7 @@ const {
   readJsonBody,
 } = require('./_sso-utils');
 const { replaceTemplateVariables, sendTransactionalEmail } = require('./_transactional-mail');
+const { createUserNotification } = require('./_notifications');
 
 function escapeHtml(s) {
   return String(s ?? '')
@@ -78,15 +79,6 @@ module.exports = async (req, res) => {
     }
 
     const ratedPrivate = await db.collection('userProfiles').doc(ratedId).get();
-    const to = ratedPrivate.exists ? String(ratedPrivate.data().email || '').trim() : '';
-    if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
-      return res.status(200).json({ success: true, skipped: true, reason: 'Brak adresu e-mail u ocenianego' });
-    }
-
-    const tdoc = await db.collection('emailTemplates').doc('account_review_received').get();
-    if (!tdoc.exists) {
-      return res.status(200).json({ success: true, skipped: true, reason: 'Brak szablonu account_review_received' });
-    }
 
     const rating = Math.min(5, Math.max(1, parseInt(rev.rating, 10) || 1));
     const raterName = escapeHtml(rev.raterName || 'Użytkownik');
@@ -100,6 +92,32 @@ module.exports = async (req, res) => {
 
     const profileUrl = `https://konto.strzelca.pl/profil.html?uid=${encodeURIComponent(ratedId)}`;
     const supportEmail = 'kontakt@strzelca.pl';
+
+    await createUserNotification(db, {
+      userId: ratedId,
+      title: 'Nowa ocena Twojego profilu',
+      bodyHtml: `
+        <p><strong>${raterName}</strong> ocenił Twój profil na <strong>${rating}/5</strong>.</p>
+        <p>${comment || 'Dodano ocenę bez komentarza.'}</p>
+      `,
+      category: 'profile',
+      linkUrl: profileUrl,
+      linkLabel: 'Przejdź do profilu',
+      sourceType: 'user_review',
+      sourceId: reviewId,
+      createdById: uid,
+      createdByName: rev.raterName || 'Użytkownik',
+    });
+
+    const to = ratedPrivate.exists ? String(ratedPrivate.data().email || '').trim() : '';
+    if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      return res.status(200).json({ success: true, sent: false, inAppOnly: true, reason: 'Brak adresu e-mail u ocenianego' });
+    }
+
+    const tdoc = await db.collection('emailTemplates').doc('account_review_received').get();
+    if (!tdoc.exists) {
+      return res.status(200).json({ success: true, sent: false, inAppOnly: true, reason: 'Brak szablonu account_review_received' });
+    }
 
     const variables = {
       userGreeting: userGreetingFromName(ratedName),

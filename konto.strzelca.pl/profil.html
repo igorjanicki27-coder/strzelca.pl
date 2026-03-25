@@ -1198,15 +1198,45 @@
 
           applyProfileEmbedMode();
 
-          // Stały avatar dla administratorów (w repo jest obecnie: /admin/Avatar_admin.png).
-          // Jeśli zmienisz nazwę pliku na /admin/avatar_admin.jpg, podmień stałą poniżej.
+          // Stałe awatary dla ról staff (pliki w repo: /admin/Avatar_*.png).
           const ADMIN_AVATAR_URL = "https://strzelca.pl/admin/Avatar_admin.png";
-          const isAdminRole = (role) =>
-            String(role || "").toLowerCase() === "admin";
-          const isOperatorRole = (role) =>
-            String(role || "").toLowerCase() === "operator";
-          const isModeratorRole = (role) =>
-            String(role || "").toLowerCase() === "moderator";
+          const MODERATOR_AVATAR_URL = "https://strzelca.pl/admin/Avatar_moderator.png";
+          const OPERATOR_AVATAR_URL = "https://strzelca.pl/admin/Avatar_operator.png";
+
+          function getFixedStaffAvatarUrl(role) {
+            const r = String(role || "").toLowerCase();
+            if (r === "admin") return ADMIN_AVATAR_URL;
+            if (r === "moderator") return MODERATOR_AVATAR_URL;
+            if (r === "operator") return OPERATOR_AVATAR_URL;
+            return "";
+          }
+
+          function getFixedStaffAvatarSource(role) {
+            const r = String(role || "").toLowerCase();
+            if (r === "admin") return "admin_default";
+            if (r === "moderator") return "moderator_default";
+            if (r === "operator") return "operator_default";
+            return "";
+          }
+
+          function fixedStaffAvatarChangeBlockedMessage(role) {
+            const r = String(role || "").toLowerCase();
+            if (r === "admin")
+              return "Avatar administratora jest stały i nie może być zmieniany.";
+            if (r === "moderator")
+              return "Avatar moderatora jest stały i nie może być zmieniany.";
+            if (r === "operator")
+              return "Avatar operatora jest stały i nie może być zmieniany.";
+            return "";
+          }
+
+          function fixedStaffAvatarRestoredMessage(role) {
+            const r = String(role || "").toLowerCase();
+            if (r === "admin") return "Przywrócono domyślny avatar administratora.";
+            if (r === "moderator") return "Przywrócono domyślny avatar moderatora.";
+            if (r === "operator") return "Przywrócono domyślny avatar operatora.";
+            return "";
+          }
 
           function normalizeOperatorScopes(value) {
             if (!Array.isArray(value)) return [];
@@ -1312,13 +1342,11 @@
           async function syncPublicProfileFromPrivate() {
             if (!currentUser || !isViewingOwnProfile || !userProfile) return;
             try {
-              const adminForcedAvatar = isAdminRole(userProfile.role)
-                ? ADMIN_AVATAR_URL
-                : "";
+              const staffForcedAvatar = getFixedStaffAvatarUrl(userProfile.role);
               // publiczny profil zawiera tylko nick + avatar
               const publicDoc = {
                 displayName: String(userProfile.displayName || "").trim(),
-                avatar: adminForcedAvatar || userProfile.avatar || "",
+                avatar: staffForcedAvatar || userProfile.avatar || "",
                 role: String(userProfile.role || "user"),
                 operatorScopes: normalizeOperatorScopes(
                   userProfile.operatorScopes || userProfile.moderatorScopes,
@@ -1364,6 +1392,61 @@
               });
             } catch (e) {
               console.warn("syncUserSearchIndex failed (ignored):", e?.message || e);
+            }
+          }
+
+          async function persistStaffFixedAvatarToStores(role, options = {}) {
+            const { refreshDisplay = false } = options;
+            const url = getFixedStaffAvatarUrl(role);
+            const source = getFixedStaffAvatarSource(role);
+            if (!url || !currentUser) return false;
+            try {
+              await updateDoc(doc(db, "userProfiles", currentUser.uid), {
+                avatar: url,
+                avatarFile: "",
+                avatarSource: source,
+                avatarUpdatedAt: new Date(),
+              });
+              if (userProfile) userProfile.avatar = url;
+              try {
+                await setDoc(
+                  doc(db, "publicProfiles", currentUser.uid),
+                  {
+                    displayName: String(userProfile?.displayName || "").trim(),
+                    avatar: url,
+                    updatedAt: new Date(),
+                  },
+                  { merge: true },
+                );
+                await syncUserSearchIndex();
+              } catch (e) {
+                console.warn(
+                  "Public profile fixed staff avatar sync failed (ignored):",
+                  e?.message || e,
+                );
+              }
+              try {
+                setHeaderProfileCache(currentUser.uid, {
+                  displayName: String(userProfile?.displayName || "").trim(),
+                  avatar: url,
+                  gender: userProfile?.gender ?? null,
+                  role: String(role || "user"),
+                  profileExists: true,
+                });
+              } catch {}
+              if (refreshDisplay) {
+                const avatarDisplay = document.getElementById("avatar-display");
+                if (avatarDisplay) {
+                  avatarDisplay.innerHTML = `<img src="${url}" alt="Avatar" class="avatar">`;
+                }
+              }
+              return true;
+            } catch (e) {
+              console.warn(
+                "Staff fixed avatar enforce (private) failed (ignored):",
+                e?.message || e,
+              );
+              return false;
             }
           }
 
@@ -1801,11 +1884,10 @@
               }
               if (!isViewingOwnProfile) return;
 
-              // Admin ma stały avatar
-              if (isAdminRole(userProfile?.role || selfPrivateProfile?.role)) {
-                alert(
-                  "Avatar administratora jest stały i nie może być zmieniany.",
-                );
+              const pickerRole = userProfile?.role || selfPrivateProfile?.role;
+              const blockedMsg = fixedStaffAvatarChangeBlockedMessage(pickerRole);
+              if (blockedMsg) {
+                alert(blockedMsg);
                 return;
               }
 
@@ -1836,11 +1918,10 @@
               }
               if (!isViewingOwnProfile) return;
 
-              // Admin ma stały avatar
-              if (isAdminRole(userProfile?.role || selfPrivateProfile?.role)) {
-                alert(
-                  "Avatar administratora jest stały i nie może być zmieniany.",
-                );
+              const catalogRole = userProfile?.role || selfPrivateProfile?.role;
+              const catalogBlocked = fixedStaffAvatarChangeBlockedMessage(catalogRole);
+              if (catalogBlocked) {
+                alert(catalogBlocked);
                 return;
               }
 
@@ -1915,50 +1996,14 @@
               }
               if (!isViewingOwnProfile) return;
 
-              // Admin ma stały avatar
-              if (isAdminRole(userProfile?.role || selfPrivateProfile?.role)) {
-                // ustaw stały avatar admina
-                await updateDoc(doc(db, "userProfiles", currentUser.uid), {
-                  avatar: ADMIN_AVATAR_URL,
-                  avatarFile: "",
-                  avatarSource: "admin_default",
-                  avatarUpdatedAt: new Date(),
+              const resetRole = userProfile?.role || selfPrivateProfile?.role;
+              const fixedResetUrl = getFixedStaffAvatarUrl(resetRole);
+              if (fixedResetUrl) {
+                await persistStaffFixedAvatarToStores(resetRole, {
+                  refreshDisplay: true,
                 });
-                try {
-                  await setDoc(
-                    doc(db, "publicProfiles", currentUser.uid),
-                    {
-                      displayName: String(
-                        userProfile?.displayName || "",
-                      ).trim(),
-                      avatar: ADMIN_AVATAR_URL,
-                      updatedAt: new Date(),
-                    },
-                    { merge: true },
-                  );
-                  await syncUserSearchIndex();
-                } catch (e) {
-                  console.warn(
-                    "Public profile avatar sync failed (ignored):",
-                    e?.message || e,
-                  );
-                }
-
-                if (userProfile) userProfile.avatar = ADMIN_AVATAR_URL;
-                if (avatarDisplay) {
-                  avatarDisplay.innerHTML = `<img src="${ADMIN_AVATAR_URL}" alt="Avatar" class="avatar">`;
-                }
-                try {
-                  setHeaderProfileCache(currentUser.uid, {
-                    displayName: String(userProfile?.displayName || "").trim(),
-                    avatar: ADMIN_AVATAR_URL,
-                    gender: userProfile?.gender ?? null,
-                    role: "admin",
-                    profileExists: true,
-                  });
-                } catch {}
                 window.closeAvatarPicker && window.closeAvatarPicker();
-                alert("Przywrócono domyślny avatar administratora.");
+                alert(fixedStaffAvatarRestoredMessage(resetRole));
                 return;
               }
 
@@ -2145,41 +2190,21 @@
                   document.getElementById("user-email").textContent = "";
                 }
 
-                // Ustaw avatar (admin ma stały)
+                // Ustaw avatar (admin / moderator / operator mają stałe awatary)
                 const avatarDisplay = document.getElementById("avatar-display");
-                const effectiveAvatar = isAdminRole(userProfile.role)
-                  ? ADMIN_AVATAR_URL
-                  : userProfile.avatar || "";
+                const effectiveAvatar =
+                  getFixedStaffAvatarUrl(userProfile.role) || userProfile.avatar || "";
 
-                // Jeśli to admin i ogląda własny profil, zapisujemy wymuszony avatar do profilu (i publicznego profilu)
+                // Właściciel profilu staff: zapisujemy wymuszony avatar do profilu i publicProfiles
+                const staffFixedUrl = getFixedStaffAvatarUrl(userProfile.role);
                 if (
                   isViewingOwnProfile &&
-                  isAdminRole(userProfile.role) &&
-                  userProfile.avatar !== ADMIN_AVATAR_URL
+                  staffFixedUrl &&
+                  userProfile.avatar !== staffFixedUrl
                 ) {
-                  try {
-                    await updateDoc(doc(db, "userProfiles", currentUser.uid), {
-                      avatar: ADMIN_AVATAR_URL,
-                      avatarFile: "",
-                      avatarSource: "admin_default",
-                      avatarUpdatedAt: new Date(),
-                    });
-                    userProfile.avatar = ADMIN_AVATAR_URL;
-                    try {
-                      setHeaderProfileCache(currentUser.uid, {
-                        displayName: String(userProfile?.displayName || "").trim(),
-                        avatar: ADMIN_AVATAR_URL,
-                        gender: userProfile?.gender ?? null,
-                        role: "admin",
-                        profileExists: true,
-                      });
-                    } catch {}
-                  } catch (e) {
-                    console.warn(
-                      "Admin avatar enforce (private) failed (ignored):",
-                      e?.message || e,
-                    );
-                  }
+                  await persistStaffFixedAvatarToStores(userProfile.role, {
+                    refreshDisplay: false,
+                  });
                 }
 
                 if (effectiveAvatar) {

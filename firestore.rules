@@ -65,6 +65,28 @@ service cloud.firestore {
         scopes.hasOnly(['blog', 'shop', 'help', 'events', 'trainings', 'bazaar', 'users', 'contact']);
     }
 
+    function currentUserRole() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role is string
+          ? get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role
+          : 'user';
+    }
+
+    function validAudienceRoles(roles) {
+      return roles is list &&
+        roles.size() <= 8 &&
+        roles.hasOnly(['user', 'company', 'operator', 'admin', 'moderator']);
+    }
+
+    function notificationAudienceAllowsCurrentUser(allUsers, targetRoles, targetUserIds) {
+      return isAuthenticated() && (
+        allUsers == true ||
+        (targetRoles is list && targetRoles.hasAny([currentUserRole()])) ||
+        (targetUserIds is list && targetUserIds.hasAny([request.auth.uid]))
+      );
+    }
+
     function userOwnsCurrentEmailVerifiedFlag() {
       return !('emailVerified' in request.resource.data) ||
         (
@@ -553,6 +575,58 @@ service cloud.firestore {
 
       // Edycja/usuwanie opinii tylko przez admina (żeby nie było nadużyć)
       allow update, delete: if isAdminOrSuperAdmin();
+    }
+
+    match /userNotifications/{notificationId} {
+      allow read: if (isAuthenticated() && resource.data.userId == request.auth.uid)
+        || isAdminOrSuperAdmin()
+        || hasBackofficeScope('users');
+
+      allow update: if isAuthenticated() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead', 'readAt']) &&
+        request.resource.data.isRead == true &&
+        (request.resource.data.readAt == null || request.resource.data.readAt is timestamp);
+
+      allow create, delete: if false;
+    }
+
+    match /adminNotificationCampaigns/{campaignId} {
+      allow read, create, update, delete: if isAdminOrSuperAdmin();
+    }
+
+    match /infoAnnouncements/{announcementId} {
+      allow read: if isAdminOrSuperAdmin() ||
+        (
+          resource.data.isActive == true &&
+          notificationAudienceAllowsCurrentUser(
+            resource.data.audienceAll,
+            resource.data.targetRoles,
+            resource.data.targetUserIds
+          )
+        );
+
+      allow create, update, delete: if isAdminOrSuperAdmin();
+    }
+
+    match /userInfoAnnouncementAcks/{ackId} {
+      allow read: if (isAuthenticated() && resource.data.userId == request.auth.uid)
+        || isAdminOrSuperAdmin()
+        || hasBackofficeScope('users');
+
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.announcementId is string &&
+        request.resource.data.userId is string &&
+        request.resource.data.keys().hasOnly(['announcementId', 'userId', 'acknowledgedAt']);
+
+      allow update: if isAuthenticated() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.announcementId == resource.data.announcementId &&
+        request.resource.data.keys().hasOnly(['announcementId', 'userId', 'acknowledgedAt']);
+
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
     // =============================================================================
