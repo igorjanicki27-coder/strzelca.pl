@@ -192,6 +192,22 @@ class FirestoreDatabaseManager {
         };
       }
 
+      const senderEmailTrim =
+        messageData.senderEmail != null ? String(messageData.senderEmail).trim() : '';
+      if (senderEmailTrim.length > 0) {
+        message.senderEmail = senderEmailTrim.slice(0, 120);
+      }
+      const senderTypeTrim =
+        messageData.senderType != null ? String(messageData.senderType).trim() : '';
+      if (senderTypeTrim.length > 0) {
+        message.senderType = senderTypeTrim.slice(0, 64);
+      }
+      const conversationTypeTrim =
+        messageData.conversationType != null ? String(messageData.conversationType).trim() : '';
+      if (conversationTypeTrim.length > 0) {
+        message.conversationType = conversationTypeTrim.slice(0, 64);
+      }
+
       // Dodaj wiadomość do kolekcji messages
       const contentPreview = (message.content || '').toString();
       console.log('addMessage: Adding message to Firestore:', {

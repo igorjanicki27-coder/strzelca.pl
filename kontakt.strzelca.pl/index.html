@@ -271,6 +271,35 @@
         pointer-events: none;
         filter: grayscale(100%);
       }
+      .contact-form-submit-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 20;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: rgba(17, 17, 17, 0.88);
+        border-radius: 20px;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+      }
+      .contact-form-submit-spinner {
+        width: 42px;
+        height: 42px;
+        border: 3px solid #2a2a2a;
+        border-top-color: var(--coyote);
+        border-radius: 50%;
+        animation: contact-form-spin 0.75s linear infinite;
+      }
+      @keyframes contact-form-spin {
+        to { transform: rotate(360deg); }
+      }
+      .btn-send:disabled {
+        opacity: 0.65;
+        cursor: wait;
+        transform: none;
+      }
     </style>
   </head>
   <body>
@@ -402,6 +431,10 @@
     <!-- Modal formularza kontaktowego -->
     <div id="contact-form-modal" class="contact-modal-overlay hidden" onclick="if(event.target===this) closeContactForm()">
       <div class="contact-modal-panel">
+        <div id="contact-form-submit-overlay" class="contact-form-submit-overlay hidden" aria-hidden="true">
+          <div class="contact-form-submit-spinner" role="status" aria-label="Trwa wysyłanie"></div>
+          <p class="text-zinc-300 text-sm mt-4 px-6 text-center">Wysyłanie wiadomości… Proszę czekać.</p>
+        </div>
         <button onclick="closeContactForm()" class="absolute top-4 right-5 text-zinc-400 hover:text-white text-2xl">&times;</button>
         <h2 class="text-xl font-bold coyote-text mb-6">Formularz kontaktowy</h2>
 
@@ -428,7 +461,7 @@
             <p id="message-error" class="text-red-400 text-xs mt-1 hidden"></p>
             <p class="text-zinc-600 text-xs mt-1">Minimum 10 znaków</p>
           </div>
-          <button type="submit" class="btn-send">Wyślij wiadomość</button>
+          <button type="submit" id="contact-form-submit" class="btn-send">Wyślij wiadomość</button>
         </form>
       </div>
     </div>
@@ -910,6 +943,24 @@
           return;
         }
 
+        const formEl = document.getElementById('contact-form');
+        const submitOverlay = document.getElementById('contact-form-submit-overlay');
+        const submitBtn = document.getElementById('contact-form-submit');
+        const submitLabel = submitBtn ? submitBtn.textContent : '';
+
+        function setContactFormSubmitting(on) {
+          if (submitOverlay) {
+            submitOverlay.classList.toggle('hidden', !on);
+            submitOverlay.setAttribute('aria-hidden', on ? 'false' : 'true');
+          }
+          if (formEl) formEl.setAttribute('aria-busy', on ? 'true' : 'false');
+          if (submitBtn) {
+            submitBtn.disabled = !!on;
+            submitBtn.textContent = on ? 'Wysyłanie…' : submitLabel;
+          }
+        }
+
+        setContactFormSubmitting(true);
         try {
           const formData = {
             senderName: email, senderEmail: email, content: message, timestamp: Date.now(),
@@ -937,14 +988,13 @@
             });
           } catch (_) {}
 
-          try {
-            await fetch('https://strzelca.pl/api/send-contact-email', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ to: email, senderName: email, message })
-            });
-          } catch (_) {}
+          // Nie blokuj UI na SMTP — przy 503/wolnej odpowiedzi użytkownik widział długą „ciszę”
+          fetch('https://strzelca.pl/api/send-contact-email', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to: email, senderName: email, message })
+          }).catch(() => {});
 
-          alert('Wiadomość wysłana! Otrzymasz email potwierdzający.');
+          alert('Wiadomość została wysłana. Odpowiemy tak szybko, jak to możliwe.');
           document.getElementById('contact-form').reset();
           try {
             if (document.documentElement.classList.contains('kontakt-embed') && window.parent && window.parent !== window) {
@@ -955,6 +1005,8 @@
         } catch (err) {
           console.error('Błąd wysyłania:', err);
           alert('Wystąpił błąd. Spróbuj ponownie.');
+        } finally {
+          setContactFormSubmitting(false);
         }
       });
     </script>

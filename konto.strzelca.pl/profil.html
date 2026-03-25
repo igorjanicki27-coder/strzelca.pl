@@ -1198,16 +1198,18 @@
 
           applyProfileEmbedMode();
 
-          // Stałe awatary dla ról staff (pliki w repo: /admin/Avatar_*.png).
+          // Stałe awatary wg roli (staff: /admin/…, firma: plik na konto.strzelca.pl).
           const ADMIN_AVATAR_URL = "https://strzelca.pl/admin/Avatar_admin.png";
           const MODERATOR_AVATAR_URL = "https://strzelca.pl/admin/Avatar_moderator.png";
           const OPERATOR_AVATAR_URL = "https://strzelca.pl/admin/Avatar_operator.png";
+          const COMPANY_AVATAR_URL = "https://konto.strzelca.pl/Avatar.firma.png";
 
           function getFixedStaffAvatarUrl(role) {
             const r = String(role || "").toLowerCase();
             if (r === "admin") return ADMIN_AVATAR_URL;
             if (r === "moderator") return MODERATOR_AVATAR_URL;
             if (r === "operator") return OPERATOR_AVATAR_URL;
+            if (r === "company") return COMPANY_AVATAR_URL;
             return "";
           }
 
@@ -1216,6 +1218,7 @@
             if (r === "admin") return "admin_default";
             if (r === "moderator") return "moderator_default";
             if (r === "operator") return "operator_default";
+            if (r === "company") return "company_default";
             return "";
           }
 
@@ -1227,6 +1230,8 @@
               return "Avatar moderatora jest stały i nie może być zmieniany.";
             if (r === "operator")
               return "Avatar operatora jest stały i nie może być zmieniany.";
+            if (r === "company")
+              return "Avatar konta firmowego jest stały i nie może być zmieniany.";
             return "";
           }
 
@@ -1235,6 +1240,7 @@
             if (r === "admin") return "Przywrócono domyślny avatar administratora.";
             if (r === "moderator") return "Przywrócono domyślny avatar moderatora.";
             if (r === "operator") return "Przywrócono domyślny avatar operatora.";
+            if (r === "company") return "Przywrócono domyślny avatar firmy.";
             return "";
           }
 
@@ -2190,12 +2196,12 @@
                   document.getElementById("user-email").textContent = "";
                 }
 
-                // Ustaw avatar (admin / moderator / operator mają stałe awatary)
+                // Ustaw avatar (admin / moderator / operator / firma — stałe awatary)
                 const avatarDisplay = document.getElementById("avatar-display");
                 const effectiveAvatar =
                   getFixedStaffAvatarUrl(userProfile.role) || userProfile.avatar || "";
 
-                // Właściciel profilu staff: zapisujemy wymuszony avatar do profilu i publicProfiles
+                // Właściciel (rola ze stałym awatarem): zapis w profilu i publicProfiles
                 const staffFixedUrl = getFixedStaffAvatarUrl(userProfile.role);
                 if (
                   isViewingOwnProfile &&
@@ -4389,7 +4395,7 @@
     </script>
     <script
       type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-03-21-2"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-03-25-1"
     ></script>
     <script
       type="module"

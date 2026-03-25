@@ -515,6 +515,19 @@ async function handlePostMessage(req, res, db, { requesterUid, requesterIsAdmin 
     console.log('handlePostMessage: Message added successfully:', message?.id);
 
     if (message) {
+      // Wspólna konwersacja admin_anonymous: jedno przypięcie w Firestore dotyczyło wszystkich gości.
+      // Po każdym formularzu kontaktowym odpinamy tę skrzynkę, żeby nowe zgłoszenia nie wyglądały na przypięte.
+      if (messageData.senderType === 'contact_form' && !requesterUid) {
+        try {
+          await db.unpinConversation('anonymous', 'admin');
+        } catch (unpinErr) {
+          console.warn(
+            'handlePostMessage: contact_form unpin admin_anonymous (non-critical):',
+            unpinErr?.message || unpinErr
+          );
+        }
+      }
+
       res.json({
         success: true,
         data: message

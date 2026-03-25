@@ -28,6 +28,7 @@
     <script src="https://cdn.jsdelivr.net/npm/quill-image-resize-module@3.0.0/image-resize.min.js"></script>
     <!-- Wspólne poprawki responsywności -->
     <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-24-2" />
+    <link rel="stylesheet" href="/admin/invoices-admin.css?v=2026-03-25-1" />
     <style>
       :root {
         --coyote: #c19a6b;
@@ -134,6 +135,11 @@
         padding: 0 !important;
         flex-shrink: 0;
         align-self: flex-start;
+      }
+
+      /* Jedna linia z etykietą — globalne flex-start psuje wyśrodkowanie w poziomych labelkach */
+      #promo-codes-show-expired {
+        align-self: center;
       }
 
       /* Status wpisu (blog) — kolory jak etykiety na liście wpisów */
@@ -650,11 +656,14 @@
       }
 
       /* Quill Editor Styles - Dark Theme */
-      #product-description-editor .ql-container,
+      /* Produkt: .ql-container jest na tym samym węźle co #product-description-editor; pasek — rodzeństwo w #product-description-quill-host */
+      #product-description-editor.ql-container,
       #blog-content-editor .ql-container,
       #charity-description-editor .ql-container,
       #pinned-donations-description-editor .ql-container,
-      #event-description-editor .ql-container {
+      #event-description-editor .ql-container,
+      #notification-message-editor .ql-container,
+      #info-message-editor .ql-container {
         background: #161616;
         border: 1px solid #222;
         border-radius: 0 0 8px 8px;
@@ -666,14 +675,18 @@
       #blog-content-editor .ql-editor,
       #charity-description-editor .ql-editor,
       #pinned-donations-description-editor .ql-editor,
-      #event-description-editor .ql-editor {
+      #event-description-editor .ql-editor,
+      #notification-message-editor .ql-editor,
+      #info-message-editor .ql-editor {
         min-height: 300px;
         color: white;
       }
 
       #charity-description-editor .ql-editor,
       #pinned-donations-description-editor .ql-editor,
-      #event-description-editor .ql-editor {
+      #event-description-editor .ql-editor,
+      #notification-message-editor .ql-editor,
+      #info-message-editor .ql-editor {
         min-height: 220px;
       }
 
@@ -685,40 +698,48 @@
       #blog-content-editor .ql-editor.ql-blank::before,
       #charity-description-editor .ql-editor.ql-blank::before,
       #pinned-donations-description-editor .ql-editor.ql-blank::before,
-      #event-description-editor .ql-editor.ql-blank::before {
+      #event-description-editor .ql-editor.ql-blank::before,
+      #notification-message-editor .ql-editor.ql-blank::before,
+      #info-message-editor .ql-editor.ql-blank::before {
         color: #666;
         font-style: normal;
       }
 
-      #product-description-editor .ql-toolbar,
+      #product-description-quill-host .ql-toolbar,
       #blog-content-editor .ql-toolbar,
       #charity-description-editor .ql-toolbar,
       #pinned-donations-description-editor .ql-toolbar,
-      #event-description-editor .ql-toolbar {
+      #event-description-editor .ql-toolbar,
+      #notification-message-editor .ql-toolbar,
+      #info-message-editor .ql-toolbar {
         background: #111;
         border: 1px solid #222;
         border-radius: 8px 8px 0 0;
         padding: 10px;
       }
 
-      #product-description-editor .ql-toolbar .ql-stroke,
+      #product-description-quill-host .ql-toolbar .ql-stroke,
       #blog-content-editor .ql-toolbar .ql-stroke,
       #charity-description-editor .ql-toolbar .ql-stroke,
       #pinned-donations-description-editor .ql-toolbar .ql-stroke,
-      #event-description-editor .ql-toolbar .ql-stroke {
+      #event-description-editor .ql-toolbar .ql-stroke,
+      #notification-message-editor .ql-toolbar .ql-stroke,
+      #info-message-editor .ql-toolbar .ql-stroke {
         stroke: white;
       }
 
-      #product-description-editor .ql-toolbar .ql-fill,
+      #product-description-quill-host .ql-toolbar .ql-fill,
       #blog-content-editor .ql-toolbar .ql-fill,
       #charity-description-editor .ql-toolbar .ql-fill,
       #pinned-donations-description-editor .ql-toolbar .ql-fill,
-      #event-description-editor .ql-toolbar .ql-fill {
+      #event-description-editor .ql-toolbar .ql-fill,
+      #notification-message-editor .ql-toolbar .ql-fill,
+      #info-message-editor .ql-toolbar .ql-fill {
         fill: white;
       }
 
-      #product-description-editor .ql-toolbar button:hover,
-      #product-description-editor .ql-toolbar button.ql-active,
+      #product-description-quill-host .ql-toolbar button:hover,
+      #product-description-quill-host .ql-toolbar button.ql-active,
       #blog-content-editor .ql-toolbar button:hover,
       #blog-content-editor .ql-toolbar button.ql-active,
       #charity-description-editor .ql-toolbar button:hover,
@@ -726,12 +747,16 @@
       #pinned-donations-description-editor .ql-toolbar button:hover,
       #pinned-donations-description-editor .ql-toolbar button.ql-active,
       #event-description-editor .ql-toolbar button:hover,
-      #event-description-editor .ql-toolbar button.ql-active {
+      #event-description-editor .ql-toolbar button.ql-active,
+      #notification-message-editor .ql-toolbar button:hover,
+      #notification-message-editor .ql-toolbar button.ql-active,
+      #info-message-editor .ql-toolbar button:hover,
+      #info-message-editor .ql-toolbar button.ql-active {
         background: var(--coyote);
       }
 
-      #product-description-editor .ql-toolbar button:hover .ql-stroke,
-      #product-description-editor .ql-toolbar button.ql-active .ql-stroke,
+      #product-description-quill-host .ql-toolbar button:hover .ql-stroke,
+      #product-description-quill-host .ql-toolbar button.ql-active .ql-stroke,
       #blog-content-editor .ql-toolbar button:hover .ql-stroke,
       #blog-content-editor .ql-toolbar button.ql-active .ql-stroke,
       #charity-description-editor .ql-toolbar button:hover .ql-stroke,
@@ -739,12 +764,16 @@
       #pinned-donations-description-editor .ql-toolbar button:hover .ql-stroke,
       #pinned-donations-description-editor .ql-toolbar button.ql-active .ql-stroke,
       #event-description-editor .ql-toolbar button:hover .ql-stroke,
-      #event-description-editor .ql-toolbar button.ql-active .ql-stroke {
+      #event-description-editor .ql-toolbar button.ql-active .ql-stroke,
+      #notification-message-editor .ql-toolbar button:hover .ql-stroke,
+      #notification-message-editor .ql-toolbar button.ql-active .ql-stroke,
+      #info-message-editor .ql-toolbar button:hover .ql-stroke,
+      #info-message-editor .ql-toolbar button.ql-active .ql-stroke {
         stroke: black;
       }
 
-      #product-description-editor .ql-toolbar button:hover .ql-fill,
-      #product-description-editor .ql-toolbar button.ql-active .ql-fill,
+      #product-description-quill-host .ql-toolbar button:hover .ql-fill,
+      #product-description-quill-host .ql-toolbar button.ql-active .ql-fill,
       #blog-content-editor .ql-toolbar button:hover .ql-fill,
       #blog-content-editor .ql-toolbar button.ql-active .ql-fill,
       #charity-description-editor .ql-toolbar button:hover .ql-fill,
@@ -752,33 +781,43 @@
       #pinned-donations-description-editor .ql-toolbar button:hover .ql-fill,
       #pinned-donations-description-editor .ql-toolbar button.ql-active .ql-fill,
       #event-description-editor .ql-toolbar button:hover .ql-fill,
-      #event-description-editor .ql-toolbar button.ql-active .ql-fill {
+      #event-description-editor .ql-toolbar button.ql-active .ql-fill,
+      #notification-message-editor .ql-toolbar button:hover .ql-fill,
+      #notification-message-editor .ql-toolbar button.ql-active .ql-fill,
+      #info-message-editor .ql-toolbar button:hover .ql-fill,
+      #info-message-editor .ql-toolbar button.ql-active .ql-fill {
         fill: black;
       }
 
-      #product-description-editor .ql-toolbar .ql-picker-label,
+      #product-description-quill-host .ql-toolbar .ql-picker-label,
       #blog-content-editor .ql-toolbar .ql-picker-label,
       #charity-description-editor .ql-toolbar .ql-picker-label,
       #pinned-donations-description-editor .ql-toolbar .ql-picker-label,
-      #event-description-editor .ql-toolbar .ql-picker-label {
+      #event-description-editor .ql-toolbar .ql-picker-label,
+      #notification-message-editor .ql-toolbar .ql-picker-label,
+      #info-message-editor .ql-toolbar .ql-picker-label {
         color: white;
       }
 
-      #product-description-editor .ql-toolbar .ql-picker-options,
+      #product-description-quill-host .ql-toolbar .ql-picker-options,
       #blog-content-editor .ql-toolbar .ql-picker-options,
       #charity-description-editor .ql-toolbar .ql-picker-options,
       #pinned-donations-description-editor .ql-toolbar .ql-picker-options,
-      #event-description-editor .ql-toolbar .ql-picker-options {
+      #event-description-editor .ql-toolbar .ql-picker-options,
+      #notification-message-editor .ql-toolbar .ql-picker-options,
+      #info-message-editor .ql-toolbar .ql-picker-options {
         background: #222;
         border: 1px solid #333;
         color: white;
       }
 
-      #product-description-editor .ql-toolbar .ql-picker-item:hover,
+      #product-description-quill-host .ql-toolbar .ql-picker-item:hover,
       #blog-content-editor .ql-toolbar .ql-picker-item:hover,
       #charity-description-editor .ql-toolbar .ql-picker-item:hover,
       #pinned-donations-description-editor .ql-toolbar .ql-picker-item:hover,
-      #event-description-editor .ql-toolbar .ql-picker-item:hover {
+      #event-description-editor .ql-toolbar .ql-picker-item:hover,
+      #notification-message-editor .ql-toolbar .ql-picker-item:hover,
+      #info-message-editor .ql-toolbar .ql-picker-item:hover {
         background: var(--coyote);
         color: black;
       }
@@ -1066,6 +1105,10 @@
                 <i class="fa-solid fa-shopping-bag mr-2"></i>
                 Zamówienia
               </div>
+              <div class="nav-item" data-tab="invoices">
+                <i class="fa-solid fa-file-invoice mr-2"></i>
+                Faktury
+              </div>
               <div class="nav-item" data-tab="returns">
                 <i class="fa-solid fa-rotate-left mr-2"></i>
                 Zwroty
@@ -1077,6 +1120,10 @@
               <div class="nav-item" data-tab="newsletter">
                 <i class="fa-solid fa-envelope-open mr-2"></i>
                 Newsletter
+              </div>
+              <div class="nav-item" data-tab="notifications">
+                <i class="fa-solid fa-bell mr-2"></i>
+                Powiadomienia
               </div>
             </div>
             <div class="nav-item" data-tab="status">
@@ -2045,6 +2092,264 @@
             </div>
           </div>
 
+          <div id="tab-notifications" class="tab-content">
+            <h1 class="text-3xl font-bold coyote-text mb-8">
+              Powiadomienia i Okna Informacji
+            </h1>
+
+            <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)] gap-8">
+              <div class="space-y-8">
+                <div class="admin-card">
+                  <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between mb-6">
+                    <div>
+                      <h3 class="text-xl font-bold text-white">Powiadomienie do użytkowników</h3>
+                      <p class="text-sm text-zinc-400 mt-1">
+                        Wiadomość trafi do centrum powiadomień w widżecie avatara. Kliknięcie może przekierować pod wybrany adres.
+                      </p>
+                    </div>
+                    <div class="text-xs text-zinc-500">
+                      Nowe pozycje dostają czerwony badge i lądują na górze listy.
+                    </div>
+                  </div>
+
+                  <form id="admin-broadcast-form" class="space-y-5" onsubmit="event.preventDefault(); sendAdminBroadcastNotification();">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Tytuł *</label>
+                        <input id="notification-title" type="text" class="w-full" maxlength="160" placeholder="Np. Zapisy na wydarzenie już otwarte" required />
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Kategoria</label>
+                        <select id="notification-category" class="w-full">
+                          <option value="system">System</option>
+                          <option value="account">Konto</option>
+                          <option value="profile">Profil</option>
+                          <option value="blog">Blog</option>
+                          <option value="events">Wydarzenia</option>
+                          <option value="bazaar">Bazar</option>
+                          <option value="admin">Admin</option>
+                          <option value="general">Ogólne</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Link po kliknięciu (opcjonalnie)</label>
+                        <input id="notification-link-url" type="text" class="w-full" placeholder="https://wydarzenia.strzelca.pl?open=..." />
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Etykieta linku (opcjonalnie)</label>
+                        <input id="notification-link-label" type="text" class="w-full" maxlength="80" placeholder="Np. Otwórz wydarzenie" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-medium mb-3">Odbiorcy</label>
+                      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <label class="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-900/60 px-4 py-3 cursor-pointer">
+                          <input id="notification-audience-all" type="checkbox" class="w-4 h-4" checked />
+                          <span>Wszyscy użytkownicy</span>
+                        </label>
+                        <label class="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-900/60 px-4 py-3 cursor-pointer">
+                          <input id="notification-audience-user" type="checkbox" class="w-4 h-4" />
+                          <span>Tylko zwykli użytkownicy</span>
+                        </label>
+                        <label class="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-900/60 px-4 py-3 cursor-pointer">
+                          <input id="notification-audience-company" type="checkbox" class="w-4 h-4" />
+                          <span>Tylko firmy</span>
+                        </label>
+                        <label class="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-900/60 px-4 py-3 cursor-pointer">
+                          <input id="notification-audience-admin" type="checkbox" class="w-4 h-4" />
+                          <span>Tylko admini</span>
+                        </label>
+                        <label class="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-900/60 px-4 py-3 cursor-pointer">
+                          <input id="notification-audience-moderator" type="checkbox" class="w-4 h-4" />
+                          <span>Tylko moderatorzy</span>
+                        </label>
+                        <label class="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-900/60 px-4 py-3 cursor-pointer">
+                          <input id="notification-audience-operator" type="checkbox" class="w-4 h-4" />
+                          <span>Tylko operatorzy</span>
+                        </label>
+                      </div>
+                      <p class="text-xs text-zinc-500 mt-3">Do okna informacji możesz też dołączyć tych samych konkretnie wybranych użytkowników z sekcji powiadomienia powyżej.</p>
+                    </div>
+
+                    <div class="rounded-2xl border border-zinc-700/80 bg-zinc-900/40 p-4">
+                      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
+                        <div>
+                          <div class="text-sm font-semibold text-white">Konkretnie wybrani użytkownicy</div>
+                          <div class="text-xs text-zinc-500 mt-1">Możesz dodać odbiorców indywidualnie niezależnie od grup.</div>
+                        </div>
+                        <button type="button" onclick="loadAdminNotificationsUserPool()" class="px-4 py-2 border border-zinc-600 rounded-lg hover:bg-zinc-800 transition text-sm">
+                          <i class="fa-solid fa-rotate mr-2"></i>
+                          Odśwież listę
+                        </button>
+                      </div>
+                      <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
+                        <div>
+                          <input id="notification-user-search" type="search" class="w-full mb-3" placeholder="Szukaj po nicku lub e-mailu" oninput="renderAdminNotificationsUserResults()" />
+                          <div id="notification-user-results" class="max-h-56 overflow-y-auto space-y-2"></div>
+                        </div>
+                        <div>
+                          <div class="text-xs text-zinc-500 mb-3">Wybrani odbiorcy</div>
+                          <div id="notification-selected-users" class="min-h-[120px] max-h-56 overflow-y-auto flex flex-wrap gap-2 rounded-xl border border-zinc-700 bg-zinc-950/40 p-3"></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-medium mb-2">Treść *</label>
+                      <div id="notification-message-editor" style="min-height: 240px;" class="editor-content rounded-lg overflow-hidden border border-zinc-700 bg-zinc-900"></div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-3 justify-end">
+                      <button type="button" onclick="previewAdminCommunication('notification')" class="px-5 py-2.5 border border-zinc-600 rounded-lg hover:bg-zinc-800 transition">
+                        <i class="fa-solid fa-eye mr-2"></i>
+                        Podgląd
+                      </button>
+                      <button type="button" onclick="resetAdminBroadcastForm()" class="px-5 py-2.5 border border-zinc-600 rounded-lg hover:bg-zinc-800 transition">
+                        <i class="fa-solid fa-rotate-left mr-2"></i>
+                        Wyczyść
+                      </button>
+                      <button type="submit" class="btn-admin">
+                        <i class="fa-solid fa-paper-plane mr-2"></i>
+                        Wyślij powiadomienie
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                <div class="admin-card">
+                  <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between mb-6">
+                    <div>
+                      <h3 class="text-xl font-bold text-white">Okno informacji</h3>
+                      <p class="text-sm text-zinc-400 mt-1">
+                        To okno pojawi się użytkownikowi po wejściu na dowolną stronę lub po odświeżeniu, dopóki nie kliknie „Zrozumiałem”.
+                      </p>
+                    </div>
+                    <div class="text-xs text-zinc-500">
+                      Aktywne od razu po zapisaniu, z możliwością późniejszego wyłączenia.
+                    </div>
+                  </div>
+
+                  <form id="admin-info-form" class="space-y-5" onsubmit="event.preventDefault(); sendAdminInfoAnnouncement();">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Tytuł *</label>
+                        <input id="info-title" type="text" class="w-full" maxlength="160" placeholder="Np. Zapisy ruszają jutro o 10:00" required />
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Kategoria</label>
+                        <select id="info-category" class="w-full">
+                          <option value="system">System</option>
+                          <option value="events">Wydarzenia</option>
+                          <option value="blog">Blog</option>
+                          <option value="bazaar">Bazar</option>
+                          <option value="account">Konto</option>
+                          <option value="general">Ogólne</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Link dodatkowy (opcjonalnie)</label>
+                        <input id="info-link-url" type="text" class="w-full" placeholder="https://strzelca.pl/..." />
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Etykieta linku (opcjonalnie)</label>
+                        <input id="info-link-label" type="text" class="w-full" maxlength="80" placeholder="Np. Otwórz szczegóły" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-medium mb-3">Odbiorcy</label>
+                      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <label class="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-900/60 px-4 py-3 cursor-pointer">
+                          <input id="info-audience-all" type="checkbox" class="w-4 h-4" checked />
+                          <span>Wszyscy użytkownicy</span>
+                        </label>
+                        <label class="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-900/60 px-4 py-3 cursor-pointer">
+                          <input id="info-audience-user" type="checkbox" class="w-4 h-4" />
+                          <span>Tylko zwykli użytkownicy</span>
+                        </label>
+                        <label class="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-900/60 px-4 py-3 cursor-pointer">
+                          <input id="info-audience-company" type="checkbox" class="w-4 h-4" />
+                          <span>Tylko firmy</span>
+                        </label>
+                        <label class="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-900/60 px-4 py-3 cursor-pointer">
+                          <input id="info-audience-admin" type="checkbox" class="w-4 h-4" />
+                          <span>Tylko admini</span>
+                        </label>
+                        <label class="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-900/60 px-4 py-3 cursor-pointer">
+                          <input id="info-audience-moderator" type="checkbox" class="w-4 h-4" />
+                          <span>Tylko moderatorzy</span>
+                        </label>
+                        <label class="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-900/60 px-4 py-3 cursor-pointer">
+                          <input id="info-audience-operator" type="checkbox" class="w-4 h-4" />
+                          <span>Tylko operatorzy</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-medium mb-2">Treść *</label>
+                      <div id="info-message-editor" style="min-height: 240px;" class="editor-content rounded-lg overflow-hidden border border-zinc-700 bg-zinc-900"></div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-3 justify-end">
+                      <button type="button" onclick="previewAdminCommunication('info')" class="px-5 py-2.5 border border-zinc-600 rounded-lg hover:bg-zinc-800 transition">
+                        <i class="fa-solid fa-eye mr-2"></i>
+                        Podgląd
+                      </button>
+                      <button type="button" onclick="resetAdminInfoForm()" class="px-5 py-2.5 border border-zinc-600 rounded-lg hover:bg-zinc-800 transition">
+                        <i class="fa-solid fa-rotate-left mr-2"></i>
+                        Wyczyść
+                      </button>
+                      <button type="submit" class="btn-admin">
+                        <i class="fa-solid fa-window-restore mr-2"></i>
+                        Utwórz okno informacji
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <div class="space-y-8">
+                <div class="admin-card">
+                  <div class="flex items-start justify-between gap-4 mb-4">
+                    <div>
+                      <h3 class="text-xl font-bold">Ostatnie wysyłki</h3>
+                      <p class="text-sm text-zinc-400 mt-1">Ostatnie kampanie powiadomień wysłane z panelu.</p>
+                    </div>
+                    <button type="button" onclick="loadAdminNotificationsHistory()" class="text-zinc-400 hover:text-coyote transition p-2" title="Odśwież listę">
+                      <i class="fa-solid fa-rotate text-base"></i>
+                    </button>
+                  </div>
+                  <div id="admin-notification-history" class="space-y-3 text-sm text-zinc-300">
+                    <div class="text-zinc-500">Ładowanie...</div>
+                  </div>
+                </div>
+
+                <div class="admin-card">
+                  <div class="flex items-start justify-between gap-4 mb-4">
+                    <div>
+                      <h3 class="text-xl font-bold">Aktywne okna informacji</h3>
+                      <p class="text-sm text-zinc-400 mt-1">Tutaj możesz wyłączyć aktywne komunikaty modalne.</p>
+                    </div>
+                    <button type="button" onclick="loadAdminNotificationsHistory()" class="text-zinc-400 hover:text-coyote transition p-2" title="Odśwież listę">
+                      <i class="fa-solid fa-rotate text-base"></i>
+                    </button>
+                  </div>
+                  <div id="admin-info-history" class="space-y-3 text-sm text-zinc-300">
+                    <div class="text-zinc-500">Ładowanie...</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Wiadomości -->
           <div id="tab-messages" class="tab-content">
             <h1 class="text-3xl font-bold coyote-text mb-8">
@@ -2068,7 +2373,7 @@
               </div>
 
               <!-- Wyszukiwanie -->
-              <div class="mb-6">
+              <div class="mb-6 space-y-3">
                 <input
                   type="text"
                   id="messages-search"
@@ -2076,6 +2381,15 @@
                   class="w-full"
                   oninput="loadMessagesWithFilters()"
                 />
+                <label class="flex items-center gap-2 text-sm text-zinc-400 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    id="messages-show-read"
+                    class="rounded border-zinc-600 bg-zinc-800 text-coyote focus:ring-coyote/40"
+                    onchange="onMessagesShowReadChange()"
+                  />
+                  Pokaż przeczytane wiadomości
+                </label>
               </div>
 
               <!-- Przyciski kategorii -->
@@ -2215,6 +2529,100 @@
                 <div class="text-center text-zinc-500 py-12">
                   <i class="fa-solid fa-spinner fa-spin text-3xl mb-4 text-zinc-600"></i>
                   <h3 class="text-lg font-semibold mb-2">Ładowanie zamówień...</h3>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="tab-invoices" class="tab-content">
+            <div class="invoice-stack">
+              <div class="invoice-toolbar">
+                <div>
+                  <h1 class="text-3xl font-bold coyote-text">Generator Faktur</h1>
+                  <p class="text-sm text-zinc-400 mt-2">
+                    Osobna kartoteka faktur z korektami, grupowaniem dokumentów i wygodnym powiązaniem do zamówień.
+                  </p>
+                </div>
+                <div class="invoice-toolbar-actions">
+                  <button onclick="refreshAdminInvoices()" class="invoice-secondary-button">
+                    <i class="fa-solid fa-rotate"></i> Odśwież
+                  </button>
+                  <button onclick="openAdminInvoiceModal()" class="btn-admin text-sm px-4 py-2">
+                    <i class="fa-solid fa-plus mr-2"></i> Nowa faktura
+                  </button>
+                </div>
+              </div>
+
+              <div id="invoice-stats-grid" class="invoice-kpi-grid"></div>
+
+              <div class="invoice-tab-grid">
+                <div class="invoice-stack">
+                  <div class="admin-card">
+                    <div class="invoice-form-grid">
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Szukaj</label>
+                        <input
+                          type="text"
+                          id="invoice-search-input"
+                          placeholder="Numer, nabywca, zamówienie, korekta..."
+                        />
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Status</label>
+                        <select id="invoice-status-filter">
+                          <option value="all">Wszystkie</option>
+                          <option value="utworzona">Utworzone</option>
+                          <option value="wyslana">Wysłane</option>
+                          <option value="anulowana">Anulowane</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="invoice-note-list">
+                    <section class="invoice-note-card">
+                      <h4>Parafka sprzedawcy</h4>
+                      <p class="text-sm text-zinc-400 leading-relaxed">
+                        Rekomendowane i darmowe: dodajesz parafkę tylko do bieżącej sesji panelu. Nie zapisuje się w projekcie ani w Firestore.
+                      </p>
+                      <label class="invoice-secondary-button mt-4 cursor-pointer">
+                        <input
+                          type="file"
+                          id="invoice-signature-input"
+                          accept="image/png,image/webp,image/jpeg"
+                          class="hidden"
+                          onchange="handleInvoiceSignatureUpload(event)"
+                        />
+                        <i class="fa-solid fa-signature"></i> Dodaj parafkę do sesji
+                      </label>
+                      <button class="invoice-secondary-button mt-3" onclick="clearSessionInvoiceSignature()">
+                        <i class="fa-solid fa-trash"></i> Usuń z sesji
+                      </button>
+                      <div id="invoice-signature-session" class="mt-4"></div>
+                    </section>
+
+                    <section class="invoice-note-card">
+                      <h4>Bezpieczeństwo podpisu</h4>
+                      <p class="text-sm text-zinc-400 leading-relaxed">
+                        `Darmowe` wdrożone teraz: parafka tylko lokalnie przy eksporcie.<br />
+                        `Darmowe / własne wdrożenie`: podpis po stronie serwera + PIN i log eksportów.<br />
+                        `Płatne`: Autenti, Adobe Acrobat Sign albo DocuSign, jeśli chcesz pełny audyt podpisów.
+                      </p>
+                    </section>
+                  </div>
+
+                  <div class="admin-card">
+                    <div class="flex items-center justify-between gap-4 mb-4">
+                      <h2 class="text-xl font-bold text-white">Lista faktur</h2>
+                      <span class="text-xs text-zinc-500">Korekty są grupowane z fakturą pierwotną.</span>
+                    </div>
+                    <div id="invoice-groups-list" class="invoice-stack"></div>
+                  </div>
+                </div>
+
+                <div class="invoice-preview-shell">
+                  <div id="invoice-preview-meta"></div>
+                  <div id="invoice-preview-document"></div>
                 </div>
               </div>
             </div>
@@ -2575,6 +2983,19 @@
                 <p>Brak wpisów do wyświetlenia</p>
               </div>
             </div>
+
+            <div class="admin-card mt-8">
+              <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between mb-4">
+                <div>
+                  <h3 class="text-xl font-bold">Komentarze bloga</h3>
+                  <p class="text-sm text-zinc-400 mt-1">Najnowsze komentarze do wpisów. Administrator, moderator i operator bloga mogą je usuwać.</p>
+                </div>
+                <button type="button" onclick="loadBlogCommentsModeration()" class="text-zinc-400 hover:text-coyote transition p-2" title="Odśwież komentarze bloga">
+                  <i class="fa-solid fa-rotate text-base"></i>
+                </button>
+              </div>
+              <div id="blog-comments-moderation-list" class="space-y-3"></div>
+            </div>
           </div>
 
           <!-- Dokumenty -->
@@ -2729,13 +3150,8 @@
 
           <div id="tab-promo-codes" class="tab-content">
             <div class="grid grid-cols-1 gap-8 max-w-6xl mx-auto">
-              <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h1 class="text-3xl font-bold coyote-text mb-2">Kody</h1>
-                  <p class="text-sm text-zinc-400 max-w-2xl">
-                    Zarządzanie kodami dostępu do szkoleń i kuponami rabatowymi dla sklepu oraz szkoleń. Kody są walidowane po stronie backendu i przechowywane w bazie w formie niejawnej.
-                  </p>
-                </div>
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <h1 class="text-3xl font-bold coyote-text">Kody</h1>
                 <button type="button" onclick="openPromoCodeModal()" class="btn-admin text-sm px-4 py-2 shrink-0 self-start sm:self-center">
                   <i class="fa-solid fa-plus mr-2"></i>
                   Utwórz kod
@@ -2744,9 +3160,9 @@
 
               <div class="admin-card max-w-3xl">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <label class="inline-flex items-center gap-3 text-sm text-zinc-300">
-                    <input type="checkbox" id="promo-codes-show-expired" onchange="loadPromoCodes()" />
-                    <span>Pokaż wygasnięte kody</span>
+                  <label class="flex flex-nowrap items-center gap-3 text-sm text-zinc-300 cursor-pointer select-none">
+                    <input type="checkbox" id="promo-codes-show-expired" class="w-4 h-4 shrink-0" onchange="loadPromoCodes()" />
+                    <span class="whitespace-nowrap">Pokaż wygaśnięte kody</span>
                   </label>
                   <button type="button" onclick="loadPromoCodes()" class="text-sm px-4 py-2 rounded-lg border border-zinc-600 text-zinc-200 hover:border-coyote hover:text-coyote transition self-start">
                     <i class="fa-solid fa-rotate mr-2"></i>
@@ -3601,6 +4017,43 @@
       </div>
     </div>
 
+    <div
+      id="admin-communication-preview-modal"
+      class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl"
+      onclick="if(event.target.id === 'admin-communication-preview-modal') closeAdminCommunicationPreview()"
+      style="overflow-y: auto;"
+    >
+      <div class="admin-card max-w-4xl w-full my-8 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-6">
+          <div>
+            <h2 id="admin-communication-preview-heading" class="text-2xl font-bold coyote-text">Podgląd komunikatu</h2>
+            <p id="admin-communication-preview-meta" class="text-sm text-zinc-400 mt-1"></p>
+          </div>
+          <button onclick="closeAdminCommunicationPreview()" class="text-zinc-400 hover:text-white">
+            <i class="fa-solid fa-times text-xl"></i>
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2 text-zinc-400">Tytuł:</label>
+            <div id="admin-communication-preview-title" class="text-xl font-bold text-white p-3 bg-zinc-800/50 rounded-lg border border-zinc-700"></div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-2 text-zinc-400">Treść:</label>
+            <div id="admin-communication-preview-content" class="text-white p-4 bg-zinc-800/50 rounded-lg border border-zinc-700 min-h-[300px]"></div>
+          </div>
+        </div>
+
+        <div class="flex justify-end space-x-4 pt-6 mt-6 border-t border-zinc-700">
+          <button onclick="closeAdminCommunicationPreview()" class="px-6 py-2 border border-zinc-600 rounded-lg hover:bg-zinc-700 transition">
+            Zamknij
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Error handler dla Firestore CORS - MUSI być przed importami Firebase -->
     <script>
       // Wycisz hałaśliwe błędy CORS z Firestore Listen/channel (nie blokują działania, SDK ma fallbacki)
@@ -4091,7 +4544,7 @@
         users: ["users"],
         contact: ["messages"],
         blog: ["blog"],
-        shop: ["products", "orders", "returns"],
+        shop: ["products", "orders", "invoices", "returns"],
         help: ["charity"],
         events: ["events"],
         trainings: ["szkolenia"],
@@ -4211,9 +4664,11 @@
             "dashboard",
             "messages",
             "orders",
+            "invoices",
             "returns",
             "users",
             "newsletter",
+            "notifications",
             "status",
             "products",
             "bazar",
@@ -4941,14 +5396,7 @@
           }
         }
 
-        if (tabName === "products") {
-          // Inicjalizuj Quill dla produktów
-          setTimeout(() => {
-            if (!productQuill) {
-              initProductQuill();
-            }
-          }, 100);
-        }
+        // Quill produktów: tylko przy otwarciu modala (unik podwójnego paska narzędzi przy init z zakładki + modal)
 
         // Specjalna obsługa dashboard - załaduj dziennik aktywności z opóźnieniem
         if (tabName === "dashboard") {
@@ -4989,6 +5437,17 @@
           }, 100);
         }
 
+        if (tabName === "notifications") {
+          setTimeout(() => {
+            if (!notificationBroadcastQuill || !infoAnnouncementQuill) {
+              initAdminNotificationsQuill();
+            }
+            if (typeof initializeAdminNotificationsTab === "function") {
+              initializeAdminNotificationsTab();
+            }
+          }, 100);
+        }
+
         currentTab = tabName;
 
         // Ładowanie danych dla wybranej zakładki
@@ -5013,6 +5472,11 @@
             }
             // Uruchom auto-odświeżanie wiadomości
             startMessagesAutoRefresh();
+            break;
+          case "invoices":
+            if (window.AdminInvoices && typeof window.AdminInvoices.onTabSelected === "function") {
+              window.AdminInvoices.onTabSelected();
+            }
             break;
           case "returns":
             if (typeof window.loadAdminReturnClaims === "function") {
@@ -5056,6 +5520,11 @@
             setTimeout(() => {
               loadNewsletterDraft(false);
             }, 200);
+            break;
+          case "notifications":
+            if (typeof initializeAdminNotificationsTab === "function") {
+              initializeAdminNotificationsTab();
+            }
             break;
         }
 
@@ -7318,6 +7787,431 @@
         }
       };
 
+      async function fetchAdminNotificationsApi(bodyObject) {
+        let authToken = null;
+        try {
+          if (typeof auth !== "undefined" && auth?.currentUser) {
+            authToken = await auth.currentUser.getIdToken();
+          }
+        } catch (_) {}
+
+        const headers = {
+          "Content-Type": "application/json",
+          "X-Admin-Panel": "true",
+        };
+        if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
+
+        let urls;
+        try {
+          const host = typeof location !== "undefined" ? location.hostname : "";
+          if (host === "strzelca.pl") {
+            urls = ["/api/admin-notifications"];
+          } else if (host === "localhost" || host === "127.0.0.1") {
+            urls = ["/api/admin-notifications", "https://strzelca.pl/api/admin-notifications"];
+          } else {
+            urls = ["https://strzelca.pl/api/admin-notifications", "/api/admin-notifications"];
+          }
+        } catch (_) {
+          urls = ["/api/admin-notifications", "https://strzelca.pl/api/admin-notifications"];
+        }
+
+        let lastError = null;
+        for (const url of urls) {
+          try {
+            const response = await fetch(url, {
+              method: "POST",
+              headers,
+              credentials: "include",
+              body: JSON.stringify(bodyObject),
+            });
+            const data = await response.json().catch(() => null);
+            if (!response.ok || !data?.success) {
+              throw new Error(data?.error || `HTTP ${response.status}`);
+            }
+            return data;
+          } catch (error) {
+            lastError = error;
+          }
+        }
+        throw lastError || new Error("Nie udało się połączyć z API powiadomień.");
+      }
+
+      function stripAdminEditorHtml(html) {
+        const helper = document.createElement("div");
+        helper.innerHTML = html || "";
+        return (helper.textContent || "").replace(/\s+/g, " ").trim();
+      }
+
+      function formatAdminDateTime(value) {
+        if (!value) return "przed chwilą";
+        const date =
+          typeof value?.toDate === "function"
+            ? value.toDate()
+            : typeof value?.seconds === "number"
+              ? new Date(value.seconds * 1000)
+              : typeof value?._seconds === "number"
+                ? new Date(value._seconds * 1000)
+                : new Date(value);
+        if (Number.isNaN(date.getTime())) return "przed chwilą";
+        return new Intl.DateTimeFormat("pl-PL", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }).format(date);
+      }
+
+      function adminCommunicationAudienceSummary(audience) {
+        if (audience.all) return "wszyscy użytkownicy";
+        const labels = [];
+        const roleMap = {
+          user: "użytkownicy",
+          company: "firmy",
+          admin: "admini",
+          moderator: "moderatorzy",
+          operator: "operatorzy",
+        };
+        (audience.roles || []).forEach((role) => {
+          if (roleMap[role]) labels.push(roleMap[role]);
+        });
+        if ((audience.userIds || []).length) {
+          labels.push(`konkretni użytkownicy (${audience.userIds.length})`);
+        }
+        return labels.length ? labels.join(", ") : "brak odbiorców";
+      }
+
+      function renderAdminNotificationsSelectedUsers() {
+        const container = document.getElementById("notification-selected-users");
+        if (!container) return;
+
+        if (!adminNotificationsSelectedUsers.length) {
+          container.innerHTML = '<div class="text-sm text-zinc-500">Nie wybrano jeszcze żadnych użytkowników.</div>';
+          return;
+        }
+
+        container.innerHTML = adminNotificationsSelectedUsers
+          .map((user) => `
+            <div class="inline-flex items-center gap-2 rounded-full border border-coyote/40 bg-coyote/10 px-3 py-1.5">
+              <span class="text-sm text-white">${escapeHtml(user.displayName || user.email || user.id)}</span>
+              <button type="button" class="text-zinc-300 hover:text-white" onclick="removeAdminNotificationUser('${user.id}')">
+                <i class="fa-solid fa-times"></i>
+              </button>
+            </div>
+          `)
+          .join("");
+      }
+
+      window.removeAdminNotificationUser = function(userId) {
+        adminNotificationsSelectedUsers = adminNotificationsSelectedUsers.filter((user) => user.id !== userId);
+        renderAdminNotificationsSelectedUsers();
+        renderAdminNotificationsUserResults();
+      };
+
+      window.addAdminNotificationUser = function(userId) {
+        const existing = adminNotificationsSelectedUsers.find((user) => user.id === userId);
+        if (existing) return;
+        const user = adminNotificationsUserPool.find((entry) => entry.id === userId);
+        if (!user) return;
+        adminNotificationsSelectedUsers.push(user);
+        renderAdminNotificationsSelectedUsers();
+        renderAdminNotificationsUserResults();
+      };
+
+      window.renderAdminNotificationsUserResults = function() {
+        const container = document.getElementById("notification-user-results");
+        if (!container) return;
+
+        if (!adminNotificationsUserPool.length) {
+          container.innerHTML = '<div class="text-sm text-zinc-500">Kliknij „Odśwież listę”, aby pobrać użytkowników.</div>';
+          return;
+        }
+
+        const search = (document.getElementById("notification-user-search")?.value || "").trim().toLowerCase();
+        const selectedIds = new Set(adminNotificationsSelectedUsers.map((user) => user.id));
+        const filtered = adminNotificationsUserPool
+          .filter((user) => {
+            if (selectedIds.has(user.id)) return false;
+            if (!search) return true;
+            return (
+              String(user.displayName || "").toLowerCase().includes(search) ||
+              String(user.email || "").toLowerCase().includes(search)
+            );
+          })
+          .slice(0, 30);
+
+        if (!filtered.length) {
+          container.innerHTML = '<div class="text-sm text-zinc-500">Brak dopasowanych użytkowników.</div>';
+          return;
+        }
+
+        container.innerHTML = filtered
+          .map((user) => `
+            <button
+              type="button"
+              onclick="addAdminNotificationUser('${user.id}')"
+              class="w-full text-left rounded-xl border border-zinc-700 bg-zinc-900/60 px-4 py-3 hover:border-coyote/40 hover:bg-zinc-800/80 transition"
+            >
+              <div class="font-medium text-white truncate">${escapeHtml(user.displayName || user.email || user.id)}</div>
+              <div class="text-xs text-zinc-400 truncate mt-1">${escapeHtml(user.email || user.role || "brak danych")}</div>
+            </button>
+          `)
+          .join("");
+      };
+
+      window.loadAdminNotificationsUserPool = async function(force = false) {
+        try {
+          if (adminNotificationsUsersLoaded && !force) {
+            renderAdminNotificationsUserResults();
+            return;
+          }
+          const usersSnapshot = await getDocs(query(collection(db, "userProfiles"), limit(250)));
+          adminNotificationsUserPool = usersSnapshot.docs
+            .map((docSnap) => {
+              const data = docSnap.data() || {};
+              return {
+                id: docSnap.id,
+                displayName: data.displayName || data.email || docSnap.id,
+                email: data.email || "",
+                role: data.role || "user",
+              };
+            })
+            .sort((a, b) => String(a.displayName || "").localeCompare(String(b.displayName || ""), "pl"));
+          adminNotificationsUsersLoaded = true;
+          renderAdminNotificationsUserResults();
+          renderAdminNotificationsSelectedUsers();
+        } catch (error) {
+          console.error("loadAdminNotificationsUserPool:", error);
+          showNotification("Nie udało się pobrać listy użytkowników.", "error");
+        }
+      };
+
+      function collectAdminCommunicationAudience(prefix) {
+        const all = !!document.getElementById(`${prefix}-audience-all`)?.checked;
+        const roles = [];
+        ["user", "company", "admin", "moderator", "operator"].forEach((role) => {
+          const checkbox = document.getElementById(`${prefix}-audience-${role}`);
+          if (checkbox?.checked) roles.push(role);
+        });
+        const userIds = adminNotificationsSelectedUsers.map((user) => user.id);
+        if (!all && roles.length === 0 && userIds.length === 0) {
+          throw new Error("Wybierz przynajmniej jedną grupę lub konkretnego użytkownika.");
+        }
+        return { all, roles, userIds };
+      }
+
+      function getAdminCommunicationFormData(kind) {
+        const isInfo = kind === "info";
+        const prefix = isInfo ? "info" : "notification";
+        const title = document.getElementById(`${prefix}-title`)?.value?.trim() || "";
+        const category = document.getElementById(`${prefix}-category`)?.value || "general";
+        const linkUrl = document.getElementById(`${prefix}-link-url`)?.value?.trim() || "";
+        const linkLabel = document.getElementById(`${prefix}-link-label`)?.value?.trim() || "";
+        const quill = isInfo ? infoAnnouncementQuill : notificationBroadcastQuill;
+        const bodyHtml = quill?.root?.innerHTML || "";
+        const bodyText = stripAdminEditorHtml(bodyHtml);
+
+        if (!title) throw new Error("Tytuł jest wymagany.");
+        if (!bodyText) throw new Error("Treść komunikatu jest wymagana.");
+
+        return {
+          kind,
+          title,
+          category,
+          linkUrl,
+          linkLabel,
+          bodyHtml,
+          audience: collectAdminCommunicationAudience(prefix),
+        };
+      }
+
+      window.previewAdminCommunication = function(kind) {
+        try {
+          const data = getAdminCommunicationFormData(kind);
+          const heading = document.getElementById("admin-communication-preview-heading");
+          const meta = document.getElementById("admin-communication-preview-meta");
+          const title = document.getElementById("admin-communication-preview-title");
+          const content = document.getElementById("admin-communication-preview-content");
+          const modal = document.getElementById("admin-communication-preview-modal");
+          if (!heading || !meta || !title || !content || !modal) return;
+
+          heading.textContent = kind === "info" ? "Podgląd okna informacji" : "Podgląd powiadomienia";
+          meta.textContent = `Odbiorcy: ${adminCommunicationAudienceSummary(data.audience)}${data.linkUrl ? ` • Link: ${data.linkUrl}` : ""}`;
+          title.textContent = data.title;
+          content.innerHTML = data.bodyHtml;
+          modal.classList.remove("hidden");
+        } catch (error) {
+          showNotification(error.message || "Nie udało się przygotować podglądu.", "error");
+        }
+      };
+
+      window.closeAdminCommunicationPreview = function() {
+        document.getElementById("admin-communication-preview-modal")?.classList.add("hidden");
+      };
+
+      window.resetAdminBroadcastForm = function() {
+        document.getElementById("notification-title").value = "";
+        document.getElementById("notification-link-url").value = "";
+        document.getElementById("notification-link-label").value = "";
+        document.getElementById("notification-category").value = "system";
+        ["notification-audience-user", "notification-audience-company", "notification-audience-admin", "notification-audience-moderator", "notification-audience-operator"].forEach((id) => {
+          const checkbox = document.getElementById(id);
+          if (checkbox) checkbox.checked = false;
+        });
+        const allBox = document.getElementById("notification-audience-all");
+        if (allBox) allBox.checked = true;
+        adminNotificationsSelectedUsers = [];
+        renderAdminNotificationsSelectedUsers();
+        renderAdminNotificationsUserResults();
+        if (notificationBroadcastQuill) notificationBroadcastQuill.setContents([]);
+      };
+
+      window.resetAdminInfoForm = function() {
+        document.getElementById("info-title").value = "";
+        document.getElementById("info-link-url").value = "";
+        document.getElementById("info-link-label").value = "";
+        document.getElementById("info-category").value = "system";
+        ["info-audience-user", "info-audience-company", "info-audience-admin", "info-audience-moderator", "info-audience-operator"].forEach((id) => {
+          const checkbox = document.getElementById(id);
+          if (checkbox) checkbox.checked = false;
+        });
+        const allBox = document.getElementById("info-audience-all");
+        if (allBox) allBox.checked = true;
+        if (infoAnnouncementQuill) infoAnnouncementQuill.setContents([]);
+      };
+
+      window.sendAdminBroadcastNotification = async function() {
+        try {
+          const payload = getAdminCommunicationFormData("notification");
+          const result = await fetchAdminNotificationsApi(payload);
+          showNotification(`Powiadomienie wysłane. Odbiorcy: ${result.deliveredCount || 0}.`, "success");
+          resetAdminBroadcastForm();
+          await loadAdminNotificationsHistory();
+        } catch (error) {
+          console.error("sendAdminBroadcastNotification:", error);
+          showNotification(error.message || "Nie udało się wysłać powiadomienia.", "error");
+        }
+      };
+
+      window.sendAdminInfoAnnouncement = async function() {
+        try {
+          const payload = getAdminCommunicationFormData("info");
+          await fetchAdminNotificationsApi(payload);
+          showNotification("Okno informacji zostało utworzone.", "success");
+          resetAdminInfoForm();
+          await loadAdminNotificationsHistory();
+        } catch (error) {
+          console.error("sendAdminInfoAnnouncement:", error);
+          showNotification(error.message || "Nie udało się utworzyć okna informacji.", "error");
+        }
+      };
+
+      function renderAdminNotificationHistoryItems(items) {
+        if (!items.length) {
+          return '<div class="text-zinc-500">Brak wysłanych kampanii.</div>';
+        }
+        return items
+          .map((item) => `
+            <div class="rounded-xl border border-zinc-700 bg-zinc-900/50 p-4">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="font-semibold text-white truncate">${escapeHtml(item.title || "Bez tytułu")}</div>
+                  <div class="text-xs text-zinc-400 mt-1">${escapeHtml(item.category || "general")} • ${escapeHtml(formatAdminDateTime(item.createdAt))}</div>
+                  <div class="text-xs text-zinc-500 mt-2">Odbiorcy: ${escapeHtml(adminCommunicationAudienceSummary({
+                    all: item.audienceAll === true,
+                    roles: Array.isArray(item.targetRoles) ? item.targetRoles : [],
+                    userIds: Array.isArray(item.targetUserIds) ? item.targetUserIds : [],
+                  }))}</div>
+                </div>
+                <div class="shrink-0 text-right">
+                  <div class="text-coyote font-bold">${Number(item.deliveredCount || 0)}</div>
+                  <div class="text-[11px] text-zinc-500 uppercase tracking-wide">odbiorców</div>
+                </div>
+              </div>
+            </div>
+          `)
+          .join("");
+      }
+
+      function renderAdminInfoHistoryItems(items) {
+        if (!items.length) {
+          return '<div class="text-zinc-500">Brak aktywnych okien informacji.</div>';
+        }
+        return items
+          .map((item) => `
+            <div class="rounded-xl border border-zinc-700 bg-zinc-900/50 p-4">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="font-semibold text-white truncate">${escapeHtml(item.title || "Bez tytułu")}</div>
+                  <div class="text-xs text-zinc-400 mt-1">${escapeHtml(item.category || "general")} • ${escapeHtml(formatAdminDateTime(item.createdAt))}</div>
+                  <div class="text-xs text-zinc-500 mt-2">Odbiorcy: ${escapeHtml(adminCommunicationAudienceSummary({
+                    all: item.audienceAll === true,
+                    roles: Array.isArray(item.targetRoles) ? item.targetRoles : [],
+                    userIds: Array.isArray(item.targetUserIds) ? item.targetUserIds : [],
+                  }))}</div>
+                </div>
+                <button
+                  type="button"
+                  onclick="toggleInfoAnnouncementActive('${item.id}', false)"
+                  class="shrink-0 px-3 py-2 rounded-lg border border-red-500/40 text-red-300 hover:bg-red-500/10 transition"
+                >
+                  Wyłącz
+                </button>
+              </div>
+            </div>
+          `)
+          .join("");
+      }
+
+      window.toggleInfoAnnouncementActive = async function(infoId, nextValue) {
+        try {
+          await updateDoc(doc(db, "infoAnnouncements", infoId), { isActive: nextValue });
+          showNotification(nextValue ? "Okno informacji zostało aktywowane." : "Okno informacji zostało wyłączone.", "success");
+          await loadAdminNotificationsHistory();
+        } catch (error) {
+          console.error("toggleInfoAnnouncementActive:", error);
+          showNotification(error.message || "Nie udało się zmienić statusu okna informacji.", "error");
+        }
+      };
+
+      window.loadAdminNotificationsHistory = async function() {
+        const notificationContainer = document.getElementById("admin-notification-history");
+        const infoContainer = document.getElementById("admin-info-history");
+        if (notificationContainer) notificationContainer.innerHTML = '<div class="text-zinc-500">Ładowanie...</div>';
+        if (infoContainer) infoContainer.innerHTML = '<div class="text-zinc-500">Ładowanie...</div>';
+
+        try {
+          const [campaignsSnap, infoSnap] = await Promise.all([
+            getDocs(query(collection(db, "adminNotificationCampaigns"), where("kind", "==", "notification"), orderBy("createdAt", "desc"), limit(8))),
+            getDocs(query(collection(db, "infoAnnouncements"), where("isActive", "==", true), orderBy("createdAt", "desc"), limit(8))),
+          ]);
+
+          const campaigns = campaignsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+          const infos = infoSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+
+          if (notificationContainer) {
+            notificationContainer.innerHTML = renderAdminNotificationHistoryItems(campaigns);
+          }
+          if (infoContainer) {
+            infoContainer.innerHTML = renderAdminInfoHistoryItems(infos);
+          }
+        } catch (error) {
+          console.error("loadAdminNotificationsHistory:", error);
+          if (notificationContainer) {
+            notificationContainer.innerHTML = '<div class="text-red-400">Nie udało się załadować historii powiadomień.</div>';
+          }
+          if (infoContainer) {
+            infoContainer.innerHTML = '<div class="text-red-400">Nie udało się załadować aktywnych okien informacji.</div>';
+          }
+        }
+      };
+
+      window.initializeAdminNotificationsTab = async function() {
+        initAdminNotificationsQuill();
+        await loadAdminNotificationsUserPool();
+        await loadAdminNotificationsHistory();
+      };
+
       // Szczegóły użytkownika
       window.viewUserDetails = async (userId) => {
         try {
@@ -8992,8 +9886,18 @@
           }
 
           Quill.register("modules/clipboard", StrzelcaAdminClipboard, true);
-          if (typeof ImageResize !== "undefined") {
-            Quill.register("modules/imageResize", ImageResize);
+          const imageResizeModule =
+            typeof ImageResize === "function"
+              ? ImageResize
+              : typeof ImageResize === "object" && ImageResize
+                ? typeof ImageResize.default === "function"
+                  ? ImageResize.default
+                  : typeof ImageResize.ImageResize === "function"
+                    ? ImageResize.ImageResize
+                    : null
+                : null;
+          if (imageResizeModule) {
+            Quill.register("modules/imageResize", imageResizeModule);
           }
         } catch (regErr) {
           console.warn("[admin] Rejestracja Quill clipboard:", regErr);
@@ -9004,6 +9908,17 @@
         if (!quillInstance || !quillInstance.root) return;
         quillInstance.root.setAttribute("spellcheck", "true");
         quillInstance.root.setAttribute("lang", "pl");
+      }
+
+      function hasQuillImageResizeModule() {
+        if (typeof ImageResize === "function") return true;
+        if (typeof ImageResize === "object" && ImageResize) {
+          return (
+            typeof ImageResize.default === "function" ||
+            typeof ImageResize.ImageResize === "function"
+          );
+        }
+        return false;
       }
 
       function createQuillModules(toolbarConfig, toolbarHandlers) {
@@ -9023,7 +9938,7 @@
           modules.toolbar = toolbarConfig;
         }
 
-        if (typeof ImageResize !== "undefined") {
+        if (hasQuillImageResizeModule()) {
           modules.imageResize = {
             modules: ["Resize", "DisplaySize", "Toolbar"],
           };
@@ -9053,18 +9968,41 @@
       // Inicjalizacja Quill Editor dla produktów
       let productQuill = null;
 
+      /** Quill wstawia .ql-toolbar przed kontenerem; drugie new Quill() na tym samym elemencie = drugi pasek — usuwamy nadmiarowe. */
+      function pruneDuplicateProductQuillToolbars() {
+        const editorElement = document.getElementById("product-description-editor");
+        if (!editorElement?.parentElement) return;
+        const parent = editorElement.parentElement;
+        const before = [];
+        for (const n of parent.children) {
+          if (n === editorElement) break;
+          if (n.classList?.contains("ql-toolbar")) before.push(n);
+        }
+        while (before.length > 1) {
+          before.shift().remove();
+        }
+      }
+
       function initProductQuill() {
         const editorElement = document.getElementById("product-description-editor");
         if (!editorElement) return;
-
-        if (productQuill) {
-          return;
-        }
 
         if (typeof Quill === "undefined") {
           console.warn("Quill nie jest załadowany. Użyj prostszego edytora.");
           return;
         }
+
+        pruneDuplicateProductQuillToolbars();
+
+        if (editorElement.__quill) {
+          productQuill = editorElement.__quill;
+          enableRichTextSpellcheck(productQuill);
+          editorElement.removeAttribute("contenteditable");
+          pruneDuplicateProductQuillToolbars();
+          return;
+        }
+
+        if (productQuill) return;
 
         productQuill = new Quill("#product-description-editor", {
           ...quillDescriptionEditorConfig,
@@ -9072,6 +10010,7 @@
         });
         enableRichTextSpellcheck(productQuill);
         editorElement.removeAttribute("contenteditable");
+        pruneDuplicateProductQuillToolbars();
       }
 
       let eventQuill = null;
@@ -9117,6 +10056,11 @@
       }
 
       let blogQuill = null;
+      let notificationBroadcastQuill = null;
+      let infoAnnouncementQuill = null;
+      let adminNotificationsUserPool = [];
+      let adminNotificationsUsersLoaded = false;
+      let adminNotificationsSelectedUsers = [];
 
       function initBlogQuill() {
         const editorElement = document.getElementById("blog-content-editor");
@@ -9130,6 +10074,33 @@
         });
         enableRichTextSpellcheck(blogQuill);
         editorElement.removeAttribute("contenteditable");
+      }
+
+      function initAdminNotificationsQuill() {
+        if (typeof Quill === "undefined") {
+          console.warn("Quill nie jest załadowany.");
+          return;
+        }
+
+        const notificationEditor = document.getElementById("notification-message-editor");
+        if (notificationEditor && !notificationBroadcastQuill) {
+          notificationBroadcastQuill = new Quill("#notification-message-editor", {
+            ...quillDescriptionEditorConfig,
+            placeholder: "Treść powiadomienia widoczna w centrum powiadomień...",
+          });
+          enableRichTextSpellcheck(notificationBroadcastQuill);
+          notificationEditor.removeAttribute("contenteditable");
+        }
+
+        const infoEditor = document.getElementById("info-message-editor");
+        if (infoEditor && !infoAnnouncementQuill) {
+          infoAnnouncementQuill = new Quill("#info-message-editor", {
+            ...quillDescriptionEditorConfig,
+            placeholder: "Treść informacji pokazywanej po wejściu na stronę...",
+          });
+          enableRichTextSpellcheck(infoAnnouncementQuill);
+          infoEditor.removeAttribute("contenteditable");
+        }
       }
 
       function blogPlainTextFromHtml(html) {
@@ -14829,8 +15800,7 @@
         const isIndividualPricing = checkbox.checked === true;
         priceInput.disabled = isIndividualPricing;
         priceInput.required = !isIndividualPricing;
-        priceInput.classList.toggle("opacity-60", isIndividualPricing);
-        priceInput.classList.toggle("cursor-not-allowed", isIndividualPricing);
+        priceInput.setAttribute("aria-disabled", isIndividualPricing ? "true" : "false");
         if (isIndividualPricing) {
           priceInput.value = "";
         }
@@ -16206,6 +17176,7 @@
           sortBlogPostsInPlace(filteredBlogPosts, sortSel?.value || "date-desc");
           renderBlogPostsList();
           updateBlogStats();
+          loadBlogCommentsModeration();
 
           if (loadingEl) loadingEl.classList.add("hidden");
           if (blogPostsList.length === 0 && emptyEl) {
@@ -16232,6 +17203,116 @@
           updateBlogStats();
         }
       }
+
+      async function fetchBlogInteractionsAdminApi(bodyObject) {
+        let authToken = null;
+        try {
+          if (typeof auth !== "undefined" && auth?.currentUser) {
+            authToken = await auth.currentUser.getIdToken();
+          }
+        } catch (_) {}
+
+        const headers = {
+          "Content-Type": "application/json",
+          "X-Admin-Panel": "true",
+        };
+        if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
+
+        let urls;
+        try {
+          const host = typeof location !== "undefined" ? location.hostname : "";
+          if (host === "strzelca.pl") {
+            urls = ["/api/blog-interactions"];
+          } else if (host === "localhost" || host === "127.0.0.1") {
+            urls = ["/api/blog-interactions", "https://strzelca.pl/api/blog-interactions"];
+          } else {
+            urls = ["https://strzelca.pl/api/blog-interactions", "/api/blog-interactions"];
+          }
+        } catch (_) {
+          urls = ["/api/blog-interactions", "https://strzelca.pl/api/blog-interactions"];
+        }
+
+        let lastError = null;
+        for (const url of urls) {
+          try {
+            const response = await fetch(url, {
+              method: "POST",
+              headers,
+              credentials: "include",
+              body: JSON.stringify(bodyObject),
+            });
+            const data = await response.json().catch(() => null);
+            if (!response.ok || !data?.success) {
+              throw new Error(data?.error || `HTTP ${response.status}`);
+            }
+            return data.data || {};
+          } catch (error) {
+            lastError = error;
+          }
+        }
+        throw lastError || new Error("Nie udało się połączyć z API komentarzy bloga.");
+      }
+
+      window.loadBlogCommentsModeration = async () => {
+        const container = document.getElementById("blog-comments-moderation-list");
+        if (!container) return;
+        container.innerHTML = '<div class="text-zinc-500">Ładowanie komentarzy...</div>';
+
+        try {
+          const snapshot = await getDocs(query(collection(db, "blogPostComments"), orderBy("createdAt", "desc"), limit(50)));
+          const comments = snapshot.docs
+            .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+            .filter((comment) => comment.status !== "deleted");
+
+          if (!comments.length) {
+            container.innerHTML = '<div class="text-zinc-500">Brak komentarzy do moderacji.</div>';
+            return;
+          }
+
+          const postTitleMap = new Map(blogPostsList.map((post) => [post.id, post.title || "Bez tytułu"]));
+          container.innerHTML = comments
+            .map((comment) => `
+              <div class="rounded-xl border border-zinc-700 bg-zinc-900/50 p-4">
+                <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div class="min-w-0">
+                    <div class="text-sm text-zinc-400">
+                      <span class="text-white font-semibold">${escapeHtml(comment.userDisplayName || "Użytkownik")}</span>
+                      • ${escapeHtml(formatAdminDateTime(comment.createdAt))}
+                      • wpis: <span class="text-coyote">${escapeHtml(postTitleMap.get(comment.postId) || comment.postId || "Nieznany wpis")}</span>
+                    </div>
+                    <div class="mt-3 text-sm text-zinc-200 whitespace-pre-wrap break-words">${escapeHtml(comment.contentText || "")}</div>
+                    <div class="mt-2 text-xs text-zinc-500">Polubienia: ${Number(comment.likeCount || 0)} • Odpowiedzi: ${Number(comment.replyCount || 0)}</div>
+                  </div>
+                  <div class="shrink-0">
+                    <button type="button" onclick="moderateDeleteBlogComment('${comment.id}')" class="px-4 py-2 border border-red-500/40 text-red-300 rounded-lg hover:bg-red-500/10 transition">
+                      <i class="fa-solid fa-trash mr-2"></i>Usuń
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `)
+            .join("");
+        } catch (error) {
+          console.error("loadBlogCommentsModeration:", error);
+          container.innerHTML = '<div class="text-red-400">Nie udało się wczytać komentarzy bloga.</div>';
+        }
+      };
+
+      window.moderateDeleteBlogComment = async (commentId) => {
+        if (!commentId) return;
+        if (!confirm("Czy na pewno chcesz usunąć ten komentarz z bloga?")) return;
+        try {
+          await fetchBlogInteractionsAdminApi({
+            action: "comment.delete",
+            commentId,
+          });
+          showNotification("Komentarz został usunięty.", "success");
+          await loadBlogPosts();
+        } catch (error) {
+          console.error("moderateDeleteBlogComment:", error);
+          showNotification(error.message || "Nie udało się usunąć komentarza.", "error");
+        }
+      };
 
       window.refreshBlogPosts = async () => {
         const icon = document.getElementById("refresh-blog-icon");
@@ -18077,7 +19158,7 @@
       // ==================== NOWE FUNKCJE DLA SYSTEMU WIADOMOŚCI ====================
 
       // Zmienna do przechowywania aktualnych filtrów wiadomości
-      let currentFilters = { search: '', status: 'all' };
+      let currentFilters = { search: '', status: 'all', showReadMessages: false };
 
       // Funkcja ładowania statusu wiadomości
       window.loadMessagesStatus = async function loadMessagesStatus() {
@@ -18261,7 +19342,7 @@
 
         // Inicjalizuj currentFilters jeśli nie istnieje
         if (typeof currentFilters === 'undefined') {
-          currentFilters = { search: '', category: 'all', status: 'all' };
+          currentFilters = { search: '', category: 'all', status: 'all', showReadMessages: false };
         }
 
         console.log('loadMessagesWithFilters: Starting with filters:', currentFilters);
@@ -18284,11 +19365,17 @@
             currentFilters.search = searchInput.value || '';
           }
 
+          const showReadCheckbox = document.getElementById('messages-show-read');
+          if (showReadCheckbox) {
+            currentFilters.showReadMessages = showReadCheckbox.checked;
+          }
+
           // Użyj API zamiast bezpośredniego zapytania do Firestore (lepsze uprawnienia)
           console.log('Loading messages via API with filters:', {
             recipientId: 'admin',
             category: currentFilters.category,
-            search: currentFilters.search
+            search: currentFilters.search,
+            showReadMessages: currentFilters.showReadMessages
           });
 
           // Buduj parametry zapytania API
@@ -18296,14 +19383,20 @@
           apiParams.append('recipientId', 'admin');
           apiParams.append('limit', '100');
 
-          if (currentFilters.category === 'unread') {
+          const cat = currentFilters.category;
+          const showRead = currentFilters.showReadMessages === true;
+
+          if (cat === 'unread') {
             apiParams.append('isRead', 'false');
-          } else if (currentFilters.category === 'read') {
+          } else if (cat === 'read') {
             apiParams.append('isRead', 'true');
-          } else if (currentFilters.category === 'completed') {
+          } else if (cat === 'completed') {
             apiParams.append('status', 'completed');
-          } else if (currentFilters.category === 'in_progress') {
+          } else if (cat === 'in_progress') {
             apiParams.append('status', 'in_progress');
+          } else if (!showRead) {
+            // Domyślnie (np. „wszystkie” / brak filtra): tylko nieprzeczytane w skrzynce admina
+            apiParams.append('isRead', 'false');
           }
 
           // Pobierz wiadomości przez API
@@ -18493,11 +19586,22 @@
         if (messages.length === 0) {
           // Podczas auto-odświeżania nie pokazuj "Brak wiadomości" jeśli już są wiadomości
           if (!isAutoRefresh) {
+            const showRead = currentFilters && currentFilters.showReadMessages === true;
+            const cat = currentFilters && currentFilters.category;
+            const unreadOnlyInbox =
+              cat === 'unread' ||
+              (!showRead &&
+                cat !== 'read' &&
+                cat !== 'completed' &&
+                cat !== 'in_progress');
+            const emptyHint = unreadOnlyInbox
+              ? 'Nie masz nieprzeczytanych wiadomości. Zaznacz „Pokaż przeczytane wiadomości”, aby zobaczyć starsze wątki.'
+              : 'Nie znaleziono wiadomości spełniających kryteria.';
           messagesContainer.innerHTML = `
             <div class="text-center text-zinc-500 py-12">
               <i class="fa-solid fa-inbox text-4xl mb-4 text-zinc-600"></i>
-              <h3 class="text-lg font-semibold mb-2">Brak wiadomości</h3>
-              <p class="text-sm">Nie znaleziono wiadomości spełniających kryteria</p>
+              <h3 class="text-lg font-semibold mb-2">${unreadOnlyInbox ? 'Brak nieprzeczytanych wiadomości' : 'Brak wiadomości'}</h3>
+              <p class="text-sm">${emptyHint}</p>
             </div>
           `;
           }
@@ -18746,6 +19850,10 @@
 
           const hasUnread = conversation.unreadCount > 0;
           const isPinned = conversation.isPinned || false;
+          const isGuestContact =
+            conversation.senderId === 'anonymous' || lastMsg.senderType === 'contact_form';
+          // Wspólna skrzynka admin_anonymous — pin w Firestore dotyczyłby wszystkich gości; nie pokazuj ani nie sugeruj przypięcia.
+          const effectivePinned = isGuestContact ? false : isPinned;
 
           // Hierarchia wyświetlania: zawsze nickname/displayName, email tylko jeśli brak nazwy
           const displayName = conversation.senderName || conversation.senderEmail;
@@ -18755,27 +19863,36 @@
           // Wyjątek: pozwól na usuwanie wiadomości od "Administrator" (może być wiadomość systemowa/testowa)
           const canPinOrDelete = conversation.senderId && conversation.senderId !== 'admin';
           const canDeleteAdminMessage = conversation.senderName === 'Administrator' || (conversation.senderId === 'admin' && conversation.senderName);
+          const guestBorder = isGuestContact
+            ? 'border-2 border-sky-500/45 shadow-md shadow-sky-500/10'
+            : (hasUnread ? 'border-coyote/40 shadow-lg shadow-coyote/10' : 'border-zinc-700/50');
+          const guestRing = !isGuestContact && effectivePinned ? 'ring-2 ring-coyote/30 bg-zinc-800/70' : '';
+          const avatarRing = isGuestContact
+            ? (hasUnread ? 'ring-2 ring-sky-400/55' : 'ring-2 ring-sky-500/35')
+            : (hasUnread ? 'ring-coyote/50' : 'ring-zinc-700/50');
+          const avatarGrad = isGuestContact ? 'from-sky-700 to-sky-600' : 'from-coyote to-coyote/70';
 
           return `
-            <div class="message-item bg-zinc-800/60 rounded-xl p-5 mb-3 hover:bg-zinc-800/80 transition-all duration-200 border ${hasUnread ? 'border-coyote/40 shadow-lg shadow-coyote/10' : 'border-zinc-700/50'} ${isPinned ? 'ring-2 ring-coyote/30 bg-zinc-800/70' : ''} cursor-pointer group"
+            <div class="message-item bg-zinc-800/60 rounded-xl p-5 mb-3 hover:bg-zinc-800/80 transition-all duration-200 border ${guestBorder} ${guestRing} cursor-pointer group"
                  data-user-id="${conversation.senderId}"
                  data-user-name="${conversation.senderName}"
                  data-user-email="${conversation.senderEmail}"
-                 data-is-pinned="${isPinned}"
+                 data-is-pinned="${effectivePinned}"
+                 data-guest-contact="${isGuestContact ? '1' : '0'}"
                  onclick="openMessageChat('${conversation.senderId}', '${conversation.senderName || ''}', '${conversation.senderEmail || ''}')">
               <div class="flex items-start gap-4">
                 <!-- Avatar -->
                 <div class="flex-shrink-0">
-                  <div class="w-12 h-12 bg-gradient-to-br from-coyote to-coyote/70 rounded-full flex items-center justify-center relative overflow-hidden ring-2 ${hasUnread ? 'ring-coyote/50' : 'ring-zinc-700/50'}">
+                  <div class="w-12 h-12 bg-gradient-to-br ${avatarGrad} rounded-full flex items-center justify-center relative overflow-hidden ring-2 ${avatarRing}">
                     ${conversation.senderAvatar ?
                       `<img src="${conversation.senderAvatar}" alt="${displayName}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                       <div class="w-full h-full bg-gradient-to-br from-coyote to-coyote/70 rounded-full items-center justify-center hidden">
-                         <i class="fa-solid fa-user text-black text-sm"></i>
+                       <div class="w-full h-full bg-gradient-to-br ${avatarGrad} rounded-full items-center justify-center hidden">
+                         <i class="fa-solid fa-user text-white text-sm"></i>
                        </div>` :
-                      `<i class="fa-solid fa-user text-black text-sm"></i>`
+                      `<i class="fa-solid fa-user text-white text-sm"></i>`
                     }
-                    ${isPinned ? '<div class="absolute -top-1 -right-1 w-4 h-4 bg-coyote rounded-full flex items-center justify-center"><i class="fa-solid fa-thumbtack text-black text-[8px]"></i></div>' : ''}
-                    ${hasUnread ? '<div class="absolute -bottom-1 -right-1 w-4 h-4 bg-coyote rounded-full border-2 border-zinc-800"></div>' : ''}
+                    ${effectivePinned ? '<div class="absolute -top-1 -right-1 w-4 h-4 bg-coyote rounded-full flex items-center justify-center"><i class="fa-solid fa-thumbtack text-black text-[8px]"></i></div>' : ''}
+                    ${hasUnread ? `<div class="absolute -bottom-1 -right-1 w-4 h-4 ${isGuestContact ? 'bg-sky-400' : 'bg-coyote'} rounded-full border-2 border-zinc-800"></div>` : ''}
                   </div>
                 </div>
 
@@ -18784,21 +19901,22 @@
                   <!-- Header -->
                   <div class="flex items-start justify-between mb-2">
                     <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2 mb-1">
+                      <div class="flex items-center gap-2 mb-1 flex-wrap">
+                        ${isGuestContact ? '<span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/40 flex-shrink-0" title="Wiadomość z publicznego formularza (bez konta)">Gość</span>' : ''}
                         <h4 class="font-semibold text-white text-base truncate">
                           ${displayName}
                         </h4>
-                        ${isPinned ? '<i class="fa-solid fa-thumbtack text-coyote text-xs flex-shrink-0"></i>' : ''}
-                        ${hasUnread ? '<span class="inline-flex items-center justify-center w-2 h-2 bg-coyote rounded-full flex-shrink-0"></span>' : ''}
+                        ${effectivePinned ? '<i class="fa-solid fa-thumbtack text-coyote text-xs flex-shrink-0"></i>' : ''}
+                        ${hasUnread ? `<span class="inline-flex items-center justify-center w-2 h-2 ${isGuestContact ? 'bg-sky-400' : 'bg-coyote'} rounded-full flex-shrink-0"></span>` : ''}
                       </div>
                       ${displaySubtext ? `<p class="text-xs text-zinc-400 truncate">${displaySubtext}</p>` : ''}
                     </div>
                     <div class="flex items-center gap-2 flex-shrink-0 ml-3">
                       <span class="text-xs text-zinc-500 whitespace-nowrap">${date}</span>
-                      ${canPinOrDelete ? `
-                      <button onclick="event.stopPropagation(); toggleConversationPin('${conversation.senderId}', ${isPinned})"
-                              class="w-8 h-8 flex items-center justify-center rounded-lg text-xs transition-all ${isPinned ? 'bg-coyote text-black hover:bg-coyote/80' : 'bg-zinc-700/50 text-zinc-400 hover:bg-zinc-700 hover:text-white'}"
-                              title="${isPinned ? 'Odepnij konwersację' : 'Przypnij konwersację'}"
+                      ${canPinOrDelete && !isGuestContact ? `
+                      <button onclick="event.stopPropagation(); toggleConversationPin('${conversation.senderId}', ${effectivePinned})"
+                              class="w-8 h-8 flex items-center justify-center rounded-lg text-xs transition-all ${effectivePinned ? 'bg-coyote text-black hover:bg-coyote/80' : 'bg-zinc-700/50 text-zinc-400 hover:bg-zinc-700 hover:text-white'}"
+                              title="${effectivePinned ? 'Odepnij konwersację' : 'Przypnij konwersację'}"
                               data-user-id="${conversation.senderId}">
                         <i class="fa-solid fa-thumbtack text-xs"></i>
                       </button>
@@ -20158,10 +21276,18 @@
       // Udostępnij funkcje globalnie
       window.toggleFilterDropdown = toggleFilterDropdown;
 
+      window.onMessagesShowReadChange = function onMessagesShowReadChange() {
+        const el = document.getElementById('messages-show-read');
+        currentFilters.showReadMessages = !!(el && el.checked);
+        loadMessagesWithFilters();
+      };
+
       // Funkcja czyszczenia filtrów
       function clearFilters() {
-        currentFilters = { search: '', category: 'all', status: 'all' };
+        currentFilters = { search: '', category: 'all', status: 'all', showReadMessages: false };
         document.getElementById('messages-search').value = '';
+        const showReadCb = document.getElementById('messages-show-read');
+        if (showReadCb) showReadCb.checked = false;
         const filterSelect = document.getElementById('messages-filter');
         if (filterSelect) filterSelect.value = 'all';
         loadMessagesWithFilters();
@@ -20739,11 +21865,22 @@
                 </div>
               </div>
 
-              ${order.invoiceFile ? `
-                <div class="mt-4 pt-4 border-t border-zinc-700">
-                  <a href="/api/download-invoice?orderId=${order.id}" target="_blank" class="text-coyote hover:text-coyote/80 text-sm">
-                    <i class="fa-solid fa-file-pdf mr-2"></i> Pobierz fakturę
-                  </a>
+              ${(order.invoiceFile || order.generatedInvoiceGroupId) ? `
+                <div class="mt-4 pt-4 border-t border-zinc-700 flex flex-wrap gap-4">
+                  ${order.invoiceFile ? `
+                    <a href="/api/download-invoice?orderId=${order.id}" target="_blank" class="text-coyote hover:text-coyote/80 text-sm">
+                      <i class="fa-solid fa-file-pdf mr-2"></i> Pobierz fakturę (plik)
+                    </a>
+                  ` : ''}
+                  ${order.generatedInvoiceGroupId ? `
+                    <button
+                      type="button"
+                      onclick="openInvoiceGroupFromOrder('${escapeHtml(order.generatedInvoiceGroupId)}', '${escapeHtml(order.generatedInvoiceId || '')}')"
+                      class="text-sky-300 hover:text-sky-200 text-sm"
+                    >
+                      <i class="fa-solid fa-file-invoice mr-2"></i> Otwórz fakturę z generatora
+                    </button>
+                  ` : ''}
                 </div>
               ` : ''}
             </div>
@@ -22944,6 +24081,8 @@
         if (!perpetual || !expiresAt) return;
         expiresAt.disabled = perpetual.checked;
         expiresAt.classList.toggle("opacity-50", perpetual.checked);
+        expiresAt.classList.toggle("bg-zinc-900/60", perpetual.checked);
+        expiresAt.classList.toggle("cursor-not-allowed", perpetual.checked);
       };
 
       window.syncPromoCodePurposeFields = function() {
@@ -22978,92 +24117,143 @@
         const modal = ensurePromoCodeModal();
         const selectedPurpose = currentCode?.purpose || "training_access";
         modal.innerHTML = `
-          <div class="admin-card max-w-3xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
-            <div class="flex justify-between items-center mb-6">
-              <h2 class="text-2xl font-bold coyote-text">${currentCode ? "Edytuj kod" : "Utwórz kod"}</h2>
-              <button onclick="closePromoCodeModal()" class="text-zinc-400 hover:text-white">
+          <div class="admin-card max-w-5xl w-full max-h-[90vh] overflow-y-auto p-0" onclick="event.stopPropagation()">
+            <div class="flex items-start justify-between gap-4 px-8 py-7 border-b border-zinc-800">
+              <div>
+                <h2 class="text-2xl md:text-3xl font-bold coyote-text">${currentCode ? "Edytuj kod" : "Utwórz kod"}</h2>
+                <p class="text-sm text-zinc-400 mt-2">
+                  Ustaw ważność, limit użyć i przeznaczenie kodu. Wielkość liter nie ma znaczenia.
+                </p>
+              </div>
+              <button onclick="closePromoCodeModal()" class="text-zinc-400 hover:text-white transition">
                 <i class="fa-solid fa-times text-xl"></i>
               </button>
             </div>
 
-            <form id="promo-code-form" class="space-y-5" onsubmit="savePromoCodeForm(event)">
+            <form id="promo-code-form" class="px-8 py-7 space-y-6" onsubmit="savePromoCodeForm(event)">
               <input type="hidden" id="promo-code-id" value="${escapeHtml(currentCode?.id || "")}" />
 
-              <div>
-                <label class="block text-sm font-medium mb-2">Kod</label>
-                <input type="text" id="promo-code-value" value="${escapeHtml(currentCode?.code || "")}" readonly />
-                <p class="text-xs text-zinc-500 mt-2">System waliduje kod bez rozróżniania wielkości liter.</p>
-              </div>
+              <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.7fr)_320px] gap-6 items-start">
+                <div class="space-y-6">
+                  <section class="rounded-2xl border border-zinc-800 bg-zinc-950/35 p-5">
+                    <div class="flex flex-col gap-2">
+                      <label class="block text-sm font-semibold text-zinc-200">Kod</label>
+                      <input
+                        type="text"
+                        id="promo-code-value"
+                        value="${escapeHtml(currentCode?.code || "")}"
+                        readonly
+                        class="tracking-[0.14em] uppercase text-lg"
+                      />
+                      <p class="text-xs text-zinc-500">Kod możesz wpisać ręcznie albo wygenerować automatycznie na dole formularza.</p>
+                    </div>
+                  </section>
 
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-medium mb-2">Data zakończenia ważności</label>
-                  <input type="datetime-local" id="promo-code-expires-at" value="${escapeHtml(promoCodeDateTimeLocalValue(currentCode?.expiresAtIso || ""))}" />
+                  <section class="rounded-2xl border border-zinc-800 bg-zinc-950/35 p-5 space-y-5">
+                    <div>
+                      <h3 class="text-base font-semibold text-white">Parametry podstawowe</h3>
+                      <p class="text-sm text-zinc-500 mt-1">Tutaj ustawisz czas działania kodu i łączną liczbę możliwych użyć.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Data zakończenia ważności</label>
+                        <input type="datetime-local" id="promo-code-expires-at" value="${escapeHtml(promoCodeDateTimeLocalValue(currentCode?.expiresAtIso || ""))}" />
+                        <p class="text-xs text-zinc-500 mt-2">Pole pozostaje nieaktywne, jeśli zaznaczysz kod bezterminowy.</p>
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Ilość użyć</label>
+                        <input type="number" id="promo-code-usage-limit" min="0" step="1" value="${escapeHtml(String(currentCode?.usageLimit || 0))}" />
+                        <p class="text-xs text-zinc-500 mt-2">Wpisz <strong>0</strong>, aby ustawić brak limitu.</p>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="rounded-2xl border border-zinc-800 bg-zinc-950/35 p-5 space-y-5">
+                    <div>
+                      <h3 class="text-base font-semibold text-white">Przeznaczenie kodu</h3>
+                      <p class="text-sm text-zinc-500 mt-1">Wybierz, czy kod ma przyznawać dostęp do szkolenia, czy działać jako rabat.</p>
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-medium mb-2">Typ kodu</label>
+                      <select id="promo-code-purpose" onchange="syncPromoCodePurposeFields()">
+                        <option value="training_access" ${selectedPurpose === "training_access" ? "selected" : ""}>Dostęp do kursu</option>
+                        <option value="discount" ${selectedPurpose === "discount" ? "selected" : ""}>Kupon rabatowy</option>
+                      </select>
+                    </div>
+
+                    <div id="promo-code-training-section" class="space-y-2 ${selectedPurpose === "training_access" ? "" : "hidden"}">
+                      <label class="block text-sm font-medium">Szkolenie</label>
+                      <select id="promo-code-training-id">
+                        <option value="">Wybierz szkolenie</option>
+                        ${getPromoCodeTrainingOptions(currentCode?.targetTrainingId || "")}
+                      </select>
+                      <p class="text-xs text-zinc-500">Kod zadziała tylko dla wybranego szkolenia.</p>
+                    </div>
+
+                    <div id="promo-code-discount-section" class="space-y-4 ${selectedPurpose === "discount" ? "" : "hidden"}">
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label class="block text-sm font-medium mb-2">Typ rabatu</label>
+                          <select id="promo-code-discount-type">
+                            <option value="percent" ${currentCode?.discountType === "percent" ? "selected" : ""}>Rabat procentowy</option>
+                            <option value="amount" ${currentCode?.discountType === "amount" ? "selected" : ""}>Wartość vouchera</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label class="block text-sm font-medium mb-2">Wartość</label>
+                          <input type="number" id="promo-code-discount-value" min="0" step="0.01" value="${escapeHtml(String(currentCode?.discountValue || 0))}" />
+                        </div>
+                      </div>
+                      <p class="text-xs text-zinc-500">Dla vouchera wpisz kwotę, a dla rabatu procentowego liczbę procent.</p>
+                    </div>
+                  </section>
                 </div>
-                <label class="flex items-center gap-3 pt-8 text-sm text-zinc-300">
-                  <input type="checkbox" id="promo-code-is-perpetual" ${currentCode?.isPerpetual ? "checked" : ""} onchange="syncPromoCodePerpetualState()" />
-                  <span>Kod bezterminowy</span>
-                </label>
-              </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-medium mb-2">Ilość użyć</label>
-                  <input type="number" id="promo-code-usage-limit" min="0" step="1" value="${escapeHtml(String(currentCode?.usageLimit || 0))}" />
-                  <p class="text-xs text-zinc-500 mt-2">Wpisz <strong>0</strong>, aby ustawić brak limitu.</p>
-                </div>
-                <label class="flex items-center gap-3 pt-8 text-sm text-zinc-300">
-                  <input type="checkbox" id="promo-code-is-active" ${currentCode?.isActive === false ? "" : "checked"} />
-                  <span>Kod aktywny</span>
-                </label>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium mb-2">Przeznaczenie kodu</label>
-                <select id="promo-code-purpose" onchange="syncPromoCodePurposeFields()">
-                  <option value="training_access" ${selectedPurpose === "training_access" ? "selected" : ""}>Dostęp do kursu</option>
-                  <option value="discount" ${selectedPurpose === "discount" ? "selected" : ""}>Kupon rabatowy</option>
-                </select>
-              </div>
-
-              <div id="promo-code-training-section" class="${selectedPurpose === "training_access" ? "" : "hidden"}">
-                <label class="block text-sm font-medium mb-2">Szkolenie</label>
-                <select id="promo-code-training-id">
-                  <option value="">Wybierz szkolenie</option>
-                  ${getPromoCodeTrainingOptions(currentCode?.targetTrainingId || "")}
-                </select>
-              </div>
-
-              <div id="promo-code-discount-section" class="${selectedPurpose === "discount" ? "" : "hidden"}">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <aside class="rounded-2xl border border-coyote/30 bg-coyote/5 p-5 space-y-4 xl:sticky xl:top-0">
                   <div>
-                    <label class="block text-sm font-medium mb-2">Typ rabatu</label>
-                    <select id="promo-code-discount-type">
-                      <option value="percent" ${currentCode?.discountType === "percent" ? "selected" : ""}>Rabat procentowy</option>
-                      <option value="amount" ${currentCode?.discountType === "amount" ? "selected" : ""}>Wartość vouchera</option>
-                    </select>
+                    <h3 class="text-base font-semibold text-white">Ustawienia</h3>
+                    <p class="text-sm text-zinc-400 mt-1">Najważniejsze przełączniki są zebrane w jednym miejscu.</p>
                   </div>
-                  <div>
-                    <label class="block text-sm font-medium mb-2">Wartość</label>
-                    <input type="number" id="promo-code-discount-value" min="0" step="0.01" value="${escapeHtml(String(currentCode?.discountValue || 0))}" />
+
+                  <label class="flex items-start gap-3 rounded-xl border border-zinc-700/80 bg-black/20 p-4 cursor-pointer">
+                    <input type="checkbox" id="promo-code-is-perpetual" class="mt-1" ${currentCode?.isPerpetual ? "checked" : ""} onchange="syncPromoCodePerpetualState()" />
+                    <span>
+                      <span class="block text-sm font-semibold text-zinc-100">Kod bezterminowy</span>
+                      <span class="block text-xs text-zinc-500 mt-1">Nie wygasa automatycznie i działa do ręcznego wyłączenia.</span>
+                    </span>
+                  </label>
+
+                  <label class="flex items-start gap-3 rounded-xl border border-zinc-700/80 bg-black/20 p-4 cursor-pointer">
+                    <input type="checkbox" id="promo-code-is-active" class="mt-1" ${currentCode?.isActive === false ? "" : "checked"} />
+                    <span>
+                      <span class="block text-sm font-semibold text-zinc-100">Kod aktywny</span>
+                      <span class="block text-xs text-zinc-500 mt-1">Można go od razu wykorzystać w sklepie lub szkoleniach.</span>
+                    </span>
+                  </label>
+
+                  <div class="rounded-xl border border-dashed border-zinc-700/80 p-4 text-xs text-zinc-500 leading-relaxed">
+                    Każdy kod działa tylko raz dla danego konta, niezależnie od wielkości liter użytych przy wpisywaniu.
                   </div>
-                </div>
+                </aside>
               </div>
 
-              <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between pt-4 border-t border-zinc-700">
-                <div class="flex flex-wrap gap-2">
-                  <button type="button" onclick="openPromoCodeManualEntryDialog()" class="px-4 py-2 rounded-lg border border-zinc-600 text-zinc-200 hover:border-coyote hover:text-coyote transition">
+              <div class="flex flex-col gap-4 border-t border-zinc-800 pt-6 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex flex-wrap gap-3">
+                  <button type="button" onclick="openPromoCodeManualEntryDialog()" class="px-4 py-2.5 rounded-xl border border-zinc-600 text-zinc-200 hover:border-coyote hover:text-coyote transition">
                     Wprowadź kod
                   </button>
-                  <button type="button" onclick="generatePromoCodeInForm()" class="px-4 py-2 rounded-lg border border-zinc-600 text-zinc-200 hover:border-coyote hover:text-coyote transition">
+                  <button type="button" onclick="generatePromoCodeInForm()" class="px-4 py-2.5 rounded-xl border border-zinc-600 text-zinc-200 hover:border-coyote hover:text-coyote transition">
                     Generuj kod
                   </button>
                 </div>
-                <div class="flex flex-col-reverse sm:flex-row gap-2">
-                  <button type="button" onclick="closePromoCodeModal()" class="px-4 py-2 rounded-lg border border-zinc-600 text-zinc-300 hover:bg-zinc-800 transition">
+
+                <div class="flex flex-col-reverse sm:flex-row gap-3">
+                  <button type="button" onclick="closePromoCodeModal()" class="px-5 py-2.5 rounded-xl border border-zinc-600 text-zinc-300 hover:bg-zinc-800 transition">
                     Anuluj
                   </button>
-                  <button type="submit" class="btn-admin px-5 py-2">
+                  <button type="submit" class="btn-admin px-6 py-2.5 rounded-xl">
                     <i class="fa-solid fa-save mr-2"></i>
                     Zapisz kod
                   </button>
@@ -23536,39 +24726,40 @@
         <form id="product-form" class="flex-1 overflow-y-auto space-y-4 pr-2">
           <input type="hidden" id="product-id" />
 
-          <div>
-            <label class="block text-sm font-medium mb-2">Nazwa produktu *</label>
-            <input
-              type="text"
-              id="product-title"
-              placeholder="Nazwa produktu"
-              required
-              class="w-full"
-            />
-          </div>
-
-          <div>
-            <div class="flex items-center justify-between gap-4 mb-2">
-              <label class="block text-sm font-medium">Cena *</label>
-              <label class="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  id="product-individualPricing"
-                  onchange="toggleProductIndividualPricing()"
-                />
-                <span>Cena ustalana indywidualnie</span>
-              </label>
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:gap-6">
+            <div class="flex-1 min-w-0">
+              <label class="block text-sm font-medium mb-2" for="product-title">Nazwa produktu *</label>
+              <input
+                type="text"
+                id="product-title"
+                placeholder="Nazwa produktu"
+                required
+                class="w-full rounded border border-zinc-600 bg-zinc-950 px-3 py-2 text-white placeholder:text-zinc-500"
+              />
             </div>
-            <input
-              type="text"
-              id="product-price"
-              placeholder="Cena (np. 299.99)"
-              required
-              class="w-full"
-            />
-            <p class="text-xs text-zinc-500 mt-2" id="product-price-help">
-              Podaj cenę produktu widoczną w sklepie.
-            </p>
+            <div class="w-full shrink-0 lg:w-72 xl:w-80">
+              <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-2">
+                <label class="block text-sm font-medium" for="product-price">Cena *</label>
+                <label class="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer shrink-0 max-w-full">
+                  <input
+                    type="checkbox"
+                    id="product-individualPricing"
+                    onchange="toggleProductIndividualPricing()"
+                  />
+                  <span class="leading-snug">Cena ustalana indywidualnie</span>
+                </label>
+              </div>
+              <input
+                type="text"
+                id="product-price"
+                placeholder="Cena (np. 299.99)"
+                required
+                class="w-full rounded border border-zinc-600 bg-zinc-950 px-3 py-2 text-white placeholder:text-zinc-500 transition-colors disabled:opacity-60 disabled:bg-zinc-900/85 disabled:text-zinc-500 disabled:border-zinc-800 disabled:cursor-not-allowed disabled:placeholder:text-zinc-600"
+              />
+              <p class="text-xs text-zinc-500 mt-2" id="product-price-help">
+                Podaj cenę produktu widoczną w sklepie.
+              </p>
+            </div>
           </div>
 
           <div>
@@ -23598,7 +24789,9 @@
           <div>
             <label class="block text-sm font-medium mb-2">Opis produktu</label>
             <!-- Bez contenteditable: Quill ustawia edycję tylko na .ql-editor; zagnieżdżone contenteditable psuje wklejanie (Safari/Chrome). -->
-            <div id="product-description-editor" style="min-height: 300px;" class="editor-content"></div>
+            <div id="product-description-quill-host" class="rounded-lg overflow-hidden border border-zinc-700 bg-[#0a0a0a]">
+              <div id="product-description-editor" style="min-height: 300px;"></div>
+            </div>
           </div>
 
           <div class="flex gap-4 pt-4 border-t border-zinc-700">
@@ -24037,6 +25230,8 @@
         }
       };
     </script>
+    <div id="invoice-modal" class="invoice-modal-backdrop"></div>
+    <script src="/admin/invoices-admin.js?v=2026-03-25-1"></script>
     <!-- Bez auth-widget / messages-widget: na /admin/ inicjalizują Firestore przed initAuth
          i psują Safari (WebChannel „access control checks”). Panel ma własny UI i zakładkę wiadomości. -->
   </body>

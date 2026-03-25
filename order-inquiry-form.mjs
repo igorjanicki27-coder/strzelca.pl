@@ -250,9 +250,9 @@ function updateOrderPriceSummary() {
   if (!p || !finalEl || !baseEl || !discountEl) return;
 
   if (p.individualPricing) {
-    finalEl.textContent = "Cena ustalana indywidualnie";
+    finalEl.textContent = "Wycena indywidualna";
     finalEl.className =
-      "text-[1rem] md:text-[1.1rem] text-[#C19A6B] font-bold leading-tight text-right max-w-[14rem]";
+      "text-[1rem] md:text-[1.1rem] text-[#C19A6B] font-bold leading-tight text-right whitespace-nowrap max-w-full";
     baseEl.className = "hidden text-xs text-zinc-500 line-through mt-1";
     baseEl.textContent = "";
     discountEl.className = "hidden text-xs text-emerald-300 mt-1";
@@ -287,6 +287,20 @@ function updateOrderPriceSummary() {
 function closeRegulaminModal() {
   const el = document.getElementById("strzelca-regulamin-modal");
   if (el) el.remove();
+}
+
+function closeUnderlyingDetailsModal() {
+  if (typeof window === "undefined") return;
+  if (typeof window.closeDetailsModal === "function") {
+    window.closeDetailsModal();
+    return;
+  }
+  const detailsModal = document.getElementById("details-modal");
+  if (detailsModal) detailsModal.classList.add("hidden");
+  if (window.galleryKeyHandler) {
+    document.removeEventListener("keydown", window.galleryKeyHandler);
+    window.galleryKeyHandler = null;
+  }
 }
 
 async function fetchRegulaminPlainText() {
@@ -374,7 +388,7 @@ async function logOrderActivity(db, user, displayName, context) {
 function getOrderWizardSteps() {
   if (!pendingForm) return [];
   return pendingForm.context === "shop"
-    ? ["type", "customer", "delivery", "summary"]
+    ? ["type", "delivery", "customer", "summary"]
     : ["type", "customer", "summary"];
 }
 
@@ -462,8 +476,10 @@ function syncOrderCustomerTypeUI() {
   const customerType = getOrderCustomerType();
   const isCompany = customerType === "company";
   const isPrivate = customerType === "private";
-  const showPrivateAddress = p.context === "shop" && isPrivate;
+  const deliveryMethod = p.context === "shop" ? getCurrentOrderDeliveryMethod() : "";
+  const showPrivateAddress = p.context === "shop" && isPrivate && deliveryMethod === "courier";
   const showAddress = isCompany || showPrivateAddress;
+  const showParcelLocker = p.context === "shop" && deliveryMethod === "inpost";
 
   [["private", isPrivate], ["company", isCompany]].forEach(([type, active]) => {
     const card = document.getElementById(`order-type-card-${type}`);
@@ -478,10 +494,20 @@ function syncOrderCustomerTypeUI() {
 
   const addressSection = document.getElementById("order-address-section");
   if (addressSection) addressSection.classList.toggle("hidden", !showAddress);
+  const parcelSection = document.getElementById("order-parcel-section");
+  if (parcelSection) parcelSection.classList.toggle("hidden", !showParcelLocker);
 
   const addressLabel = document.getElementById("order-address-label");
+  const addressHint = document.getElementById("order-address-hint");
   if (addressLabel) {
-    addressLabel.textContent = isCompany ? "Adres firmy" : "Adres";
+    addressLabel.textContent = isCompany ? "Adres firmy" : "Adres dostawy";
+  }
+  if (addressHint) {
+    addressHint.textContent = isCompany
+      ? p.context === "shop" && deliveryMethod === "courier"
+        ? "Adres firmy zostanie użyty jako dane zamówienia i adres dostawy."
+        : "Adres zostanie użyty jako dane podstawowe zamówienia."
+      : "Adres będzie użyty do dostawy kurierem.";
   }
 
   const firstRequired = document.getElementById("order-first-required");
@@ -513,6 +539,7 @@ function syncOrderCustomerTypeUI() {
   const billingBuilding = document.getElementById("order-address-building");
   const billingPostal = document.getElementById("order-address-postal");
   const billingCity = document.getElementById("order-address-city");
+  const parcelLocker = document.getElementById("order-delivery-parcelLocker");
 
   if (firstName) firstName.required = isPrivate;
   if (lastName) lastName.required = isPrivate;
@@ -521,8 +548,9 @@ function syncOrderCustomerTypeUI() {
   if (companyName) companyName.required = isCompany;
   if (taxId) taxId.required = isCompany;
   [billingStreet, billingBuilding, billingPostal, billingCity].forEach((field) => {
-    if (field) field.required = isCompany;
+    if (field) field.required = isCompany || showPrivateAddress;
   });
+  if (parcelLocker) parcelLocker.required = showParcelLocker;
 }
 
 function syncOrderDeliveryUI() {
@@ -532,10 +560,6 @@ function syncOrderDeliveryUI() {
   const method = getCurrentOrderDeliveryMethod();
   const courierCard = document.getElementById("order-delivery-card-courier");
   const inpostCard = document.getElementById("order-delivery-card-inpost");
-  const courierFields = document.getElementById("order-delivery-courier-fields");
-  const inpostFields = document.getElementById("order-delivery-inpost-fields");
-  const otherAddressToggle = document.getElementById("order-delivery-other-address");
-  const otherAddressWrap = document.getElementById("order-delivery-other-address-wrap");
 
   [courierCard, inpostCard].forEach((card, index) => {
     if (!card) return;
@@ -544,47 +568,6 @@ function syncOrderDeliveryUI() {
       ? "rounded-3xl border border-[#C19A6B]/80 bg-[#C19A6B]/12 shadow-lg shadow-[#C19A6B]/10 px-5 py-5 text-left transition"
       : "rounded-3xl border border-zinc-700/80 bg-zinc-950/50 hover:border-zinc-500/80 hover:bg-zinc-900/70 px-5 py-5 text-left transition";
   });
-
-  if (courierFields) courierFields.classList.toggle("hidden", method !== "courier");
-  if (inpostFields) inpostFields.classList.toggle("hidden", method !== "inpost");
-  if (otherAddressWrap) otherAddressWrap.classList.toggle("hidden", method !== "courier");
-
-  const billingAddress = getOrderAddressFromInputs("order-address");
-  const deliveryStreet = document.getElementById("order-delivery-street");
-  const deliveryBuilding = document.getElementById("order-delivery-building");
-  const deliveryPostal = document.getElementById("order-delivery-postal");
-  const deliveryCity = document.getElementById("order-delivery-city");
-  const deliveryFields = [deliveryStreet, deliveryBuilding, deliveryPostal, deliveryCity];
-
-  if (method === "courier") {
-    if (otherAddressToggle && !otherAddressToggle.checked && !isAddressComplete(billingAddress)) {
-      otherAddressToggle.checked = true;
-    }
-
-    if (otherAddressToggle?.checked) {
-      deliveryFields.forEach((field) => {
-        if (!field) return;
-        field.readOnly = false;
-        field.required = true;
-        field.classList.remove("cursor-not-allowed", "opacity-80");
-      });
-    } else {
-      setOrderAddressInputs("order-delivery", billingAddress);
-      deliveryFields.forEach((field) => {
-        if (!field) return;
-        field.readOnly = true;
-        field.required = true;
-        field.classList.add("cursor-not-allowed", "opacity-80");
-      });
-    }
-  } else {
-    deliveryFields.forEach((field) => {
-      if (!field) return;
-      field.required = false;
-      field.readOnly = false;
-      field.classList.remove("cursor-not-allowed", "opacity-80");
-    });
-  }
 
   const lockerField = document.getElementById("order-delivery-parcelLocker");
   if (lockerField) {
@@ -606,8 +589,6 @@ function updateOrderSummaryPanel() {
     : roundMoney(discount.finalBasePrice + (p.context === "shop" ? shippingCost : 0));
   const deliveryMethod = getCurrentOrderDeliveryMethod();
   const billingAddress = getOrderAddressFromInputs("order-address");
-  const deliveryAddress =
-    deliveryMethod === "courier" ? getOrderAddressFromInputs("order-delivery") : blankAddress();
   const selectedDeliveryLabel =
     p.context !== "shop"
       ? "Brak dostawy"
@@ -620,7 +601,7 @@ function updateOrderSummaryPanel() {
     p.context !== "shop"
       ? "Szkolenia nie wymagają dostawy."
       : deliveryMethod === "courier"
-      ? formatAddressInline(deliveryAddress) || "Uzupełnij adres dostawy."
+      ? formatAddressInline(billingAddress) || "Uzupełnij adres dostawy."
       : deliveryMethod === "inpost"
       ? getOrderFieldValue("order-delivery-parcelLocker") || "Wpisz numer paczkomatu."
       : "Wybierz sposób dostawy.";
@@ -628,16 +609,18 @@ function updateOrderSummaryPanel() {
   const priceRow = document.getElementById("order-summary-price");
   const shippingRow = document.getElementById("order-summary-shipping");
   const discountRow = document.getElementById("order-summary-discount");
+  const discountRowWrap = document.getElementById("order-summary-discount-row");
   const totalRow = document.getElementById("order-summary-total");
   const deliveryMethodRow = document.getElementById("order-summary-delivery-method");
   const deliveryHintRow = document.getElementById("order-summary-delivery-hint");
-  const summaryAddressRow = document.getElementById("order-summary-address");
+  const hasDiscount = !p.individualPricing && discount.discountAmount > 0;
 
   if (priceRow) priceRow.textContent = p.individualPricing ? "-" : formatMoney(p.price || 0);
   if (shippingRow) {
     shippingRow.textContent = p.individualPricing ? "-" : p.context === "shop" ? formatMoney(shippingCost) : formatMoney(0);
   }
   if (discountRow) discountRow.textContent = p.individualPricing ? "-" : discount.label;
+  if (discountRowWrap) discountRowWrap.classList.toggle("hidden", !hasDiscount);
   if (totalRow) {
     totalRow.textContent = p.individualPricing
       ? "Cena ustalana po wycenie zamówienia."
@@ -648,10 +631,6 @@ function updateOrderSummaryPanel() {
   }
   if (deliveryMethodRow) deliveryMethodRow.textContent = selectedDeliveryLabel;
   if (deliveryHintRow) deliveryHintRow.textContent = summaryDeliveryHint;
-  if (summaryAddressRow) {
-    const addressText = formatAddressInline(billingAddress);
-    summaryAddressRow.textContent = addressText || "Brak zapisanego adresu.";
-  }
 
   updateOrderPriceSummary();
 }
@@ -676,6 +655,7 @@ function refreshOrderWizardView() {
 
   const indicators = document.getElementById("order-step-indicators");
   if (indicators) {
+    indicators.style.gridTemplateColumns = `repeat(${steps.length}, minmax(0, 1fr))`;
     indicators.innerHTML = steps
       .map((step, index) => {
         const labelMap = {
@@ -704,21 +684,40 @@ function refreshOrderWizardView() {
     currentTitle.textContent =
       {
         type: "Kupujesz jako",
-        customer: "Dane do zamówienia",
         delivery: "Sposób dostawy",
+        customer: "Dane do zamówienia",
         summary: "Podsumowanie zamówienia",
       }[steps[p.step]] || "Zamówienie";
   }
 
   const backButton = document.getElementById("order-back-button");
   const nextButton = document.getElementById("order-next-button");
+  const closeButton = document.getElementById("order-close-button");
   if (backButton) {
     backButton.classList.toggle("invisible", p.step === 0);
-    backButton.disabled = p.step === 0;
+    backButton.disabled = p.step === 0 || p.isSubmitting === true;
   }
   if (nextButton) {
-    nextButton.textContent = p.step === maxStep ? "Złóż zamówienie" : "Dalej";
+    nextButton.disabled = p.isSubmitting === true;
+    nextButton.classList.toggle("opacity-70", p.isSubmitting === true);
+    nextButton.classList.toggle("cursor-not-allowed", p.isSubmitting === true);
+    if (p.step === maxStep && p.isSubmitting === true) {
+      nextButton.innerHTML = `<span class="inline-flex items-center gap-2"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i><span>Wysyłanie...</span></span>`;
+    } else {
+      nextButton.textContent = p.step === maxStep ? "Złóż zamówienie" : "Dalej";
+    }
   }
+  if (closeButton) {
+    closeButton.disabled = p.isSubmitting === true;
+    closeButton.classList.toggle("opacity-60", p.isSubmitting === true);
+    closeButton.classList.toggle("cursor-not-allowed", p.isSubmitting === true);
+  }
+
+  const scrollBox = document.getElementById("order-form-scroll");
+  if (scrollBox && p.renderedStep !== p.step) {
+    scrollBox.scrollTop = 0;
+  }
+  p.renderedStep = p.step;
 }
 
 function renderOrderFormModal({
@@ -765,6 +764,7 @@ function renderOrderFormModal({
     appliedPromo: null,
     individualPricing: individualPricing === true,
     step: 0,
+    isSubmitting: false,
     profileAddress: cloneAddress(decodedAddress),
     profileParcelLocker: parcelLockerVal,
     companyNoticeAccepted: false,
@@ -779,13 +779,6 @@ function renderOrderFormModal({
   modal.id = "order-form-modal";
   modal.className =
     "fixed inset-0 z-[200] flex items-center justify-center p-3 md:p-5 bg-black/90 backdrop-blur-md";
-  modal.style.overflowY = "auto";
-  modal.onclick = function (e) {
-    if (e.target.id === "order-form-modal") {
-      modal.remove();
-      pendingForm = null;
-    }
-  };
 
   const disclaimerText =
     context === "shop"
@@ -793,8 +786,8 @@ function renderOrderFormModal({
       : "Złożenie zamówienia nie jest jednoznaczne z uzyskaniem dostępu do szkolenia. Decyzję podejmuje obsługa na podstawie dostępności oferty.";
 
   modal.innerHTML = `
-    <div class="relative w-full max-w-4xl my-4 rounded-[28px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,18,0.96),rgba(8,8,8,0.96))] shadow-2xl shadow-black/60 overflow-hidden" onclick="event.stopPropagation()">
-      <button type="button" onclick="document.getElementById('order-form-modal').remove(); window.__strzelcaClearPendingOrder && window.__strzelcaClearPendingOrder();"
+    <div class="relative flex max-h-[calc(100vh-1.5rem)] w-full max-w-4xl flex-col rounded-[28px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,18,0.96),rgba(8,8,8,0.96))] shadow-2xl shadow-black/60 overflow-hidden" onclick="event.stopPropagation()">
+      <button type="button" id="order-close-button" onclick="document.getElementById('order-form-modal').remove(); window.__strzelcaClearPendingOrder && window.__strzelcaClearPendingOrder();"
               class="absolute right-4 top-4 z-10 inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-700/80 bg-black/40 text-zinc-300 hover:border-zinc-500 hover:text-white transition"
               aria-label="Zamknij">
         <i class="fa-solid fa-times text-lg" aria-hidden="true"></i>
@@ -808,16 +801,16 @@ function renderOrderFormModal({
             <p id="order-current-step-title" class="mt-3 text-sm text-[#D2B48C] font-semibold">Kupujesz jako</p>
           </div>
           <div id="order-price-summary" class="text-left md:text-right shrink-0">
-            <div id="order-price-final" class="${individualPricing ? "text-base md:text-lg text-[#C19A6B] font-bold leading-tight max-w-[16rem]" : price > 0 ? "text-[1.3rem] md:text-[1.55rem] text-[#C19A6B] font-bold tabular-nums leading-tight" : "text-zinc-500 text-[1.3rem] md:text-[1.55rem] leading-tight"}">${individualPricing ? "Cena ustalana indywidualnie" : price > 0 ? formatMoney(price) : "—"}</div>
+            <div id="order-price-final" class="${individualPricing ? "text-base md:text-lg text-[#C19A6B] font-bold leading-tight whitespace-nowrap max-w-full" : price > 0 ? "text-[1.3rem] md:text-[1.55rem] text-[#C19A6B] font-bold tabular-nums leading-tight" : "text-zinc-500 text-[1.3rem] md:text-[1.55rem] leading-tight"}">${individualPricing ? "Cena ustalana indywidualnie" : price > 0 ? formatMoney(price) : "—"}</div>
             <div id="order-price-base" class="hidden text-xs text-zinc-500 line-through mt-1"></div>
             <div id="order-price-discount" class="hidden text-xs text-emerald-300 mt-1"></div>
           </div>
         </div>
-        <div id="order-step-indicators" class="mt-5 grid gap-2 md:grid-cols-4"></div>
+        <div id="order-step-indicators" class="mt-5 grid gap-2"></div>
       </div>
 
-      <form id="shop-order-form" class="flex flex-col">
-        <div class="max-h-[min(72vh,760px)] overflow-y-auto px-5 py-5 md:px-8 md:py-7">
+      <form id="shop-order-form" class="flex min-h-0 flex-1 flex-col">
+        <div id="order-form-scroll" class="min-h-0 flex-1 overflow-y-auto px-5 py-5 md:px-8 md:py-7">
           <section id="order-step-type" class="space-y-4">
             <div class="grid gap-4 md:grid-cols-2">
               <button type="button" id="order-type-card-private" onclick="window.selectStrzelcaOrderCustomerType('private')" class="${tileClass}">
@@ -830,6 +823,26 @@ function renderOrderFormModal({
                 <div class="mt-3 text-xl font-black text-white font-[Orbitron]">Firma</div>
                 <p class="mt-2 text-sm text-zinc-400 leading-relaxed">Dane kontaktowe + dane firmy i adres firmy do zamówienia.</p>
               </button>
+            </div>
+          </section>
+
+          <section id="order-step-delivery" class="hidden space-y-4">
+            <div class="rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6">
+              <p class="text-sm text-zinc-500 mb-5">Wybierz sposób dostawy. Dane adresowe lub numer paczkomatu uzupełnisz w kolejnym kroku.</p>
+              <div class="grid gap-4 md:grid-cols-2">
+                <button type="button" id="order-delivery-card-courier" onclick="window.selectStrzelcaOrderDeliveryMethod('courier')" class="${tileClass}">
+                  <input type="radio" name="order-delivery-method" value="courier" class="sr-only">
+                  <div class="text-[11px] uppercase tracking-[0.26em] text-zinc-500">Dostawa</div>
+                  <div class="mt-3 text-xl font-black text-white font-[Orbitron]">Kurier</div>
+                  <p class="mt-2 text-sm text-zinc-400">Stała opłata: ${formatMoney(30)}.</p>
+                </button>
+                <button type="button" id="order-delivery-card-inpost" onclick="window.selectStrzelcaOrderDeliveryMethod('inpost')" class="${tileClass}">
+                  <input type="radio" name="order-delivery-method" value="inpost" class="sr-only">
+                  <div class="text-[11px] uppercase tracking-[0.26em] text-zinc-500">Dostawa</div>
+                  <div class="mt-3 text-xl font-black text-white font-[Orbitron]">Paczkomat InPost</div>
+                  <p class="mt-2 text-sm text-zinc-400">Stała opłata: ${formatMoney(25)}.</p>
+                </button>
+              </div>
             </div>
           </section>
 
@@ -879,10 +892,10 @@ function renderOrderFormModal({
             <div id="order-address-section" class="hidden rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6">
               <div class="flex flex-col gap-1 mb-4">
                 <h3 class="text-lg font-bold text-white" id="order-address-label">Adres</h3>
-                <p class="text-sm text-zinc-500">Adres zostanie użyty jako dane podstawowe zamówienia.</p>
+                <p class="text-sm text-zinc-500" id="order-address-hint">Adres zostanie użyty jako dane podstawowe zamówienia.</p>
               </div>
-              <div class="grid gap-4 md:grid-cols-2">
-                <div class="md:col-span-2">
+              <div class="grid gap-4 md:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
+                <div>
                   <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Ulica<span id="order-address-street-required" class="text-[#C19A6B]"></span></label>
                   <input type="text" id="order-address-street" value="${escapeHtml(decodedAddress.street)}" class="${orderFieldClass}" placeholder="Ulica">
                 </div>
@@ -894,60 +907,13 @@ function renderOrderFormModal({
                   <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Kod pocztowy<span id="order-address-postal-required" class="text-[#C19A6B]"></span></label>
                   <input type="text" id="order-address-postal" value="${escapeHtml(decodedAddress.postalCode)}" class="${orderFieldClass}" placeholder="Kod pocztowy">
                 </div>
-                <div class="md:col-span-2">
+                <div>
                   <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Miejscowość<span id="order-address-city-required" class="text-[#C19A6B]"></span></label>
                   <input type="text" id="order-address-city" value="${escapeHtml(decodedAddress.city)}" class="${orderFieldClass}" placeholder="Miejscowość">
                 </div>
               </div>
             </div>
-          </section>
-
-          <section id="order-step-delivery" class="hidden space-y-6">
-            <div class="grid gap-4 md:grid-cols-2">
-              <label id="order-delivery-card-courier" class="${tileClass} cursor-pointer">
-                <input type="radio" name="order-delivery-method" value="courier" class="sr-only" onchange="window.refreshStrzelcaOrderWizard()">
-                <div class="text-[11px] uppercase tracking-[0.26em] text-zinc-500">Dostawa</div>
-                <div class="mt-3 text-xl font-black text-white font-[Orbitron]">Kurier</div>
-                <p class="mt-2 text-sm text-zinc-400">Stała opłata: ${formatMoney(30)}. Adres dostawy zaciągany z poprzedniego kroku.</p>
-              </label>
-              <label id="order-delivery-card-inpost" class="${tileClass} cursor-pointer">
-                <input type="radio" name="order-delivery-method" value="inpost" class="sr-only" onchange="window.refreshStrzelcaOrderWizard()">
-                <div class="text-[11px] uppercase tracking-[0.26em] text-zinc-500">Dostawa</div>
-                <div class="mt-3 text-xl font-black text-white font-[Orbitron]">Paczkomat InPost</div>
-                <p class="mt-2 text-sm text-zinc-400">Stała opłata: ${formatMoney(25)}. Numer paczkomatu trafi do zamówienia w panelu admina.</p>
-              </label>
-            </div>
-
-            <div id="order-delivery-courier-fields" class="hidden rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6">
-              <div class="flex flex-col gap-1 mb-4">
-                <h3 class="text-lg font-bold text-white">Adres dostawy</h3>
-                <p class="text-sm text-zinc-500">Domyślnie używamy adresu z poprzedniego kroku.</p>
-              </div>
-              <label id="order-delivery-other-address-wrap" class="mb-4 flex items-center gap-3 text-sm text-zinc-300 hidden">
-                <input type="checkbox" id="order-delivery-other-address" onchange="window.refreshStrzelcaOrderWizard()">
-                <span>Dostawa na inny adres</span>
-              </label>
-              <div class="grid gap-4 md:grid-cols-2">
-                <div class="md:col-span-2">
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Ulica*</label>
-                  <input type="text" id="order-delivery-street" class="${orderFieldClass}" placeholder="Ulica">
-                </div>
-                <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Nr budynku / nr lokalu*</label>
-                  <input type="text" id="order-delivery-building" class="${orderFieldClass}" placeholder="Nr budynku / nr lokalu">
-                </div>
-                <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Kod pocztowy*</label>
-                  <input type="text" id="order-delivery-postal" class="${orderFieldClass}" placeholder="Kod pocztowy">
-                </div>
-                <div class="md:col-span-2">
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Miejscowość*</label>
-                  <input type="text" id="order-delivery-city" class="${orderFieldClass}" placeholder="Miejscowość">
-                </div>
-              </div>
-            </div>
-
-            <div id="order-delivery-inpost-fields" class="hidden rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6">
+            <div id="order-parcel-section" class="hidden rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6">
               <div class="flex flex-col gap-1 mb-4">
                 <h3 class="text-lg font-bold text-white">Numer paczkomatu</h3>
                 <p class="text-sm text-zinc-500">Jeżeli zapisano paczkomat na koncie, pole zostanie uzupełnione automatycznie.</p>
@@ -960,14 +926,11 @@ function renderOrderFormModal({
           </section>
 
           <section id="order-step-summary" class="hidden space-y-6">
-            <div class="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
-              <div class="space-y-5">
+            <div class="grid items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.92fr)]">
+              <div class="${individualPricing ? "h-full" : "grid h-full gap-5 lg:grid-rows-2"}">
                 ${individualPricing ? "" : `
-                <div class="rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6">
-                  <div class="flex items-center justify-between gap-3 mb-3">
-                    <h3 class="text-lg font-bold text-white">Kod rabatowy</h3>
-                    <span class="text-xs uppercase tracking-[0.2em] text-zinc-500">Live</span>
-                  </div>
+                <div class="rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6 h-full flex flex-col">
+                  <h3 class="text-lg font-bold text-white mb-3">Kod rabatowy</h3>
                   <div class="flex gap-2">
                     <input type="text" id="order-promo-code" class="${orderFieldClass}" placeholder="Wpisz kod rabatowy" autocomplete="off" spellcheck="false">
                     <button type="button" onclick="window.applyStrzelcaPromoCode()" class="inline-flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-2xl border border-[#C19A6B]/60 bg-[#C19A6B]/10 text-[#E9D3B7] hover:bg-[#C19A6B]/20 transition" aria-label="Zastosuj kod">
@@ -977,32 +940,13 @@ function renderOrderFormModal({
                   <div id="order-promo-feedback" class="hidden mt-3 rounded-2xl border px-4 py-3 text-sm"></div>
                 </div>`}
 
-                <div class="rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6">
+                <div class="rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6 h-full flex flex-col">
                   <h3 class="text-lg font-bold text-white mb-3">Dodatkowe informacje</h3>
-                  <textarea id="order-notes" class="${orderFieldClass} min-h-[140px]" placeholder="Pole dla użytkownika do wpisania dodatkowych informacji"></textarea>
-                </div>
-
-                <div class="rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6">
-                  <h3 class="text-lg font-bold text-white mb-3">Dane do zamówienia</h3>
-                  <div class="space-y-2 text-sm text-zinc-300">
-                    <div class="flex items-start justify-between gap-4">
-                      <span class="text-zinc-500">Typ kupującego</span>
-                      <span class="text-right"><span id="order-summary-customer-type">—</span></span>
-                    </div>
-                    <div class="flex items-start justify-between gap-4">
-                      <span class="text-zinc-500">Adres podstawowy</span>
-                      <span id="order-summary-address" class="text-right max-w-[16rem] break-words">—</span>
-                    </div>
-                    <div class="flex items-start justify-between gap-4">
-                      <span class="text-zinc-500">Dostawa</span>
-                      <span id="order-summary-delivery-method" class="text-right max-w-[16rem] break-words">—</span>
-                    </div>
-                    <div class="text-xs text-zinc-500 pt-2 border-t border-zinc-800/80" id="order-summary-delivery-hint"></div>
-                  </div>
+                  <textarea id="order-notes" class="${orderFieldClass} flex-1 min-h-[220px] lg:min-h-0" placeholder="Pole dla użytkownika do wpisania dodatkowych informacji"></textarea>
                 </div>
               </div>
 
-              <div class="rounded-3xl border border-[#C19A6B]/25 bg-[linear-gradient(180deg,rgba(193,154,107,0.10),rgba(12,12,12,0.82))] p-5 md:p-6 h-fit">
+              <div class="rounded-3xl border border-[#C19A6B]/25 bg-[linear-gradient(180deg,rgba(193,154,107,0.10),rgba(12,12,12,0.82))] p-5 md:p-6 h-full flex flex-col">
                 <h3 class="text-lg font-bold text-white mb-4">Podsumowanie</h3>
                 <div class="space-y-3 text-sm">
                   <div class="flex items-center justify-between gap-3">
@@ -1013,17 +957,22 @@ function renderOrderFormModal({
                     <span class="text-zinc-400">Wysyłka</span>
                     <span id="order-summary-shipping" class="text-right text-zinc-100 font-medium">—</span>
                   </div>
-                  <div class="flex items-center justify-between gap-3">
+                  <div id="order-summary-discount-row" class="hidden flex items-center justify-between gap-3">
                     <span class="text-zinc-400">Rabat</span>
                     <span id="order-summary-discount" class="text-right text-emerald-300 font-medium">—</span>
                   </div>
+                  <div class="flex items-start justify-between gap-3">
+                    <span class="text-zinc-400">Dostawa</span>
+                    <span id="order-summary-delivery-method" class="text-right text-zinc-100 font-medium max-w-[16rem] break-words">—</span>
+                  </div>
+                  <div id="order-summary-delivery-hint" class="text-xs text-zinc-500"></div>
                   <div class="border-t border-zinc-700/80 pt-4 flex items-start justify-between gap-3">
                     <span class="text-zinc-200 font-semibold">Razem</span>
                     <span id="order-summary-total" class="text-right text-lg md:text-xl text-[#C19A6B] font-bold">—</span>
                   </div>
                 </div>
 
-                <p class="mt-5 text-[12px] leading-relaxed text-zinc-500">
+                <p class="mt-auto pt-5 text-[12px] leading-relaxed text-zinc-500">
                   ${escapeHtml(disclaimerText)}
                   Złożenie zamówienia oznacza akceptację
                   <button type="button" class="text-zinc-300 hover:text-[#C19A6B] underline underline-offset-2 transition" onclick="window.openStrzelcaRegulaminModal(event)">${escapeHtml(cfg.regulaminLinkLabel)}</button>
@@ -1045,8 +994,7 @@ function renderOrderFormModal({
       </form>
 
       <div id="strzelca-order-company-info-modal" class="hidden fixed inset-0 z-[230] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm"
-           role="dialog" aria-modal="true" aria-labelledby="strzelca-order-company-info-title"
-           onclick="if (event.target.id === 'strzelca-order-company-info-modal') window.cancelStrzelcaOrderCompanyMode()">
+           role="dialog" aria-modal="true" aria-labelledby="strzelca-order-company-info-title">
         <div class="w-full max-w-md rounded-[28px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(24,24,24,0.98),rgba(8,8,8,0.98))] p-6 shadow-2xl" onclick="event.stopPropagation()">
           <div class="flex items-start justify-between gap-3">
             <div>
@@ -1057,8 +1005,9 @@ function renderOrderFormModal({
               <i class="fa-solid fa-times" aria-hidden="true"></i>
             </button>
           </div>
-          <p class="mt-4 text-sm leading-relaxed text-zinc-300">
-            STRZELCA.pl jest zarejestrowane jako nierejestrowana działalność gospodarcza, dlatego nie wystawia faktur VAT.
+          <p class="mt-4 text-sm leading-relaxed text-zinc-300 whitespace-pre-line">
+            Faktura, którą wystawiam dokumentuje sprzedaż zwolnioną z VAT na podstawie art. 113 ustawy o podatku od towarów i usług.
+            Zgodnie z przepisami podatnik nie jest zobowiązany do naliczania podatku VAT.
           </p>
           <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button type="button" onclick="window.cancelStrzelcaOrderCompanyMode()" class="rounded-2xl border border-zinc-700/80 px-4 py-3 text-sm font-semibold text-zinc-300 hover:bg-zinc-800 transition">
@@ -1085,10 +1034,6 @@ function renderOrderFormModal({
     "order-address-building",
     "order-address-postal",
     "order-address-city",
-    "order-delivery-street",
-    "order-delivery-building",
-    "order-delivery-postal",
-    "order-delivery-city",
     "order-delivery-parcelLocker",
     "order-notes",
   ];
@@ -1295,6 +1240,7 @@ function attachOrderInquiryGlobals() {
     if (stepKey === "customer") {
       const customerType = getOrderCustomerType();
       const requiredIds = ["order-email", "order-phone"];
+      const deliveryMethod = p.context === "shop" ? getCurrentOrderDeliveryMethod() : "";
       if (customerType === "private") {
         requiredIds.push("order-first-name", "order-last-name");
       }
@@ -1307,6 +1253,16 @@ function attachOrderInquiryGlobals() {
           "order-address-postal",
           "order-address-city"
         );
+      } else if (p.context === "shop" && deliveryMethod === "courier") {
+        requiredIds.push(
+          "order-address-street",
+          "order-address-building",
+          "order-address-postal",
+          "order-address-city"
+        );
+      }
+      if (p.context === "shop" && deliveryMethod === "inpost") {
+        requiredIds.push("order-delivery-parcelLocker");
       }
       return reportOrderFields(requiredIds);
     }
@@ -1317,17 +1273,7 @@ function attachOrderInquiryGlobals() {
         alert("Wybierz sposób dostawy.");
         return false;
       }
-      if (method === "courier") {
-        return reportOrderFields([
-          "order-delivery-street",
-          "order-delivery-building",
-          "order-delivery-postal",
-          "order-delivery-city",
-        ]);
-      }
-      if (method === "inpost") {
-        return reportOrderFields(["order-delivery-parcelLocker"]);
-      }
+      return true;
     }
 
     return true;
@@ -1335,12 +1281,6 @@ function attachOrderInquiryGlobals() {
 
   window.refreshStrzelcaOrderWizard = function () {
     if (!pendingForm) return;
-    const summaryCustomerType = document.getElementById("order-summary-customer-type");
-    if (summaryCustomerType) {
-      const customerType = getOrderCustomerType();
-      summaryCustomerType.textContent =
-        customerType === "company" ? "Firma" : customerType === "private" ? "Osoba prywatna" : "—";
-    }
     refreshOrderWizardView();
   };
 
@@ -1349,19 +1289,35 @@ function attachOrderInquiryGlobals() {
     pendingForm.customerType = type === "company" ? "company" : "private";
     if (pendingForm.customerType !== "company") {
       pendingForm.companyNoticeAccepted = false;
+      pendingForm.step = Math.min(1, getOrderWizardSteps().length - 1);
     }
+    window.refreshStrzelcaOrderWizard();
+    if (pendingForm.customerType === "company") {
+      document.getElementById("strzelca-order-company-info-modal")?.classList.remove("hidden");
+    }
+  };
+
+  window.selectStrzelcaOrderDeliveryMethod = function (method) {
+    if (!pendingForm) return;
+    const normalizedMethod = method === "inpost" ? "inpost" : "courier";
+    const radio = document.querySelector(`input[name="order-delivery-method"][value="${normalizedMethod}"]`);
+    if (radio) radio.checked = true;
+    window.refreshStrzelcaOrderWizard();
+    if (getOrderWizardSteps()[pendingForm.step] !== "delivery") return;
+    if (!validateCurrentOrderStep()) return;
+    pendingForm.step = Math.min(pendingForm.step + 1, getOrderWizardSteps().length - 1);
     window.refreshStrzelcaOrderWizard();
   };
 
   window.prevStrzelcaOrderStep = function () {
-    if (!pendingForm) return;
+    if (!pendingForm || pendingForm.isSubmitting === true) return;
     pendingForm.step = Math.max(0, (Number(pendingForm.step) || 0) - 1);
     window.refreshStrzelcaOrderWizard();
   };
 
   window.nextStrzelcaOrderStep = async function () {
     const p = pendingForm;
-    if (!p) return;
+    if (!p || p.isSubmitting === true) return;
     const steps = getOrderWizardSteps();
     const currentStep = steps[p.step];
     const lastStep = steps.length - 1;
@@ -1383,6 +1339,10 @@ function attachOrderInquiryGlobals() {
   };
 
   window.cancelStrzelcaOrderCompanyMode = function () {
+    if (pendingForm && pendingForm.step === 0 && pendingForm.companyNoticeAccepted !== true) {
+      pendingForm.customerType = "";
+      window.refreshStrzelcaOrderWizard();
+    }
     document.getElementById("strzelca-order-company-info-modal")?.classList.add("hidden");
   };
 
@@ -1470,7 +1430,7 @@ function attachOrderInquiryGlobals() {
   window.submitStrzelcaOrderInquiry = async function (event) {
     if (event?.preventDefault) event.preventDefault();
     const p = pendingForm;
-    if (!p) return;
+    if (!p || p.isSubmitting === true) return;
 
     try {
       if (!validateCurrentOrderStep()) {
@@ -1484,18 +1444,16 @@ function attachOrderInquiryGlobals() {
       }
 
       const customerType = getOrderCustomerType();
+      const deliveryMethod = p.context === "shop" ? getCurrentOrderDeliveryMethod() : "";
       const billingAddress =
-        customerType === "company" || p.context === "shop"
+        customerType === "company" || (p.context === "shop" && deliveryMethod === "courier")
           ? getOrderAddressFromInputs("order-address")
           : blankAddress();
-      const deliveryMethod = p.context === "shop" ? getCurrentOrderDeliveryMethod() : "";
-      const useOtherDeliveryAddress =
-        deliveryMethod === "courier"
-          ? document.getElementById("order-delivery-other-address")?.checked === true
-          : false;
       const deliveryAddress =
-        deliveryMethod === "courier" ? getOrderAddressFromInputs("order-delivery") : blankAddress();
+        deliveryMethod === "courier" ? cloneAddress(billingAddress) : blankAddress();
       const shippingCost = p.context === "shop" ? getCurrentOrderShippingCost() : 0;
+      p.isSubmitting = true;
+      window.refreshStrzelcaOrderWizard();
 
       const orderData = {
         userId: user.uid,
@@ -1512,7 +1470,7 @@ function attachOrderInquiryGlobals() {
         parcelLocker: deliveryMethod === "inpost" ? getOrderFieldValue("order-delivery-parcelLocker") || "" : "",
         address: billingAddress,
         deliveryMethod,
-        deliverySameAsBilling: deliveryMethod === "courier" ? !useOtherDeliveryAddress : false,
+        deliverySameAsBilling: deliveryMethod === "courier",
         deliveryAddress,
         price: p.price || 0,
         individualPricing: p.individualPricing === true,
@@ -1549,19 +1507,25 @@ function attachOrderInquiryGlobals() {
         throw new Error(data.error || "Nie udało się zapisać zamówienia");
       }
 
-      await logOrderActivity(p.db, user, p.displayName, p.context);
-
       document.getElementById("order-form-modal")?.remove();
+      closeUnderlyingDetailsModal();
       document.getElementById("strzelca-promo-notice-modal")?.classList.add("hidden");
       document.getElementById("strzelca-promo-notice-modal")?.classList.remove("flex");
       const successMessage =
         p.appliedPromo?.application === "training_access" && p.appliedPromo?.customerMessage
           ? p.appliedPromo.customerMessage
           : p.successMessage;
+      logOrderActivity(p.db, user, p.displayName, p.context).catch((logError) => {
+        console.error("Błąd podczas logowania aktywności zamówienia:", logError);
+      });
       pendingForm = null;
       alert(successMessage);
     } catch (error) {
       console.error("Error submitting order:", error);
+      if (pendingForm) {
+        pendingForm.isSubmitting = false;
+        window.refreshStrzelcaOrderWizard();
+      }
       alert("Błąd: " + (error.message || error));
     }
   };

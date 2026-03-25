@@ -219,9 +219,15 @@ module.exports = async (req, res) => {
     res.status(405).json({ success: false, error: 'Method not allowed' });
   } catch (error) {
     console.error('promo-codes error:', error);
+    const message = String(error?.message || '');
+    const missingSecrets =
+      message.includes('PROMO_CODE_LOOKUP_SECRET') ||
+      message.includes('PROMO_CODE_ENCRYPTION_KEY');
     res.status(500).json({
       success: false,
-      error: error?.message || 'Internal server error',
+      error: missingSecrets
+        ? 'Konfiguracja kodów promocyjnych nie jest jeszcze ustawiona na serwerze.'
+        : error?.message || 'Internal server error',
     });
   }
 };

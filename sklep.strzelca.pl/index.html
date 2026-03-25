@@ -198,7 +198,7 @@
     <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-24-2" />
     <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
-    <link rel="modulepreload" href="https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-24-3" crossorigin />
+    <link rel="modulepreload" href="https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-25-2" crossorigin />
 </head>
 <body>
     <!-- Panel użytkownika -->
@@ -296,7 +296,7 @@
           getHeaderProfileFromCache,
           setHeaderProfileCache,
         } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
-        import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-24-3";
+        import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-25-2";
         import { loadWithVersionCache, idbDeleteEntry } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
         import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
         import { syncCarouselDotsNav } from "https://strzelca.pl/carousel-dots.mjs?v=2026-03-24-1";
@@ -650,8 +650,8 @@
         function buildProductCard(item) {
             const encodedTitle = encodeURIComponent(item.title || '');
             const mainImage = item.mainImage || '';
-            const priceLabel = item.individualPricing ? 'Cena ustalana indywidualnie' : `${item.price} PLN`;
-            const priceAriaLabel = item.individualPricing ? 'Cena ustalana indywidualnie' : `Cena: ${item.price} złotych`;
+            const priceLabel = item.individualPricing ? 'Wycena indywidualna' : `${item.price} PLN`;
+            const priceAriaLabel = item.individualPricing ? 'Wycena indywidualna' : `Cena: ${item.price} złotych`;
 
             return `
                 <article class="card-dark product-card flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50 cursor-pointer" role="button" tabindex="0" aria-label="Pokaż szczegóły produktu ${item.title}" onclick="window.showDetails('${item.id}')" onkeydown="if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); window.showDetails('${item.id}'); }">
@@ -659,7 +659,7 @@
                     <div class="p-4 md:p-6 flex flex-col flex-grow text-center">
                         <h3 class="text-xl md:text-2xl font-black uppercase mb-2 font-[Orbitron] text-white tracking-tight">${item.title}</h3>
                         ${item.oldPrice ? `<p class="text-zinc-500 line-through text-sm mb-1">${item.oldPrice} PLN</p>` : ''}
-                        <p class="coyote-text font-bold text-lg md:text-xl mb-4 md:mb-5" aria-label="${priceAriaLabel}">${priceLabel}</p>
+                        <p class="coyote-text font-bold text-lg md:text-xl mb-4 md:mb-5 min-w-0 w-full leading-tight whitespace-nowrap overflow-hidden text-ellipsis" aria-label="${priceAriaLabel}">${priceLabel}</p>
                         <div class="mt-auto flex flex-col gap-2 md:gap-3">
                             <button type="button" onclick="event.stopPropagation(); window.showDetails('${item.id}')" aria-label="Pokaż szczegóły produktu ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[11px] md:text-xs uppercase font-black rounded tracking-[0.12em] flex items-center justify-center hover:bg-[#b18a5f] transition">Złóż zamówienie</button>
                         </div>
@@ -1029,8 +1029,8 @@
                 <div class="text-zinc-400 text-sm mb-8 custom-render details-scroll-area leading-relaxed">
                     ${descriptionHTML}
                 </div>
-                <div class="flex justify-between items-center border-t border-zinc-800 pt-6">
-                    <p class="text-2xl font-bold coyote-text">${p.individualPricing ? 'Cena ustalana indywidualnie' : `${p.price} PLN`}</p>
+                <div class="flex justify-between items-center gap-3 border-t border-zinc-800 pt-6">
+                    <p class="text-2xl font-bold coyote-text min-w-0 flex-1 truncate">${p.individualPricing ? 'Wycena indywidualna' : `${p.price} PLN`}</p>
                     <button onclick="window.handleOrder('${p.id}', decodeURIComponent('${encodeURIComponent(p.title || "")}'), ${p.price || 0}, ${p.individualPricing === true})" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition">Złóż zamówienie</button>
                 </div>`;
             document.getElementById('details-modal').classList.remove('hidden');
@@ -1082,7 +1082,7 @@
     </script>
     <script
       type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-03-21-2"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-03-25-1"
     ></script>
     <script
       type="module"
