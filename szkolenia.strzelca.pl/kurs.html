@@ -414,6 +414,7 @@
             let completedLessons = new Set();
             let openedLessons = new Set(); // Lekcje które zostały otwarte (50% progresu)
             let finishedLessons = new Set(); // Lekcje które zostały zakończone (100% progresu)
+            let certificateIssued = false;
             let currentLessonIndex = 0;
             let trainingTitle = "";
             /** Nazwa na certyfikat — ustawiana przy pierwszym rozwiązaniu (unika podwójnego getDoc userProfiles: ekran + „Pobierz”). */
@@ -989,6 +990,11 @@
                     mount.remove();
                     if (appendedLink?.parentNode) appendedLink.remove();
                 }
+
+                certificateIssued = true;
+                finishedLessons.add('certificate');
+                await updateProgress();
+                renderLessonsSidebar();
             }
 
             window.generateCertificate = window.downloadCertificate;
@@ -1082,6 +1088,23 @@
                 }
             }
 
+            async function syncCertificateProgressState() {
+                if (!currentUser) return;
+                try {
+                    const certRef = doc(db, "publicTrainingCertificates", `${currentTrainingId}_${currentUser.uid}`);
+                    const certSnap = await getDoc(certRef);
+                    certificateIssued = certSnap.exists();
+                    if (certificateIssued) {
+                        finishedLessons.add('certificate');
+                        if (!lessons.find((lesson) => lesson.id === 'certificate')) {
+                            await addCertificateLesson();
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error syncing certificate progress:", error);
+                }
+            }
+
             async function loadProgress() {
                 if (!currentUser) return;
                 
@@ -1099,6 +1122,7 @@
                             finishedLessons = completedLessons;
                         }
                     }
+                    await syncCertificateProgressState();
                     
                     await updateProgress();
                     // Odśwież panel lekcji po załadowaniu postępu, aby ikony były poprawne od razu
@@ -1112,8 +1136,8 @@
                 const regularLessons = lessons.filter(l => l.id !== 'certificate');
                 if (regularLessons.length === 0) return;
                 
-                // Każda lekcja daje równy procent (100% / liczba lekcji)
-                const progressPerLesson = 100 / regularLessons.length;
+                // Regularne lekcje składają się na 99%, ostatni 1% wpada po pierwszym pobraniu certyfikatu.
+                const progressPerLesson = 99 / regularLessons.length;
                 let totalProgress = 0;
                 
                 regularLessons.forEach(lesson => {
@@ -1123,6 +1147,10 @@
                         totalProgress += progressPerLesson * 0.5; // 50% za otwartą lekcję
                     }
                 });
+
+                if (certificateIssued) {
+                    totalProgress += 1;
+                }
                 
                 const percentage = Math.round(totalProgress);
                 

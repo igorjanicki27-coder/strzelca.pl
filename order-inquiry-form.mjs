@@ -488,12 +488,20 @@ function syncOrderCustomerTypeUI() {
   const lastRequired = document.getElementById("order-last-required");
   const companyNameRequired = document.getElementById("order-company-name-required");
   const taxIdRequired = document.getElementById("order-tax-id-required");
-  const addressRequired = document.getElementById("order-address-required");
+  const addressRequiredIds = [
+    "order-address-street-required",
+    "order-address-building-required",
+    "order-address-postal-required",
+    "order-address-city-required",
+  ];
   if (firstRequired) firstRequired.textContent = isPrivate ? "*" : "";
   if (lastRequired) lastRequired.textContent = isPrivate ? "*" : "";
   if (companyNameRequired) companyNameRequired.textContent = isCompany ? "*" : "";
   if (taxIdRequired) taxIdRequired.textContent = isCompany ? "*" : "";
-  if (addressRequired) addressRequired.textContent = isCompany ? "*" : "";
+  addressRequiredIds.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = isCompany ? "*" : "";
+  });
 
   const firstName = document.getElementById("order-first-name");
   const lastName = document.getElementById("order-last-name");
@@ -875,19 +883,19 @@ function renderOrderFormModal({
               </div>
               <div class="grid gap-4 md:grid-cols-2">
                 <div class="md:col-span-2">
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Ulica<span id="order-address-required" class="text-[#C19A6B]"></span></label>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Ulica<span id="order-address-street-required" class="text-[#C19A6B]"></span></label>
                   <input type="text" id="order-address-street" value="${escapeHtml(decodedAddress.street)}" class="${orderFieldClass}" placeholder="Ulica">
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Nr budynku / nr lokalu</label>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Nr budynku / nr lokalu<span id="order-address-building-required" class="text-[#C19A6B]"></span></label>
                   <input type="text" id="order-address-building" value="${escapeHtml(decodedAddress.buildingNumber)}" class="${orderFieldClass}" placeholder="Nr budynku / nr lokalu">
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Kod pocztowy</label>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Kod pocztowy<span id="order-address-postal-required" class="text-[#C19A6B]"></span></label>
                   <input type="text" id="order-address-postal" value="${escapeHtml(decodedAddress.postalCode)}" class="${orderFieldClass}" placeholder="Kod pocztowy">
                 </div>
                 <div class="md:col-span-2">
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Miejscowość</label>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Miejscowość<span id="order-address-city-required" class="text-[#C19A6B]"></span></label>
                   <input type="text" id="order-address-city" value="${escapeHtml(decodedAddress.city)}" class="${orderFieldClass}" placeholder="Miejscowość">
                 </div>
               </div>
@@ -1278,7 +1286,7 @@ function attachOrderInquiryGlobals() {
     const stepKey = getOrderWizardSteps()[p.step];
     if (stepKey === "type") {
       if (!getOrderCustomerType()) {
-        showPromoNotice({ message: "Wybierz, czy kupujesz jako osoba prywatna, czy firma." });
+        alert("Wybierz, czy kupujesz jako osoba prywatna, czy firma.");
         return false;
       }
       return true;
@@ -1306,7 +1314,7 @@ function attachOrderInquiryGlobals() {
     if (stepKey === "delivery") {
       const method = getCurrentOrderDeliveryMethod();
       if (!method) {
-        showPromoNotice({ message: "Wybierz sposób dostawy." });
+        alert("Wybierz sposób dostawy.");
         return false;
       }
       if (method === "courier") {

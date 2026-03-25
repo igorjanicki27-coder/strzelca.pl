@@ -111,9 +111,12 @@
       }
 
       /* Formularz wydarzenia: pole daty zapisów wyłączone, gdy checkbox odznaczony */
+      #event-registration-start-field-block.is-registration-start-off #event-registration-start-label,
       #event-registration-deadline-field-block.is-registration-deadline-off #event-registration-deadline-label {
         color: #71717a !important;
       }
+      #event-registration-start-date:disabled,
+      #event-registration-start-time:disabled,
       #event-registration-deadline-date:disabled,
       #event-registration-deadline-time:disabled {
         opacity: 0.55 !important;
@@ -10026,11 +10029,20 @@
                 : new Date(d.registrationDeadline);
               if (isNaN(registrationDeadlineObj.getTime())) registrationDeadlineObj = null;
             }
+            let registrationStartObj = null;
+            if (d.registrationStart) {
+              registrationStartObj = d.registrationStart?.toDate
+                ? d.registrationStart.toDate()
+                : new Date(d.registrationStart);
+              if (isNaN(registrationStartObj.getTime())) registrationStartObj = null;
+            }
             return {
               id: doc.id,
               ...d,
               dateObj,
               endDateObj,
+              registrationStartEnabled: d.registrationStartEnabled === true,
+              registrationStartObj,
               registrationDeadlineEnabled: d.registrationDeadlineEnabled === true,
               registrationDeadlineObj,
               category: normalizeEventCategory(d.category),
@@ -10550,7 +10562,7 @@
                   </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div class="min-w-0">
                     <label class="block text-sm font-medium mb-2" for="event-date-date">Rozpoczęcie *</label>
                     <div class="grid grid-cols-[minmax(0,1fr)_120px] gap-2">
@@ -10601,6 +10613,41 @@
                       value="${event ? formatDateTimeForInput(event.endDateObj || event.dateObj) : ""}"
                     />
                   </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div id="event-registration-start-field-block" class="min-w-0 ${event && event.registrationStartEnabled ? "" : "is-registration-start-off"}">
+                    <label id="event-registration-start-label" for="event-registration-start-enabled" class="flex items-center gap-2 text-sm font-medium mb-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        id="event-registration-start-enabled"
+                        ${event && event.registrationStartEnabled ? "checked" : ""}
+                        class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded focus:ring-coyote"
+                      />
+                      <span>Ustal datę rozpoczęcia zapisów</span>
+                    </label>
+                    <div class="grid grid-cols-[minmax(0,1fr)_120px] gap-2">
+                      <input
+                        type="date"
+                        id="event-registration-start-date"
+                        value="${event && event.registrationStartEnabled && event.registrationStartObj ? formatDateForInput(event.registrationStartObj) : ""}"
+                        class="w-full min-w-0 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                      />
+                      <input
+                        type="time"
+                        id="event-registration-start-time"
+                        value="${event && event.registrationStartEnabled && event.registrationStartObj ? formatTimeForInput(event.registrationStartObj) : ""}"
+                        step="300"
+                        class="w-full min-w-0 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-coyote"
+                      />
+                    </div>
+                    <input
+                      type="hidden"
+                      id="event-registration-start"
+                      value="${event && event.registrationStartEnabled && event.registrationStartObj ? formatDateTimeForInput(event.registrationStartObj) : ""}"
+                    />
+                  </div>
+
                   <div id="event-registration-deadline-field-block" class="min-w-0 ${event && event.registrationDeadlineEnabled ? "" : "is-registration-deadline-off"}">
                     <label id="event-registration-deadline-label" for="event-registration-deadline-enabled" class="flex items-center gap-2 text-sm font-medium mb-2 cursor-pointer select-none">
                       <input
@@ -10714,6 +10761,11 @@
 
         document.body.insertAdjacentHTML("beforeend", modalHtml);
 
+        const regStartCb = document.getElementById("event-registration-start-enabled");
+        const regStartInp = document.getElementById("event-registration-start");
+        const regStartDateInp = document.getElementById("event-registration-start-date");
+        const regStartTimeInp = document.getElementById("event-registration-start-time");
+        const regStartBlock = document.getElementById("event-registration-start-field-block");
         const regDeadlineCb = document.getElementById("event-registration-deadline-enabled");
         const regDeadlineInp = document.getElementById("event-registration-deadline");
         const regDeadlineDateInp = document.getElementById("event-registration-deadline-date");
@@ -10762,6 +10814,22 @@
           };
           input.addEventListener("click", openPicker);
         };
+        const syncEventRegistrationStartField = () => {
+          if (!regStartCb || !regStartInp) return;
+          const on = regStartCb.checked;
+          regStartInp.disabled = !on;
+          toggleDateTimePairDisabled(regStartDateInp, regStartTimeInp, !on);
+          regStartBlock?.classList.toggle("is-registration-start-off", !on);
+          if (!on) {
+            regStartInp.removeAttribute("required");
+            regStartInp.value = "";
+            toggleDateTimePairRequired(regStartDateInp, regStartTimeInp, false);
+          } else {
+            regStartInp.setAttribute("required", "");
+            toggleDateTimePairRequired(regStartDateInp, regStartTimeInp, true);
+            syncSplitDateTimeField(regStartDateInp, regStartTimeInp, regStartInp);
+          }
+        };
         const syncEventRegistrationDeadlineField = () => {
           if (!regDeadlineCb || !regDeadlineInp) return;
           const on = regDeadlineCb.checked;
@@ -10794,20 +10862,25 @@
             eventEndDateInput.value = formatDateTimeForInput(startDate);
           }
         };
+        attachDateTimePairSync(regStartDateInp, regStartTimeInp, regStartInp);
         attachDateTimePairSync(eventDateDateInput, eventDateTimeInput, eventDateInput);
         attachDateTimePairSync(eventEndDateDateInput, eventEndDateTimeInput, eventEndDateInput);
         attachDateTimePairSync(regDeadlineDateInp, regDeadlineTimeInp, regDeadlineInp);
+        attachNativePickerTrigger(regStartDateInp);
+        attachNativePickerTrigger(regStartTimeInp);
         attachNativePickerTrigger(eventDateDateInput);
         attachNativePickerTrigger(eventDateTimeInput);
         attachNativePickerTrigger(eventEndDateDateInput);
         attachNativePickerTrigger(eventEndDateTimeInput);
         attachNativePickerTrigger(regDeadlineDateInp);
         attachNativePickerTrigger(regDeadlineTimeInp);
+        regStartCb?.addEventListener("change", syncEventRegistrationStartField);
         regDeadlineCb?.addEventListener("change", syncEventRegistrationDeadlineField);
         eventDateDateInput?.addEventListener("input", syncEventEndDateField);
         eventDateDateInput?.addEventListener("change", syncEventEndDateField);
         eventDateTimeInput?.addEventListener("input", syncEventEndDateField);
         eventDateTimeInput?.addEventListener("change", syncEventEndDateField);
+        syncEventRegistrationStartField();
         syncEventRegistrationDeadlineField();
         syncEventEndDateField();
 
@@ -10882,6 +10955,10 @@
         const title = document.getElementById("event-title").value.trim();
         const dateTime = document.getElementById("event-date").value;
         const endDateTime = document.getElementById("event-end-date")?.value || "";
+        const registrationStartEnabled =
+          document.getElementById("event-registration-start-enabled")?.checked === true;
+        const registrationStartRaw =
+          document.getElementById("event-registration-start")?.value || "";
         const registrationDeadlineEnabled =
           document.getElementById("event-registration-deadline-enabled")?.checked === true;
         const registrationDeadlineRaw =
@@ -10907,6 +10984,11 @@
           return;
         }
 
+        if (registrationStartEnabled && !registrationStartRaw.trim()) {
+          showNotification("Podaj datę rozpoczęcia zapisów lub odznacz opcję.", "error");
+          return;
+        }
+
         if (registrationDeadlineEnabled && !registrationDeadlineRaw.trim()) {
           showNotification("Podaj datę zakończenia zapisów lub odznacz opcję.", "error");
           return;
@@ -10923,6 +11005,18 @@
             showNotification("Data zakończenia nie może być wcześniejsza niż rozpoczęcie.", "error");
             return;
           }
+          let registrationStart = null;
+          if (registrationStartEnabled) {
+            registrationStart = new Date(registrationStartRaw);
+            if (isNaN(registrationStart.getTime())) {
+              showNotification("Niepoprawna data rozpoczęcia zapisów.", "error");
+              return;
+            }
+            if (registrationStart.getTime() > endDate.getTime()) {
+              showNotification("Rozpoczęcie zapisów nie może być późniejsze niż zakończenie wydarzenia.", "error");
+              return;
+            }
+          }
           let registrationDeadline = null;
           if (registrationDeadlineEnabled) {
             registrationDeadline = new Date(registrationDeadlineRaw);
@@ -10930,11 +11024,21 @@
               showNotification("Niepoprawna data zakończenia zapisów.", "error");
               return;
             }
+            if (registrationDeadline.getTime() > endDate.getTime()) {
+              showNotification("Zakończenie zapisów nie może być późniejsze niż zakończenie wydarzenia.", "error");
+              return;
+            }
+          }
+          if (registrationStart && registrationDeadline && registrationStart.getTime() > registrationDeadline.getTime()) {
+            showNotification("Rozpoczęcie zapisów nie może być późniejsze niż zakończenie zapisów.", "error");
+            return;
           }
           const eventData = {
             title,
             date: eventDate,
             endDate,
+            registrationStartEnabled,
+            registrationStart,
             registrationDeadlineEnabled,
             registrationDeadline,
             category,
@@ -10963,6 +11067,8 @@
             eventTitle: title,
             eventDate: eventDate.toISOString(),
             eventEndDate: endDate.toISOString(),
+            registrationStartEnabled,
+            registrationStart: registrationStart ? registrationStart.toISOString() : null,
             registrationDeadlineEnabled,
             registrationDeadline: registrationDeadline ? registrationDeadline.toISOString() : null,
             category,
@@ -20494,7 +20600,7 @@
                   .join(', ')
               : '';
           const priceDisplay = isIndividualPricing ? '—' : `${(order.price || 0).toFixed(2)} zł`;
-          const totalDisplay = isIndividualPricing ? 'Cena ustalana po wycenie' : `${(order.total || 0).toFixed(2)} zł`;
+          const totalDisplay = isIndividualPricing ? 'Cena ustalana po wycenie zamówienia' : `${(order.total || 0).toFixed(2)} zł`;
 
           return `
             <div class="bg-zinc-800/50 rounded-lg p-4 mb-4 border border-zinc-700 hover:border-zinc-600 transition-all">
@@ -20847,7 +20953,13 @@
       };
 
       window.syncOrderFinanceLock = function() {
-        const shouldLock = !!currentEditingOrder && currentEditingOrder.isIndividualPricing !== true && orderFinanceEditUnlocked !== true;
+        const currentOrderHasIndividualPricing =
+          !!currentEditingOrder &&
+          (currentEditingOrder.isIndividualPricing === true || currentEditingOrder.pricingMode === 'individual');
+        const shouldLock =
+          !!currentEditingOrder &&
+          !currentOrderHasIndividualPricing &&
+          orderFinanceEditUnlocked !== true;
         ['order-price', 'order-shipping', 'order-additionalCosts'].forEach((id) => {
           const input = document.getElementById(id);
           if (!input) return;
@@ -20863,7 +20975,7 @@
         }
         const button = document.getElementById('order-finance-edit-btn');
         if (button) {
-          button.classList.toggle('hidden', !(!!currentEditingOrder && currentEditingOrder.isIndividualPricing !== true));
+          button.classList.toggle('hidden', !(!!currentEditingOrder && !currentOrderHasIndividualPricing));
           button.disabled = orderFinanceEditUnlocked === true;
           if (orderFinanceEditUnlocked === true) {
             button.classList.add('opacity-60', 'cursor-not-allowed');
@@ -20954,6 +21066,30 @@
         // Zapisz oryginalne dane
         originalCustomerData = JSON.parse(JSON.stringify(customerData));
         customerDataEditMode = false;
+        const deliveryData = {
+          method: document.getElementById('order-deliveryMethod')?.value || currentEditingOrder?.deliveryMethod || '',
+          parcelLocker: document.getElementById('order-parcelLocker')?.value || currentEditingOrder?.parcelLocker || '',
+          address: {
+            street: document.getElementById('order-deliveryAddress-street')?.value || currentEditingOrder?.deliveryAddress?.street || '',
+            buildingNumber: document.getElementById('order-deliveryAddress-building')?.value || currentEditingOrder?.deliveryAddress?.buildingNumber || '',
+            postalCode: document.getElementById('order-deliveryAddress-postal')?.value || currentEditingOrder?.deliveryAddress?.postalCode || '',
+            city: document.getElementById('order-deliveryAddress-city')?.value || currentEditingOrder?.deliveryAddress?.city || '',
+          },
+        };
+        const deliveryMethodLabel =
+          deliveryData.method === 'courier'
+            ? 'Kurier'
+            : deliveryData.method === 'inpost'
+              ? 'Paczkomat InPost'
+              : currentEditingOrder?.orderContext === 'training'
+                ? 'Brak dostawy'
+                : 'Nie wybrano';
+        const deliveryAddressText = [
+          deliveryData.address.street,
+          deliveryData.address.buildingNumber,
+          deliveryData.address.postalCode,
+          deliveryData.address.city,
+        ].filter(Boolean).join(', ');
 
         // Wyświetl modal
         modal.innerHTML = `
@@ -20984,6 +21120,15 @@
                   <input type="text" id="customer-address-building" class="w-full" value="${customerData.address.buildingNumber}" placeholder="Nr budynku" readonly>
                   <input type="text" id="customer-address-postal" class="w-full" value="${customerData.address.postalCode}" placeholder="Kod pocztowy" readonly>
                   <input type="text" id="customer-address-city" class="w-full" value="${customerData.address.city}" placeholder="Miasto" readonly>
+                </div>
+              </div>
+
+              <div class="mb-2 border-t border-zinc-700 pt-5">
+                <label class="block text-sm font-medium mb-2">Dostawa w zamówieniu</label>
+                <div class="space-y-2 text-sm text-zinc-300">
+                  <div>Sposób dostawy: <span class="text-white">${deliveryMethodLabel}</span></div>
+                  ${deliveryData.parcelLocker ? `<div>Paczkomat: <span class="text-white">${deliveryData.parcelLocker}</span></div>` : ''}
+                  ${deliveryAddressText ? `<div>Adres dostawy: <span class="text-white">${deliveryAddressText}</span></div>` : ''}
                 </div>
               </div>
             </div>

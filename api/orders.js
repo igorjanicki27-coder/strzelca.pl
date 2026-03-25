@@ -991,7 +991,7 @@ module.exports = async (req, res) => {
             address: clonePlainAddress(address),
             deliveryMethod: normalizedDeliveryMethod,
             deliverySameAsBilling:
-              normalizedDeliveryMethod === 'courier' ? deliverySameAsBilling !== true ? false : true : false,
+              normalizedDeliveryMethod === 'courier' ? deliverySameAsBilling === true : false,
             deliveryAddress:
               normalizedDeliveryMethod === 'courier' ? normalizedDeliveryAddress : blankPlainAddress(),
             phone: phone || '',
@@ -1328,6 +1328,12 @@ module.exports = async (req, res) => {
             normalizedDeliveryMethod === 'courier' || normalizedDeliveryMethod === 'inpost'
               ? normalizedDeliveryMethod
               : '';
+          if (updateData.deliveryMethod !== 'courier' && deliveryAddress === undefined) {
+            updateData.deliveryAddress = blankPlainAddress();
+          }
+          if (updateData.deliveryMethod !== 'inpost' && parcelLocker === undefined) {
+            updateData.parcelLocker = '';
+          }
         }
         if (deliverySameAsBilling !== undefined) {
           updateData.deliverySameAsBilling = deliverySameAsBilling === true;
@@ -1531,6 +1537,12 @@ module.exports = async (req, res) => {
           normalizedDeliveryMethod === 'courier' || normalizedDeliveryMethod === 'inpost'
             ? normalizedDeliveryMethod
             : '';
+        if (updateData.deliveryMethod !== 'courier' && deliveryAddress === undefined) {
+          updateData.deliveryAddress = blankPlainAddress();
+        }
+        if (updateData.deliveryMethod !== 'inpost' && parcelLocker === undefined) {
+          updateData.parcelLocker = '';
+        }
       }
       if (deliverySameAsBilling !== undefined) {
         updateData.deliverySameAsBilling = deliverySameAsBilling === true;

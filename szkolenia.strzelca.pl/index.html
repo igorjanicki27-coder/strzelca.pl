@@ -54,7 +54,7 @@
         <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-24-2" />
         <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
         <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
-        <link rel="modulepreload" href="https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-10" crossorigin />
+        <link rel="modulepreload" href="https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-24-3" crossorigin />
         <style>
             :root {
                 --coyote: #c19a6b;
@@ -453,7 +453,7 @@
                 getHeaderProfileFromCache,
                 setHeaderProfileCache,
             } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
-            import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-22-10";
+            import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-24-3";
             import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
             import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
             import { syncCarouselDotsNav } from "https://strzelca.pl/carousel-dots.mjs?v=2026-03-24-1";
@@ -740,6 +740,37 @@ const firebaseConfig = {
             let trainingPendingMoves = 0;
             const TRAINING_CAROUSEL_DURATION_MS = 180;
 
+            function normalizeTrainingProgressItem(row) {
+                const progressPercent = Number.isFinite(row.progressPercent) ? row.progressPercent : 0;
+                const isCompleted = progressPercent >= 100;
+                const hasStarted = progressPercent > 0;
+                const actionLabel = isCompleted
+                    ? "Ukończono"
+                    : hasStarted
+                      ? "Kontynuuj szkolenie"
+                      : "Rozpocznij szkolenie";
+                return {
+                    ...row,
+                    progressPercent,
+                    isCompleted,
+                    hasStarted,
+                    actionLabel,
+                };
+            }
+
+            function calculateTrainingProgressPercent(progressData, regularLessonsCount, certificateIssued) {
+                if (!progressData || regularLessonsCount <= 0) {
+                    return certificateIssued ? 100 : 0;
+                }
+
+                const finishedSet = new Set((progressData.finishedLessons || progressData.completedLessons || []).filter((id) => id !== 'certificate'));
+                const openedSet = new Set((progressData.openedLessons || []).filter((id) => id !== 'certificate'));
+                const openedOnlyCount = [...openedSet].filter((id) => !finishedSet.has(id)).length;
+                const progressPerLesson = 99 / regularLessonsCount;
+                const rawProgress = finishedSet.size * progressPerLesson + openedOnlyCount * progressPerLesson * 0.5 + (certificateIssued ? 1 : 0);
+                return Math.max(0, Math.min(100, Math.round(rawProgress)));
+            }
+
             function syncTrainingCarouselDots() {
                 const dots = document.getElementById("training-carousel-dots");
                 const n = trainingItems.length;
@@ -793,20 +824,37 @@ const firebaseConfig = {
                 const encodedTitle = encodeURIComponent(item.title || "");
                 const priceLabel = item.individualPricing ? "Cena ustalana indywidualnie" : `${item.price} PLN`;
                 const priceAriaLabel = item.individualPricing ? "Cena ustalana indywidualnie" : `Cena: ${item.price} złotych`;
+                const progressPercent = Math.max(0, Math.min(100, item.progressPercent || 0));
+                const progressTextClass = item.isCompleted ? 'text-emerald-400' : 'text-zinc-300';
+                const cardStateClass = item.isCompleted
+                    ? 'border border-emerald-500/70 hover:border-emerald-400/80'
+                    : 'hover:border-[#C19A6B]/50';
 
                 let buttonHtml = "";
                 if (item.hasAccess) {
-                    buttonHtml = `<button onclick="event.stopPropagation(); window.location.href='https://szkolenia.strzelca.pl/kurs.html?id=${item.id}'" aria-label="Rozpocznij kurs ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[11px] md:text-xs uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">Rozpocznij kurs</button>`;
+                    const buttonTextClass = item.isCompleted ? 'text-emerald-400' : 'text-black';
+                    buttonHtml = `<button onclick="event.stopPropagation(); window.location.href='https://szkolenia.strzelca.pl/kurs.html?id=${item.id}'" aria-label="${item.actionLabel} ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] ${buttonTextClass} text-[11px] md:text-xs uppercase font-black rounded tracking-[0.12em] flex items-center justify-center hover:bg-[#b18a5f] transition">${item.actionLabel}</button>`;
                 } else {
-                    buttonHtml = `<button onclick="event.stopPropagation(); window.showTrainingDetails('${item.id}')" aria-label="Szczegóły szkolenia ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[11px] md:text-xs uppercase font-black rounded tracking-[0.2em] flex items-center justify-center hover:bg-[#b18a5f] transition">SZCZEGÓŁY</button>`;
+                    buttonHtml = `<button onclick="event.stopPropagation(); window.showTrainingDetails('${item.id}')" aria-label="Pokaż szczegóły szkolenia ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[11px] md:text-xs uppercase font-black rounded tracking-[0.12em] flex items-center justify-center hover:bg-[#b18a5f] transition">${item.detailActionLabel || 'Złóż zamówienie'}</button>`;
                 }
 
                 return `
-                    <article onclick="window.showTrainingDetails('${item.id}')" class="card-dark training-card flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50 cursor-pointer" role="article">
+                    <article onclick="window.showTrainingDetails('${item.id}')" class="card-dark training-card flex flex-col h-full shadow-2xl transition ${cardStateClass} cursor-pointer" role="article">
                         <div class="training-img-container"><img src="${item.img}" alt="${item.title}" loading="lazy"></div>
                         <div class="p-4 md:p-6 flex flex-col flex-grow text-center">
                             <h3 class="text-xl md:text-2xl font-black uppercase mb-2 font-[Orbitron] text-white tracking-tight">${item.title}</h3>
                             <p class="coyote-text font-bold text-lg md:text-xl mb-4 md:mb-5" aria-label="${priceAriaLabel}">${priceLabel}</p>
+                            ${item.hasAccess ? `
+                                <div class="mb-4 text-left">
+                                    <div class="flex items-center justify-between gap-3 mb-2 text-[11px] uppercase tracking-[0.12em] font-bold ${progressTextClass}">
+                                        <span>Postęp szkolenia</span>
+                                        <span>${progressPercent}%</span>
+                                    </div>
+                                    <div class="h-2 rounded-full bg-zinc-800 overflow-hidden">
+                                        <div class="h-full ${item.isCompleted ? 'bg-emerald-500' : 'bg-[#C19A6B]'} transition-all duration-300" style="width:${progressPercent}%"></div>
+                                    </div>
+                                </div>
+                            ` : ''}
                             <div class="mt-auto flex flex-col gap-2 md:gap-3">
                                 ${buttonHtml}
                             </div>
@@ -1005,12 +1053,41 @@ const firebaseConfig = {
                         });
                         const user = auth.currentUser;
                         let userAccessList = [];
+                        const progressMap = new Map();
+                        const certificateSet = new Set();
+                        const lessonsCountByTraining = {};
                         if (user) {
                             try {
                                 const accessRef = collection(db, "trainingAccess");
                                 const accessQuery = query(accessRef, where("userId", "==", user.uid));
-                                const accessSnap = await getDocs(accessQuery);
+                                const progressQuery = query(collection(db, "courseProgress"), where("userId", "==", user.uid));
+                                const certificatesQuery = query(collection(db, "publicTrainingCertificates"), where("userId", "==", user.uid));
+                                const lessonsQuery = getDocs(collection(db, "courseLessons"));
+                                const [accessSnap, progressSnap, certificatesSnap, lessonsSnap] = await Promise.all([
+                                    getDocs(accessQuery),
+                                    getDocs(progressQuery),
+                                    getDocs(certificatesQuery),
+                                    lessonsQuery,
+                                ]);
                                 userAccessList = accessSnap.docs.map((x) => x.data().trainingId);
+                                progressSnap.forEach((docSnap) => {
+                                    const data = docSnap.data();
+                                    if (data?.trainingId) {
+                                        progressMap.set(data.trainingId, data);
+                                    }
+                                });
+                                certificatesSnap.forEach((docSnap) => {
+                                    const data = docSnap.data();
+                                    if (data?.trainingId) {
+                                        certificateSet.add(data.trainingId);
+                                    }
+                                });
+                                lessonsSnap.forEach((docSnap) => {
+                                    const data = docSnap.data();
+                                    if (data?.trainingId) {
+                                        lessonsCountByTraining[data.trainingId] = (lessonsCountByTraining[data.trainingId] || 0) + 1;
+                                    }
+                                });
                             } catch (error) {
                                 console.error("Error loading user access:", error);
                             }
@@ -1026,10 +1103,19 @@ const firebaseConfig = {
                                 individualPricing: row.individualPricing === true,
                                 img: row.img,
                                 hasAccess,
+                                detailActionLabel: user ? "Złóż zamówienie" : "Zapytaj o ofertę",
+                                progressPercent: hasAccess
+                                    ? calculateTrainingProgressPercent(
+                                        progressMap.get(row.id),
+                                        lessonsCountByTraining[row.id] || 0,
+                                        certificateSet.has(row.id),
+                                      )
+                                    : 0,
                                 _adminListIndex: listIndex,
                             };
-                        });
+                        }).map(normalizeTrainingProgressItem);
                         trainingItems.sort((a, b) => {
+                            if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
                             if (a.hasAccess !== b.hasAccess) return a.hasAccess ? -1 : 1;
                             return a._adminListIndex - b._adminListIndex;
                         });
@@ -1066,10 +1152,11 @@ const firebaseConfig = {
             window.showTrainingDetails = async (id) => {
                 const d = await getDoc(doc(db, "trainings", id));
                 const t = d.data();
+                const trainingState = trainingItems.find((item) => item.id === id) || null;
                 
                 // Sprawdź dostęp użytkownika
                 let user = auth.currentUser;
-                let hasAccess = t.available === true;
+                let hasAccess = trainingState ? trainingState.hasAccess : t.available === true;
                 const encodedTitle = encodeURIComponent(t.title || "");
                 
                 if (!hasAccess && user) {
@@ -1086,13 +1173,15 @@ const firebaseConfig = {
                 // Przygotuj przycisk w zależności od dostępu
                 let buttonHtml = '';
                 if (hasAccess) {
-                    buttonHtml = `<button onclick="window.location.href='https://szkolenia.strzelca.pl/kurs.html?id=${id}'" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition flex items-center justify-center gap-2">
+                    const actionLabel = trainingState?.actionLabel || 'Rozpocznij szkolenie';
+                    const actionTextClass = trainingState?.isCompleted ? 'text-emerald-400' : 'text-black';
+                    buttonHtml = `<button onclick="window.location.href='https://szkolenia.strzelca.pl/kurs.html?id=${id}'" class="bg-[#C19A6B] ${actionTextClass} px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition flex items-center justify-center gap-2">
                         <i class="fas fa-play"></i>
-                        Rozpocznij kurs
+                        ${actionLabel}
                     </button>`;
                 } else {
                     const isLoggedIn = !!user;
-                    const actionLabel = isLoggedIn ? "Złóż zamówienie" : "Zapytaj o ofertę";
+                    const actionLabel = trainingState?.detailActionLabel || (isLoggedIn ? "Złóż zamówienie" : "Zapytaj o ofertę");
                     const actionIcon = isLoggedIn ? "fa-shopping-cart" : "fa-envelope";
                     buttonHtml = `<button type="button" onclick="window.handleOfferInquiry('${id}', decodeURIComponent('${encodedTitle}'), ${t.price || 0}, ${t.individualPricing === true})" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition flex items-center justify-center gap-2">
                         <i class="fas ${actionIcon}"></i>
@@ -1234,6 +1323,8 @@ const firebaseConfig = {
                 updateUserInterface(user);
                 if (!trainingsLoaded) {
                     trainingsLoaded = true;
+                    fetchAll();
+                } else {
                     fetchAll();
                 }
             });

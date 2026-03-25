@@ -150,9 +150,49 @@
         .charity-wesprzyj-btn:hover .charity-wesprzyj-label {
             color: #ef4444;
         }
+        .charity-wesprzyj-btn.charity-wesprzyj-btn--start {
+            background: rgba(10, 20, 12, 0.92);
+            border-color: rgba(34, 197, 94, 0.45);
+        }
+        .charity-wesprzyj-btn.charity-wesprzyj-btn--start .charity-wesprzyj-label,
+        .charity-wesprzyj-btn.charity-wesprzyj-btn--start:hover .charity-wesprzyj-label {
+            color: #4ade80;
+        }
+        .charity-wesprzyj-btn.charity-wesprzyj-btn--ending .charity-wesprzyj-label {
+            color: #f87171;
+        }
+        .charity-wesprzyj-btn.charity-wesprzyj-btn--ending:hover .charity-wesprzyj-label {
+            color: #fecaca;
+        }
+        .charity-wesprzyj-btn.charity-wesprzyj-btn--locked,
+        .charity-wesprzyj-btn:disabled {
+            opacity: 0.72;
+            cursor: not-allowed;
+            pointer-events: none;
+            background: #3f3f46;
+            border-color: #52525b;
+        }
+        .charity-wesprzyj-btn.charity-wesprzyj-btn--locked .charity-wesprzyj-label,
+        .charity-wesprzyj-btn:disabled .charity-wesprzyj-label {
+            color: #ef4444;
+        }
+        .charity-wesprzyj-btn.charity-wesprzyj-btn--start:disabled .charity-wesprzyj-label {
+            color: #4ade80;
+        }
         .charity-wesprzyj-btn .charity-heart-icon {
             color: #ef4444;
             font-size: 0.95rem;
+        }
+        .charity-status-line {
+            font-size: 0.78rem;
+            line-height: 1.35;
+            font-weight: 700;
+        }
+        .charity-status-line--start {
+            color: #4ade80;
+        }
+        .charity-status-line--end {
+            color: #f87171;
         }
         /* Wyrównanie i wcięcia z Quill (jak w panelu admina) */
         /* !important — nadpisuje style typography (.prose), żeby zgadzało się z podglądem Quill */
@@ -413,6 +453,13 @@
                         <input id="charity-title" type="text" placeholder="Nazwa akcji">
                         <div class="rounded-lg border border-zinc-700/80 bg-zinc-900/60 p-3 space-y-2">
                             <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="charity-start-enabled" class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded shrink-0" onchange="window.syncCharityStartFieldsPomoc()" />
+                                <span class="text-sm">Ustal datę rozpoczęcia akcji</span>
+                            </label>
+                            <input id="charity-start-date" type="datetime-local" placeholder="Data i czas rozpoczęcia" class="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white transition-opacity">
+                        </div>
+                        <div class="rounded-lg border border-zinc-700/80 bg-zinc-900/60 p-3 space-y-2">
+                            <label class="flex items-center gap-2 cursor-pointer">
                                 <input type="checkbox" id="charity-hide-date" class="w-4 h-4 text-coyote bg-zinc-800 border-zinc-700 rounded shrink-0" onchange="window.syncCharityHideTimeFieldsPomoc()" />
                                 <span class="text-sm">Nie podawaj daty (akcja do odwołania)</span>
                             </label>
@@ -634,6 +681,7 @@ const firebaseConfig = {
         let charityPendingMoves = 0;
         let charityCarouselSegments = [];
         let charityCarouselLeftIndex = 0;
+        let activeCharityDetailsId = null;
 
         function syncCharityCarouselDots() {
             const dots = document.getElementById('charity-carousel-dots');
@@ -883,9 +931,6 @@ const firebaseConfig = {
             e.stopPropagation();
             if (itemLink && itemLink.trim() !== '') {
                 window.open(itemLink, '_blank');
-            } else {
-                // Gdy brak linku, otwórz szczegóły (kliknięcie w przycisk odpala modal)
-                e.target.closest('article').click();
             }
         };
 
@@ -897,8 +942,144 @@ const firebaseConfig = {
             return String(d);
         }
 
+        function charityItemStartRawString(item) {
+            const d = item?.startDate;
+            if (d == null) return '';
+            if (typeof d === 'string') return d;
+            if (typeof d?.toDate === 'function') return d.toDate().toISOString();
+            return String(d);
+        }
+
         function charityItemRawHasTimeComponent(raw) {
             return typeof raw === 'string' && raw.includes('T') && raw.length > 10;
+        }
+
+        const CHARITY_SECOND_MS = 1000;
+        const CHARITY_MINUTE_MS = 60 * CHARITY_SECOND_MS;
+        const CHARITY_HOUR_MS = 60 * CHARITY_MINUTE_MS;
+        const CHARITY_DAY_MS = 24 * CHARITY_HOUR_MS;
+
+        function pluralizePl(value, one, few, many) {
+            const abs = Math.abs(value);
+            const mod10 = abs % 10;
+            const mod100 = abs % 100;
+            if (abs === 1) return one;
+            if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+            return many;
+        }
+
+        function formatDurationUnit(value, one, few, many) {
+            return `${value} ${pluralizePl(value, one, few, many)}`;
+        }
+
+        function formatCountdownByMode(diffMs, mode) {
+            const totalSeconds = Math.max(0, Math.floor(diffMs / 1000));
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            if (mode === 'within-hour') {
+                if (totalSeconds >= 60) {
+                    return `${formatDurationUnit(minutes, 'minuta', 'minuty', 'minut')} ${formatDurationUnit(seconds, 'sekunda', 'sekundy', 'sekund')}`;
+                }
+                return formatDurationUnit(seconds, 'sekunda', 'sekundy', 'sekund');
+            }
+
+            if (totalSeconds >= 3600) {
+                return `${formatDurationUnit(hours, 'godzina', 'godziny', 'godzin')} ${formatDurationUnit(minutes, 'minuta', 'minuty', 'minut')}`;
+            }
+            if (totalSeconds >= 60) {
+                return `${formatDurationUnit(minutes, 'minuta', 'minuty', 'minut')} ${formatDurationUnit(seconds, 'sekunda', 'sekundy', 'sekund')}`;
+            }
+            return formatDurationUnit(seconds, 'sekunda', 'sekundy', 'sekund');
+        }
+
+        function resolveCharityStartDate(item) {
+            if (!item || item.startEnabled !== true || !item.startDate) return null;
+            const dt = typeof item.startDate?.toDate === 'function' ? item.startDate.toDate() : new Date(item.startDate);
+            return Number.isNaN(dt.getTime()) ? null : dt;
+        }
+
+        function resolveCharityEndDate(item) {
+            if (!item || item.hideDate === true || !item.date) return null;
+            const dt = typeof item.date?.toDate === 'function' ? item.date.toDate() : new Date(item.date);
+            return Number.isNaN(dt.getTime()) ? null : dt;
+        }
+
+        function getCharityStatusLines(item, now = new Date()) {
+            const rows = [];
+            const startDate = resolveCharityStartDate(item);
+            const endDate = resolveCharityEndDate(item);
+            const startDiff = startDate ? startDate.getTime() - now.getTime() : null;
+            const endDiff = endDate ? endDate.getTime() - now.getTime() : null;
+
+            if (startDiff != null && startDiff > 0 && startDiff <= CHARITY_DAY_MS) {
+                rows.push({
+                    tone: 'start',
+                    label: `Akcja rozpoczyna się za: ${formatCountdownByMode(startDiff, 'within-24h')}`,
+                });
+            }
+            if (endDiff != null && endDiff > 0 && endDiff < CHARITY_HOUR_MS) {
+                rows.push({
+                    tone: 'end',
+                    label: `Akcja kończy się za: ${formatCountdownByMode(endDiff, 'within-hour')}`,
+                });
+            }
+
+            return rows;
+        }
+
+        function getCharityActionState(item, now = new Date()) {
+            const startDate = resolveCharityStartDate(item);
+            const endDate = resolveCharityEndDate(item);
+
+            if (endDate && now >= endDate) {
+                return { label: 'Akcja zakończona', disabled: true, tone: 'locked' };
+            }
+
+            if (startDate && now < startDate) {
+                const diffMs = startDate.getTime() - now.getTime();
+                if (diffMs <= CHARITY_DAY_MS) {
+                    return {
+                        label: `Akcja rozpoczyna się za: ${formatCountdownByMode(diffMs, 'within-24h')}`,
+                        disabled: true,
+                        tone: 'start',
+                    };
+                }
+                return { label: 'Akcja jeszcze się nie rozpoczęła', disabled: true, tone: 'start' };
+            }
+
+            if (endDate) {
+                const diffMs = endDate.getTime() - now.getTime();
+                if (diffMs > 0 && diffMs < CHARITY_HOUR_MS) {
+                    return {
+                        label: `Akcja kończy się za: ${formatCountdownByMode(diffMs, 'within-hour')}`,
+                        disabled: false,
+                        tone: 'ending',
+                    };
+                }
+            }
+
+            return { label: 'Wesprzyj', disabled: false, tone: 'default' };
+        }
+
+        function getCharityActionToneClass(state) {
+            switch (state?.tone) {
+                case 'start':
+                    return ' charity-wesprzyj-btn--start';
+                case 'ending':
+                    return ' charity-wesprzyj-btn--ending';
+                case 'locked':
+                    return ' charity-wesprzyj-btn--locked';
+                default:
+                    return '';
+            }
+        }
+
+        function renderCharityStatusLinesHtml(item, now = new Date()) {
+            return getCharityStatusLines(item, now)
+                .map((row) => `<div class="charity-status-line charity-status-line--${row.tone}">${escapeHtml(row.label)}</div>`)
+                .join('');
         }
 
         function buildCharityCard(item) {
@@ -916,6 +1097,9 @@ const firebaseConfig = {
             const hideDate = item.hideDate === true;
             const hideTime = hideDate || item.hideTime === true;
             const rawDateStr = charityItemDateRawString(item);
+            const actionState = getCharityActionState(item, new Date());
+            const actionToneClass = getCharityActionToneClass(actionState).trim();
+            const statusLinesHtml = renderCharityStatusLinesHtml(item, new Date());
 
             let dateMetaHtml = '';
             if (hideDate) {
@@ -958,19 +1142,20 @@ const firebaseConfig = {
             }
 
             return `
-                <article class="card-dark charity-card cursor-pointer hover:border-coyote transition" onclick="window.openCharityDetails('${item.id}')">
+                <article class="card-dark charity-card cursor-pointer hover:border-coyote transition" data-charity-id="${item.id}" onclick="window.openCharityDetails('${item.id}')">
                     <div class="charity-card-inner justify-between p-0">
                         <div class="flex flex-col flex-1 min-h-0">
                             ${coverImage ? `<div class="charity-image-wrap h-48 md:h-56 shrink-0"><img src="${coverImage}" alt="${title}" class="w-full h-full object-cover"></div>` : '<div class="charity-image-wrap h-48 md:h-56 shrink-0 bg-zinc-800 flex items-center justify-center"><i class="fa-solid fa-hand-holding-heart text-4xl text-zinc-600"></i></div>'}
                             <div class="p-4 md:p-6 pb-2 text-center flex flex-col flex-1">
                                 <h3 class="text-lg md:text-xl font-bold uppercase font-[Orbitron] coyote-text leading-tight mb-2">${title}</h3>
                                 ${dateMetaHtml}
+                                <div class="mt-3 space-y-1" data-charity-status-lines="${item.id}">${statusLinesHtml}</div>
                             </div>
                         </div>
                         <div class="p-4 md:p-6 pt-2 mt-auto shrink-0">
-                            <button onclick="window.handleCharityActionClick(event, '${escapeHtml(item.buttonLink || '')}')" class="charity-wesprzyj-btn w-full font-bold text-sm tracking-widest py-3 px-4 rounded-lg uppercase flex items-center justify-center gap-2 transition-all duration-300">
+                            <button type="button" onclick="event.stopPropagation(); window.openCharityDetails('${item.id}')" data-charity-card-action-btn="${item.id}" class="charity-wesprzyj-btn w-full font-bold text-sm tracking-[0.12em] py-3 px-4 rounded-lg uppercase flex items-center justify-center gap-2 transition-all duration-300 ${actionToneClass}">
                                 <i class="fa-solid fa-heart charity-heart-icon" aria-hidden="true"></i>
-                                <span class="charity-wesprzyj-label transition-colors">WESPRZYJ</span>
+                                <span class="charity-wesprzyj-label transition-colors">${escapeHtml(actionState.label)}</span>
                                 <i class="fa-solid fa-heart charity-heart-icon" aria-hidden="true"></i>
                             </button>
                         </div>
@@ -1041,6 +1226,7 @@ const firebaseConfig = {
         window.openCharityDetails = (id) => {
             const item = publicCharityItems.find(c => c.id === id);
             if (!item) return;
+            activeCharityDetailsId = id;
 
             const modal = document.getElementById('charity-details-modal');
             const content = document.getElementById('charity-details-content');
@@ -1049,6 +1235,9 @@ const firebaseConfig = {
             const allImages = item.images && item.images.length > 0
                 ? item.images.map(img => img.url)
                 : (item.image ? [item.image] : []);
+            const actionState = getCharityActionState(item, new Date());
+            const toneClass = getCharityActionToneClass(actionState).trim();
+            const statusesHtml = renderCharityStatusLinesHtml(item, new Date());
 
             const { html: imagesHtml, init: initCarousel } = buildCharityModalCarouselHtml(allImages);
 
@@ -1062,10 +1251,11 @@ const firebaseConfig = {
                     <div class="prose prose-invert prose-stone charity-html-content max-w-none text-zinc-300 tracking-wide leading-relaxed text-sm md:text-base">
                         ${description || 'Brak dodatkowego opisu.'}
                     </div>
+                    <div id="charity-details-statuses" class="mt-6 space-y-2 text-center">${statusesHtml}</div>
                     <div class="mt-8 pt-6 border-t border-zinc-800 flex justify-center">
-                        <button type="button" onclick="window.handleCharityActionClick(event, '${escapeHtml(item.buttonLink || '')}')" class="charity-wesprzyj-btn font-bold text-sm tracking-widest py-4 px-8 rounded-lg uppercase inline-flex items-center justify-center gap-2 transition-all duration-300">
+                        <button type="button" id="charity-details-action-btn" onclick="window.handleCharityActionClick(event, '${escapeHtml(item.buttonLink || '')}')" class="charity-wesprzyj-btn font-bold text-sm tracking-[0.12em] py-4 px-8 rounded-lg uppercase inline-flex items-center justify-center gap-2 transition-all duration-300 ${toneClass}" ${actionState.disabled ? 'disabled aria-disabled="true"' : ''}>
                             <i class="fa-solid fa-heart charity-heart-icon" aria-hidden="true"></i>
-                            <span class="charity-wesprzyj-label transition-colors">WESPRZYJ AKCJE</span>
+                            <span class="charity-wesprzyj-label transition-colors">${escapeHtml(actionState.label)}</span>
                             <i class="fa-solid fa-heart charity-heart-icon" aria-hidden="true"></i>
                         </button>
                     </div>
@@ -1124,6 +1314,7 @@ const firebaseConfig = {
         };
 
         window.closeCharityDetails = () => {
+            activeCharityDetailsId = null;
             const modal = document.getElementById('charity-details-modal');
             const content = document.getElementById('charity-details-content');
             
@@ -1156,6 +1347,61 @@ const firebaseConfig = {
                 modal.classList.add('hidden');
             }, 300);
         };
+
+        function refreshCharityCardStates() {
+            const now = new Date();
+            if (publicCharityItems.some((item) => {
+                const endDate = resolveCharityEndDate(item);
+                return endDate && now >= endDate;
+            })) {
+                fetchCharityActions();
+                return;
+            }
+            document.querySelectorAll('[data-charity-card-action-btn]').forEach((btn) => {
+                const id = btn.getAttribute('data-charity-card-action-btn') || '';
+                const item = publicCharityItems.find((row) => row.id === id);
+                if (!item) return;
+                const state = getCharityActionState(item, now);
+                btn.classList.remove('charity-wesprzyj-btn--start', 'charity-wesprzyj-btn--ending', 'charity-wesprzyj-btn--locked');
+                const toneClass = getCharityActionToneClass(state).trim();
+                if (toneClass) btn.classList.add(toneClass);
+                const labelEl = btn.querySelector('.charity-wesprzyj-label');
+                if (labelEl) labelEl.textContent = state.label;
+                const statusWrap = document.querySelector(`[data-charity-status-lines="${id}"]`);
+                if (statusWrap) statusWrap.innerHTML = renderCharityStatusLinesHtml(item, now);
+            });
+        }
+
+        function refreshOpenCharityDetailsState() {
+            if (!activeCharityDetailsId) return;
+            const item = publicCharityItems.find((row) => row.id === activeCharityDetailsId);
+            if (!item) return;
+            const now = new Date();
+            const state = getCharityActionState(item, now);
+            const button = document.getElementById('charity-details-action-btn');
+            if (button) {
+                button.classList.remove('charity-wesprzyj-btn--start', 'charity-wesprzyj-btn--ending', 'charity-wesprzyj-btn--locked');
+                const toneClass = getCharityActionToneClass(state).trim();
+                if (toneClass) button.classList.add(toneClass);
+                button.disabled = !!state.disabled;
+                button.setAttribute('aria-disabled', state.disabled ? 'true' : 'false');
+                const labelEl = button.querySelector('.charity-wesprzyj-label');
+                if (labelEl) labelEl.textContent = state.label;
+            }
+            const statusesEl = document.getElementById('charity-details-statuses');
+            if (statusesEl) {
+                statusesEl.innerHTML = renderCharityStatusLinesHtml(item, now);
+            }
+        }
+
+        function startCharityCountdownTicker() {
+            if (window.__charityCountdownTickerStarted) return;
+            window.__charityCountdownTickerStarted = true;
+            window.setInterval(() => {
+                refreshCharityCardStates();
+                refreshOpenCharityDetailsState();
+            }, 1000);
+        }
 
         function renderCharityCarousel() {
             const track = document.getElementById('charity-track');
@@ -1521,6 +1767,21 @@ const firebaseConfig = {
             }
         };
 
+        window.syncCharityStartFieldsPomoc = () => {
+            const enabled = document.getElementById('charity-start-enabled');
+            const startEl = document.getElementById('charity-start-date');
+            if (!enabled || !startEl) return;
+            startEl.disabled = !enabled.checked;
+            startEl.classList.toggle('opacity-40', !enabled.checked);
+            startEl.classList.toggle('cursor-not-allowed', !enabled.checked);
+            if (enabled.checked) {
+                startEl.setAttribute('required', '');
+            } else {
+                startEl.removeAttribute('required');
+                startEl.value = '';
+            }
+        };
+
         // Funkcje zarządzania akcjami charytatywnymi
         function charityPomocMaxOrderAmong(excludeId = null) {
             let m = -1;
@@ -1544,16 +1805,33 @@ const firebaseConfig = {
                 let finalImages = [...charityImages];
                 let finalImage = finalImages.length > 0 ? finalImages[0].url : "";
                 const descHtml = charityDescriptionQuillPomoc ? charityDescriptionQuillPomoc.root.innerHTML.trim() : '';
+                const startEnabled = document.getElementById('charity-start-enabled')?.checked === true;
+                const startRaw = document.getElementById('charity-start-date')?.value || '';
                 const hideDate = document.getElementById('charity-hide-date')?.checked === true;
                 let hideTime = document.getElementById('charity-hide-time')?.checked === true;
                 if (hideDate) hideTime = true;
                 const dateRaw = document.getElementById('charity-date').value;
                 const titleVal = document.getElementById('charity-title').value.trim();
-                if (!titleVal || (!hideDate && !dateRaw)) {
-                    alert('Uzupełnij tytuł i datę zakończenia albo zaznacz „Nie podawaj daty”.');
+                if (!titleVal || (!hideDate && !dateRaw) || (startEnabled && !startRaw)) {
+                    alert('Uzupełnij tytuł oraz wymagane daty akcji.');
                     return;
                 }
+                const startVal = startEnabled ? startRaw : '';
+                const startDateObj = startVal ? new Date(startVal) : null;
                 const dateVal = hideDate ? (dateRaw || '') : dateRaw;
+                const endDateObj = !hideDate && dateVal ? new Date(dateVal) : null;
+                if (startDateObj && isNaN(startDateObj.getTime())) {
+                    alert('Niepoprawna data rozpoczęcia akcji.');
+                    return;
+                }
+                if (endDateObj && isNaN(endDateObj.getTime())) {
+                    alert('Niepoprawna data zakończenia akcji.');
+                    return;
+                }
+                if (startDateObj && endDateObj && startDateObj.getTime() > endDateObj.getTime()) {
+                    alert('Rozpoczęcie akcji nie może być późniejsze niż zakończenie akcji.');
+                    return;
+                }
                 const isEdit = !!document.getElementById('charity-edit-id').value;
                 const prevRow = isEdit ? charityActions.find((c) => c.id === id) : null;
                 let orderVal;
@@ -1573,6 +1851,8 @@ const firebaseConfig = {
 
                 await setDoc(doc(db, "charity", id), {
                     title: titleVal,
+                    startEnabled,
+                    startDate: startVal,
                     date: dateVal,
                     description: descHtml,
                     buttonLink: document.getElementById('charity-button-link').value,
@@ -1597,6 +1877,7 @@ const firebaseConfig = {
         function clearCharityForm() {
             document.getElementById('charity-edit-id').value = '';
             document.getElementById('charity-title').value = '';
+            document.getElementById('charity-start-date').value = '';
             document.getElementById('charity-date').value = '';
             if (charityDescriptionQuillPomoc) {
                 charityDescriptionQuillPomoc.root.innerHTML = '';
@@ -1604,6 +1885,8 @@ const firebaseConfig = {
             document.getElementById('charity-button-link').value = '';
             document.getElementById('charity-image-file').value = '';
             document.getElementById('charity-active').checked = true;
+            const startEnabledEl = document.getElementById('charity-start-enabled');
+            if (startEnabledEl) startEnabledEl.checked = false;
             const hdClear = document.getElementById('charity-hide-date');
             const htClear = document.getElementById('charity-hide-time');
             if (hdClear) hdClear.checked = false;
@@ -1613,6 +1896,7 @@ const firebaseConfig = {
             }
             charityImages = [];
             renderCharityImagesAdmin();
+            window.syncCharityStartFieldsPomoc();
             window.syncCharityHideTimeFieldsPomoc();
         }
 
@@ -1717,13 +2001,17 @@ const firebaseConfig = {
             if(charity) {
                 document.getElementById('charity-edit-id').value = charity.id;
                 document.getElementById('charity-title').value = charity.title;
+                document.getElementById('charity-start-date').value = charity.startDate ? formatDateTimeForInput(charity.startDate) : '';
                 document.getElementById('charity-date').value = charity.date ? formatDateTimeForInput(charity.date) : '';
                 document.getElementById('charity-button-link').value = charity.buttonLink || '';
                 document.getElementById('charity-active').checked = charity.active;
+                const startEnabledEd = document.getElementById('charity-start-enabled');
+                if (startEnabledEd) startEnabledEd.checked = charity.startEnabled === true;
                 const hdEd = document.getElementById('charity-hide-date');
                 const htEd = document.getElementById('charity-hide-time');
                 if (hdEd) hdEd.checked = charity.hideDate === true;
                 if (htEd) htEd.checked = charity.hideDate === true || charity.hideTime === true;
+                window.syncCharityStartFieldsPomoc();
                 window.syncCharityHideTimeFieldsPomoc();
 
                 charityImages = [...(charity.images || (charity.image ? [{url: charity.image, order: 0}] : []))];
@@ -1746,7 +2034,9 @@ const firebaseConfig = {
         };
 
         // Załaduj akcje przy starcie strony
+        startCharityCountdownTicker();
         fetchCharityActions();
+        window.syncCharityStartFieldsPomoc();
         window.syncCharityHideTimeFieldsPomoc();
     </script>
     <script
