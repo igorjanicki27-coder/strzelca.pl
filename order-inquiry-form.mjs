@@ -402,6 +402,16 @@ function setOrderFieldValue(id, value) {
   el.value = String(value || "");
 }
 
+function digitsOnly(value) {
+  return String(value || "").replace(/\D+/g, "");
+}
+
+function formatPostalCode(value) {
+  const digits = digitsOnly(value).slice(0, 5);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+}
+
 function getOrderAddressFromInputs(prefix) {
   return cloneAddress({
     street: getOrderFieldValue(`${prefix}-street`),
@@ -520,8 +530,8 @@ function syncOrderCustomerTypeUI() {
     "order-address-postal-required",
     "order-address-city-required",
   ];
-  if (firstRequired) firstRequired.textContent = isPrivate ? "*" : "";
-  if (lastRequired) lastRequired.textContent = isPrivate ? "*" : "";
+  if (firstRequired) firstRequired.textContent = "*";
+  if (lastRequired) lastRequired.textContent = "*";
   if (companyNameRequired) companyNameRequired.textContent = isCompany ? "*" : "";
   if (taxIdRequired) taxIdRequired.textContent = isCompany ? "*" : "";
   addressRequiredIds.forEach((id) => {
@@ -541,8 +551,8 @@ function syncOrderCustomerTypeUI() {
   const billingCity = document.getElementById("order-address-city");
   const parcelLocker = document.getElementById("order-delivery-parcelLocker");
 
-  if (firstName) firstName.required = isPrivate;
-  if (lastName) lastName.required = isPrivate;
+  if (firstName) firstName.required = true;
+  if (lastName) lastName.required = true;
   if (email) email.required = true;
   if (phone) phone.required = true;
   if (companyName) companyName.required = isCompany;
@@ -593,9 +603,9 @@ function updateOrderSummaryPanel() {
     p.context !== "shop"
       ? "Brak dostawy"
       : deliveryMethod === "courier"
-      ? `Kurier (${formatMoney(30)})`
+      ? `Kurier`
       : deliveryMethod === "inpost"
-      ? `Paczkomat InPost (${formatMoney(25)})`
+      ? `Paczkomat InPost`
       : "Nie wybrano";
   const summaryDeliveryHint =
     p.context !== "shop"
@@ -795,13 +805,13 @@ function renderOrderFormModal({
 
       <div class="border-b border-zinc-800/90 bg-black/30 px-5 py-5 md:px-8 md:py-6">
         <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div class="min-w-0 pr-12">
+          <div class="min-w-0 pr-16 md:pr-20">
             <p class="text-[11px] uppercase tracking-[0.32em] text-zinc-500 font-semibold">FORMULARZ ZAMÓWIENIA</p>
             <h2 class="mt-2 text-xl md:text-2xl font-black uppercase font-[Orbitron] text-white leading-tight">${rawTitleSafe}</h2>
             <p id="order-current-step-title" class="mt-3 text-sm text-[#D2B48C] font-semibold">Kupujesz jako</p>
           </div>
-          <div id="order-price-summary" class="text-left md:text-right shrink-0">
-            <div id="order-price-final" class="${individualPricing ? "text-base md:text-lg text-[#C19A6B] font-bold leading-tight whitespace-nowrap max-w-full" : price > 0 ? "text-[1.3rem] md:text-[1.55rem] text-[#C19A6B] font-bold tabular-nums leading-tight" : "text-zinc-500 text-[1.3rem] md:text-[1.55rem] leading-tight"}">${individualPricing ? "Cena ustalana indywidualnie" : price > 0 ? formatMoney(price) : "—"}</div>
+          <div id="order-price-summary" class="text-left md:text-right shrink-0 pr-16 md:pr-20">
+            <div id="order-price-final" class="${individualPricing ? "text-base md:text-lg text-[#C19A6B] font-bold leading-tight break-words max-w-[14rem] md:max-w-[18rem]" : price > 0 ? "text-[1.3rem] md:text-[1.55rem] text-[#C19A6B] font-bold tabular-nums leading-tight" : "text-zinc-500 text-[1.3rem] md:text-[1.55rem] leading-tight"}">${individualPricing ? "Cena ustalana indywidualnie" : price > 0 ? formatMoney(price) : "—"}</div>
             <div id="order-price-base" class="hidden text-xs text-zinc-500 line-through mt-1"></div>
             <div id="order-price-discount" class="hidden text-xs text-emerald-300 mt-1"></div>
           </div>
@@ -834,13 +844,13 @@ function renderOrderFormModal({
                   <input type="radio" name="order-delivery-method" value="courier" class="sr-only">
                   <div class="text-[11px] uppercase tracking-[0.26em] text-zinc-500">Dostawa</div>
                   <div class="mt-3 text-xl font-black text-white font-[Orbitron]">Kurier</div>
-                  <p class="mt-2 text-sm text-zinc-400">Stała opłata: ${formatMoney(30)}.</p>
+                  <p class="mt-2 text-sm text-zinc-400">Koszt: ${formatMoney(30)}.</p>
                 </button>
                 <button type="button" id="order-delivery-card-inpost" onclick="window.selectStrzelcaOrderDeliveryMethod('inpost')" class="${tileClass}">
                   <input type="radio" name="order-delivery-method" value="inpost" class="sr-only">
                   <div class="text-[11px] uppercase tracking-[0.26em] text-zinc-500">Dostawa</div>
                   <div class="mt-3 text-xl font-black text-white font-[Orbitron]">Paczkomat InPost</div>
-                  <p class="mt-2 text-sm text-zinc-400">Stała opłata: ${formatMoney(25)}.</p>
+                  <p class="mt-2 text-sm text-zinc-400">Koszt: ${formatMoney(25)}.</p>
                 </button>
               </div>
             </div>
@@ -854,20 +864,20 @@ function renderOrderFormModal({
               </div>
               <div class="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Imię<span id="order-first-required" class="text-[#C19A6B]"></span></label>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Imię<span id="order-first-required" class="text-[#C19A6B]">*</span></label>
                   <input type="text" id="order-first-name" value="${escapeHtml(firstNameVal)}" class="${orderFieldClass}" placeholder="Imię" autocomplete="given-name">
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Nazwisko<span id="order-last-required" class="text-[#C19A6B]"></span></label>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Nazwisko<span id="order-last-required" class="text-[#C19A6B]">*</span></label>
                   <input type="text" id="order-last-name" value="${escapeHtml(lastNameVal)}" class="${orderFieldClass}" placeholder="Nazwisko" autocomplete="family-name">
                 </div>
-                <div class="md:col-span-2">
+                <div>
                   <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Adres e-mail*</label>
-                  <input type="email" id="order-email" value="${escapeHtml(emailValue)}" class="${orderFieldClass} cursor-not-allowed opacity-90" readonly required aria-readonly="true" title="Adres e-mail z konta">
+                  <input type="email" id="order-email" value="${escapeHtml(emailValue)}" class="${orderFieldClass} bg-zinc-900/90 text-zinc-500 cursor-not-allowed opacity-75" readonly required aria-readonly="true" title="Adres e-mail z konta">
                 </div>
-                <div class="md:col-span-2">
+                <div>
                   <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Numer telefonu*</label>
-                  <input type="text" id="order-phone" value="${escapeHtml(phoneVal)}" class="${orderFieldClass}" placeholder="Numer telefonu" autocomplete="tel">
+                  <input type="tel" id="order-phone" value="${escapeHtml(phoneVal)}" class="${orderFieldClass}" placeholder="Numer telefonu" autocomplete="tel" inputmode="numeric">
                 </div>
               </div>
             </div>
@@ -884,7 +894,7 @@ function renderOrderFormModal({
                 </div>
                 <div>
                   <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">NIP<span id="order-tax-id-required" class="text-[#C19A6B]"></span></label>
-                  <input type="text" id="order-tax-id" class="${orderFieldClass}" placeholder="NIP" inputmode="numeric" autocomplete="off">
+                  <input type="text" id="order-tax-id" class="${orderFieldClass}" placeholder="NIP" inputmode="numeric" autocomplete="off" maxlength="10">
                 </div>
               </div>
             </div>
@@ -975,7 +985,7 @@ function renderOrderFormModal({
                 <p class="mt-auto pt-5 text-[12px] leading-relaxed text-zinc-500">
                   ${escapeHtml(disclaimerText)}
                   Złożenie zamówienia oznacza akceptację
-                  <button type="button" class="text-zinc-300 hover:text-[#C19A6B] underline underline-offset-2 transition" onclick="window.openStrzelcaRegulaminModal(event)">${escapeHtml(cfg.regulaminLinkLabel)}</button>
+                  <button type="button" class="text-inherit hover:underline underline-offset-2 transition" onclick="window.openStrzelcaRegulaminModal(event)">${escapeHtml(cfg.regulaminLinkLabel)}u</button>
                   i jest zobowiązujące.
                 </p>
               </div>
@@ -1005,9 +1015,8 @@ function renderOrderFormModal({
               <i class="fa-solid fa-times" aria-hidden="true"></i>
             </button>
           </div>
-          <p class="mt-4 text-sm leading-relaxed text-zinc-300 whitespace-pre-line">
-            Faktura, którą wystawiam dokumentuje sprzedaż zwolnioną z VAT na podstawie art. 113 ustawy o podatku od towarów i usług.
-            Zgodnie z przepisami podatnik nie jest zobowiązany do naliczania podatku VAT.
+          <p class="mt-4 text-sm leading-relaxed text-zinc-300">
+            Faktura tzw. Zwolniona, którą wystawiam dokumentuje sprzedaż zwolnioną z VAT na podstawie art. 113 ustawy o podatku od towarów i usług. Zgodnie z przepisami podatnik nie jest zobowiązany do naliczania podatku VAT.
           </p>
           <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button type="button" onclick="window.cancelStrzelcaOrderCompanyMode()" class="rounded-2xl border border-zinc-700/80 px-4 py-3 text-sm font-semibold text-zinc-300 hover:bg-zinc-800 transition">
@@ -1041,6 +1050,31 @@ function renderOrderFormModal({
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener("input", () => window.refreshStrzelcaOrderWizard?.());
+  });
+
+  const phoneInput = document.getElementById("order-phone");
+  if (phoneInput) {
+    phoneInput.addEventListener("input", () => {
+      phoneInput.value = digitsOnly(phoneInput.value).slice(0, 15);
+      window.refreshStrzelcaOrderWizard?.();
+    });
+  }
+
+  const taxIdInput = document.getElementById("order-tax-id");
+  if (taxIdInput) {
+    taxIdInput.addEventListener("input", () => {
+      taxIdInput.value = digitsOnly(taxIdInput.value).slice(0, 10);
+      window.refreshStrzelcaOrderWizard?.();
+    });
+  }
+
+  ["order-address-postal"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("input", () => {
+      el.value = formatPostalCode(el.value);
+      window.refreshStrzelcaOrderWizard?.();
+    });
   });
 
   const promoInput = document.getElementById("order-promo-code");
@@ -1241,9 +1275,7 @@ function attachOrderInquiryGlobals() {
       const customerType = getOrderCustomerType();
       const requiredIds = ["order-email", "order-phone"];
       const deliveryMethod = p.context === "shop" ? getCurrentOrderDeliveryMethod() : "";
-      if (customerType === "private") {
-        requiredIds.push("order-first-name", "order-last-name");
-      }
+      requiredIds.push("order-first-name", "order-last-name");
       if (customerType === "company") {
         requiredIds.push(
           "order-company-name",

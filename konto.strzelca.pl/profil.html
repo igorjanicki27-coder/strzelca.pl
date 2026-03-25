@@ -181,6 +181,46 @@
       .field-label-readonly {
         color: #666 !important;
       }
+      .field-help {
+        color: #71717a;
+        font-size: 12px;
+        margin-top: 8px;
+        line-height: 1.5;
+      }
+      .onboarding-panel {
+        display: none;
+        background: linear-gradient(
+          135deg,
+          rgba(193, 154, 107, 0.12),
+          rgba(17, 17, 17, 0.96)
+        );
+        border: 1px solid rgba(193, 154, 107, 0.32);
+        border-radius: 18px;
+        padding: 18px 20px;
+      }
+      .onboarding-panel.show {
+        display: block;
+      }
+      .onboarding-panel__title {
+        color: #f5f5f5;
+        font-weight: 800;
+        margin-bottom: 8px;
+      }
+      .onboarding-panel__text {
+        color: #d4d4d8;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      .onboarding-checklist {
+        display: none;
+      }
+      .onboarding-checklist.show {
+        display: block;
+      }
+      .onboarding-checklist label {
+        color: #d4d4d8;
+        line-height: 1.6;
+      }
 
       .btn-save {
         background: var(--coyote);
@@ -460,7 +500,14 @@
           </div>
 
           <form id="profile-form" class="space-y-6">
-            <!-- Dane podstawowe (tylko do odczytu) -->
+            <div id="profile-onboarding-notice" class="onboarding-panel">
+              <div class="onboarding-panel__title">Dokończ konfigurację konta</div>
+              <p class="onboarding-panel__text">
+                Konto Google jest już aktywne. Uzupełnij teraz nazwę profilu, imię, nazwisko oraz wymagane zgody, żeby domknąć konfigurację.
+              </p>
+            </div>
+
+            <!-- Dane podstawowe -->
             <div
               class="bg-zinc-800/50 p-6 rounded-2xl border border-zinc-700 mb-6"
             >
@@ -471,10 +518,13 @@
                 <!-- Nazwa profilu -->
                 <div>
                   <label
-                    class="text-[10px] uppercase font-bold field-label-readonly ml-2 mb-2 block tracking-widest"
+                    class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
                     >Nazwa profilu</label
                   >
-                  <input type="text" id="edit-display-name" readonly disabled />
+                  <input type="text" id="edit-display-name" />
+                  <p class="field-help">
+                    3-12 znaków. Dozwolone: litery, cyfry, kropka, myślnik i podkreślenie.
+                  </p>
                 </div>
 
                 <!-- E-mail -->
@@ -489,19 +539,19 @@
                 <!-- Imię -->
                 <div>
                   <label
-                    class="text-[10px] uppercase font-bold field-label-readonly ml-2 mb-2 block tracking-widest"
+                    class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
                     >Imię STRZELCA</label
                   >
-                  <input type="text" id="edit-first-name" readonly disabled />
+                  <input type="text" id="edit-first-name" />
                 </div>
 
                 <!-- Nazwisko -->
                 <div>
                   <label
-                    class="text-[10px] uppercase font-bold field-label-readonly ml-2 mb-2 block tracking-widest"
+                    class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest"
                     >Nazwisko STRZELCA</label
                   >
-                  <input type="text" id="edit-last-name" readonly disabled />
+                  <input type="text" id="edit-last-name" />
                 </div>
               </div>
             </div>
@@ -649,11 +699,40 @@
               </div>
             </div>
 
+            <div
+              id="profile-onboarding-checklist"
+              class="onboarding-checklist space-y-4 pt-6 border-t border-zinc-700"
+            >
+              <h3 class="text-lg font-semibold text-white mb-4">
+                Wymagane potwierdzenia
+              </h3>
+              <div class="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="edit-age-confirm"
+                  class="mt-1 shrink-0"
+                />
+                <label for="edit-age-confirm" class="text-sm min-w-0 break-words">
+                  Potwierdzam pełnoletniość lub uprawnienie do korzystania z konta.
+                </label>
+              </div>
+              <div class="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="edit-terms-privacy"
+                  class="mt-1 shrink-0"
+                />
+                <label for="edit-terms-privacy" class="text-sm min-w-0 break-words">
+                  Akceptuję regulamin i politykę prywatności konta Strzelca.
+                </label>
+              </div>
+            </div>
+
             <!-- Przyciski -->
             <div
               class="flex flex-col sm:flex-row gap-4 pt-6 border-t border-zinc-700"
             >
-              <button type="submit" class="btn-save flex-1">
+              <button type="submit" class="btn-save flex-1" id="profile-save-btn">
                 <i class="fa-solid fa-save mr-2"></i>
                 Zapisz zmiany
               </button>
@@ -1158,7 +1237,9 @@
           let reviewTargetUid = null;
           let reviewTargetDisplayName = "";
           const profileUrlParams = new URLSearchParams(window.location.search || "");
+          const onboardingMode = profileUrlParams.get("onboarding") || "";
           const profileEmbedMode = profileUrlParams.get("embedModal") === "1";
+          let onboardingAutoOpened = false;
           const OPERATOR_SCOPE_ORDER = [
             "shop",
             "bazaar",
@@ -1508,6 +1589,12 @@
           function captureProfileFormSnapshot() {
             try {
               profileFormSnapshot = {
+                displayName:
+                  document.getElementById("edit-display-name")?.value || "",
+                firstName:
+                  document.getElementById("edit-first-name")?.value || "",
+                lastName:
+                  document.getElementById("edit-last-name")?.value || "",
                 phone: document.getElementById("edit-phone")?.value || "",
                 parcelLocker:
                   document.getElementById("edit-parcel-locker")?.value || "",
@@ -1523,6 +1610,10 @@
                 city: document.getElementById("edit-city")?.value || "",
                 newsletter:
                   !!document.getElementById("edit-newsletter")?.checked,
+                ageConfirmed:
+                  !!document.getElementById("edit-age-confirm")?.checked,
+                termsAccepted:
+                  !!document.getElementById("edit-terms-privacy")?.checked,
               };
             } catch {
               profileFormSnapshot = null;
@@ -1543,8 +1634,65 @@
             setVal("edit-building-number", profileFormSnapshot.buildingNumber);
             setVal("edit-postal-code", profileFormSnapshot.postalCode);
             setVal("edit-city", profileFormSnapshot.city);
+            setVal("edit-display-name", profileFormSnapshot.displayName);
+            setVal("edit-first-name", profileFormSnapshot.firstName);
+            setVal("edit-last-name", profileFormSnapshot.lastName);
             const n = document.getElementById("edit-newsletter");
             if (n) n.checked = !!profileFormSnapshot.newsletter;
+            const age = document.getElementById("edit-age-confirm");
+            if (age) age.checked = !!profileFormSnapshot.ageConfirmed;
+            const terms = document.getElementById("edit-terms-privacy");
+            if (terms) terms.checked = !!profileFormSnapshot.termsAccepted;
+          }
+
+          function isGoogleOnboardingRequired(profileData) {
+            const authProvider = String(profileData?.authProvider || "").toLowerCase();
+            if (authProvider !== "google.com") return false;
+            return (
+              !String(profileData?.firstName || "").trim() ||
+              !String(profileData?.lastName || "").trim() ||
+              profileData?.ageConfirmed !== true ||
+              profileData?.termsAccepted !== true ||
+              profileData?.privacyAccepted !== true
+            );
+          }
+
+          function updateProfileSaveButton(onboardingRequired) {
+            const saveBtn = document.getElementById("profile-save-btn");
+            if (!saveBtn) return;
+            saveBtn.innerHTML = onboardingRequired
+              ? '<i class="fa-solid fa-check mr-2"></i>Zakończ konfigurację'
+              : '<i class="fa-solid fa-save mr-2"></i>Zapisz zmiany';
+          }
+
+          function applyProfileOnboardingState(profileData) {
+            const onboardingRequired =
+              isViewingOwnProfile && isGoogleOnboardingRequired(profileData);
+            const notice = document.getElementById("profile-onboarding-notice");
+            const checklist = document.getElementById("profile-onboarding-checklist");
+            if (notice) notice.classList.toggle("show", onboardingRequired);
+            if (checklist) checklist.classList.toggle("show", onboardingRequired);
+
+            const age = document.getElementById("edit-age-confirm");
+            if (age) age.checked = profileData?.ageConfirmed === true;
+            const terms = document.getElementById("edit-terms-privacy");
+            if (terms)
+              terms.checked =
+                profileData?.termsAccepted === true &&
+                profileData?.privacyAccepted === true;
+
+            updateProfileSaveButton(onboardingRequired);
+
+            return onboardingRequired;
+          }
+
+          function clearOnboardingQueryParam() {
+            try {
+              const url = new URL(window.location.href);
+              if (!url.searchParams.has("onboarding")) return;
+              url.searchParams.delete("onboarding");
+              window.history.replaceState({}, "", url.toString());
+            } catch {}
           }
 
           // Base64 helpers that support UTF-8 (btoa/atob fail on Polish chars like ą,ę,ł)
@@ -2285,8 +2433,25 @@
                   document.getElementById("edit-newsletter").checked =
                     decryptedProfile.newsletter || false;
 
+                  const onboardingRequired =
+                    applyProfileOnboardingState(decryptedProfile);
+
                   // Zapisz snapshot wartości formularza, żeby "Wyjdź" mógł przywrócić stan bez zapisywania
                   captureProfileFormSnapshot();
+
+                  if (
+                    onboardingRequired &&
+                    onboardingMode === "google" &&
+                    !onboardingAutoOpened
+                  ) {
+                    onboardingAutoOpened = true;
+                    setTimeout(() => {
+                      window.openProfileModal?.();
+                    }, 0);
+                    clearOnboardingQueryParam();
+                  } else if (!onboardingRequired && onboardingMode === "google") {
+                    clearOnboardingQueryParam();
+                  }
 
                   // Aktualizuj status konta
                   await updateAccountStatus();
@@ -2403,6 +2568,9 @@
                 };
 
                 const oldDecrypted = {
+                  displayName: String(userProfile.displayName || "").trim(),
+                  firstName: String(userProfile.firstName || "").trim(),
+                  lastName: String(userProfile.lastName || "").trim(),
                   companyName: getDec(userProfile.companyName),
                   nip: getDec(userProfile.nip),
                   phone: getDec(userProfile.phone),
@@ -2414,9 +2582,21 @@
                     city: getDec(userProfile.address?.city),
                   },
                   newsletter: !!userProfile.newsletter,
+                  ageConfirmed: userProfile.ageConfirmed === true,
+                  termsAccepted: userProfile.termsAccepted === true,
+                  privacyAccepted: userProfile.privacyAccepted === true,
                 };
 
                 const newDecrypted = {
+                  displayName: (
+                    document.getElementById("edit-display-name").value || ""
+                  ).trim(),
+                  firstName: (
+                    document.getElementById("edit-first-name").value || ""
+                  ).trim(),
+                  lastName: (
+                    document.getElementById("edit-last-name").value || ""
+                  ).trim(),
                   companyName: (
                     document.getElementById("edit-company-name").value || ""
                   ).trim(),
@@ -2446,11 +2626,152 @@
                   },
                   newsletter:
                     document.getElementById("edit-newsletter").checked,
+                  ageConfirmed:
+                    document.getElementById("edit-age-confirm")?.checked ===
+                    true,
+                  termsAccepted:
+                    document.getElementById("edit-terms-privacy")?.checked ===
+                    true,
+                  privacyAccepted:
+                    document.getElementById("edit-terms-privacy")?.checked ===
+                    true,
                 };
 
                 const updatedProfile = {};
                 const isCompanyRole =
                   String(userProfile?.role || "").toLowerCase() === "company";
+                const onboardingRequired =
+                  isGoogleOnboardingRequired(userProfile);
+                const displayNameChanged =
+                  newDecrypted.displayName !== oldDecrypted.displayName;
+                const nameFieldsChanged =
+                  newDecrypted.firstName !== oldDecrypted.firstName ||
+                  newDecrypted.lastName !== oldDecrypted.lastName;
+                const identityChanged =
+                  displayNameChanged ||
+                  nameFieldsChanged ||
+                  newDecrypted.ageConfirmed !== oldDecrypted.ageConfirmed ||
+                  newDecrypted.termsAccepted !== oldDecrypted.termsAccepted ||
+                  newDecrypted.privacyAccepted !== oldDecrypted.privacyAccepted;
+
+                if (onboardingRequired || displayNameChanged) {
+                  if (
+                    newDecrypted.displayName.length < 3 ||
+                    newDecrypted.displayName.length > 12
+                  ) {
+                    alert("Nazwa profilu musi mieć od 3 do 12 znaków.");
+                    return;
+                  }
+
+                  if (
+                    !/^[a-zA-Z0-9\-_.]+$/.test(newDecrypted.displayName)
+                  ) {
+                    alert(
+                      "Nazwa profilu może zawierać tylko litery, cyfry, myślnik, podkreślenie i kropkę.",
+                    );
+                    return;
+                  }
+                }
+
+                if (
+                  (onboardingRequired || nameFieldsChanged) &&
+                  (!newDecrypted.firstName || !newDecrypted.lastName)
+                ) {
+                  alert("Uzupełnij imię i nazwisko.");
+                  return;
+                }
+
+                if (onboardingRequired) {
+                  if (!newDecrypted.ageConfirmed) {
+                    alert("Potwierdź wymagane oświadczenie o uprawnieniu do korzystania z konta.");
+                    return;
+                  }
+                  if (!newDecrypted.termsAccepted || !newDecrypted.privacyAccepted) {
+                    alert("Zaakceptuj regulamin i politykę prywatności.");
+                    return;
+                  }
+                }
+
+                if (newDecrypted.displayName !== oldDecrypted.displayName) {
+                  const displayNameAvailability =
+                    await checkDisplayNameAvailability(
+                      newDecrypted.displayName,
+                      currentUser.uid,
+                    );
+                  if (!displayNameAvailability.available) {
+                    alert(displayNameAvailability.reason);
+                    return;
+                  }
+                }
+
+                if (identityChanged || onboardingRequired) {
+                  const idToken = await currentUser.getIdToken();
+                  const identityUrls = [
+                    "/api/profile-identity",
+                    "https://strzelca.pl/api/profile-identity",
+                  ];
+
+                  let identityUpdated = false;
+                  let identityErrorMessage =
+                    "Nie udało się zapisać danych podstawowych profilu.";
+
+                  for (const url of identityUrls) {
+                    try {
+                      const response = await fetch(url, {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          idToken,
+                          displayName: newDecrypted.displayName,
+                          firstName: newDecrypted.firstName,
+                          lastName: newDecrypted.lastName,
+                          ageConfirmed: newDecrypted.ageConfirmed,
+                          termsAccepted: newDecrypted.termsAccepted,
+                          privacyAccepted: newDecrypted.privacyAccepted,
+                        }),
+                        credentials: url.startsWith("http")
+                          ? "omit"
+                          : "same-origin",
+                      });
+
+                      const data = await response.json().catch(() => null);
+                      if (response.ok && data?.success === true) {
+                        identityUpdated = true;
+                        break;
+                      }
+
+                      identityErrorMessage =
+                        data?.message || data?.error || identityErrorMessage;
+                    } catch (identityError) {
+                      identityErrorMessage =
+                        identityError?.message || identityErrorMessage;
+                    }
+                  }
+
+                  if (!identityUpdated) {
+                    throw new Error(identityErrorMessage);
+                  }
+
+                  userProfile.displayName = newDecrypted.displayName;
+                  userProfile.firstName = newDecrypted.firstName;
+                  userProfile.lastName = newDecrypted.lastName;
+                  userProfile.ageConfirmed = newDecrypted.ageConfirmed;
+                  userProfile.termsAccepted = newDecrypted.termsAccepted;
+                  userProfile.privacyAccepted = newDecrypted.privacyAccepted;
+
+                  try {
+                    setHeaderProfileCache(currentUser.uid, {
+                      displayName: newDecrypted.displayName,
+                      avatar: userProfile?.avatar || null,
+                      gender: userProfile?.gender ?? null,
+                      role: String(userProfile?.role || "user"),
+                      profileExists: true,
+                    });
+                  } catch {}
+                  await syncUserSearchIndex();
+                }
 
                 if (isCompanyRole) {
                   if (newDecrypted.companyName.length < 2) {
@@ -2513,6 +2834,7 @@
                   (k) => k !== "newsletterChanged",
                 );
                 if (
+                  !identityChanged &&
                   keysToWrite.length === 0 &&
                   updatedProfile.newsletterChanged === false
                 ) {

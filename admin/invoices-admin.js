@@ -39,6 +39,7 @@
     filters: {
       status: 'all',
       query: '',
+      includeArchived: false,
     },
     pendingSelection: null,
     exportLibPromise: null,
@@ -258,6 +259,9 @@
     const query = normalizeText(state.filters.query).toLowerCase();
     const status = state.filters.status;
     return state.groups.filter((group) => {
+      if (!state.filters.includeArchived && ['wyslana', 'anulowana'].includes(group.latest?.status)) {
+        return false;
+      }
       if (status !== 'all' && group.latest?.status !== status) return false;
       if (!query) return true;
       return group.searchText.includes(query);
@@ -276,28 +280,20 @@
   }
 
   function renderInvoiceStats(groups) {
-    const rootCount = groups.length;
-    const correctionCount = groups.reduce(
-      (sum, group) => sum + group.invoices.filter((invoice) => invoice.kind === 'correction').length,
-      0
-    );
-    const draftCount = state.invoices.filter((invoice) => invoice.status === 'utworzona').length;
+    const invoiceCount = state.invoices.filter((invoice) => invoice.kind !== 'correction').length;
+    const correctionCount = state.invoices.filter((invoice) => invoice.kind === 'correction').length;
     const linkedCount = state.invoices.filter((invoice) => normalizeText(invoice.linkedOrder?.orderId)).length;
 
     const statsEl = document.getElementById('invoice-stats-grid');
     if (!statsEl) return;
     statsEl.innerHTML = `
       <div class="invoice-kpi-card">
-        <div class="invoice-kpi-value">${rootCount}</div>
-        <div class="invoice-kpi-label">Grupy faktur</div>
+        <div class="invoice-kpi-value">${invoiceCount}</div>
+        <div class="invoice-kpi-label">Faktury</div>
       </div>
       <div class="invoice-kpi-card">
         <div class="invoice-kpi-value">${correctionCount}</div>
         <div class="invoice-kpi-label">Korekty</div>
-      </div>
-      <div class="invoice-kpi-card">
-        <div class="invoice-kpi-value">${draftCount}</div>
-        <div class="invoice-kpi-label">W statusie utworzona</div>
       </div>
       <div class="invoice-kpi-card">
         <div class="invoice-kpi-value">${linkedCount}</div>
@@ -1382,6 +1378,16 @@
       statusInput.dataset.bound = 'true';
       statusInput.addEventListener('change', () => {
         state.filters.status = statusInput.value || 'all';
+        renderInvoicesTab();
+      });
+    }
+
+    const archivedInput = document.getElementById('invoice-include-archived');
+    if (archivedInput && !archivedInput.dataset.bound) {
+      archivedInput.dataset.bound = 'true';
+      archivedInput.checked = state.filters.includeArchived === true;
+      archivedInput.addEventListener('change', () => {
+        state.filters.includeArchived = archivedInput.checked === true;
         renderInvoicesTab();
       });
     }
