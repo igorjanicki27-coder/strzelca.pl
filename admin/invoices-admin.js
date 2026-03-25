@@ -1,6 +1,7 @@
 (function () {
   const API_URL = '/api/admin-invoices';
   const ORDERS_API_URL = '/api/orders?limit=2500';
+  const SIGNATURE_STORAGE_KEY = 'adminInvoiceSignatureDataUrl';
   const STATUS_LABELS = {
     utworzona: 'Utworzona',
     wyslana: 'Wysłana',
@@ -124,6 +125,23 @@
     return JSON.parse(JSON.stringify(value));
   }
 
+  function persistSignatureLocally(value) {
+    try {
+      if (value) {
+        localStorage.setItem(SIGNATURE_STORAGE_KEY, value);
+      } else {
+        localStorage.removeItem(SIGNATURE_STORAGE_KEY);
+      }
+    } catch (_) {}
+  }
+
+  function restoreSignatureFromStorage() {
+    try {
+      const stored = localStorage.getItem(SIGNATURE_STORAGE_KEY);
+      if (stored) state.signatureDataUrl = stored;
+    } catch (_) {}
+  }
+
   function getSelectedInvoice() {
     return state.invoices.find((invoice) => invoice.id === state.selectedInvoiceId) || null;
   }
@@ -213,8 +231,20 @@
 
   async function loadOrdersLookup() {
     if (state.ordersLoaded) return state.orders;
-    const data = await apiRequest(ORDERS_API_URL, { method: 'GET' });
-    state.orders = Array.isArray(data) ? data.slice() : [];
+    try {
+      const data = await apiRequest(ORDERS_API_URL, { method: 'GET' });
+      state.orders = Array.isArray(data) ? data.slice() : [];
+    } catch (error) {
+      console.warn('loadOrdersLookup API fallback:', error);
+      if (typeof db === 'undefined' || typeof collection !== 'function' || typeof getDocs !== 'function') {
+        throw error;
+      }
+      const snapshot =
+        typeof query === 'function' && typeof limit === 'function'
+          ? await getDocs(query(collection(db, 'orders'), limit(2500)))
+          : await getDocs(collection(db, 'orders'));
+      state.orders = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+    }
     state.orders.sort((a, b) => getInvoiceSortValue(b) - getInvoiceSortValue(a));
     state.ordersLoaded = true;
     return state.orders;
@@ -381,7 +411,9 @@
   }
 
   function buildInvoiceDocumentHtml(invoice, options = {}) {
-    const includeSignature = options.includeSignature === true && !!state.signatureDataUrl;
+    const effectiveSignatureDataUrl =
+      normalizeText(invoice?.sellerSignatureDataUrl) || state.signatureDataUrl || '';
+    const includeSignature = options.includeSignature === true && !!effectiveSignatureDataUrl;
     const title =
       invoice.kind === 'correction' ? 'FAKTURA KORYGUJĄCA' : 'FAKTURA ZWOLNIONA Z VAT';
     const buyerTaxIdHtml = invoice.buyer?.taxId
@@ -424,7 +456,7 @@
       : '';
 
     const signatureImg = includeSignature
-      ? `<img src="${state.signatureDataUrl}" alt="Parafka sprzedawcy" class="invoice-signature-image" />`
+      ? `<img src="${effectiveSignatureDataUrl}" alt="Parafka sprzedawcy" class="invoice-signature-image" />`
       : '';
 
     return `
@@ -631,7 +663,7 @@
 
     previewEl.innerHTML = `
       <div class="invoice-a4-frame">
-        ${buildInvoiceDocumentHtml(invoice, { includeSignature: false })}
+        ${buildInvoiceDocumentHtml(invoice, { includeSignature: true })}
       </div>
     `;
   }
@@ -642,17 +674,17 @@
     if (!state.signatureDataUrl) {
       signatureEl.innerHTML = `
         <div class="text-sm text-zinc-400 leading-relaxed">
-          Parafka nie jest zapisana w projekcie ani w bazie. Dodajesz ją lokalnie tylko do bieżącej sesji eksportu.
+          Brak domyślnej parafki. Po wgraniu będzie używana w podglądzie oraz wpisywana do nowych i edytowanych faktur przy zapisie.
         </div>
       `;
       return;
     }
     signatureEl.innerHTML = `
       <div class="invoice-signature-session-preview">
-        <img src="${state.signatureDataUrl}" alt="Parafka w sesji" />
+        <img src="${state.signatureDataUrl}" alt="Parafka sprzedawcy" />
         <div class="text-sm text-zinc-300 leading-relaxed">
-          Parafka jest aktywna tylko w tej sesji przeglądarki.<br />
-          Zostanie dodana do eksportu PDF/PNG i wydruku, ale nie zapisze się w Firestore.
+          Ta parafka jest ustawiona jako domyślna w tej przeglądarce.<br />
+          Nowe i edytowane faktury zapiszą ją w dokumencie, a podgląd pokazuje ją od razu.
         </div>
       </div>
     `;
@@ -803,6 +835,7 @@
       kind: invoice.kind || 'invoice',
       correctionReason: invoice.correctionReason || '',
       originalInvoiceNumber: invoice.originalInvoiceNumber || '',
+      sellerSignatureDataUrl: invoice.sellerSignatureDataUrl || '',
     };
   }
 
@@ -821,6 +854,7 @@
       sourceInvoiceNumber: latest.invoiceNumber || '',
       originalInvoiceNumber: latest.originalInvoiceNumber || latest.invoiceNumber || '',
       correctionReason: '',
+      sellerSignatureDataUrl: latest.sellerSignatureDataUrl || '',
     };
   }
 
@@ -850,7 +884,7 @@
               ${
                 draft.kind === 'correction'
                   ? `Korekta do faktury pierwotnej ${esc(draft.originalInvoiceNumber || draft.sourceInvoiceNumber || '—')}`
-                  : 'Dokument zapisze się jako rekord w bazie, a podpis dodasz dopiero przy eksporcie.'
+                  : 'Dokument zapisze się w bazie razem z aktualną parafką sprzedawcy, jeśli jest ustawiona.'
               }
             </p>
           </div>
@@ -1094,7 +1128,7 @@
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
           <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
-          <link rel="stylesheet" href="/admin/invoices-admin.css?v=2026-03-25-1" />
+          <link rel="stylesheet" href="/admin/invoices-admin.css?v=2026-03-25-2" />
           <style>
             body { margin: 0; background: #fff; }
             .invoice-a4-frame { padding: 0; background: #fff; border: 0; }
@@ -1232,6 +1266,10 @@
       items,
       notes: document.getElementById('invoice-form-notes')?.value || '',
       kind: state.currentModal.draft.kind || 'invoice',
+      sellerSignatureDataUrl:
+        normalizeText(state.signatureDataUrl, 1200000) ||
+        normalizeText(state.currentModal.draft.sellerSignatureDataUrl, 1200000) ||
+        '',
     };
 
     if (payload.kind === 'correction') {
@@ -1318,32 +1356,66 @@
     }
   };
 
-  window.handleInvoiceSignatureUpload = function handleInvoiceSignatureUpload(event) {
+  async function fileToDataUrl(file) {
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('Nie udało się odczytać pliku.'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function compressSignatureImage(file) {
+    const source = await fileToDataUrl(file);
+    const image = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Nie udało się przetworzyć obrazu.'));
+      img.src = source;
+    });
+    const maxWidth = 900;
+    const maxHeight = 260;
+    const ratio = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
+    const width = Math.max(1, Math.round(image.width * ratio));
+    const height = Math.max(1, Math.round(image.height * ratio));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Brak obsługi canvas dla parafki.');
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(image, 0, 0, width, height);
+    return canvas.toDataURL('image/png');
+  }
+
+  window.handleInvoiceSignatureUpload = async function handleInvoiceSignatureUpload(event) {
     const file = event?.target?.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      state.signatureDataUrl = String(reader.result || '');
+    try {
+      state.signatureDataUrl = await compressSignatureImage(file);
+      persistSignatureLocally(state.signatureDataUrl);
       renderSignatureSession();
+      renderInvoicesTab();
       if (typeof showNotification === 'function') {
-        showNotification('Parafka aktywna dla bieżącej sesji eksportu.', 'success');
+        showNotification('Parafka została ustawiona jako domyślna dla faktur.', 'success');
       }
-    };
-    reader.onerror = () => {
+    } catch (error) {
+      console.error('handleInvoiceSignatureUpload:', error);
       if (typeof showNotification === 'function') {
-        showNotification('Nie udało się wczytać parafki.', 'error');
+        showNotification(error.message || 'Nie udało się wczytać parafki.', 'error');
       }
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   window.clearSessionInvoiceSignature = function clearSessionInvoiceSignature() {
     state.signatureDataUrl = '';
+    persistSignatureLocally('');
     const input = document.getElementById('invoice-signature-input');
     if (input) input.value = '';
     renderSignatureSession();
+    renderInvoicesTab();
     if (typeof showNotification === 'function') {
-      showNotification('Parafka została usunięta z bieżącej sesji.', 'success');
+      showNotification('Domyślna parafka została usunięta.', 'success');
     }
   };
 
@@ -1404,6 +1476,7 @@
   }
 
   function boot() {
+    restoreSignatureFromStorage();
     bindStaticEvents();
     renderInvoicesTab();
   }

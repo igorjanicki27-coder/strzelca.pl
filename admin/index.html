@@ -28,7 +28,7 @@
     <script src="https://cdn.jsdelivr.net/npm/quill-image-resize-module@3.0.0/image-resize.min.js"></script>
     <!-- Wspólne poprawki responsywności -->
     <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-24-2" />
-    <link rel="stylesheet" href="/admin/invoices-admin.css?v=2026-03-25-1" />
+    <link rel="stylesheet" href="/admin/invoices-admin.css?v=2026-03-25-2" />
     <style>
       :root {
         --coyote: #c19a6b;
@@ -3412,9 +3412,15 @@
 
               <div class="invoice-tab-grid">
                 <div class="invoice-stack">
-                  <div class="admin-card">
-                    <div class="invoice-form-grid">
+                  <div class="admin-card invoice-panel-card">
+                    <div class="invoice-panel-head">
                       <div>
+                        <h2 class="invoice-panel-title">Filtrowanie</h2>
+                        <p class="invoice-panel-copy">Szybkie wyszukiwanie po numerze, nabywcy i powiązanym zamówieniu.</p>
+                      </div>
+                    </div>
+                    <div class="invoice-filter-grid">
+                      <div class="invoice-filter-grid-search">
                         <label class="block text-sm font-medium mb-2">Szukaj</label>
                         <input
                           type="text"
@@ -3422,7 +3428,7 @@
                           placeholder="Numer, nabywca, zamówienie, korekta..."
                         />
                       </div>
-                      <div>
+                      <div class="invoice-filter-grid-status">
                         <label class="block text-sm font-medium mb-2">Status</label>
                         <select id="invoice-status-filter">
                           <option value="all">Wszystkie</option>
@@ -3432,7 +3438,7 @@
                         </select>
                       </div>
                     </div>
-                    <div class="mt-4">
+                    <div class="invoice-filter-toggle-row">
                       <label class="inline-flex items-center gap-3 text-sm text-zinc-300">
                         <input type="checkbox" id="invoice-include-archived" />
                         Pokaż wysłane i anulowane
@@ -3440,13 +3446,15 @@
                     </div>
                   </div>
 
-                  <div class="invoice-note-list">
-                    <section class="invoice-note-card">
-                      <h4>Parafka sprzedawcy</h4>
-                      <p class="text-sm text-zinc-400 leading-relaxed">
-                        Rekomendowane i darmowe: dodajesz parafkę tylko do bieżącej sesji panelu. Nie zapisuje się w projekcie ani w Firestore.
-                      </p>
-                      <label class="invoice-secondary-button mt-4 cursor-pointer">
+                  <div class="admin-card invoice-panel-card">
+                    <div class="invoice-panel-head">
+                      <div>
+                        <h2 class="invoice-panel-title">Parafka sprzedawcy</h2>
+                        <p class="invoice-panel-copy">Domyślna parafka dla nowych i edytowanych faktur. Będzie widoczna w podglądzie oraz zapisana w fakturze.</p>
+                      </div>
+                    </div>
+                    <div class="invoice-signature-toolbar">
+                      <label class="invoice-secondary-button cursor-pointer">
                         <input
                           type="file"
                           id="invoice-signature-input"
@@ -3454,27 +3462,21 @@
                           class="hidden"
                           onchange="handleInvoiceSignatureUpload(event)"
                         />
-                        <i class="fa-solid fa-signature"></i> Dodaj parafkę do sesji
+                        <i class="fa-solid fa-signature"></i> Wgraj parafkę
                       </label>
-                      <button class="invoice-secondary-button mt-3" onclick="clearSessionInvoiceSignature()">
-                        <i class="fa-solid fa-trash"></i> Usuń z sesji
+                      <button class="invoice-secondary-button" onclick="clearSessionInvoiceSignature()">
+                        <i class="fa-solid fa-trash"></i> Usuń
                       </button>
-                      <div id="invoice-signature-session" class="mt-4"></div>
-                    </section>
-
-                    <section class="invoice-note-card">
-                      <h4>Bezpieczeństwo podpisu</h4>
-                      <p class="text-sm text-zinc-400 leading-relaxed">
-                        `Darmowe` wdrożone teraz: parafka tylko lokalnie przy eksporcie.<br />
-                        `Darmowe / własne wdrożenie`: podpis po stronie serwera + PIN i log eksportów.<br />
-                        `Płatne`: Autenti, Adobe Acrobat Sign albo DocuSign, jeśli chcesz pełny audyt podpisów.
-                      </p>
-                    </section>
+                    </div>
+                    <div id="invoice-signature-session" class="mt-4"></div>
                   </div>
 
-                  <div class="admin-card">
-                    <div class="flex items-center justify-between gap-4 mb-4">
-                      <h2 class="text-xl font-bold text-white">Lista faktur</h2>
+                  <div class="admin-card invoice-panel-card">
+                    <div class="invoice-panel-head">
+                      <div>
+                        <h2 class="invoice-panel-title">Lista faktur</h2>
+                        <p class="invoice-panel-copy">Grupy dokumentów z korektami i powiązaniami do zamówień.</p>
+                      </div>
                     </div>
                     <div id="invoice-groups-list" class="invoice-stack"></div>
                   </div>
@@ -26484,7 +26486,7 @@
       };
     </script>
     <div id="invoice-modal" class="invoice-modal-backdrop"></div>
-    <script src="/admin/invoices-admin.js?v=2026-03-25-1"></script>
+    <script src="/admin/invoices-admin.js?v=2026-03-25-2"></script>
     <!-- Bez auth-widget / messages-widget: na /admin/ inicjalizują Firestore przed initAuth
          i psują Safari (WebChannel „access control checks”). Panel ma własny UI i zakładkę wiadomości. -->
   </body>

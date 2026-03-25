@@ -89,6 +89,15 @@ function normalizeMoneyCents(value) {
   return Math.round(num);
 }
 
+function normalizeSignatureDataUrl(value, maxLen = 900000) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (!/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(raw)) {
+    throw new Error('Parafka musi być obrazem PNG, JPG albo WEBP.');
+  }
+  return raw.slice(0, maxLen);
+}
+
 function buildSafeBuyer(rawBuyer) {
   const buyer = rawBuyer && typeof rawBuyer === 'object' ? rawBuyer : {};
   return {
@@ -362,6 +371,7 @@ module.exports = async (req, res) => {
       const status = ALLOWED_STATUSES.has(body.status) ? body.status : 'utworzona';
       const notes = normalizeMultilineText(body.notes, 3000);
       const linkedOrderId = normalizeText(body.linkedOrderId, 120);
+      const sellerSignatureDataUrl = normalizeSignatureDataUrl(body.sellerSignatureDataUrl);
 
       if (!buyer.name) {
         res.status(400).json({ success: false, error: 'Podaj nazwę lub imię i nazwisko nabywcy.' });
@@ -449,6 +459,7 @@ module.exports = async (req, res) => {
         sourceInvoiceNumber: kind === 'correction' ? sourceInvoiceNumber : '',
         correctionReason: kind === 'correction' ? correctionReason : '',
         correctionCount: 0,
+        sellerSignatureDataUrl,
         createdBy: sessionUser.uid,
         updatedBy: sessionUser.uid,
         createdAt,
@@ -534,6 +545,7 @@ module.exports = async (req, res) => {
         const issueDate = normalizeDateInput(body.issueDate) || current.issueDate || normalizeDateInput(Date.now());
         const saleDate = normalizeDateInput(body.saleDate) || current.saleDate || issueDate;
         const notes = normalizeMultilineText(body.notes, 3000);
+        const sellerSignatureDataUrl = normalizeSignatureDataUrl(body.sellerSignatureDataUrl);
 
         if (!buyer.name || !buyer.address) {
           res.status(400).json({ success: false, error: 'Uzupełnij dane nabywcy.' });
@@ -557,6 +569,7 @@ module.exports = async (req, res) => {
         updateData.items = items;
         updateData.totals = totals;
         updateData.notes = notes;
+        updateData.sellerSignatureDataUrl = sellerSignatureDataUrl;
         updateData.linkedOrder = linkedOrder;
         nextLinkedOrder = linkedOrder;
 
