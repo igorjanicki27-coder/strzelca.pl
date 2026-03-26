@@ -663,6 +663,8 @@ module.exports = async (req, res) => {
     if (req.method === 'GET') {
       const status = readOrdersQueryParam(req, 'status');
       const userId = readOrdersQueryParam(req, 'userId');
+      const scope = String(readOrdersQueryParam(req, 'scope') || '').toLowerCase();
+      const forceMineScope = scope === 'mine';
 
       // Lekkie statystyki na dashboard (bez pobierania całej listy zamówień)
       if (isUserAdmin && isOrdersSummaryRequest(req)) {
@@ -707,8 +709,8 @@ module.exports = async (req, res) => {
           2500
         );
         
-        // Użytkownik nie-admin widzi tylko swoje zamówienia
-        if (!isUserAdmin) {
+        // Użytkownik nie-admin (lub żądanie scope=mine) widzi tylko swoje zamówienia.
+        if (!isUserAdmin || forceMineScope) {
           query = query.where('userId', '==', sessionUser.uid);
           hasWhereClause = true;
         }
@@ -718,7 +720,7 @@ module.exports = async (req, res) => {
           hasWhereClause = true;
         }
         
-        if (isUserAdmin && userId) {
+        if (isUserAdmin && userId && !forceMineScope) {
           query = query.where('userId', '==', userId);
           hasWhereClause = true;
         }

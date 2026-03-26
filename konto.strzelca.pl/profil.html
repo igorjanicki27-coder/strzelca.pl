@@ -3492,6 +3492,19 @@
             if (section) {
               section.style.display = visible ? "block" : "none";
             }
+            updateCommerceSectionsLayout();
+          }
+
+          function updateCommerceSectionsLayout() {
+            const wrapper = document.getElementById("commerce-sections");
+            if (!wrapper) return;
+
+            const visibleCount = ["orders-section", "returns-section"]
+              .map((id) => document.getElementById(id))
+              .filter((section) => section && section.style.display !== "none").length;
+
+            wrapper.classList.toggle("xl:grid-cols-2", visibleCount > 1);
+            wrapper.classList.toggle("xl:grid-cols-1", visibleCount <= 1);
           }
 
           function formatCurrency(value) {
@@ -3727,11 +3740,12 @@
               `;
 
               const headers = await getProfileApiHeaders();
-              const apiUrl = getStrzelcaApiUrl("/api/orders");
+              const baseApiUrl = getStrzelcaApiUrl("/api/orders");
+              const apiUrl = `${baseApiUrl}?scope=mine&userId=${encodeURIComponent(currentUser.uid)}`;
               const response = await fetch(apiUrl, {
                 method: "GET",
                 headers,
-                credentials: apiUrl.startsWith("http") ? "include" : "same-origin",
+                credentials: baseApiUrl.startsWith("http") ? "include" : "same-origin",
               });
               const data = await response.json().catch(() => null);
               if (!response.ok || !data?.success) {
