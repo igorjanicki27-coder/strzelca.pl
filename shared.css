@@ -93,11 +93,23 @@ pre {
 #user-panel {
   top: calc(1rem + env(safe-area-inset-top));
   right: calc(1rem + env(safe-area-inset-right));
+  z-index: 45;
 }
 
 /* Menu użytkownika nie powinno wychodzić poza ekran */
 #user-menu {
   max-width: min(92vw, 360px);
+}
+
+/* Stopka domyślnie ukryta; włączana tylko na wybranych stronach */
+footer[role="contentinfo"],
+body > footer {
+  display: none !important;
+}
+
+body.strzelca-keep-footer footer[role="contentinfo"],
+body.strzelca-keep-footer > footer {
+  display: block !important;
 }
 
 /* Hero: na małych ekranach 65vh bywa zbyt duże (zwłaszcza Safari z paskami) */
@@ -145,6 +157,14 @@ html {
     min-height: 100dvh;
     min-height: -webkit-fill-available;
   }
+
+  /* Lepsze kadrowanie mobilnego tła - postać pozostaje widoczna */
+  body,
+  .main-wrapper,
+  .hero-bg {
+    background-size: cover, cover, auto 100% !important;
+    background-position: center center, top center, 62% top !important;
+  }
 }
 
 /* Poniżej: tylko wąskie ekrany — desktop zostaje przy layoutach z plików HTML */
@@ -154,6 +174,10 @@ html {
   .carousel-viewport {
     touch-action: pan-y pinch-zoom;
     -webkit-overflow-scrolling: touch;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
   }
 
   /* Sekcje karuzeli: od góry + możliwość naturalnego wzrostu wysokości (scroll strony) */
@@ -174,6 +198,15 @@ html {
   .shop-carousel,
   .training-carousel {
     align-items: stretch;
+  }
+
+  /* Strzałki karuzel wycentrowane względem kafelka */
+  .shop-carousel {
+    align-items: center !important;
+  }
+
+  .carousel-arrow {
+    align-self: center !important;
   }
 }
 
@@ -251,4 +284,33 @@ html {
 
 .carousel-dot--active:disabled {
   opacity: 0.72;
+}
+
+/* Modale szczegółów muszą być nad przyciskiem logowania */
+#event-modal,
+#details-modal,
+#charity-details-modal {
+  z-index: 120 !important;
+}
+
+/* Spójniejszy, lżejszy wizualnie wygląd paneli szczegółów */
+#event-modal-panel,
+#details-modal-panel,
+#charity-details-content {
+  background:
+    radial-gradient(120% 160% at 0% 0%, rgba(193, 154, 107, 0.14) 0%, rgba(193, 154, 107, 0) 48%),
+    linear-gradient(165deg, rgba(18, 18, 20, 0.95) 0%, rgba(9, 9, 10, 0.96) 100%);
+  border-color: rgba(193, 154, 107, 0.2) !important;
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.62),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+#modal-content > .custom-render,
+#details-content .details-scroll-area,
+#charity-details-body .custom-render {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 0.95rem 1rem;
 }

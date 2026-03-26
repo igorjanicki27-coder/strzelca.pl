@@ -115,10 +115,30 @@
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 12px;
+            justify-content: space-between;
+            gap: 10px;
             margin-top: 1.5rem;
             padding-top: 1rem;
             border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .detail-meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 10px;
+        }
+        .detail-meta-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 44px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.02);
+        }
+        .detail-meta-item i {
+            width: 18px;
+            text-align: center;
         }
         .blog-social-btn,
         .blog-comment-action {
@@ -146,10 +166,17 @@
             background: rgba(193, 154, 107, 0.18);
             color: var(--coyote-light);
         }
+        .blog-social-btn--static {
+            cursor: default;
+            pointer-events: none;
+            opacity: 0.95;
+        }
         .blog-comments-section {
             margin-top: 1.75rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid rgba(255,255,255,0.08);
+            padding: 1.25rem;
+            border: 1px solid rgba(193,154,107,0.22);
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(193,154,107,0.1) 0%, rgba(255,255,255,0.03) 100%);
         }
         .blog-comments-title {
             display: flex;
@@ -3029,14 +3056,14 @@ const firebaseConfig = {
             document.getElementById('modal-title').textContent = event.title;
 
             const meta = [];
-            meta.push(`<div class="flex items-center"><i class="fa-solid fa-calendar mr-2 text-coyote w-5"></i><span>${getBlogPostDate(event).toLocaleString('pl-PL', {
+            meta.push(`<div class="detail-meta-item"><i class="fa-solid fa-calendar text-coyote"></i><span>${getBlogPostDate(event).toLocaleString('pl-PL', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
             })}</span></div>`);
-            meta.push(`<div class="flex items-center"><i class="fa-solid fa-tag mr-2 text-coyote w-5"></i><span>${getEventCategoryName(event.category)}</span></div>`);
+            meta.push(`<div class="detail-meta-item"><i class="fa-solid fa-tag text-coyote"></i><span>${getEventCategoryName(event.category)}</span></div>`);
 
-            document.getElementById('modal-meta').innerHTML = meta.join('');
+            document.getElementById('modal-meta').innerHTML = `<div class="detail-meta-grid">${meta.join('')}</div>`;
 
             if (window.blogGalleryKeyHandler) {
                 document.removeEventListener('keydown', window.blogGalleryKeyHandler);
@@ -3089,8 +3116,8 @@ const firebaseConfig = {
                         <i class="fa-solid fa-heart"></i>
                         <span id="blog-post-like-count">${Number(event.likeCount || 0)}</span>
                     </button>
-                    <div class="blog-card-stat text-sm">
-                        <i class="fa-solid fa-comments text-coyote/90"></i>
+                    <div class="blog-social-btn blog-social-btn--static">
+                        <i class="fa-solid fa-comments"></i>
                         <span id="blog-post-comments-count">${Number(event.commentCount || 0)}</span>
                     </div>
                 </div>

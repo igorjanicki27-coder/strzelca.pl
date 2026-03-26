@@ -360,6 +360,7 @@ async function main() {
   onAuthStateChanged(auth, (u) => {
     currentUser = u || null;
     refreshFilterVisibility();
+    updateLauncherOffset();
   });
 
   const host = document.createElement("div");
@@ -430,6 +431,10 @@ async function main() {
 
   function userSearchVisible() {
     return !!currentUser;
+  }
+
+  function updateLauncherOffset() {
+    launcher.style.bottom = currentUser ? "86px" : "16px";
   }
 
   function visibleTypes() {
@@ -806,6 +811,7 @@ async function main() {
   });
 
   fillFilterMenu();
+  updateLauncherOffset();
   renderRecent();
 }
 

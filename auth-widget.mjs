@@ -67,6 +67,20 @@ function ensureStyles() {
       letter-spacing: 0.01em;
       white-space: nowrap;
     }
+    .strzelca-auth-login-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(193, 154, 107, 0.95);
+      color: #0b0b0b;
+      font-size: 16px;
+      font-weight: 900;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+    }
     .strzelca-auth-spinner {
       width: 16px;
       height: 16px;
@@ -686,9 +700,9 @@ function renderLoading(root) {
 
 function renderLoggedOut(root) {
   root.innerHTML = `
-    <div class="strzelca-auth-pill">
-      <a href="${LOGIN_URL}" aria-label="Zaloguj się" style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:inherit;">
-        <span class="strzelca-auth-text">Zaloguj się</span>
+    <div class="strzelca-auth-pill strzelca-auth-pill--avatar-only">
+      <a href="${LOGIN_URL}" aria-label="Zaloguj się" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit;">
+        <span class="strzelca-auth-login-icon" aria-hidden="true">➜</span>
       </a>
     </div>
   `;

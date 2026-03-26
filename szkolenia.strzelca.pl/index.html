@@ -458,7 +458,7 @@
             } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
             import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-25-2";
             import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
-            import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-21-1";
+            import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-26-1";
             import { syncCarouselDotsNav } from "https://strzelca.pl/carousel-dots.mjs?v=2026-03-24-1";
             import {
                 initNewsletterOptInFromEmptyCarousels,
@@ -832,6 +832,7 @@ const firebaseConfig = {
                 const cardStateClass = item.isCompleted
                     ? 'border border-emerald-500/70 hover:border-emerald-400/80'
                     : 'hover:border-[#C19A6B]/50';
+                const shouldShowProgress = item.hasAccess && (item.hasStarted || item.isCompleted);
 
                 let buttonHtml = "";
                 if (item.hasAccess) {
@@ -848,14 +849,16 @@ const firebaseConfig = {
                             <h3 class="text-xl md:text-2xl font-black uppercase mb-2 font-[Orbitron] text-white tracking-tight">${item.title}</h3>
                             <p class="coyote-text font-bold text-lg md:text-xl mb-4 md:mb-5" aria-label="${priceAriaLabel}">${priceLabel}</p>
                             ${item.hasAccess ? `
-                                <div class="mb-4 text-left">
-                                    <div class="flex items-center justify-between gap-3 mb-2 text-[11px] uppercase tracking-[0.12em] font-bold ${progressTextClass}">
-                                        <span>Postęp szkolenia</span>
-                                        <span>${progressPercent}%</span>
-                                    </div>
-                                    <div class="h-2 rounded-full bg-zinc-800 overflow-hidden">
-                                        <div class="h-full ${item.isCompleted ? 'bg-emerald-500' : 'bg-[#C19A6B]'} transition-all duration-300" style="width:${progressPercent}%"></div>
-                                    </div>
+                                <div class="mb-4 text-left min-h-[44px]">
+                                    ${shouldShowProgress ? `
+                                        <div class="flex items-center justify-between gap-3 mb-2 text-[11px] uppercase tracking-[0.12em] font-bold ${progressTextClass}">
+                                            <span>Postęp szkolenia</span>
+                                            <span>${progressPercent}%</span>
+                                        </div>
+                                        <div class="h-2 rounded-full bg-zinc-800 overflow-hidden">
+                                            <div class="h-full ${item.isCompleted ? 'bg-emerald-500' : 'bg-[#C19A6B]'} transition-all duration-300" style="width:${progressPercent}%"></div>
+                                        </div>
+                                    ` : ''}
                                 </div>
                             ` : ''}
                             <div class="mt-auto flex flex-col gap-2 md:gap-3">
@@ -1356,6 +1359,6 @@ const firebaseConfig = {
       type="module"
       src="https://strzelca.pl/messages-widget.mjs?v=2026-03-23-1"
     ></script>
-    <script type="module" src="https://strzelca.pl/global-search-widget.mjs?v=2026-03-24-1"></script>
+    <script type="module" src="https://strzelca.pl/global-search-widget.mjs?v=2026-03-26-1"></script>
   </body>
 </html>
