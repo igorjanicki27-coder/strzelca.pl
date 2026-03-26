@@ -252,7 +252,7 @@ function updateOrderPriceSummary() {
   if (p.individualPricing) {
     finalEl.textContent = "Wycena indywidualna";
     finalEl.className =
-      "text-[1rem] md:text-[1.1rem] text-[#C19A6B] font-bold leading-tight text-right whitespace-nowrap max-w-full";
+      "text-base md:text-lg text-[#C19A6B] font-bold leading-tight text-right break-words max-w-[14rem] md:max-w-[18rem] ml-auto";
     baseEl.className = "hidden text-xs text-zinc-500 line-through mt-1";
     baseEl.textContent = "";
     discountEl.className = "hidden text-xs text-emerald-300 mt-1";
@@ -530,13 +530,13 @@ function syncOrderCustomerTypeUI() {
     "order-address-postal-required",
     "order-address-city-required",
   ];
-  if (firstRequired) firstRequired.textContent = "*";
-  if (lastRequired) lastRequired.textContent = "*";
-  if (companyNameRequired) companyNameRequired.textContent = isCompany ? "*" : "";
-  if (taxIdRequired) taxIdRequired.textContent = isCompany ? "*" : "";
+  if (firstRequired) firstRequired.textContent = "";
+  if (lastRequired) lastRequired.textContent = "";
+  if (companyNameRequired) companyNameRequired.textContent = "";
+  if (taxIdRequired) taxIdRequired.textContent = "";
   addressRequiredIds.forEach((id) => {
     const el = document.getElementById(id);
-    if (el) el.textContent = isCompany ? "*" : "";
+    if (el) el.textContent = "";
   });
 
   const firstName = document.getElementById("order-first-name");
@@ -864,19 +864,19 @@ function renderOrderFormModal({
               </div>
               <div class="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Imię<span id="order-first-required" class="text-[#C19A6B]">*</span></label>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Imię<span id="order-first-required" class="text-[#C19A6B]"></span></label>
                   <input type="text" id="order-first-name" value="${escapeHtml(firstNameVal)}" class="${orderFieldClass}" placeholder="Imię" autocomplete="given-name">
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Nazwisko<span id="order-last-required" class="text-[#C19A6B]">*</span></label>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Nazwisko<span id="order-last-required" class="text-[#C19A6B]"></span></label>
                   <input type="text" id="order-last-name" value="${escapeHtml(lastNameVal)}" class="${orderFieldClass}" placeholder="Nazwisko" autocomplete="family-name">
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Adres e-mail*</label>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Adres e-mail</label>
                   <input type="email" id="order-email" value="${escapeHtml(emailValue)}" class="${orderFieldClass} bg-zinc-900/90 text-zinc-500 cursor-not-allowed opacity-75" readonly required aria-readonly="true" title="Adres e-mail z konta">
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Numer telefonu*</label>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Numer telefonu</label>
                   <input type="tel" id="order-phone" value="${escapeHtml(phoneVal)}" class="${orderFieldClass}" placeholder="Numer telefonu" autocomplete="tel" inputmode="numeric">
                 </div>
               </div>
@@ -929,7 +929,7 @@ function renderOrderFormModal({
                 <p class="text-sm text-zinc-500">Jeżeli zapisano paczkomat na koncie, pole zostanie uzupełnione automatycznie.</p>
               </div>
               <div>
-                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Numer paczkomatu*</label>
+                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Numer paczkomatu</label>
                 <input type="text" id="order-delivery-parcelLocker" value="${escapeHtml(parcelLockerVal)}" class="${orderFieldClass}" placeholder="Np. WRO123M">
               </div>
             </div>
@@ -941,9 +941,21 @@ function renderOrderFormModal({
                 ${individualPricing ? "" : `
                 <div class="rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6 h-full flex flex-col">
                   <h3 class="text-lg font-bold text-white mb-3">Kod rabatowy</h3>
-                  <div class="flex gap-2">
-                    <input type="text" id="order-promo-code" class="${orderFieldClass}" placeholder="Wpisz kod rabatowy" autocomplete="off" spellcheck="false">
-                    <button type="button" onclick="window.applyStrzelcaPromoCode()" class="inline-flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-2xl border border-[#C19A6B]/60 bg-[#C19A6B]/10 text-[#E9D3B7] hover:bg-[#C19A6B]/20 transition" aria-label="Zastosuj kod">
+                  <div class="relative">
+                    <input
+                      type="text"
+                      id="order-promo-code"
+                      class="${orderFieldClass} pr-14"
+                      placeholder="Wpisz kod rabatowy"
+                      autocomplete="off"
+                      spellcheck="false"
+                    >
+                    <button
+                      type="button"
+                      onclick="window.applyStrzelcaPromoCode()"
+                      class="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-xl text-[#E9D3B7] hover:bg-[#C19A6B]/20 transition"
+                      aria-label="Zastosuj kod"
+                    >
                       <i class="fa-solid fa-plus" aria-hidden="true"></i>
                     </button>
                   </div>
@@ -1015,9 +1027,7 @@ function renderOrderFormModal({
               <i class="fa-solid fa-times" aria-hidden="true"></i>
             </button>
           </div>
-          <p class="mt-4 text-sm leading-relaxed text-zinc-300">
-            Faktura tzw. Zwolniona, którą wystawiam dokumentuje sprzedaż zwolnioną z VAT na podstawie art. 113 ustawy o podatku od towarów i usług. Zgodnie z przepisami podatnik nie jest zobowiązany do naliczania podatku VAT.
-          </p>
+          <p class="mt-4 text-sm leading-relaxed text-zinc-300">Faktura tzw. zwolniona, którą wystawiam, dokumentuje sprzedaż zwolnioną z VAT na podstawie art. 113 ustawy o podatku od towarów i usług. Zgodnie z przepisami podatnik nie jest zobowiązany do naliczania podatku VAT.</p>
           <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button type="button" onclick="window.cancelStrzelcaOrderCompanyMode()" class="rounded-2xl border border-zinc-700/80 px-4 py-3 text-sm font-semibold text-zinc-300 hover:bg-zinc-800 transition">
               Cofnij
@@ -1551,6 +1561,15 @@ function attachOrderInquiryGlobals() {
         console.error("Błąd podczas logowania aktywności zamówienia:", logError);
       });
       pendingForm = null;
+      window.dispatchEvent(
+        new CustomEvent("strzelca-order-created", {
+          detail: {
+            context: p.context,
+            orderItemId: p.itemId || "",
+            userId: user.uid,
+          },
+        }),
+      );
       alert(successMessage);
     } catch (error) {
       console.error("Error submitting order:", error);

@@ -418,6 +418,7 @@
         })();
 
         let currentUser = null;
+        const STRZELCA_ORDERS_API = "https://strzelca.pl/api/orders";
 
         // Funkcja pomocnicza do generowania domyślnego awatara
         function getDefaultAvatar(gender) {
@@ -570,6 +571,7 @@
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
             updateUserInterface(user);
+            void refreshProductOrderStates();
         });
 
         window.handleOrder = async (
@@ -597,6 +599,50 @@
         let productCarouselAnimating = false;
         let productPendingMoves = 0;
         const PRODUCT_CAROUSEL_DURATION_MS = 180;
+
+        function isOrderBlockingStatus(status) {
+            return status !== 'zakonczone' && status !== 'anulowane';
+        }
+
+        async function fetchActiveOrderItemIdsByContext(context) {
+            if (!currentUser) return new Set();
+            try {
+                const idToken = await currentUser.getIdToken();
+                const response = await fetch(`${STRZELCA_ORDERS_API}?scope=mine`, {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${idToken}`,
+                    },
+                    credentials: "include",
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || !data?.success || !Array.isArray(data?.data)) {
+                    return new Set();
+                }
+                const ids = new Set();
+                data.data.forEach((order) => {
+                    if (!order || order.orderContext !== context) return;
+                    const orderItemId = String(order.orderItemId || "").trim();
+                    const status = String(order.status || "").trim();
+                    if (orderItemId && isOrderBlockingStatus(status)) {
+                        ids.add(orderItemId);
+                    }
+                });
+                return ids;
+            } catch (error) {
+                console.warn("Nie udało się pobrać statusów zamówień:", error);
+                return new Set();
+            }
+        }
+
+        async function refreshProductOrderStates() {
+            const activeOrderIds = await fetchActiveOrderItemIdsByContext("shop");
+            productItems = productItems.map((item) => ({
+                ...item,
+                hasActiveOrder: activeOrderIds.has(item.id),
+            }));
+            renderProductCarousel(false);
+        }
 
         function syncProductCarouselDots() {
             const dots = document.getElementById('product-carousel-dots');
@@ -661,7 +707,10 @@
                         ${item.oldPrice ? `<p class="text-zinc-500 line-through text-sm mb-1">${item.oldPrice} PLN</p>` : ''}
                         <p class="coyote-text font-bold text-lg md:text-xl mb-4 md:mb-5 min-w-0 w-full leading-tight whitespace-nowrap overflow-hidden text-ellipsis" aria-label="${priceAriaLabel}">${priceLabel}</p>
                         <div class="mt-auto flex flex-col gap-2 md:gap-3">
-                            <button type="button" onclick="event.stopPropagation(); window.showDetails('${item.id}')" aria-label="Pokaż szczegóły produktu ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[11px] md:text-xs uppercase font-black rounded tracking-[0.12em] flex items-center justify-center hover:bg-[#b18a5f] transition">Złóż zamówienie</button>
+                            ${item.hasActiveOrder
+                                ? `<button type="button" disabled aria-label="Produkt ${item.title} został już zamówiony" class="w-full py-3 md:py-4 bg-emerald-600 text-white text-[11px] md:text-xs uppercase font-black rounded tracking-[0.12em] flex items-center justify-center cursor-not-allowed opacity-95">Zamówiono</button>`
+                                : `<button type="button" onclick="event.stopPropagation(); window.showDetails('${item.id}')" aria-label="Pokaż szczegóły produktu ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[11px] md:text-xs uppercase font-black rounded tracking-[0.12em] flex items-center justify-center hover:bg-[#b18a5f] transition">Złóż zamówienie</button>`
+                            }
                         </div>
                     </div>
                 </article>
@@ -892,7 +941,12 @@
                             return rows;
                         },
                     });
-                    productItems = Array.isArray(payload) ? payload : [];
+                    const rows = Array.isArray(payload) ? payload : [];
+                    const activeOrderIds = await fetchActiveOrderItemIdsByContext("shop");
+                    productItems = rows.map((item) => ({
+                        ...item,
+                        hasActiveOrder: activeOrderIds.has(item.id),
+                    }));
                     renderProductCarousel(false);
                     if (!shopAutoOpenDone && shopAutoOpenId) {
                         shopAutoOpenDone = true;
@@ -945,6 +999,7 @@
             const d = await getDoc(doc(db, "products", id));
             if (!d.exists()) return false;
             const p = d.data();
+            const productState = productItems.find((item) => item.id === id) || null;
             
             // Pobierz zdjęcia produktu
             let images = [];
@@ -1023,6 +1078,10 @@
                 descriptionHTML = tempDiv.innerHTML;
             }
             
+            const orderButtonHtml = productState?.hasActiveOrder
+                ? `<button type="button" disabled class="bg-emerald-600 text-white px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg cursor-not-allowed opacity-95">Zamówiono</button>`
+                : `<button onclick="window.handleOrder('${p.id}', decodeURIComponent('${encodeURIComponent(p.title || "")}'), ${p.price || 0}, ${p.individualPricing === true})" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition">Złóż zamówienie</button>`;
+
             document.getElementById('details-content').innerHTML = `
                 <h2 class="text-3xl font-black uppercase mb-4 font-[Orbitron] text-white">${p.title}</h2>
                 ${galleryHTML}
@@ -1031,11 +1090,26 @@
                 </div>
                 <div class="flex justify-between items-center gap-3 border-t border-zinc-800 pt-6">
                     <p class="text-2xl font-bold coyote-text min-w-0 flex-1 truncate">${p.individualPricing ? 'Wycena indywidualna' : `${p.price} PLN`}</p>
-                    <button onclick="window.handleOrder('${p.id}', decodeURIComponent('${encodeURIComponent(p.title || "")}'), ${p.price || 0}, ${p.individualPricing === true})" class="bg-[#C19A6B] text-black px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition">Złóż zamówienie</button>
+                    ${orderButtonHtml}
                 </div>`;
             document.getElementById('details-modal').classList.remove('hidden');
             return true;
         };
+
+        window.addEventListener('strzelca-order-created', (event) => {
+            const orderContext = event?.detail?.context;
+            const orderItemId = String(event?.detail?.orderItemId || '').trim();
+            if (orderContext !== 'shop') return;
+            if (!orderItemId) return;
+            productItems = productItems.map((item) =>
+                item.id === orderItemId ? { ...item, hasActiveOrder: true } : item
+            );
+            renderProductCarousel(false);
+            const detailsModal = document.getElementById('details-modal');
+            if (detailsModal && !detailsModal.classList.contains('hidden')) {
+                void window.showDetails(orderItemId);
+            }
+        });
         
         // Funkcja zmiany zdjęcia w galerii
         window.changeGalleryImage = (direction, total) => {

@@ -569,6 +569,7 @@ const firebaseConfig = {
             })();
 
             let currentUser = null;
+            const STRZELCA_ORDERS_API = "https://strzelca.pl/api/orders";
 
             // Funkcja pomocnicza do generowania domyślnego awatara
             function getDefaultAvatar(gender) {
@@ -743,6 +744,41 @@ const firebaseConfig = {
             let trainingPendingMoves = 0;
             const TRAINING_CAROUSEL_DURATION_MS = 180;
 
+            function isOrderBlockingStatus(status) {
+                return status !== "zakonczone" && status !== "anulowane";
+            }
+
+            async function fetchActiveOrderItemIdsByContext(context) {
+                if (!currentUser) return new Set();
+                try {
+                    const idToken = await currentUser.getIdToken();
+                    const response = await fetch(`${STRZELCA_ORDERS_API}?scope=mine`, {
+                        method: "GET",
+                        headers: {
+                            Authorization: `Bearer ${idToken}`,
+                        },
+                        credentials: "include",
+                    });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok || !data?.success || !Array.isArray(data?.data)) {
+                        return new Set();
+                    }
+                    const ids = new Set();
+                    data.data.forEach((order) => {
+                        if (!order || order.orderContext !== context) return;
+                        const orderItemId = String(order.orderItemId || "").trim();
+                        const status = String(order.status || "").trim();
+                        if (orderItemId && isOrderBlockingStatus(status)) {
+                            ids.add(orderItemId);
+                        }
+                    });
+                    return ids;
+                } catch (error) {
+                    console.warn("Nie udało się pobrać statusów zamówień:", error);
+                    return new Set();
+                }
+            }
+
             function normalizeTrainingProgressItem(row) {
                 const progressPercent = Number.isFinite(row.progressPercent) ? row.progressPercent : 0;
                 const isCompleted = progressPercent >= 100;
@@ -838,29 +874,37 @@ const firebaseConfig = {
                 if (item.hasAccess) {
                     const buttonTextClass = item.isCompleted ? 'text-emerald-400' : 'text-black';
                     buttonHtml = `<button onclick="event.stopPropagation(); window.location.href='https://szkolenia.strzelca.pl/kurs.html?id=${item.id}'" aria-label="${item.actionLabel} ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] ${buttonTextClass} text-[11px] md:text-xs uppercase font-black rounded tracking-[0.12em] flex items-center justify-center hover:bg-[#b18a5f] transition">${item.actionLabel}</button>`;
+                } else if (item.hasActiveOrder) {
+                    buttonHtml = `<button type="button" disabled aria-label="Szkolenie ${item.title} zostało już zamówione" class="w-full py-3 md:py-4 bg-emerald-600 text-white text-[11px] md:text-xs uppercase font-black rounded tracking-[0.12em] flex items-center justify-center cursor-not-allowed opacity-95">Zamówiono</button>`;
                 } else {
                     buttonHtml = `<button onclick="event.stopPropagation(); window.showTrainingDetails('${item.id}')" aria-label="Pokaż szczegóły szkolenia ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] text-black text-[11px] md:text-xs uppercase font-black rounded tracking-[0.12em] flex items-center justify-center hover:bg-[#b18a5f] transition">${item.detailActionLabel || 'Złóż zamówienie'}</button>`;
                 }
+
+                const progressBlockHtml = item.hasAccess
+                    ? `
+                        <div class="mb-4 min-h-[44px] flex items-center">
+                            ${shouldShowProgress ? `
+                                <div class="w-full">
+                                    <div class="flex items-center justify-between gap-3 mb-2 text-[11px] uppercase tracking-[0.12em] font-bold ${progressTextClass}">
+                                        <span>Postęp szkolenia</span>
+                                        <span>${progressPercent}%</span>
+                                    </div>
+                                    <div class="h-2 rounded-full bg-zinc-800 overflow-hidden">
+                                        <div class="h-full ${item.isCompleted ? 'bg-emerald-500' : 'bg-[#C19A6B]'} transition-all duration-300" style="width:${progressPercent}%"></div>
+                                    </div>
+                                </div>
+                            ` : '<div class="w-full h-2"></div>'}
+                        </div>
+                    `
+                    : '<div class="mb-4 min-h-[44px]"></div>';
 
                 return `
                     <article onclick="window.showTrainingDetails('${item.id}')" class="card-dark training-card flex flex-col h-full shadow-2xl transition ${cardStateClass} cursor-pointer" role="article">
                         <div class="training-img-container"><img src="${item.img}" alt="${item.title}" loading="lazy"></div>
                         <div class="p-4 md:p-6 flex flex-col flex-grow text-center">
-                            <h3 class="text-xl md:text-2xl font-black uppercase mb-2 font-[Orbitron] text-white tracking-tight">${item.title}</h3>
-                            <p class="coyote-text font-bold text-lg md:text-xl mb-4 md:mb-5" aria-label="${priceAriaLabel}">${priceLabel}</p>
-                            ${item.hasAccess ? `
-                                <div class="mb-4 text-left min-h-[44px]">
-                                    ${shouldShowProgress ? `
-                                        <div class="flex items-center justify-between gap-3 mb-2 text-[11px] uppercase tracking-[0.12em] font-bold ${progressTextClass}">
-                                            <span>Postęp szkolenia</span>
-                                            <span>${progressPercent}%</span>
-                                        </div>
-                                        <div class="h-2 rounded-full bg-zinc-800 overflow-hidden">
-                                            <div class="h-full ${item.isCompleted ? 'bg-emerald-500' : 'bg-[#C19A6B]'} transition-all duration-300" style="width:${progressPercent}%"></div>
-                                        </div>
-                                    ` : ''}
-                                </div>
-                            ` : ''}
+                            <h3 class="text-xl md:text-2xl font-black uppercase mb-2 font-[Orbitron] text-white tracking-tight min-h-[3.5rem] md:min-h-[4rem] flex items-center justify-center">${item.title}</h3>
+                            <p class="coyote-text font-bold text-lg md:text-xl mb-4 md:mb-5 min-h-[2rem] flex items-center justify-center" aria-label="${priceAriaLabel}">${priceLabel}</p>
+                            ${progressBlockHtml}
                             <div class="mt-auto flex flex-col gap-2 md:gap-3">
                                 ${buttonHtml}
                             </div>
@@ -1099,6 +1143,7 @@ const firebaseConfig = {
                             }
                         }
                         const rows = Array.isArray(trainingRows) ? trainingRows : [];
+                        const activeOrderIds = await fetchActiveOrderItemIdsByContext("training");
                         trainingItems = rows.map((row, listIndex) => {
                             const hasUserAccess = user && userAccessList.includes(row.id);
                             const hasAccess = row.available === true || hasUserAccess;
@@ -1109,6 +1154,7 @@ const firebaseConfig = {
                                 individualPricing: row.individualPricing === true,
                                 img: row.img,
                                 hasAccess,
+                                hasActiveOrder: activeOrderIds.has(row.id),
                                 detailActionLabel: user ? "Złóż zamówienie" : "Zapytaj o ofertę",
                                 progressPercent: hasAccess
                                     ? calculateTrainingProgressPercent(
@@ -1185,6 +1231,8 @@ const firebaseConfig = {
                         <i class="fas fa-play"></i>
                         ${actionLabel}
                     </button>`;
+                } else if (trainingState?.hasActiveOrder) {
+                    buttonHtml = `<button type="button" disabled class="bg-emerald-600 text-white px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg cursor-not-allowed opacity-95">Zamówiono</button>`;
                 } else {
                     const isLoggedIn = !!user;
                     const actionLabel = trainingState?.detailActionLabel || (isLoggedIn ? "Złóż zamówienie" : "Zapytaj o ofertę");
@@ -1332,6 +1380,20 @@ const firebaseConfig = {
                     fetchAll();
                 } else {
                     fetchAll();
+                }
+            });
+
+            window.addEventListener("strzelca-order-created", (event) => {
+                const orderContext = event?.detail?.context;
+                const orderItemId = String(event?.detail?.orderItemId || "").trim();
+                if (orderContext !== "training" || !orderItemId) return;
+                trainingItems = trainingItems.map((item) =>
+                    item.id === orderItemId ? { ...item, hasActiveOrder: true } : item
+                );
+                renderTrainingCarousel(false);
+                const detailsModal = document.getElementById("details-modal");
+                if (detailsModal && !detailsModal.classList.contains("hidden")) {
+                    void window.showTrainingDetails(orderItemId);
                 }
             });
 

@@ -8,7 +8,11 @@ const ENCRYPTION_PREFIX = 'pc1:';
 const SHOP_TRAINING_REDIRECT_URL = 'https://szkolenia.strzelca.pl';
 
 function getPromoCodeLookupSecret() {
-  const secret = String(process.env.PROMO_CODE_LOOKUP_SECRET || '').trim();
+  const secret = String(
+    process.env.PROMO_CODE_LOOKUP_SECRET ||
+      process.env.PROMO_CODES_LOOKUP_SECRET ||
+      '',
+  ).trim();
   if (!secret) {
     throw new Error('PROMO_CODE_LOOKUP_SECRET missing');
   }
@@ -16,7 +20,11 @@ function getPromoCodeLookupSecret() {
 }
 
 function getPromoCodeEncryptionKeyBuffer() {
-  const raw = String(process.env.PROMO_CODE_ENCRYPTION_KEY || '').trim();
+  const raw = String(
+    process.env.PROMO_CODE_ENCRYPTION_KEY ||
+      process.env.PROMO_CODES_ENCRYPTION_KEY ||
+      '',
+  ).trim();
   if (!/^[0-9a-fA-F]{64}$/.test(raw)) {
     throw new Error(
       'PROMO_CODE_ENCRYPTION_KEY missing or invalid (wymagane 64 znaki hex = 32 bajty)',

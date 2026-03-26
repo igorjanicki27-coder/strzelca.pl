@@ -155,6 +155,22 @@
       #promo-codes-show-expired {
         align-self: center;
       }
+      #product-form-modal input[type="checkbox"] {
+        align-self: center;
+      }
+      #product-form-modal .product-price-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 12px;
+      }
+      #product-form-modal .product-price-row .product-price-label {
+        margin-bottom: 0;
+      }
+      #product-form-modal .product-price-row .product-price-toggle {
+        min-width: 0;
+      }
 
       /* Status wpisu (blog) — kolory jak etykiety na liście wpisów */
       select#blog-status.blog-status--draft {
@@ -489,6 +505,7 @@
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
+        position: relative;
       }
 
       .admin-brand {
@@ -534,6 +551,19 @@
         align-items: center;
         gap: 0.75rem;
         flex-shrink: 0;
+      }
+
+      .top-nav-status-slot {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1;
+      }
+
+      .top-nav-status-slot .nav-item {
+        margin: 0;
+        white-space: nowrap;
       }
 
       .header-chip {
@@ -1496,27 +1526,35 @@
 
       .mobile-sidebar {
         position: fixed;
-        inset: 0 auto 0 0;
-        width: min(88vw, 360px);
-        transform: translateX(-100%);
+        inset: auto 0 0 0;
+        width: 100%;
+        transform: translateY(100%);
         transition: transform 0.25s ease;
         z-index: 120;
-        padding: 1rem;
+        padding: 0.85rem 0.85rem 0;
       }
 
       .mobile-sidebar.open {
-        transform: translateX(0);
+        transform: translateY(0);
       }
 
       .mobile-sidebar-panel {
-        height: 100%;
+        max-height: min(82vh, 760px);
         overflow-y: auto;
-        border-radius: 28px;
+        border-radius: 26px 26px 0 0;
         border: 1px solid rgba(255, 244, 224, 0.12);
         background:
           linear-gradient(180deg, rgba(40, 46, 58, 0.96), rgba(24, 28, 36, 0.96));
         box-shadow: 0 24px 60px rgba(4, 6, 10, 0.4);
-        padding: 1rem;
+        padding: 0.85rem 1rem 1.15rem;
+      }
+
+      .mobile-sidebar-grabber {
+        width: 54px;
+        height: 5px;
+        border-radius: 999px;
+        background: rgba(255, 244, 224, 0.22);
+        margin: 0 auto 0.9rem;
       }
 
       .mobile-sidebar-header {
@@ -1567,6 +1605,70 @@
         color: #fff6e8;
       }
 
+      .mobile-quicknav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 110;
+        padding: 0 0.85rem calc(env(safe-area-inset-bottom, 0px) + 0.85rem);
+        pointer-events: none;
+      }
+
+      .mobile-quicknav-shell {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0.55rem;
+        padding: 0.55rem;
+        border-radius: 24px;
+        border: 1px solid rgba(255, 244, 224, 0.12);
+        background: rgba(22, 26, 33, 0.92);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 16px 40px rgba(5, 7, 10, 0.35);
+        pointer-events: auto;
+      }
+
+      .mobile-quicknav-slots {
+        display: contents;
+      }
+
+      .mobile-quicknav-item {
+        min-width: 0;
+        min-height: 62px;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 244, 224, 0.08);
+        background: rgba(248, 245, 239, 0.045);
+        color: var(--text-secondary);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.32rem;
+        text-align: center;
+        padding: 0.55rem 0.35rem;
+        transition: 0.2s ease;
+      }
+
+      .mobile-quicknav-item i {
+        font-size: 1rem;
+      }
+
+      .mobile-quicknav-item span {
+        font-size: 0.68rem;
+        line-height: 1.1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: 100%;
+      }
+
+      .mobile-quicknav-item:hover,
+      .mobile-quicknav-item.active {
+        border-color: rgba(193, 154, 107, 0.34);
+        background: linear-gradient(135deg, rgba(193, 154, 107, 0.24), rgba(193, 154, 107, 0.08));
+        color: #fff6e8;
+      }
+
       @media (max-width: 767px) {
         body {
           font-size: 15px;
@@ -1579,6 +1681,10 @@
 
         .top-nav-bar {
           align-items: flex-start;
+        }
+
+        .top-nav-status-slot {
+          display: none;
         }
 
         .admin-brand-badge {
@@ -1661,7 +1767,7 @@
 
         #main-content {
           padding-inline: 0.9rem;
-          padding-block: 0.9rem 1.5rem;
+          padding-block: 0.9rem calc(6.5rem + env(safe-area-inset-bottom, 0px));
         }
 
         input,
@@ -1743,10 +1849,11 @@
       <div id="mobile-overlay" class="mobile-overlay hidden md:hidden" onclick="toggleSidebar(false)"></div>
       <aside id="mobile-sidebar" class="mobile-sidebar md:hidden" aria-label="Nawigacja mobilna">
         <div class="mobile-sidebar-panel">
+          <div class="mobile-sidebar-grabber" aria-hidden="true"></div>
           <div class="mobile-sidebar-header">
             <div>
-              <div class="mobile-sidebar-title">Menu panelu</div>
-              <div class="text-sm text-zinc-300 mt-1">Przejdź szybko do wybranej sekcji.</div>
+              <div class="mobile-sidebar-title">Wszystkie sekcje</div>
+              <div class="text-sm text-zinc-300 mt-1">Szybki pasek na dole daje wejście do najważniejszych miejsc, a tutaj masz pełne menu.</div>
             </div>
             <button
               type="button"
@@ -1875,6 +1982,13 @@
               </div>
             </div>
 
+            <div class="top-nav-status-slot">
+              <div class="nav-item" data-tab="status">
+                <i class="fa-solid fa-server"></i>
+                <span id="status-tab-text">Status</span>
+              </div>
+            </div>
+
             <div class="admin-utility-actions">
               <div class="header-chip">
                 <div class="header-chip-icon">
@@ -1935,10 +2049,6 @@
                   <i class="fa-solid fa-bell"></i>
                   Powiadomienia
                 </div>
-                <div class="nav-item" data-tab="status">
-                  <i class="fa-solid fa-server"></i>
-                  <span id="status-tab-text">Status</span>
-                </div>
               </div>
             </div>
 
@@ -1989,6 +2099,16 @@
           </nav>
         </div>
       </div>
+
+      <nav id="mobile-quicknav" class="mobile-quicknav md:hidden" aria-label="Szybka nawigacja mobilna">
+        <div class="mobile-quicknav-shell">
+          <div id="mobile-quicknav-slots" class="mobile-quicknav-slots"></div>
+          <button type="button" class="mobile-quicknav-item" data-mobile-quick-menu aria-expanded="false" onclick="toggleSidebar(true)">
+            <i class="fa-solid fa-table-cells-large"></i>
+            <span>Menu</span>
+          </button>
+        </div>
+      </nav>
 
       <!-- Główna zawartość -->
       <div class="flex flex-1 min-h-0">
@@ -5377,6 +5497,47 @@
         "email-templates": { label: "Szablony maili", description: "Gotowe wiadomości i treści transakcyjne." },
         "promo-codes": { label: "Kody", description: "Promocje, zniżki i kody dostępowe." },
       };
+      const MOBILE_QUICKNAV_LIMIT = 4;
+      const MOBILE_QUICKNAV_ORDER = [
+        "dashboard",
+        "orders",
+        "messages",
+        "invoices",
+        "users",
+        "notifications",
+        "products",
+        "bazar",
+        "events",
+        "blog",
+        "charity",
+        "returns",
+        "newsletter",
+        "status",
+        "szkolenia",
+        "dokumenty",
+        "email-templates",
+        "promo-codes",
+      ];
+      const MOBILE_QUICKNAV_ICONS = {
+        dashboard: "fa-tachometer-alt",
+        messages: "fa-comments",
+        orders: "fa-shopping-bag",
+        invoices: "fa-file-invoice",
+        returns: "fa-rotate-left",
+        users: "fa-users",
+        newsletter: "fa-envelope-open-text",
+        notifications: "fa-bell",
+        status: "fa-server",
+        products: "fa-shopping-cart",
+        bazar: "fa-store",
+        szkolenia: "fa-graduation-cap",
+        events: "fa-calendar-alt",
+        blog: "fa-blog",
+        charity: "fa-heart",
+        dokumenty: "fa-file-pdf",
+        "email-templates": "fa-envelope",
+        "promo-codes": "fa-ticket",
+      };
       let currentUserFilter = "all";
       let usersList = [];
       let productsList = [];
@@ -5421,6 +5582,49 @@
         const descEl = document.getElementById("current-tab-description");
         if (titleEl) titleEl.textContent = meta.label;
         if (descEl) descEl.textContent = meta.description;
+      }
+
+      function getMobileQuickNavTabs(profileData = currentAdminProfile) {
+        const allowedTabs = getAllowedAdminTabs(profileData);
+        const preferredTabs = MOBILE_QUICKNAV_ORDER.filter((tab) => allowedTabs.includes(tab));
+        const fallbackTabs = allowedTabs.filter((tab) => !preferredTabs.includes(tab));
+        return [...preferredTabs, ...fallbackTabs].slice(0, MOBILE_QUICKNAV_LIMIT);
+      }
+
+      function updateMobileQuickNavActiveState(tabName = currentTab) {
+        document.querySelectorAll(".mobile-quicknav-item[data-mobile-quick-tab]").forEach((item) => {
+          item.classList.toggle("active", item.getAttribute("data-mobile-quick-tab") === tabName);
+        });
+
+        const menuButton = document.querySelector("[data-mobile-quick-menu]");
+        const sidebar = document.getElementById("mobile-sidebar");
+        if (menuButton) {
+          const isSidebarOpen = Boolean(sidebar?.classList.contains("open"));
+          menuButton.classList.toggle("active", isSidebarOpen);
+          menuButton.setAttribute("aria-expanded", isSidebarOpen ? "true" : "false");
+        }
+      }
+
+      function renderMobileQuickNav(profileData = currentAdminProfile) {
+        const quickNav = document.getElementById("mobile-quicknav");
+        const slots = document.getElementById("mobile-quicknav-slots");
+        if (!quickNav || !slots) return;
+
+        const quickTabs = getMobileQuickNavTabs(profileData);
+        quickNav.classList.toggle("hidden", quickTabs.length === 0);
+
+        slots.innerHTML = quickTabs.map((tab) => {
+          const meta = TAB_META[tab] || TAB_META.dashboard;
+          const icon = MOBILE_QUICKNAV_ICONS[tab] || "fa-circle";
+          return `
+            <button type="button" class="mobile-quicknav-item" data-mobile-quick-tab="${tab}" aria-label="${meta.label}">
+              <i class="fa-solid ${icon}"></i>
+              <span>${meta.label}</span>
+            </button>
+          `;
+        }).join("");
+
+        updateMobileQuickNavActiveState(currentTab);
       }
       const OPERATOR_SCOPE_SHORT_LABELS = {
         users: "użytkowników",
@@ -5606,6 +5810,7 @@
           const visible = allowedTabs.has(tab);
           item.classList.toggle("hidden", !visible);
         });
+        renderMobileQuickNav();
       }
 
       function syncUserEditRoleSections(roleValue = null) {
@@ -6250,6 +6455,9 @@
         document.querySelectorAll(".mobile-nav-item").forEach((item) => {
           item.classList.remove("active");
         });
+        document.querySelectorAll(".mobile-quicknav-item[data-mobile-quick-tab]").forEach((item) => {
+          item.classList.remove("active");
+        });
         document.querySelectorAll(".nav-submenu-item").forEach((item) => {
           item.classList.remove("active");
         });
@@ -6267,6 +6475,7 @@
         }
         const mobileTab = document.querySelector(`.mobile-nav-item[data-mobile-tab="${tabName}"]`);
         if (mobileTab) mobileTab.classList.add("active");
+        currentTab = tabName;
 
         document.querySelectorAll(".tab-content").forEach((content) => {
           content.classList.remove("active");
@@ -6274,6 +6483,7 @@
         document.getElementById(`tab-${tabName}`).classList.add("active");
         updateCurrentTabMeta(tabName);
         toggleSidebar(false);
+        updateMobileQuickNavActiveState(tabName);
 
         // Dodatkowe akcje dla konkretnych zakładek
         if (tabName === "status") {
@@ -6351,8 +6561,6 @@
             }
           }, 100);
         }
-
-        currentTab = tabName;
 
         // Ładowanie danych dla wybranej zakładki
         switch (tabName) {
@@ -6461,6 +6669,8 @@
             overlay.classList.remove("hidden");
             document.body.style.overflow = "hidden";
           }
+
+          updateMobileQuickNavActiveState(currentTab);
         }
       }
       window.toggleSidebar = toggleSidebar;
@@ -6491,6 +6701,20 @@
           const tab = item.getAttribute("data-mobile-tab");
           switchTab(tab);
         });
+      });
+
+      const mobileQuickNavSlots = document.getElementById("mobile-quicknav-slots");
+      mobileQuickNavSlots?.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-mobile-quick-tab]");
+        if (!button) return;
+        const tab = button.getAttribute("data-mobile-quick-tab");
+        if (tab) switchTab(tab);
+      });
+
+      window.addEventListener("resize", () => {
+        if (window.innerWidth >= 768) {
+          toggleSidebar(false);
+        }
       });
 
       // Logowanie administratora
@@ -25153,9 +25377,12 @@
 
       function promoCodePurposeLabel(code) {
         if (code.purpose === "training_access") {
-          return "Dostęp do kursu";
+          return "Kurs";
         }
-        return "Kupon rabatowy";
+        if (code.discountType === "amount") {
+          return "Voucher";
+        }
+        return "Rabat";
       }
 
       function promoCodePurposeDetails(code) {
@@ -25406,45 +25633,26 @@
 
                   <section class="rounded-2xl border border-zinc-800 bg-zinc-950/35 p-5 space-y-5">
                     <div>
-                      <h3 class="text-base font-semibold text-white">Parametry podstawowe</h3>
-                      <p class="text-sm text-zinc-500 mt-1">Tutaj ustawisz czas działania kodu i łączną liczbę możliwych użyć.</p>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <div>
-                        <label class="block text-sm font-medium mb-2">Data zakończenia ważności</label>
-                        <input type="datetime-local" id="promo-code-expires-at" value="${escapeHtml(promoCodeDateTimeLocalValue(currentCode?.expiresAtIso || ""))}" />
-                        <p class="text-xs text-zinc-500 mt-2">Pole pozostaje nieaktywne, jeśli zaznaczysz kod bezterminowy.</p>
-                      </div>
-                      <div>
-                        <label class="block text-sm font-medium mb-2">Ilość użyć</label>
-                        <input type="number" id="promo-code-usage-limit" min="0" step="1" value="${escapeHtml(String(currentCode?.usageLimit || 0))}" />
-                        <p class="text-xs text-zinc-500 mt-2">Wpisz <strong>0</strong>, aby ustawić brak limitu.</p>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section class="rounded-2xl border border-zinc-800 bg-zinc-950/35 p-5 space-y-5">
-                    <div>
                       <h3 class="text-base font-semibold text-white">Przeznaczenie kodu</h3>
                       <p class="text-sm text-zinc-500 mt-1">Wybierz, czy kod ma przyznawać dostęp do szkolenia, czy działać jako rabat.</p>
                     </div>
 
-                    <div>
-                      <label class="block text-sm font-medium mb-2">Typ kodu</label>
-                      <select id="promo-code-purpose" onchange="syncPromoCodePurposeFields()">
-                        <option value="training_access" ${selectedPurpose === "training_access" ? "selected" : ""}>Dostęp do kursu</option>
-                        <option value="discount" ${selectedPurpose === "discount" ? "selected" : ""}>Kupon rabatowy</option>
-                      </select>
-                    </div>
-
-                    <div id="promo-code-training-section" class="space-y-2 ${selectedPurpose === "training_access" ? "" : "hidden"}">
-                      <label class="block text-sm font-medium">Szkolenie</label>
-                      <select id="promo-code-training-id">
-                        <option value="">Wybierz szkolenie</option>
-                        ${getPromoCodeTrainingOptions(currentCode?.targetTrainingId || "")}
-                      </select>
-                      <p class="text-xs text-zinc-500">Kod zadziała tylko dla wybranego szkolenia.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Typ kodu</label>
+                        <select id="promo-code-purpose" onchange="syncPromoCodePurposeFields()">
+                          <option value="training_access" ${selectedPurpose === "training_access" ? "selected" : ""}>Dostęp do kursu</option>
+                          <option value="discount" ${selectedPurpose === "discount" ? "selected" : ""}>Kupon rabatowy</option>
+                        </select>
+                      </div>
+                      <div id="promo-code-training-section" class="space-y-2 ${selectedPurpose === "training_access" ? "" : "hidden"}">
+                        <label class="block text-sm font-medium">Szkolenie</label>
+                        <select id="promo-code-training-id">
+                          <option value="">Wybierz szkolenie</option>
+                          ${getPromoCodeTrainingOptions(currentCode?.targetTrainingId || "")}
+                        </select>
+                        <p class="text-xs text-zinc-500">Kod zadziała tylko dla wybranego szkolenia.</p>
+                      </div>
                     </div>
 
                     <div id="promo-code-discount-section" class="space-y-4 ${selectedPurpose === "discount" ? "" : "hidden"}">
@@ -25464,6 +25672,26 @@
                       <p class="text-xs text-zinc-500">Dla vouchera wpisz kwotę, a dla rabatu procentowego liczbę procent.</p>
                     </div>
                   </section>
+
+                  <section class="rounded-2xl border border-zinc-800 bg-zinc-950/35 p-5 space-y-5">
+                    <div>
+                      <h3 class="text-base font-semibold text-white">Parametry podstawowe</h3>
+                      <p class="text-sm text-zinc-500 mt-1">Tutaj ustawisz czas działania kodu i łączną liczbę możliwych użyć.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-y-5 md:gap-x-10">
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Data zakończenia ważności</label>
+                        <input type="datetime-local" id="promo-code-expires-at" value="${escapeHtml(promoCodeDateTimeLocalValue(currentCode?.expiresAtIso || ""))}" />
+                        <p class="text-xs text-zinc-500 mt-2">Pole pozostaje nieaktywne, jeśli zaznaczysz kod bezterminowy.</p>
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium mb-2">Ilość użyć</label>
+                        <input type="number" id="promo-code-usage-limit" min="0" step="1" value="${escapeHtml(String(currentCode?.usageLimit || 0))}" />
+                        <p class="text-xs text-zinc-500 mt-2">Wpisz <strong>0</strong>, aby ustawić brak limitu.</p>
+                      </div>
+                    </div>
+                  </section>
                 </div>
 
                 <aside class="rounded-2xl border border-coyote/30 bg-coyote/5 p-5 space-y-4 xl:sticky xl:top-0">
@@ -25472,21 +25700,23 @@
                     <p class="text-sm text-zinc-400 mt-1">Najważniejsze przełączniki są zebrane w jednym miejscu.</p>
                   </div>
 
-                  <label class="flex items-start gap-3 rounded-xl border border-zinc-700/80 bg-black/20 p-4 cursor-pointer">
-                    <input type="checkbox" id="promo-code-is-perpetual" class="mt-1" ${currentCode?.isPerpetual ? "checked" : ""} onchange="syncPromoCodePerpetualState()" />
-                    <span>
-                      <span class="block text-sm font-semibold text-zinc-100">Kod bezterminowy</span>
-                      <span class="block text-xs text-zinc-500 mt-1">Nie wygasa automatycznie i działa do ręcznego wyłączenia.</span>
-                    </span>
-                  </label>
+                  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-3">
+                    <label class="flex items-start gap-3 rounded-xl border border-zinc-700/80 bg-black/20 p-4 cursor-pointer">
+                      <input type="checkbox" id="promo-code-is-perpetual" class="mt-1" ${currentCode?.isPerpetual ? "checked" : ""} onchange="syncPromoCodePerpetualState()" />
+                      <span>
+                        <span class="block text-sm font-semibold text-zinc-100">Kod bezterminowy</span>
+                        <span class="block text-xs text-zinc-500 mt-1">Nie wygasa automatycznie i działa do ręcznego wyłączenia.</span>
+                      </span>
+                    </label>
 
-                  <label class="flex items-start gap-3 rounded-xl border border-zinc-700/80 bg-black/20 p-4 cursor-pointer">
-                    <input type="checkbox" id="promo-code-is-active" class="mt-1" ${currentCode?.isActive === false ? "" : "checked"} />
-                    <span>
-                      <span class="block text-sm font-semibold text-zinc-100">Kod aktywny</span>
-                      <span class="block text-xs text-zinc-500 mt-1">Można go od razu wykorzystać w sklepie lub szkoleniach.</span>
-                    </span>
-                  </label>
+                    <label class="flex items-start gap-3 rounded-xl border border-zinc-700/80 bg-black/20 p-4 cursor-pointer">
+                      <input type="checkbox" id="promo-code-is-active" class="mt-1" ${currentCode?.isActive === false ? "" : "checked"} />
+                      <span>
+                        <span class="block text-sm font-semibold text-zinc-100">Kod aktywny</span>
+                        <span class="block text-xs text-zinc-500 mt-1">Można go od razu wykorzystać w sklepie lub szkoleniach.</span>
+                      </span>
+                    </label>
+                  </div>
 
                   <div class="rounded-xl border border-dashed border-zinc-700/80 p-4 text-xs text-zinc-500 leading-relaxed">
                     Każdy kod działa tylko raz dla danego konta, niezależnie od wielkości liter użytych przy wpisywaniu.
@@ -25981,7 +26211,7 @@
         <form id="product-form" class="flex-1 overflow-y-auto space-y-4 pr-2">
           <input type="hidden" id="product-id" />
 
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:gap-6">
+          <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] lg:gap-6">
             <div class="flex-1 min-w-0">
               <label class="block text-sm font-medium mb-2" for="product-title">Nazwa produktu *</label>
               <input
@@ -25993,9 +26223,9 @@
               />
             </div>
             <div class="w-full shrink-0 lg:w-72 xl:w-80">
-              <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-2">
-                <label class="block text-sm font-medium" for="product-price">Cena *</label>
-                <label class="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer shrink-0 max-w-full">
+              <div class="product-price-row mb-2">
+                <label class="product-price-label block text-sm font-medium" for="product-price">Cena *</label>
+                <label class="product-price-toggle flex items-center gap-2 text-sm text-zinc-300 cursor-pointer shrink-0 max-w-full">
                   <input
                     type="checkbox"
                     id="product-individualPricing"

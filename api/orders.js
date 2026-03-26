@@ -30,6 +30,7 @@ const USER_PAYMENT_RETRYABLE_ORDER_STATUSES = new Set([
   'oczekuje_na_platnosc',
   'platnosc_zakonczona_niepowodzeniem',
 ]);
+const ORDER_REOPENABLE_STATUSES = new Set(['zakonczone', 'anulowane']);
 const ORDER_ADMIN_NOTIFICATION_EMAIL = 'kontakt@strzelca.pl';
 const ORDER_STATUSES = [
   'zlozone',
@@ -164,6 +165,10 @@ function formatDate(date) {
 
 function normalizeOrderText(value) {
   return String(value || '').trim();
+}
+
+function isBlockingDuplicateOrderStatus(status) {
+  return !ORDER_REOPENABLE_STATUSES.has(normalizeOrderText(status));
 }
 
 function normalizeOrderCustomerType(customerType, isCompany) {
@@ -922,6 +927,26 @@ module.exports = async (req, res) => {
 
       try {
         await db.runTransaction(async (tx) => {
+          const targetUserId = normalizeOrderText(userId) || sessionUser.uid;
+          if (!isUserAdmin && normalizedOrderItemId && targetUserId) {
+            const duplicateQuery = db
+              .collection('orders')
+              .where('userId', '==', targetUserId)
+              .where('orderContext', '==', normalizedOrderContext)
+              .where('orderItemId', '==', normalizedOrderItemId);
+            const duplicateSnap = await tx.get(duplicateQuery);
+            const hasBlockingDuplicate = duplicateSnap.docs.some((docSnap) =>
+              isBlockingDuplicateOrderStatus(docSnap.data()?.status),
+            );
+            if (hasBlockingDuplicate) {
+              const error = new Error(
+                'Masz już aktywne zamówienie dla tego produktu. Poczekaj na zakończenie lub anulowanie.',
+              );
+              error.code = 'ORDER_ALREADY_EXISTS';
+              throw error;
+            }
+          }
+
           if (normalizedPromoCode) {
             promoEvaluation = await evaluatePromoCodeForOrder({
               db,
@@ -1058,6 +1083,13 @@ module.exports = async (req, res) => {
             success: false,
             error: error.message || 'Nie udało się zastosować kodu.',
             promoCodeError: error.promo || null,
+          });
+          return;
+        }
+        if (error?.code === 'ORDER_ALREADY_EXISTS') {
+          res.status(409).json({
+            success: false,
+            error: error.message || 'Masz już aktywne zamówienie dla tego produktu.',
           });
           return;
         }
