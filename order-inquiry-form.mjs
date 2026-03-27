@@ -519,48 +519,6 @@ function syncOrderCustomerTypeUI() {
         : "Adres zostanie użyty jako dane podstawowe zamówienia."
       : "Adres będzie użyty do dostawy kurierem.";
   }
-
-  const firstRequired = document.getElementById("order-first-required");
-  const lastRequired = document.getElementById("order-last-required");
-  const companyNameRequired = document.getElementById("order-company-name-required");
-  const taxIdRequired = document.getElementById("order-tax-id-required");
-  const addressRequiredIds = [
-    "order-address-street-required",
-    "order-address-building-required",
-    "order-address-postal-required",
-    "order-address-city-required",
-  ];
-  if (firstRequired) firstRequired.textContent = "";
-  if (lastRequired) lastRequired.textContent = "";
-  if (companyNameRequired) companyNameRequired.textContent = "";
-  if (taxIdRequired) taxIdRequired.textContent = "";
-  addressRequiredIds.forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = "";
-  });
-
-  const firstName = document.getElementById("order-first-name");
-  const lastName = document.getElementById("order-last-name");
-  const email = document.getElementById("order-email");
-  const phone = document.getElementById("order-phone");
-  const companyName = document.getElementById("order-company-name");
-  const taxId = document.getElementById("order-tax-id");
-  const billingStreet = document.getElementById("order-address-street");
-  const billingBuilding = document.getElementById("order-address-building");
-  const billingPostal = document.getElementById("order-address-postal");
-  const billingCity = document.getElementById("order-address-city");
-  const parcelLocker = document.getElementById("order-delivery-parcelLocker");
-
-  if (firstName) firstName.required = true;
-  if (lastName) lastName.required = true;
-  if (email) email.required = true;
-  if (phone) phone.required = true;
-  if (companyName) companyName.required = isCompany;
-  if (taxId) taxId.required = isCompany;
-  [billingStreet, billingBuilding, billingPostal, billingCity].forEach((field) => {
-    if (field) field.required = isCompany || showPrivateAddress;
-  });
-  if (parcelLocker) parcelLocker.required = showParcelLocker;
 }
 
 function syncOrderDeliveryUI() {
@@ -581,7 +539,6 @@ function syncOrderDeliveryUI() {
 
   const lockerField = document.getElementById("order-delivery-parcelLocker");
   if (lockerField) {
-    lockerField.required = method === "inpost";
     if (method === "inpost" && !lockerField.value && p.profileParcelLocker) {
       lockerField.value = p.profileParcelLocker;
     }
@@ -864,16 +821,16 @@ function renderOrderFormModal({
               </div>
               <div class="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Imię<span id="order-first-required" class="text-[#C19A6B]"></span></label>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Imię</label>
                   <input type="text" id="order-first-name" value="${escapeHtml(firstNameVal)}" class="${orderFieldClass}" placeholder="Imię" autocomplete="given-name">
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Nazwisko<span id="order-last-required" class="text-[#C19A6B]"></span></label>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Nazwisko</label>
                   <input type="text" id="order-last-name" value="${escapeHtml(lastNameVal)}" class="${orderFieldClass}" placeholder="Nazwisko" autocomplete="family-name">
                 </div>
                 <div>
                   <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Adres e-mail</label>
-                  <input type="email" id="order-email" value="${escapeHtml(emailValue)}" class="${orderFieldClass} bg-zinc-900/90 text-zinc-500 cursor-not-allowed opacity-75" readonly required aria-readonly="true" title="Adres e-mail z konta">
+                  <input type="email" id="order-email" value="${escapeHtml(emailValue)}" class="${orderFieldClass} bg-zinc-900/90 text-zinc-500 cursor-not-allowed opacity-75" readonly aria-readonly="true" title="Adres e-mail z konta">
                 </div>
                 <div>
                   <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Numer telefonu</label>
@@ -889,11 +846,11 @@ function renderOrderFormModal({
               </div>
               <div class="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Nazwa firmy<span id="order-company-name-required" class="text-[#C19A6B]"></span></label>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Nazwa firmy</label>
                   <input type="text" id="order-company-name" class="${orderFieldClass}" placeholder="Nazwa firmy" autocomplete="organization">
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">NIP<span id="order-tax-id-required" class="text-[#C19A6B]"></span></label>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">NIP</label>
                   <input type="text" id="order-tax-id" class="${orderFieldClass}" placeholder="NIP" inputmode="numeric" autocomplete="off" maxlength="10">
                 </div>
               </div>
@@ -906,19 +863,19 @@ function renderOrderFormModal({
               </div>
               <div class="grid gap-4 md:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Ulica<span id="order-address-street-required" class="text-[#C19A6B]"></span></label>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Ulica</label>
                   <input type="text" id="order-address-street" value="${escapeHtml(decodedAddress.street)}" class="${orderFieldClass}" placeholder="Ulica">
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Nr budynku / nr lokalu<span id="order-address-building-required" class="text-[#C19A6B]"></span></label>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Nr budynku / nr lokalu</label>
                   <input type="text" id="order-address-building" value="${escapeHtml(decodedAddress.buildingNumber)}" class="${orderFieldClass}" placeholder="Nr budynku / nr lokalu">
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Kod pocztowy<span id="order-address-postal-required" class="text-[#C19A6B]"></span></label>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Kod pocztowy</label>
                   <input type="text" id="order-address-postal" value="${escapeHtml(decodedAddress.postalCode)}" class="${orderFieldClass}" placeholder="Kod pocztowy">
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Miejscowość<span id="order-address-city-required" class="text-[#C19A6B]"></span></label>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Miejscowość</label>
                   <input type="text" id="order-address-city" value="${escapeHtml(decodedAddress.city)}" class="${orderFieldClass}" placeholder="Miejscowość">
                 </div>
               </div>
@@ -1256,6 +1213,11 @@ function attachOrderInquiryGlobals() {
     for (const id of ids) {
       const el = document.getElementById(id);
       if (!el) continue;
+      const rawValue = typeof el.value === "string" ? el.value : String(el.value ?? "");
+      const value = rawValue.trim();
+      if (typeof el.setCustomValidity === "function") {
+        el.setCustomValidity(value ? "" : "To pole jest wymagane");
+      }
       if (typeof el.reportValidity === "function" && !el.reportValidity()) {
         try {
           el.focus({ preventScroll: false });
@@ -1281,7 +1243,7 @@ function attachOrderInquiryGlobals() {
       return true;
     }
 
-    if (stepKey === "customer") {
+    if (stepKey === "customer" || stepKey === "summary") {
       const customerType = getOrderCustomerType();
       const requiredIds = ["order-email", "order-phone"];
       const deliveryMethod = p.context === "shop" ? getCurrentOrderDeliveryMethod() : "";

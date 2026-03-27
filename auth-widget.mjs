@@ -4,7 +4,6 @@ import {
 } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
 
 const API_URL = "https://strzelca.pl/api/me";
-const LOGIN_URL = "https://konto.strzelca.pl/logowanie.html";
 const PROFILE_URL = "https://konto.strzelca.pl/profil.html";
 const LOGOUT_URL = "https://strzelca.pl/api/sso-session-logout";
 const FIREBASE_CONFIG_BASE = {
@@ -27,6 +26,7 @@ const notificationState = {
   unsubscribeNotifications: null,
   markReadInFlight: false,
 };
+let loginModalBound = false;
 
 function ensureStyles() {
   if (document.getElementById("strzelca-auth-widget-style")) return;
@@ -80,6 +80,57 @@ function ensureStyles() {
       font-weight: 900;
       border: 1px solid rgba(255, 255, 255, 0.14);
       box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+    }
+    .strzelca-auth-login-split {
+      width: 220px;
+      height: 44px;
+      border-radius: 999px;
+      display: flex;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.2);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.42);
+    }
+    .strzelca-auth-login-main,
+    .strzelca-auth-login-google {
+      border: none;
+      margin: 0;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.2s ease, filter 0.2s ease;
+      transform: scale(1);
+      will-change: transform;
+    }
+    .strzelca-auth-login-main {
+      width: 75%;
+      gap: 8px;
+      background: rgba(193, 154, 107, 0.98);
+      color: #0b0b0b;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transform-origin: left center;
+    }
+    .strzelca-auth-login-google {
+      width: 25%;
+      background: #dc2626;
+      color: #fff;
+      font-size: 16px;
+      transform-origin: right center;
+    }
+    .strzelca-auth-login-main:hover,
+    .strzelca-auth-login-google:hover {
+      transform: scale(1.06);
+      filter: brightness(1.04);
+      z-index: 1;
+    }
+    .strzelca-auth-login-main:focus-visible,
+    .strzelca-auth-login-google:focus-visible {
+      outline: 2px solid #fff;
+      outline-offset: -2px;
     }
     .strzelca-auth-spinner {
       width: 16px;
@@ -270,6 +321,66 @@ function ensureStyles() {
       padding: 18px 24px 24px;
       overflow: auto;
       color: #e4e4e7;
+    }
+    .strzelca-auth-login-form {
+      display: grid;
+      gap: 12px;
+    }
+    .strzelca-auth-login-field-label {
+      color: #a1a1aa;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: block;
+    }
+    .strzelca-auth-login-input {
+      width: 100%;
+      min-height: 44px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.04);
+      color: #f4f4f5;
+      padding: 11px 14px;
+      outline: none;
+    }
+    .strzelca-auth-login-input:focus {
+      border-color: rgba(193,154,107,0.9);
+      box-shadow: 0 0 0 2px rgba(193,154,107,0.2);
+    }
+    .strzelca-auth-login-status {
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05);
+      color: #e4e4e7;
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .strzelca-auth-login-status.is-error {
+      border-color: rgba(239,68,68,0.55);
+      background: rgba(127,29,29,0.25);
+      color: #fecaca;
+    }
+    .strzelca-auth-login-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-top: 4px;
+    }
+    .strzelca-auth-login-reset {
+      border: none;
+      background: transparent;
+      color: #d4b896;
+      font-size: 13px;
+      cursor: pointer;
+      padding: 0;
+    }
+    .strzelca-auth-login-reset:hover {
+      color: #f5e7d5;
+      text-decoration: underline;
     }
     .strzelca-auth-empty {
       padding: 32px 16px;
@@ -691,9 +802,9 @@ async function tryGetFirebaseSession() {
 function renderLoading(root) {
   root.innerHTML = `
     <div class="strzelca-auth-pill" role="status" aria-live="polite" aria-label="Sprawdzanie logowania">
-      <a href="${LOGIN_URL}" style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:inherit;">
+      <span style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:inherit;">
         <span class="strzelca-auth-spinner" aria-hidden="true"></span>
-      </a>
+      </span>
     </div>
   `;
 }
@@ -701,11 +812,245 @@ function renderLoading(root) {
 function renderLoggedOut(root) {
   root.innerHTML = `
     <div class="strzelca-auth-pill strzelca-auth-pill--avatar-only">
-      <a href="${LOGIN_URL}" aria-label="Zaloguj się" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit;">
-        <span class="strzelca-auth-login-icon" aria-hidden="true">➜</span>
-      </a>
+      <button id="strzelca-open-login-modal" type="button" class="strzelca-auth-login-split" aria-label="Zaloguj się">
+        <span class="strzelca-auth-login-main"><span aria-hidden="true">➜</span><span>Zaloguj się</span></span>
+        <span class="strzelca-auth-login-google" aria-hidden="true">G</span>
+      </button>
     </div>
   `;
+}
+
+function ensureLoginModal() {
+  if (document.getElementById("strzelca-login-modal")) return;
+  const modal = document.createElement("div");
+  modal.id = "strzelca-login-modal";
+  modal.className = "strzelca-auth-modal";
+  modal.hidden = true;
+  modal.innerHTML = `
+    <div class="strzelca-auth-modal-card">
+      <div class="strzelca-auth-modal-header">
+        <div>
+          <h2 class="strzelca-auth-modal-title">Logowanie</h2>
+          <p class="strzelca-auth-modal-subtitle">Zaloguj się bez przechodzenia na osobną podstronę.</p>
+        </div>
+        <button id="strzelca-login-close" class="strzelca-auth-modal-close" type="button" aria-label="Zamknij">✕</button>
+      </div>
+      <div class="strzelca-auth-modal-body">
+        <form id="strzelca-login-form" class="strzelca-auth-login-form">
+          <div>
+            <label class="strzelca-auth-login-field-label" for="strzelca-login-email">Adres e-mail</label>
+            <input id="strzelca-login-email" class="strzelca-auth-login-input" type="email" autocomplete="email" required />
+          </div>
+          <div>
+            <label class="strzelca-auth-login-field-label" for="strzelca-login-password">Hasło</label>
+            <input id="strzelca-login-password" class="strzelca-auth-login-input" type="password" autocomplete="current-password" required />
+          </div>
+          <button id="strzelca-login-submit" type="submit" class="strzelca-auth-login-split" aria-label="Zaloguj się">
+            <span class="strzelca-auth-login-main"><span aria-hidden="true">➜</span><span>Zaloguj się</span></span>
+            <span class="strzelca-auth-login-google" aria-hidden="true">G</span>
+          </button>
+          <div class="strzelca-auth-login-actions">
+            <button id="strzelca-login-reset" type="button" class="strzelca-auth-login-reset">Reset hasła</button>
+            <button id="strzelca-login-google-cta" class="strzelca-auth-secondary-btn" type="button">
+              <span aria-hidden="true">G</span>
+              <span>Google</span>
+            </button>
+          </div>
+          <div id="strzelca-login-status" class="strzelca-auth-login-status" hidden></div>
+        </form>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+function openLoginModal() {
+  ensureLoginModal();
+  const modal = document.getElementById("strzelca-login-modal");
+  if (!modal) return;
+  modal.hidden = false;
+  const email = document.getElementById("strzelca-login-email");
+  if (email) email.focus();
+}
+
+function closeLoginModal() {
+  const modal = document.getElementById("strzelca-login-modal");
+  if (modal) modal.hidden = true;
+}
+
+function setLoginStatus(message, isError = false) {
+  const status = document.getElementById("strzelca-login-status");
+  if (!status) return;
+  status.hidden = !message;
+  status.textContent = message || "";
+  status.classList.toggle("is-error", !!isError);
+}
+
+function isLegacyLoginHref(value) {
+  const href = String(value || "").toLowerCase();
+  return href.includes("konto.strzelca.pl/login.html") || href.includes("konto.strzelca.pl/logowanie.html");
+}
+
+function bindGlobalLoginTriggers() {
+  if (loginModalBound) return;
+  loginModalBound = true;
+  document.addEventListener("click", (event) => {
+    const trigger = event.target?.closest?.(
+      '#strzelca-open-login-modal, [data-open-login-modal], a[href*="konto.strzelca.pl/login.html"], a[href*="konto.strzelca.pl/logowanie.html"]',
+    );
+    if (!trigger) return;
+    if (trigger.tagName === "A" && !isLegacyLoginHref(trigger.getAttribute("href"))) return;
+    event.preventDefault();
+    openLoginModal();
+  });
+}
+
+async function syncSsoCookie(auth) {
+  try {
+    const { syncSessionCookieFromFirebaseUser } = await import("https://strzelca.pl/sso-client.mjs?v=2026-03-21-1");
+    await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 });
+  } catch {}
+}
+
+async function refreshWidgetAfterLogin(root) {
+  const session = await tryGetFirebaseSession();
+  if (!session || session.authenticated !== true) return;
+  const displayName =
+    session?.profile?.displayName ||
+    session?.user?.displayName ||
+    session?.user?.email?.split("@")[0] ||
+    null;
+  const avatarUrl = session?.profile?.avatar || null;
+  await setupLoggedInState(root, session, { avatarUrl, displayName });
+}
+
+async function bindLoginModal(root) {
+  ensureLoginModal();
+  const modal = document.getElementById("strzelca-login-modal");
+  const closeButton = document.getElementById("strzelca-login-close");
+  const form = document.getElementById("strzelca-login-form");
+  const submitButton = document.getElementById("strzelca-login-submit");
+  const googleSplitButton = submitButton?.querySelector(".strzelca-auth-login-google");
+  const googleCtaButton = document.getElementById("strzelca-login-google-cta");
+  const resetButton = document.getElementById("strzelca-login-reset");
+  const emailInput = document.getElementById("strzelca-login-email");
+  const passwordInput = document.getElementById("strzelca-login-password");
+  if (!modal || !closeButton || !form || !submitButton || !emailInput || !passwordInput) return;
+
+  closeButton.addEventListener("click", closeLoginModal);
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) closeLoginModal();
+  });
+
+  let inFlight = false;
+  async function signInGoogle() {
+    if (inFlight) return;
+    inFlight = true;
+    setLoginStatus("Łączenie z Google...");
+    try {
+      const runtime = await tryGetFirebaseSession();
+      const auth = runtime?.runtime?.auth;
+      const authMod = runtime?.runtime?.authMod;
+      if (!auth || !authMod?.GoogleAuthProvider || !authMod?.signInWithPopup) {
+        throw new Error("Brak inicjalizacji Firebase Auth");
+      }
+      const provider = new authMod.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      const result = await authMod.signInWithPopup(auth, provider);
+      if (!result?.user) throw new Error("Brak danych użytkownika Google");
+      await syncSsoCookie(auth);
+      await refreshWidgetAfterLogin(root);
+      closeLoginModal();
+    } catch (error) {
+      const code = String(error?.code || "");
+      if (code === "auth/popup-closed-by-user") {
+        setLoginStatus("Logowanie Google zostało przerwane.", true);
+      } else {
+        setLoginStatus("Nie udało się zalogować przez Google. Spróbuj ponownie.", true);
+      }
+    } finally {
+      inFlight = false;
+    }
+  }
+
+  if (googleSplitButton) {
+    googleSplitButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      signInGoogle();
+    });
+  }
+  if (googleCtaButton) {
+    googleCtaButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      signInGoogle();
+    });
+  }
+  if (resetButton) {
+    resetButton.addEventListener("click", async () => {
+      const email = String(emailInput.value || "").trim();
+      if (!email) {
+        setLoginStatus("Wpisz adres e-mail, aby zresetować hasło.", true);
+        emailInput.focus();
+        return;
+      }
+      try {
+        const runtime = await tryGetFirebaseSession();
+        const auth = runtime?.runtime?.auth;
+        const authMod = runtime?.runtime?.authMod;
+        if (!auth || !authMod?.sendPasswordResetEmail) {
+          throw new Error("Brak inicjalizacji Firebase Auth");
+        }
+        await authMod.sendPasswordResetEmail(auth, email, {
+          url: "https://konto.strzelca.pl/akcja.html?mode=resetPassword",
+          handleCodeInApp: true,
+        });
+        setLoginStatus("Wysłano link resetujący hasło na podany adres e-mail.");
+      } catch {
+        setLoginStatus("Nie udało się wysłać linku resetującego. Sprawdź adres i spróbuj ponownie.", true);
+      }
+    });
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (inFlight) return;
+    inFlight = true;
+    submitButton.setAttribute("disabled", "true");
+    setLoginStatus("Logowanie...");
+    try {
+      const runtime = await tryGetFirebaseSession();
+      const auth = runtime?.runtime?.auth;
+      const authMod = runtime?.runtime?.authMod;
+      if (!auth || !authMod?.signInWithEmailAndPassword) {
+        throw new Error("Brak inicjalizacji Firebase Auth");
+      }
+      const credential = await authMod.signInWithEmailAndPassword(
+        auth,
+        String(emailInput.value || "").trim(),
+        String(passwordInput.value || ""),
+      );
+      if (!credential?.user?.emailVerified) {
+        setLoginStatus("Potwierdź e-mail. Otwieram stronę weryfikacji konta.", true);
+        window.location.href = "https://konto.strzelca.pl/weryfikacja.html";
+        return;
+      }
+      await syncSsoCookie(auth);
+      await refreshWidgetAfterLogin(root);
+      closeLoginModal();
+    } catch (error) {
+      const code = String(error?.code || "");
+      let message = "Wystąpił błąd podczas logowania.";
+      if (code === "auth/user-not-found") message = "Nie znaleziono konta z tym adresem e-mail.";
+      else if (code === "auth/wrong-password") message = "Nieprawidłowe hasło.";
+      else if (code === "auth/invalid-email") message = "Nieprawidłowy adres e-mail.";
+      else if (code === "auth/too-many-requests") message = "Za dużo prób logowania. Spróbuj później.";
+      setLoginStatus(message, true);
+    } finally {
+      inFlight = false;
+      submitButton.removeAttribute("disabled");
+    }
+  });
 }
 
 function renderLoggedIn(root, { avatarUrl, displayName, notificationsEnabled }) {
@@ -1264,12 +1609,14 @@ async function fetchMeWithTimeout(ms = 4500) {
 async function main() {
   ensureStyles();
   hideLegacyAuthUiIfPresent();
+  bindGlobalLoginTriggers();
 
   const root = document.createElement("div");
   root.id = "strzelca-auth-widget";
   document.body.appendChild(root);
 
   renderLoading(root);
+  await bindLoginModal(root);
 
   try {
     const firebase = await tryGetFirebaseSession();
