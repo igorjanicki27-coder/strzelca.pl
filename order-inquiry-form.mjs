@@ -760,14 +760,14 @@ function renderOrderFormModal({
         <i class="fa-solid fa-times text-lg" aria-hidden="true"></i>
       </button>
 
-      <div class="border-b border-zinc-800/90 bg-black/30 px-5 py-5 md:px-8 md:py-6">
+      <div class="border-b border-zinc-800/90 bg-black/30 px-5 py-5 md:px-8 md:py-6 pr-20 md:pr-24">
         <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div class="min-w-0 pr-16 md:pr-20">
+          <div class="min-w-0">
             <p class="text-[11px] uppercase tracking-[0.32em] text-zinc-500 font-semibold">FORMULARZ ZAMÓWIENIA</p>
             <h2 class="mt-2 text-xl md:text-2xl font-black uppercase font-[Orbitron] text-white leading-tight">${rawTitleSafe}</h2>
             <p id="order-current-step-title" class="mt-3 text-sm text-[#D2B48C] font-semibold">Kupujesz jako</p>
           </div>
-          <div id="order-price-summary" class="text-left md:text-right shrink-0 pr-16 md:pr-20">
+          <div id="order-price-summary" class="text-left md:text-right shrink-0 max-w-full">
             <div id="order-price-final" class="${individualPricing ? "text-base md:text-lg text-[#C19A6B] font-bold leading-tight break-words max-w-[14rem] md:max-w-[18rem]" : price > 0 ? "text-[1.3rem] md:text-[1.55rem] text-[#C19A6B] font-bold tabular-nums leading-tight" : "text-zinc-500 text-[1.3rem] md:text-[1.55rem] leading-tight"}">${individualPricing ? "Cena ustalana indywidualnie" : price > 0 ? formatMoney(price) : "—"}</div>
             <div id="order-price-base" class="hidden text-xs text-zinc-500 line-through mt-1"></div>
             <div id="order-price-discount" class="hidden text-xs text-emerald-300 mt-1"></div>

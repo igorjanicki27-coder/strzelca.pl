@@ -46,6 +46,13 @@ const GUEST_ALLOWED_STATUSES = new Set([
   STATUS.CANCELLED_BY_CLIENT,
 ]);
 
+function getInternalApiBaseUrl() {
+  const raw = String(process.env.INTERNAL_API_BASE_URL || process.env.VERCEL_URL || "").trim();
+  if (!raw) return "http://localhost:3000";
+  if (/^https?:\/\//i.test(raw)) return raw.replace(/\/+$/, "");
+  return `https://${raw.replace(/^\/+/, "").replace(/\/+$/, "")}`;
+}
+
 function safeTrim(value, max = 5000) {
   return String(value ?? "").trim().slice(0, max);
 }
@@ -386,7 +393,7 @@ async function sendReturnClaimEmail(claim, eventEntry) {
   if (!subject || !html) return;
 
   try {
-    const response = await fetch(`${process.env.VERCEL_URL || "http://localhost:3000"}/api/send-email`, {
+    const response = await fetch(`${getInternalApiBaseUrl()}/api/send-email`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -474,7 +481,7 @@ async function sendReturnClaimAdminNotification(claim, eventEntry) {
 </html>`;
 
   try {
-    const response = await fetch(`${process.env.VERCEL_URL || "http://localhost:3000"}/api/send-email`, {
+    const response = await fetch(`${getInternalApiBaseUrl()}/api/send-email`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

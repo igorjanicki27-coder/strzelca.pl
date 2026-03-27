@@ -11,6 +11,13 @@ const {
 
 const SUPERADMIN_UID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
 
+function getPublicBaseUrl() {
+  const raw = String(process.env.PUBLIC_BASE_URL || process.env.VERCEL_URL || 'https://strzelca.pl').trim();
+  if (!raw) return 'https://strzelca.pl';
+  if (/^https?:\/\//i.test(raw)) return raw.replace(/\/+$/, '');
+  return `https://${raw.replace(/^\/+/, '').replace(/\/+$/, '')}`;
+}
+
 async function isAdmin(uid) {
   if (!uid) return false;
   if (uid === SUPERADMIN_UID) return true;
@@ -112,7 +119,7 @@ module.exports = async (req, res) => {
     }
 
     // URL do pobrania faktury przez API
-    const downloadUrl = `${process.env.VERCEL_URL || 'https://strzelca.pl'}/api/download-invoice?orderId=${orderId}`;
+    const downloadUrl = `${getPublicBaseUrl()}/api/download-invoice?orderId=${orderId}`;
 
     res.status(200).json({ 
       success: true, 

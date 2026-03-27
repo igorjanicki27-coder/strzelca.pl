@@ -115,11 +115,16 @@
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            justify-content: space-between;
+            justify-content: center;
             gap: 10px;
             margin-top: 1.5rem;
             padding-top: 1rem;
             border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .blog-social-separator {
+            color: rgba(161, 161, 170, 0.7);
+            line-height: 1;
+            font-weight: 700;
         }
         .detail-meta-grid {
             display: grid;
@@ -202,6 +207,15 @@
             padding: 14px 16px;
             resize: vertical;
             outline: none;
+        }
+        .blog-comment-textarea:disabled {
+            background: rgba(39, 39, 42, 0.45);
+            border-color: rgba(113, 113, 122, 0.45);
+            color: #a1a1aa;
+            cursor: not-allowed;
+        }
+        .blog-comment-textarea:disabled::placeholder {
+            color: #a1a1aa;
         }
         .blog-comment-toolbar {
             display: flex;
@@ -330,8 +344,8 @@
         .blog-card-stats {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 14px;
-            flex-wrap: wrap;
             font-size: 0.78rem;
             color: #a1a1aa;
             margin-top: 0.85rem;
@@ -342,6 +356,10 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
+        }
+        .blog-card-separator {
+            color: rgba(161, 161, 170, 0.7);
+            line-height: 1;
         }
 
         /* Galeria zdjęć wpisu (jak modal produktu w sklepie) */
@@ -1327,8 +1345,8 @@
 
         <!-- Przycisk logowania dla niezalogowanych -->
         <div id="login-button" class="fixed top-4 right-4 z-50">
-            <a href="https://konto.strzelca.pl/login.html" class="bg-coyote text-black w-10 h-10 rounded-full flex items-center justify-center hover:bg-white transition shadow-lg" title="Zaloguj się">
-                <i class="fa-solid fa-sign-in-alt text-lg"></i>
+            <a href="https://konto.strzelca.pl/login.html" class="text-coyote w-12 h-12 flex items-center justify-center transition-transform duration-200 hover:scale-125 hover:text-[#d4b896]" title="Zaloguj się">
+                <i class="fa-solid fa-arrow-right text-3xl"></i>
             </a>
         </div>
 
@@ -1937,7 +1955,12 @@ const firebaseConfig = {
             const remainingSeconds = requiresCooldown ? getRemainingBlogCommentSeconds() : 0;
             const cooldownActive = requiresCooldown && remainingSeconds > 0;
 
-            if (textarea) textarea.disabled = !currentUser || cooldownActive;
+            if (textarea) {
+                textarea.disabled = !currentUser || cooldownActive;
+                textarea.placeholder = !currentUser
+                    ? "Komentarze tylko dla zalogowanych użytkowników."
+                    : "Napisz komentarz do wpisu...";
+            }
             if (submitBtn) submitBtn.disabled = !currentUser || cooldownActive;
 
             if (note) {
@@ -2817,8 +2840,9 @@ const firebaseConfig = {
                                 <p class="event-meta-row"><i class="fa-solid fa-calendar-day text-coyote/80 mr-1"></i>${dateLabel}</p>
                             </div>
                             <div class="blog-card-stats">
-                                <span class="blog-card-stat"><i class="fa-solid fa-heart text-coyote/80"></i>${likeCount}</span>
-                                <span class="blog-card-stat"><i class="fa-solid fa-comments text-coyote/80"></i>${commentCount}</span>
+                                <span class="blog-card-stat"><span>${likeCount}</span><i class="fa-solid fa-heart text-coyote/80"></i></span>
+                                <span class="blog-card-separator" aria-hidden="true">|</span>
+                                <span class="blog-card-stat"><i class="fa-solid fa-comments text-coyote/80"></i><span>${commentCount}</span></span>
                             </div>
                             <div class="mt-3 pt-2 border-t border-zinc-700/50">
                                 <button type="button" data-blog-read-id="${encodeURIComponent(event.id)}" aria-label="Czytaj wpis ${safeTitle}" class="shop-cta-btn">
@@ -3110,9 +3134,10 @@ const firebaseConfig = {
             htmlContent += `
                 <div class="blog-social-row">
                     <button type="button" id="blog-post-like-btn" class="blog-social-btn ${currentBlogPostLiked ? 'is-active' : ''}">
-                        <i class="fa-solid fa-heart"></i>
                         <span id="blog-post-like-count">${Number(event.likeCount || 0)}</span>
+                        <i class="fa-solid fa-heart"></i>
                     </button>
+                    <span class="blog-social-separator" aria-hidden="true">|</span>
                     <div class="blog-social-btn blog-social-btn--static">
                         <i class="fa-solid fa-comments"></i>
                         <span id="blog-post-comments-count">${Number(event.commentCount || 0)}</span>

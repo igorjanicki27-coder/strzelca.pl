@@ -54,7 +54,7 @@
         <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-24-2" />
         <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-21-1" crossorigin />
         <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
-        <link rel="modulepreload" href="https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-26-1" crossorigin />
+        <link rel="modulepreload" href="https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-27-1" crossorigin />
         <style>
             :root {
                 --coyote: #c19a6b;
@@ -361,8 +361,8 @@
 
         <!-- Przycisk logowania dla niezalogowanych -->
         <div id="login-button" class="fixed top-4 right-4 z-50">
-            <a href="https://konto.strzelca.pl/login.html" class="bg-coyote text-black w-10 h-10 rounded-full flex items-center justify-center hover:bg-white transition shadow-lg" title="Zaloguj się">
-                <i class="fa-solid fa-sign-in-alt text-lg"></i>
+            <a href="https://konto.strzelca.pl/login.html" class="text-coyote w-12 h-12 flex items-center justify-center transition-transform duration-200 hover:scale-125 hover:text-[#d4b896]" title="Zaloguj się">
+                <i class="fa-solid fa-arrow-right text-3xl"></i>
             </a>
         </div>
 
@@ -446,7 +446,7 @@
                 getHeaderProfileFromCache,
                 setHeaderProfileCache,
             } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
-            import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-26-1";
+            import { openOrderInquiryFlow } from "https://strzelca.pl/order-inquiry-form.mjs?v=2026-03-27-1";
             import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
             import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-27-1";
             import { syncCarouselDotsNav } from "https://strzelca.pl/carousel-dots.mjs?v=2026-03-24-1";
@@ -772,7 +772,7 @@ const firebaseConfig = {
             function normalizeTrainingProgressItem(row) {
                 const progressPercent = Number.isFinite(row.progressPercent) ? row.progressPercent : 0;
                 const isCompleted = progressPercent >= 100;
-                const hasStarted = progressPercent > 0;
+                const hasStarted = row.hasProgressEntry === true || isCompleted;
                 const actionLabel = isCompleted
                     ? "Ukończono"
                     : hasStarted
@@ -862,8 +862,12 @@ const firebaseConfig = {
 
                 let buttonHtml = "";
                 if (item.hasAccess) {
-                    const buttonTextClass = item.isCompleted ? 'text-emerald-400' : 'text-black';
-                    buttonHtml = `<button onclick="event.stopPropagation(); window.location.href='https://szkolenia.strzelca.pl/kurs.html?id=${item.id}'" aria-label="${item.actionLabel} ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] ${buttonTextClass} text-[11px] md:text-xs uppercase font-black rounded tracking-[0.12em] flex items-center justify-center hover:bg-[#b18a5f] transition">${item.actionLabel}</button>`;
+                    if (currentUser) {
+                        const buttonTextClass = item.isCompleted ? 'text-emerald-400' : 'text-black';
+                        buttonHtml = `<button onclick="event.stopPropagation(); window.location.href='https://szkolenia.strzelca.pl/kurs.html?id=${item.id}'" aria-label="${item.actionLabel} ${item.title}" class="w-full py-3 md:py-4 bg-[#C19A6B] ${buttonTextClass} text-[11px] md:text-xs uppercase font-black rounded tracking-[0.12em] flex items-center justify-center hover:bg-[#b18a5f] transition">${item.actionLabel}</button>`;
+                    } else {
+                        buttonHtml = `<button type="button" disabled aria-label="Szkolenie ${item.title} jest dostępne dla zalogowanych" class="w-full py-3 md:py-4 bg-zinc-700 text-zinc-300 text-[11px] md:text-xs uppercase font-black rounded tracking-[0.12em] flex items-center justify-center cursor-not-allowed">Dla zalogowanych</button>`;
+                    }
                 } else if (item.hasActiveOrder) {
                     buttonHtml = `<button type="button" disabled aria-label="Szkolenie ${item.title} zostało już zamówione" class="w-full py-3 md:py-4 bg-emerald-600 text-white text-[11px] md:text-xs uppercase font-black rounded tracking-[0.12em] flex items-center justify-center cursor-not-allowed opacity-95">Zamówiono</button>`;
                 } else {
@@ -1137,6 +1141,12 @@ const firebaseConfig = {
                         trainingItems = rows.map((row, listIndex) => {
                             const hasUserAccess = user && userAccessList.includes(row.id);
                             const hasAccess = row.available === true || hasUserAccess;
+                            const progressData = progressMap.get(row.id);
+                            const openedLessons = Array.isArray(progressData?.openedLessons) ? progressData.openedLessons : [];
+                            const finishedLessons = Array.isArray(progressData?.finishedLessons)
+                                ? progressData.finishedLessons
+                                : (Array.isArray(progressData?.completedLessons) ? progressData.completedLessons : []);
+                            const hasProgressEntry = openedLessons.length > 0 || finishedLessons.length > 0 || certificateSet.has(row.id);
                             return {
                                 id: row.id,
                                 title: row.title,
@@ -1146,9 +1156,10 @@ const firebaseConfig = {
                                 hasAccess,
                                 hasActiveOrder: activeOrderIds.has(row.id),
                                 detailActionLabel: user ? "Złóż zamówienie" : "Zapytaj o ofertę",
+                                hasProgressEntry,
                                 progressPercent: hasAccess
                                     ? calculateTrainingProgressPercent(
-                                        progressMap.get(row.id),
+                                        progressData,
                                         lessonsCountByTraining[row.id] || 0,
                                         certificateSet.has(row.id),
                                       )
@@ -1215,12 +1226,16 @@ const firebaseConfig = {
                 // Przygotuj przycisk w zależności od dostępu
                 let buttonHtml = '';
                 if (hasAccess) {
-                    const actionLabel = trainingState?.actionLabel || 'Rozpocznij szkolenie';
-                    const actionTextClass = trainingState?.isCompleted ? 'text-emerald-400' : 'text-black';
-                    buttonHtml = `<button onclick="window.location.href='https://szkolenia.strzelca.pl/kurs.html?id=${id}'" class="bg-[#C19A6B] ${actionTextClass} px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition flex items-center justify-center gap-2">
-                        <i class="fas fa-play"></i>
-                        ${actionLabel}
-                    </button>`;
+                    if (user) {
+                        const actionLabel = trainingState?.actionLabel || 'Rozpocznij szkolenie';
+                        const actionTextClass = trainingState?.isCompleted ? 'text-emerald-400' : 'text-black';
+                        buttonHtml = `<button onclick="window.location.href='https://szkolenia.strzelca.pl/kurs.html?id=${id}'" class="bg-[#C19A6B] ${actionTextClass} px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg hover:bg-[#b18a5f] transition flex items-center justify-center gap-2">
+                            <i class="fas fa-play"></i>
+                            ${actionLabel}
+                        </button>`;
+                    } else {
+                        buttonHtml = `<button type="button" disabled class="bg-zinc-700 text-zinc-300 px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg cursor-not-allowed">Dla zalogowanych</button>`;
+                    }
                 } else if (trainingState?.hasActiveOrder) {
                     buttonHtml = `<button type="button" disabled class="bg-emerald-600 text-white px-8 py-4 uppercase text-[10px] font-black rounded tracking-widest shadow-lg cursor-not-allowed opacity-95">Zamówiono</button>`;
                 } else {

@@ -104,11 +104,16 @@
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            justify-content: space-between;
+            justify-content: center;
             gap: 10px;
             margin-top: 1.5rem;
             padding-top: 1rem;
             border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .blog-social-separator {
+            color: rgba(161, 161, 170, 0.7);
+            line-height: 1;
+            font-weight: 700;
         }
         .detail-meta-grid {
             display: grid;
@@ -191,6 +196,15 @@
             padding: 14px 16px;
             resize: vertical;
             outline: none;
+        }
+        .blog-comment-textarea:disabled {
+            background: rgba(39, 39, 42, 0.45);
+            border-color: rgba(113, 113, 122, 0.45);
+            color: #a1a1aa;
+            cursor: not-allowed;
+        }
+        .blog-comment-textarea:disabled::placeholder {
+            color: #a1a1aa;
         }
         .blog-comment-toolbar {
             display: flex;
@@ -319,8 +333,8 @@
         .blog-card-stats {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 14px;
-            flex-wrap: wrap;
             font-size: 0.78rem;
             color: #a1a1aa;
             margin-top: 0.85rem;
@@ -331,6 +345,10 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
+        }
+        .blog-card-separator {
+            color: rgba(161, 161, 170, 0.7);
+            line-height: 1;
         }
         
         /* Event Cards - Nowoczesny design */
@@ -1165,11 +1183,36 @@
             font-size: 0.84rem;
             color: #a1a1aa;
             margin: 0;
-            display: flex;
+            display: grid;
+            grid-template-columns: 1rem auto minmax(0, 1fr);
             align-items: center;
-            justify-content: center;
-            gap: 0.34rem;
+            gap: 0.42rem;
+            text-align: left;
+            line-height: 1.45;
+        }
+        .event-meta-icon {
+            width: 1rem;
             text-align: center;
+            font-size: 0.78rem;
+            color: rgba(193, 154, 107, 0.84);
+        }
+        .event-meta-label {
+            color: #d5d7df;
+            font-weight: 650;
+            white-space: nowrap;
+        }
+        .event-meta-value {
+            color: #b8bcc8;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .event-meta-row.event-meta-row--location {
+            grid-template-columns: 1rem minmax(0, 1fr);
+        }
+        .event-meta-row.event-meta-row--location .event-meta-value {
+            grid-column: 2;
         }
         .badge-chip {
             display: inline-flex;
@@ -1300,8 +1343,8 @@
 
         <!-- Przycisk logowania dla niezalogowanych -->
         <div id="login-button" class="fixed top-4 right-4 z-50">
-            <a href="https://konto.strzelca.pl/login.html" class="bg-coyote text-black w-10 h-10 rounded-full flex items-center justify-center hover:bg-white transition shadow-lg" title="Zaloguj się">
-                <i class="fa-solid fa-sign-in-alt text-lg"></i>
+            <a href="https://konto.strzelca.pl/login.html" class="text-coyote w-12 h-12 flex items-center justify-center transition-transform duration-200 hover:scale-125 hover:text-[#d4b896]" title="Zaloguj się">
+                <i class="fa-solid fa-arrow-right text-3xl"></i>
             </a>
         </div>
 
@@ -1443,7 +1486,7 @@
                             </div>
                         </div>
 
-                        <div id="modal-participate-wrap" class="flex justify-center w-full pt-6 md:pt-8 mt-4 md:mt-5 border-t border-zinc-700"></div>
+                        <div id="modal-participate-wrap" class="hidden"></div>
                     </div>
                 </div>
             </div>
@@ -2700,16 +2743,25 @@ const firebaseConfig = {
                         <h3 class="event-title">${safeTitle}</h3>
                         <div class="event-divider"></div>
                         <div class="event-data-slot">
-                            <p class="event-meta-row"><i class="fa-solid fa-play text-coyote/80 mr-1"></i>Start: ${startDateLabel}, ${startTimeLabel}</p>
-                            <p class="event-meta-row"><i class="fa-solid fa-flag-checkered text-coyote/80 mr-1"></i>Koniec: ${shouldShowEndDate ? `${endDateLabel}, ` : ''}${endTimeLabel}</p>
-                            ${safeLocation ? `<p class="event-meta-row"><i class="fa-solid fa-location-dot text-coyote/80 mr-1"></i>${safeLocation}</p>` : ''}
+                            <p class="event-meta-row">
+                                <i class="fa-solid fa-play event-meta-icon" aria-hidden="true"></i>
+                                <span class="event-meta-label">Start:</span>
+                                <span class="event-meta-value">${startDateLabel}, ${startTimeLabel}</span>
+                            </p>
+                            <p class="event-meta-row">
+                                <i class="fa-solid fa-flag-checkered event-meta-icon" aria-hidden="true"></i>
+                                <span class="event-meta-label">Koniec:</span>
+                                <span class="event-meta-value">${shouldShowEndDate ? `${endDateLabel}, ` : ''}${endTimeLabel}</span>
+                            </p>
+                            ${safeLocation ? `<p class="event-meta-row event-meta-row--location"><i class="fa-solid fa-location-dot event-meta-icon" aria-hidden="true"></i><span class="event-meta-value">${safeLocation}</span></p>` : ''}
                         </div>
                         <div class="mt-2 space-y-1" data-event-status-lines="${encodeURIComponent(event.id)}">${statusLinesHtml}</div>
                         <div class="blog-card-stats">
                             <span class="blog-card-stat">
-                                <i class="fa-solid fa-heart text-coyote/90"></i>
                                 <span>${Number(event.likeCount || 0)}</span>
+                                <i class="fa-solid fa-heart text-coyote/90"></i>
                             </span>
+                            <span class="blog-card-separator" aria-hidden="true">|</span>
                             <span class="blog-card-stat">
                                 <i class="fa-solid fa-comments text-coyote/90"></i>
                                 <span>${Number(event.commentCount || 0)}</span>
@@ -2800,9 +2852,7 @@ const firebaseConfig = {
                 statusesEl.innerHTML = renderEventStatusLinesHtml(event, now);
             }
 
-            const wrap = document.getElementById('modal-participate-wrap');
-            if (!wrap) return;
-            const button = wrap.querySelector('button');
+            const button = document.getElementById('event-post-participate-btn');
             if (!button) return;
 
             const state = getEventParticipateButtonState(event, now);
@@ -3065,7 +3115,12 @@ const firebaseConfig = {
             const remainingSeconds = requiresCooldown ? getRemainingEventCommentSeconds() : 0;
             const cooldownActive = requiresCooldown && remainingSeconds > 0;
 
-            if (textarea) textarea.disabled = !currentUser || cooldownActive;
+            if (textarea) {
+                textarea.disabled = !currentUser || cooldownActive;
+                textarea.placeholder = !currentUser
+                    ? "Komentarze tylko dla zalogowanych użytkowników."
+                    : "Napisz komentarz do wydarzenia...";
+            }
             if (submitBtn) submitBtn.disabled = !currentUser || cooldownActive;
 
             if (note) {
@@ -3636,32 +3691,23 @@ const firebaseConfig = {
                 statusesEl.innerHTML = renderEventStatusLinesHtml(event, new Date());
             }
 
-            const wrap = document.getElementById('modal-participate-wrap');
-            if (wrap) {
-                const part = getEventParticipateButtonState(event, new Date());
-                const toneClass = getEventParticipateToneClass(part);
-                const dis = part.disabled ? ' disabled aria-disabled="true"' : '';
-                wrap.innerHTML = `
-                    <button type="button" class="event-participate-btn font-bold text-sm tracking-[0.12em] py-3 px-8 md:px-10 rounded-lg uppercase inline-flex items-center justify-center gap-2 transition-all duration-300${toneClass}"${dis}>
+            const part = getEventParticipateButtonState(event, new Date());
+            const toneClass = getEventParticipateToneClass(part);
+            const dis = part.disabled ? ' disabled aria-disabled="true"' : '';
+            const participateControlHtml = part?.label
+                ? `<button type="button" id="event-post-participate-btn" class="event-participate-btn font-bold text-sm tracking-[0.12em] py-2.5 px-6 rounded-lg uppercase inline-flex items-center justify-center gap-2 transition-all duration-300${toneClass}"${dis}>
                         <span class="event-participate-label transition-colors">${escapeHtml(part.label)}</span>
-                    </button>
-                `;
-                const pb = wrap.querySelector('button');
-                if (pb && !part.disabled) {
-                    pb.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        handleEventParticipateClick(event);
-                    });
-                }
-            }
+                    </button>`
+                : `<span class="blog-social-separator" aria-hidden="true">|</span>`;
 
             let htmlContent = `<div class="custom-render">${formatEventDescriptionForModal(event.description)}</div>`;
             htmlContent += `
                 <div class="blog-social-row">
                     <button type="button" id="event-post-like-btn" class="blog-social-btn ${currentEventLiked ? 'is-active' : ''}">
-                        <i class="fa-solid fa-heart"></i>
                         <span id="event-post-like-count">${Number(event.likeCount || 0)}</span>
+                        <i class="fa-solid fa-heart"></i>
                     </button>
+                    ${participateControlHtml}
                     <div class="blog-social-btn blog-social-btn--static">
                         <i class="fa-solid fa-comments"></i>
                         <span id="event-post-comments-count">${Number(event.commentCount || 0)}</span>
@@ -3699,6 +3745,13 @@ const firebaseConfig = {
             const submitBtn = document.getElementById('event-comment-submit');
             if (likeBtn) {
                 likeBtn.addEventListener('click', () => window.toggleEventPostLike(event.id));
+            }
+            const participateBtn = document.getElementById('event-post-participate-btn');
+            if (participateBtn && !part.disabled) {
+                participateBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    handleEventParticipateClick(event);
+                });
             }
             if (submitBtn) {
                 submitBtn.addEventListener('click', () => window.submitEventComment(event.id));
