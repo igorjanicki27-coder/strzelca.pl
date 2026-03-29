@@ -202,27 +202,26 @@
         }
         .blog-comment-send-btn {
             position: absolute;
-            right: 8px;
-            bottom: 8px;
+            right: 2px;
+            bottom: 2px;
             z-index: 2;
-            width: 42px;
-            height: 42px;
+            width: 40px;
+            height: 40px;
             padding: 0;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border-radius: 12px;
-            border: 1px solid rgba(193, 154, 107, 0.45);
-            background: rgba(193, 154, 107, 0.14);
+            border-radius: 10px;
+            border: none;
+            background: rgba(193, 154, 107, 0.18);
             color: #E9D3B7;
             font-size: 1rem;
             line-height: 1;
             cursor: pointer;
-            transition: border-color 0.2s, background 0.2s, transform 0.2s, opacity 0.2s;
+            transition: background 0.2s, transform 0.2s, opacity 0.2s;
         }
         .blog-comment-send-btn:hover:not(:disabled) {
-            border-color: rgba(193, 154, 107, 0.7);
-            background: rgba(193, 154, 107, 0.24);
+            background: rgba(193, 154, 107, 0.32);
             transform: translateY(-1px);
         }
         .blog-comment-send-btn:disabled {
@@ -250,6 +249,41 @@
         .blog-comment-textarea.blog-comment-textarea--guest:disabled::placeholder {
             color: #71717a;
             opacity: 1;
+        }
+        .blog-comment-guest-overlay {
+            position: absolute;
+            left: 0;
+            top: 0;
+            right: 46px;
+            bottom: 46px;
+            z-index: 1;
+            border-radius: 12px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: flex-start;
+            box-sizing: border-box;
+            background: rgba(9, 9, 11, 0.92);
+            color: #a1a1aa;
+            font-size: 0.92rem;
+            line-height: 1.45;
+            pointer-events: auto;
+        }
+        .blog-comment-guest-overlay-text {
+            margin: 0;
+        }
+        .blog-comment-guest-login-link {
+            background: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            font: inherit;
+            color: var(--coyote, #c19a6b);
+            cursor: pointer;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        .blog-comment-guest-login-link:hover {
+            color: #e9d3b7;
         }
         .blog-comment-toolbar {
             display: flex;
@@ -1835,8 +1869,8 @@ const firebaseConfig = {
                     }
                 }
                 window.setTimeout(() => {
-                    if (activeEventModalId && currentEventComments.length) {
-                        renderEventComments();
+                    if (activeEventModalId) {
+                        if (currentEventComments.length) renderEventComments();
                         updateEventCommentComposerState();
                     }
                 }, 0);
@@ -1846,8 +1880,8 @@ const firebaseConfig = {
                 if (loginBtn) loginBtn.classList.remove("hidden");
                 if (userPanel) userPanel.classList.add("hidden");
                 window.setTimeout(() => {
-                    if (activeEventModalId && currentEventComments.length) {
-                        renderEventComments();
+                    if (activeEventModalId) {
+                        if (currentEventComments.length) renderEventComments();
                         updateEventCommentComposerState();
                     }
                 }, 0);
@@ -3168,6 +3202,7 @@ const firebaseConfig = {
             const textarea = document.getElementById("event-comment-textarea");
             const submitBtn = document.getElementById("event-comment-submit");
             const note = document.getElementById("event-comment-note");
+            const guestOverlay = document.getElementById("event-comment-guest-overlay");
             const requiresCooldown = !currentEditingEventCommentId;
             const remainingSeconds = requiresCooldown ? getRemainingEventCommentSeconds() : 0;
             const cooldownActive = requiresCooldown && remainingSeconds > 0;
@@ -3175,9 +3210,17 @@ const firebaseConfig = {
             if (textarea) {
                 textarea.disabled = !currentUser || cooldownActive;
                 textarea.classList.toggle("blog-comment-textarea--guest", !currentUser);
-                textarea.placeholder = !currentUser
-                    ? "Komentować mogą tylko zalogowani użytkownicy. Zaloguj się."
-                    : "Napisz komentarz do wydarzenia...";
+                if (!currentUser) {
+                    textarea.placeholder = "";
+                    textarea.setAttribute("aria-hidden", "true");
+                } else {
+                    textarea.placeholder = "Napisz komentarz do wydarzenia...";
+                    textarea.removeAttribute("aria-hidden");
+                }
+            }
+            if (guestOverlay) {
+                guestOverlay.classList.toggle("hidden", !!currentUser);
+                guestOverlay.setAttribute("aria-hidden", currentUser ? "true" : "false");
             }
             if (submitBtn) submitBtn.disabled = !currentUser || cooldownActive;
 
@@ -3784,6 +3827,12 @@ const firebaseConfig = {
                         </div>
                         <div class="blog-comment-field-wrap">
                             <textarea id="event-comment-textarea" class="blog-comment-textarea" placeholder="Napisz komentarz do wydarzenia..."></textarea>
+                            <div id="event-comment-guest-overlay" class="blog-comment-guest-overlay hidden" aria-hidden="true">
+                                <p class="blog-comment-guest-overlay-text">
+                                    Komentować mogą tylko zalogowani użytkownicy.
+                                    <button type="button" data-open-login-modal class="blog-comment-guest-login-link">Zaloguj się</button>.
+                                </p>
+                            </div>
                             <button
                                 type="button"
                                 id="event-comment-submit"

@@ -82,13 +82,16 @@ function ensureStyles() {
       box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
     }
     .strzelca-auth-login-split {
+      position: relative;
       width: 220px;
       height: 44px;
       border-radius: 999px;
-      display: flex;
+      display: block;
       overflow: hidden;
       border: 1px solid rgba(255,255,255,0.2);
       box-shadow: 0 12px 30px rgba(0,0,0,0.42);
+      padding: 0;
+      cursor: pointer;
     }
     .strzelca-auth-login-plain {
       border: none;
@@ -110,9 +113,14 @@ function ensureStyles() {
     }
     .strzelca-auth-login-main,
     .strzelca-auth-login-google {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
       border: none;
       margin: 0;
-      padding: 0;
+      box-sizing: border-box;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -122,22 +130,27 @@ function ensureStyles() {
       will-change: transform;
     }
     .strzelca-auth-login-main {
-      width: 75%;
+      z-index: 1;
       gap: 8px;
+      /* Ukośny podział ~65/35: linia od (~69%,0) do (~58%,100%) */
+      clip-path: polygon(0 0, 69% 0, 58% 100%, 0 100%);
       background: rgba(193, 154, 107, 0.98);
       color: #0b0b0b;
       font-size: 13px;
       font-weight: 900;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      transform-origin: left center;
+      transform-origin: center;
+      padding-right: 14%;
     }
     .strzelca-auth-login-google {
-      width: 25%;
+      z-index: 2;
+      clip-path: polygon(69% 0, 100% 0, 100% 100%, 58% 100%);
       background: #dc2626;
       color: #fff;
       font-size: 16px;
-      transform-origin: right center;
+      transform-origin: center;
+      padding-left: 20%;
     }
     .strzelca-auth-login-main:hover,
     .strzelca-auth-login-google:hover {
@@ -296,7 +309,7 @@ function ensureStyles() {
       display: none !important;
     }
     .strzelca-auth-modal-card {
-      width: min(760px, 100%);
+      width: min(532px, 100%);
       max-height: min(90vh, 900px);
       display: flex;
       flex-direction: column;
@@ -319,6 +332,8 @@ function ensureStyles() {
       font-size: 22px;
       font-weight: 800;
       margin: 0;
+      flex: 1;
+      min-width: 0;
     }
     .strzelca-auth-modal-subtitle {
       color: #a1a1aa;
@@ -343,6 +358,11 @@ function ensureStyles() {
     .strzelca-auth-login-form {
       display: grid;
       gap: 12px;
+    }
+    .strzelca-auth-login-submit-wrap {
+      display: flex;
+      justify-content: center;
+      width: 100%;
     }
     .strzelca-auth-login-field-label {
       color: #a1a1aa;
@@ -383,10 +403,11 @@ function ensureStyles() {
     }
     .strzelca-auth-login-actions {
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       align-items: center;
-      gap: 12px;
-      margin-top: 4px;
+      flex-wrap: wrap;
+      gap: 10px 28px;
+      margin-top: 10px;
     }
     .strzelca-auth-login-reset {
       border: none;
@@ -395,6 +416,11 @@ function ensureStyles() {
       font-size: 13px;
       cursor: pointer;
       padding: 0;
+      text-decoration: none;
+      font: inherit;
+    }
+    a.strzelca-auth-login-reset {
+      display: inline;
     }
     .strzelca-auth-login-reset:hover {
       color: #f5e7d5;
@@ -846,10 +872,7 @@ function ensureLoginModal() {
   modal.innerHTML = `
     <div class="strzelca-auth-modal-card">
       <div class="strzelca-auth-modal-header">
-        <div>
-          <h2 class="strzelca-auth-modal-title">Logowanie</h2>
-          <p class="strzelca-auth-modal-subtitle">Zaloguj się bez przechodzenia na osobną podstronę.</p>
-        </div>
+        <h2 class="strzelca-auth-modal-title">Logowanie</h2>
         <button id="strzelca-login-close" class="strzelca-auth-modal-close" type="button" aria-label="Zamknij">✕</button>
       </div>
       <div class="strzelca-auth-modal-body">
@@ -862,16 +885,15 @@ function ensureLoginModal() {
             <label class="strzelca-auth-login-field-label" for="strzelca-login-password">Hasło</label>
             <input id="strzelca-login-password" class="strzelca-auth-login-input" type="password" autocomplete="current-password" required />
           </div>
-          <button id="strzelca-login-submit" type="submit" class="strzelca-auth-login-split" aria-label="Zaloguj się">
-            <span class="strzelca-auth-login-main"><span aria-hidden="true">➜</span><span>Zaloguj się</span></span>
-            <span class="strzelca-auth-login-google" aria-hidden="true">G</span>
-          </button>
-          <div class="strzelca-auth-login-actions">
-            <button id="strzelca-login-reset" type="button" class="strzelca-auth-login-reset">Reset hasła</button>
-            <button id="strzelca-login-google-cta" class="strzelca-auth-secondary-btn" type="button">
-              <span aria-hidden="true">G</span>
-              <span>Google</span>
+          <div class="strzelca-auth-login-submit-wrap">
+            <button id="strzelca-login-submit" type="submit" class="strzelca-auth-login-split" aria-label="Zaloguj się">
+              <span class="strzelca-auth-login-main"><span aria-hidden="true">➜</span><span>Zaloguj się</span></span>
+              <span class="strzelca-auth-login-google" aria-hidden="true">G</span>
             </button>
+          </div>
+          <div class="strzelca-auth-login-actions">
+            <a href="https://konto.strzelca.pl/rejestracja.html" class="strzelca-auth-login-reset">Zarejestruj się</a>
+            <button id="strzelca-login-reset" type="button" class="strzelca-auth-login-reset">Zapomniałem hasła</button>
           </div>
           <div id="strzelca-login-status" class="strzelca-auth-login-status" hidden></div>
         </form>
@@ -948,7 +970,6 @@ async function bindLoginModal(root) {
   const form = document.getElementById("strzelca-login-form");
   const submitButton = document.getElementById("strzelca-login-submit");
   const googleSplitButton = submitButton?.querySelector(".strzelca-auth-login-google");
-  const googleCtaButton = document.getElementById("strzelca-login-google-cta");
   const resetButton = document.getElementById("strzelca-login-reset");
   const emailInput = document.getElementById("strzelca-login-email");
   const passwordInput = document.getElementById("strzelca-login-password");
@@ -994,12 +1015,6 @@ async function bindLoginModal(root) {
     googleSplitButton.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      signInGoogle();
-    });
-  }
-  if (googleCtaButton) {
-    googleCtaButton.addEventListener("click", (event) => {
-      event.preventDefault();
       signInGoogle();
     });
   }
