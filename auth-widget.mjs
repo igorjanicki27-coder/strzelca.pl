@@ -6,6 +6,7 @@ import {
 const API_URL = "https://strzelca.pl/api/me";
 const PROFILE_URL = "https://konto.strzelca.pl/profil.html";
 const LOGOUT_URL = "https://strzelca.pl/api/sso-session-logout";
+const SSO_CLIENT_MOD = "https://strzelca.pl/sso-client.mjs?v=2026-03-29-4";
 const FIREBASE_CONFIG_BASE = {
   authDomain: "strzelca-pl.firebaseapp.com",
   projectId: "strzelca-pl",
@@ -83,7 +84,7 @@ function ensureStyles() {
     }
     .strzelca-auth-login-split {
       position: relative;
-      width: 260px;
+      width: 300px;
       height: 44px;
       border-radius: 999px;
       display: block;
@@ -131,8 +132,6 @@ function ensureStyles() {
     }
     .strzelca-auth-login-main {
       z-index: 1;
-      gap: 6px;
-      /* clip-path tnie też treść — układ tylko w lewej części (bez centrowania w całej szerokości) */
       clip-path: polygon(0 0, 70% 0, 59% 100%, 0 100%);
       background: rgba(193, 154, 107, 0.98);
       color: #0b0b0b;
@@ -141,8 +140,9 @@ function ensureStyles() {
       letter-spacing: 0.05em;
       text-transform: uppercase;
       transform-origin: center;
-      justify-content: flex-start;
-      padding-left: 14px;
+      justify-content: center;
+      align-items: center;
+      padding-left: 6%;
       padding-right: 34%;
     }
     .strzelca-auth-login-google {
@@ -150,14 +150,15 @@ function ensureStyles() {
       clip-path: polygon(70% 0, 100% 0, 100% 100%, 59% 100%);
       background: #dc2626;
       color: #fff;
-      font-size: 17px;
-      font-weight: 900;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: none;
       transform-origin: center;
-      /* „G” musi być w prawym klinie — nie na środku całego przycisku */
-      justify-content: flex-end;
+      justify-content: center;
       align-items: center;
-      padding-right: 16px;
-      padding-left: 52%;
+      padding-left: 40%;
+      padding-right: 7%;
     }
     .strzelca-auth-login-main:hover,
     .strzelca-auth-login-google:hover {
@@ -401,6 +402,7 @@ function ensureStyles() {
       padding: 10px 12px;
       font-size: 13px;
       line-height: 1.45;
+      text-align: center;
     }
     .strzelca-auth-login-status.is-error {
       border-color: rgba(239,68,68,0.55);
@@ -774,18 +776,28 @@ async function tryGetFirebaseSession() {
       if (typeof getRedirectResult === "function") {
         const redirectResult = await getRedirectResult(auth);
         if (redirectResult?.user) {
-          const { syncSessionCookieFromFirebaseUser } = await import(
-            "https://strzelca.pl/sso-client.mjs?v=2026-03-21-1",
-          );
-          await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 });
+          const { syncSessionCookieFromFirebaseUser } = await import(SSO_CLIENT_MOD);
+          let sync = await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 });
+          if (sync?.status !== "ok") {
+            await new Promise((r) => setTimeout(r, 200));
+            sync = await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 });
+          }
         }
       }
-    } catch {
-      /* np. anulowany redirect — kontynuuj normalny bootstrap */
+    } catch (e) {
+      const code = String(e?.code || "");
+      if (code === "auth/account-exists-with-different-credential") {
+        try {
+          sessionStorage.setItem(
+            "strzelca_oauth_redirect_error",
+            JSON.stringify({ code, t: Date.now() }),
+          );
+        } catch {}
+      }
     }
 
     try {
-      const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-03-21-1");
+      const { ensureFirebaseSSO } = await import(SSO_CLIENT_MOD);
       await ensureFirebaseSSO(auth);
     } catch {}
 
@@ -908,8 +920,8 @@ function ensureLoginModal() {
           </div>
           <div class="strzelca-auth-login-submit-wrap">
             <button id="strzelca-login-submit" type="submit" class="strzelca-auth-login-split" aria-label="Zaloguj się">
-              <span class="strzelca-auth-login-main"><span aria-hidden="true">➜</span><span>Zaloguj się</span></span>
-              <span class="strzelca-auth-login-google" aria-hidden="true">G</span>
+              <span class="strzelca-auth-login-main">Zaloguj się</span>
+              <span class="strzelca-auth-login-google">Google</span>
             </button>
           </div>
           <div class="strzelca-auth-login-actions">
@@ -925,6 +937,20 @@ function ensureLoginModal() {
 }
 
 function openLoginModal() {
+  try {
+    document.getElementById("order-login-modal")?.remove();
+  } catch {}
+  try {
+    const rcAuth = document.getElementById("return-claim-auth-choice-modal");
+    if (rcAuth && !rcAuth.classList.contains("hidden")) {
+      rcAuth.classList.add("hidden");
+      rcAuth.setAttribute("aria-hidden", "true");
+      const rcForm = document.getElementById("return-claim-form-modal");
+      if (rcForm && rcForm.classList.contains("hidden")) {
+        document.body.classList.remove("overflow-hidden");
+      }
+    }
+  } catch {}
   ensureLoginModal();
   const modal = document.getElementById("strzelca-login-modal");
   if (!modal) return;
@@ -938,6 +964,11 @@ function closeLoginModal() {
   if (modal) modal.hidden = true;
 }
 
+if (typeof window !== "undefined") {
+  window.strzelcaOpenLoginModal = openLoginModal;
+  window.strzelcaCloseLoginModal = closeLoginModal;
+}
+
 function setLoginStatus(message, isError = false) {
   const status = document.getElementById("strzelca-login-status");
   if (!status) return;
@@ -946,30 +977,77 @@ function setLoginStatus(message, isError = false) {
   status.classList.toggle("is-error", !!isError);
 }
 
-function isLegacyLoginHref(value) {
-  const href = String(value || "").toLowerCase();
-  return href.includes("konto.strzelca.pl/login.html") || href.includes("konto.strzelca.pl/logowanie.html");
+/** Po nieudanym redirect OAuth (np. konto już z hasłem) — pokaż komunikat w modalu. */
+function flushOAuthRedirectErrorToModal() {
+  try {
+    const raw = sessionStorage.getItem("strzelca_oauth_redirect_error");
+    if (!raw) return;
+    sessionStorage.removeItem("strzelca_oauth_redirect_error");
+    const o = JSON.parse(raw);
+    if (o?.code !== "auth/account-exists-with-different-credential") return;
+    ensureLoginModal();
+    setLoginStatus(
+      "To konto jest już powiązane z inną metodą logowania (np. hasłem). Zaloguj się hasłem — Google możesz dodać w profilu na konto.strzelca.pl.",
+      true,
+    );
+  } catch {}
+}
+
+/** Rozpoznaje href do stron logowania na konto.strzelca.pl (z parametrami query). */
+function isKontoLoginPageHref(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return false;
+  try {
+    const base = typeof window !== "undefined" && window.location?.origin ? window.location.origin : "https://strzelca.pl";
+    const u = raw.startsWith("//") ? new URL(`https:${raw}`) : new URL(raw, base);
+    const host = u.hostname.replace(/^www\./, "");
+    if (host !== "konto.strzelca.pl") return false;
+    const path = (u.pathname || "").replace(/\/+$/, "") || "/";
+    return ["/login.html", "/login", "/logowanie.html", "/logowanie"].includes(path);
+  } catch {
+    return false;
+  }
 }
 
 function bindGlobalLoginTriggers() {
   if (loginModalBound) return;
   loginModalBound = true;
-  document.addEventListener("click", (event) => {
-    const trigger = event.target?.closest?.(
-      '#strzelca-open-login-modal, [data-open-login-modal], a[href*="konto.strzelca.pl/login.html"], a[href*="konto.strzelca.pl/logowanie.html"]',
-    );
-    if (!trigger) return;
-    if (trigger.tagName === "A" && !isLegacyLoginHref(trigger.getAttribute("href"))) return;
-    event.preventDefault();
-    openLoginModal();
-  });
+  const LOGIN_TRIGGER_SELECTOR = [
+    "#strzelca-open-login-modal",
+    "[data-open-login-modal]",
+    'a[href*="konto.strzelca.pl/login"]',
+    'a[href*="konto.strzelca.pl/logowanie"]',
+  ].join(", ");
+
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (event.defaultPrevented) return;
+      const trigger = event.target?.closest?.(LOGIN_TRIGGER_SELECTOR);
+      if (!trigger) return;
+      if (trigger.hasAttribute?.("data-strzelca-skip-login-modal")) return;
+      if (trigger.tagName === "A") {
+        const hrefAttr = trigger.getAttribute("href");
+        const explicitModal = trigger.hasAttribute("data-open-login-modal");
+        if (!explicitModal && !isKontoLoginPageHref(hrefAttr)) return;
+      }
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+      event.preventDefault();
+      openLoginModal();
+    },
+    false,
+  );
 }
 
+/** Zapis cookie SSO po zalogowaniu — wynik `ok` musi być przed `ensureFirebaseSSO`, inaczej nastąpi wylogowanie. */
 async function syncSsoCookie(auth) {
-  try {
-    const { syncSessionCookieFromFirebaseUser } = await import("https://strzelca.pl/sso-client.mjs?v=2026-03-21-1");
-    await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 });
-  } catch {}
+  const { syncSessionCookieFromFirebaseUser } = await import(SSO_CLIENT_MOD);
+  let sync = await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 });
+  if (sync?.status !== "ok") {
+    await new Promise((r) => setTimeout(r, 200));
+    sync = await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 });
+  }
+  return sync;
 }
 
 async function refreshWidgetAfterLogin(root) {
@@ -1098,16 +1176,31 @@ async function bindLoginModal(root) {
         window.location.href = "https://konto.strzelca.pl/weryfikacja.html";
         return;
       }
-      await syncSsoCookie(auth);
+      const syncResult = await syncSsoCookie(auth);
+      if (syncResult?.status !== "ok") {
+        setLoginStatus(
+          "Zalogowano lokalnie, ale nie udało się zapisać sesji na strzelca.pl. Odśwież stronę i spróbuj ponownie.",
+          true,
+        );
+        return;
+      }
       await refreshWidgetAfterLogin(root);
       closeLoginModal();
     } catch (error) {
       const code = String(error?.code || "");
+      const errMsg = String(error?.message || "");
       let message = "Wystąpił błąd podczas logowania.";
-      if (code === "auth/user-not-found") message = "Nie znaleziono konta z tym adresem e-mail.";
-      else if (code === "auth/wrong-password") message = "Nieprawidłowe hasło.";
-      else if (code === "auth/invalid-email") message = "Nieprawidłowy adres e-mail.";
+      if (errMsg.includes("Brak inicjalizacji Firebase")) {
+        message = "Nie udało się uruchomić logowania. Odśwież stronę lub sprawdź połączenie.";
+      } else if (code === "auth/user-not-found") message = "Nie znaleziono konta z tym adresem e-mail.";
+      else if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+        message = "Nieprawidłowy e-mail lub hasło.";
+      } else if (code === "auth/invalid-email") message = "Nieprawidłowy adres e-mail.";
       else if (code === "auth/too-many-requests") message = "Za dużo prób logowania. Spróbuj później.";
+      else if (code === "auth/user-disabled") message = "To konto zostało wyłączone.";
+      else if (code === "auth/network-request-failed") {
+        message = "Brak połączenia z siecią. Spróbuj ponownie.";
+      } else if (code) message = `Logowanie nie powiodło się (${code}).`;
       setLoginStatus(message, true);
     } finally {
       inFlight = false;
@@ -1683,6 +1776,7 @@ async function main() {
 
   try {
     const firebase = await tryGetFirebaseSession();
+    flushOAuthRedirectErrorToModal();
     if (firebase && firebase.authenticated === true) {
       const displayName =
         firebase?.profile?.displayName ||

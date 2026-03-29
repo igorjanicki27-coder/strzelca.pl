@@ -1079,12 +1079,12 @@ function showLoginModal(cfg, rawTitle, flowDeps) {
       <h2 class="text-2xl font-bold text-[#C19A6B] font-[Orbitron] mb-4">Wymagane konto</h2>
       <p class="text-zinc-300 mb-6">
         Do złożenia zamówienia wymagane jest konto.
-        <a href="${loginHref}" class="text-[#C19A6B] hover:underline font-semibold">Zaloguj się</a>
+        <a href="${loginHref}" data-open-login-modal class="text-[#C19A6B] hover:underline font-semibold">Zaloguj się</a>
         lub
         <a href="${registerHref}" class="text-[#C19A6B] hover:underline font-semibold">załóż konto</a>.
       </p>
       <div class="space-y-3">
-        <a href="${loginHref}"
+        <a href="${loginHref}" data-open-login-modal
            class="block w-full bg-[#C19A6B] text-black px-6 py-3 rounded-lg font-bold text-center hover:bg-[#b18a5f] transition">
           <i class="fa-solid fa-sign-in-alt mr-2" aria-hidden="true"></i>
           Zaloguj się

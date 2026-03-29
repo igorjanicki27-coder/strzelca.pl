@@ -93,7 +93,11 @@ async function onNewsletterOptinSave() {
     alert(
       "Aby zapisać newsletter przy koncie, zaloguj się. Możesz też zarządzać subskrypcją na stronie konto.strzelca.pl/newsletter.html.",
     );
-    window.location.href = "https://konto.strzelca.pl/logowanie.html";
+    if (typeof window.strzelcaOpenLoginModal === "function") {
+      window.strzelcaOpenLoginModal();
+    } else {
+      window.location.href = "https://konto.strzelca.pl/logowanie.html";
+    }
     return;
   }
 

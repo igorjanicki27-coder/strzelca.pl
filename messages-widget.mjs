@@ -1221,7 +1221,7 @@ async function main() {
   let user = auth.currentUser;
   if (!user) {
     try {
-      const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-03-21-1");
+      const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-03-29-4");
       await ensureFirebaseSSO(auth);
     } catch {}
     try {

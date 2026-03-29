@@ -70,9 +70,10 @@ export function clearSSOCache() {
   clearCachedSSO();
 }
 
-export async function ensureFirebaseSSO(auth) {
+export async function ensureFirebaseSSO(auth, options = {}) {
   if (!auth) throw new Error("ensureFirebaseSSO: missing auth");
 
+  const didPresyncRetry = options.didPresyncRetry === true;
   const currentUser = auth.currentUser;
   const cached = getCachedSSO();
 
@@ -139,6 +140,18 @@ export async function ensureFirebaseSSO(auth) {
         }
       } catch {
         // ignore
+      }
+
+      /*
+       * Tuż po OAuth (redirect) pierwszy POST /sso-session-login mógł ustawić cookie dopiero
+       * po kolejnym ticku — wtedy exchange widział pusty cookie i bez tego bloku wylogowywaliśmy
+       * świeżo zalogowanego użytkownika Firebase.
+       */
+      if (!didPresyncRetry) {
+        try {
+          await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 });
+        } catch {}
+        return ensureFirebaseSSO(auth, { didPresyncRetry: true });
       }
 
       // Wyloguj lokalnego użytkownika, bo cookie nie istnieje
