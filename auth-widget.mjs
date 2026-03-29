@@ -83,7 +83,7 @@ function ensureStyles() {
     }
     .strzelca-auth-login-split {
       position: relative;
-      width: 220px;
+      width: 260px;
       height: 44px;
       border-radius: 999px;
       display: block;
@@ -131,32 +131,38 @@ function ensureStyles() {
     }
     .strzelca-auth-login-main {
       z-index: 1;
-      gap: 8px;
-      /* Ukośny podział ~65/35: linia od (~69%,0) do (~58%,100%) */
-      clip-path: polygon(0 0, 69% 0, 58% 100%, 0 100%);
+      gap: 6px;
+      /* clip-path tnie też treść — układ tylko w lewej części (bez centrowania w całej szerokości) */
+      clip-path: polygon(0 0, 70% 0, 59% 100%, 0 100%);
       background: rgba(193, 154, 107, 0.98);
       color: #0b0b0b;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 900;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.05em;
       text-transform: uppercase;
       transform-origin: center;
-      padding-right: 14%;
+      justify-content: flex-start;
+      padding-left: 14px;
+      padding-right: 34%;
     }
     .strzelca-auth-login-google {
       z-index: 2;
-      clip-path: polygon(69% 0, 100% 0, 100% 100%, 58% 100%);
+      clip-path: polygon(70% 0, 100% 0, 100% 100%, 59% 100%);
       background: #dc2626;
       color: #fff;
-      font-size: 16px;
+      font-size: 17px;
+      font-weight: 900;
       transform-origin: center;
-      padding-left: 20%;
+      /* „G” musi być w prawym klinie — nie na środku całego przycisku */
+      justify-content: flex-end;
+      align-items: center;
+      padding-right: 16px;
+      padding-left: 52%;
     }
     .strzelca-auth-login-main:hover,
     .strzelca-auth-login-google:hover {
       transform: scale(1.06);
       filter: brightness(1.04);
-      z-index: 1;
     }
     .strzelca-auth-login-main:focus-visible,
     .strzelca-auth-login-google:focus-visible {
@@ -748,7 +754,7 @@ async function tryGetFirebaseSession() {
       import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"),
       import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"),
     ]);
-    const { getAuth, browserLocalPersistence, setPersistence } = authMod;
+    const { getAuth, browserLocalPersistence, setPersistence, getRedirectResult } = authMod;
     const { initializeFirestore, getFirestore, doc, getDoc } = fsMod;
 
     let app = getApps()[0] || null;
@@ -762,6 +768,21 @@ async function tryGetFirebaseSession() {
     try {
       await setPersistence(auth, browserLocalPersistence);
     } catch {}
+
+    /* Powrót z OAuth (Google) — musi być przed ensureFirebaseSSO, żeby zdążyć ustawić cookie SSO */
+    try {
+      if (typeof getRedirectResult === "function") {
+        const redirectResult = await getRedirectResult(auth);
+        if (redirectResult?.user) {
+          const { syncSessionCookieFromFirebaseUser } = await import(
+            "https://strzelca.pl/sso-client.mjs?v=2026-03-21-1",
+          );
+          await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 });
+        }
+      }
+    } catch {
+      /* np. anulowany redirect — kontynuuj normalny bootstrap */
+    }
 
     try {
       const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-03-21-1");
@@ -989,20 +1010,30 @@ async function bindLoginModal(root) {
       const runtime = await tryGetFirebaseSession();
       const auth = runtime?.runtime?.auth;
       const authMod = runtime?.runtime?.authMod;
-      if (!auth || !authMod?.GoogleAuthProvider || !authMod?.signInWithPopup) {
+      if (!auth || !authMod?.GoogleAuthProvider || typeof authMod.signInWithRedirect !== "function") {
         throw new Error("Brak inicjalizacji Firebase Auth");
       }
       const provider = new authMod.GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-      const result = await authMod.signInWithPopup(auth, provider);
-      if (!result?.user) throw new Error("Brak danych użytkownika Google");
-      await syncSsoCookie(auth);
-      await refreshWidgetAfterLogin(root);
-      closeLoginModal();
+      /* Redirect jak na konto.strzelca.pl — popup bywa blokowany (Safari, COOP, blokady okien). */
+      setLoginStatus("Przekierowanie do Google…");
+      await authMod.signInWithRedirect(auth, provider);
+      return;
     } catch (error) {
       const code = String(error?.code || "");
       if (code === "auth/popup-closed-by-user") {
         setLoginStatus("Logowanie Google zostało przerwane.", true);
+      } else if (code === "auth/unauthorized-domain") {
+        setLoginStatus(
+          "Ta domena nie jest dozwolona w konfiguracji logowania. Skontaktuj się z administratorem.",
+          true,
+        );
+      } else if (code === "auth/operation-not-allowed") {
+        setLoginStatus("Logowanie Google jest wyłączone w konfiguracji projektu.", true);
+      } else if (code === "auth/network-request-failed") {
+        setLoginStatus("Brak połączenia z siecią. Sprawdź internet i spróbuj ponownie.", true);
+      } else if (code) {
+        setLoginStatus(`Nie udało się zalogować przez Google (${code}). Spróbuj ponownie.`, true);
       } else {
         setLoginStatus("Nie udało się zalogować przez Google. Spróbuj ponownie.", true);
       }
