@@ -670,6 +670,9 @@ module.exports = async (req, res) => {
       const userId = readOrdersQueryParam(req, 'userId');
       const scope = String(readOrdersQueryParam(req, 'scope') || '').toLowerCase();
       const forceMineScope = scope === 'mine';
+      /** Pełna lista zamówień tylko z panelu admina; profil (np. konto.strzelca.pl) bez tego nagłówka widzi wyłącznie swoje. */
+      const adminPanelRequest =
+        String(req.headers['x-admin-panel'] || '').toLowerCase() === 'true';
 
       // Lekkie statystyki na dashboard (bez pobierania całej listy zamówień)
       if (isUserAdmin && isOrdersSummaryRequest(req)) {
@@ -714,19 +717,20 @@ module.exports = async (req, res) => {
           2500
         );
         
-        // Użytkownik nie-admin (lub żądanie scope=mine) widzi tylko swoje zamówienia.
-        if (!isUserAdmin || forceMineScope) {
+        // Nie-admin, scope=mine, albo admin poza panelem (brak X-Admin-Panel) — tylko własne zamówienia.
+        // Admin z panelem: pełna lista lub opcjonalnie filtr ?userId=…
+        const restrictToSessionUser =
+          !isUserAdmin || forceMineScope || !adminPanelRequest;
+        if (restrictToSessionUser) {
           query = query.where('userId', '==', sessionUser.uid);
           hasWhereClause = true;
-        }
-        
-        if (status && status !== 'all') {
-          query = query.where('status', '==', status);
+        } else if (userId) {
+          query = query.where('userId', '==', userId);
           hasWhereClause = true;
         }
-        
-        if (isUserAdmin && userId && !forceMineScope) {
-          query = query.where('userId', '==', userId);
+
+        if (status && status !== 'all') {
+          query = query.where('status', '==', status);
           hasWhereClause = true;
         }
         

@@ -7,6 +7,8 @@ const API_URL = "https://strzelca.pl/api/me";
 const PROFILE_URL = "https://konto.strzelca.pl/profil.html";
 const LOGOUT_URL = "https://strzelca.pl/api/sso-session-logout";
 const SSO_CLIENT_MOD = "https://strzelca.pl/sso-client.mjs?v=2026-03-29-4";
+/** Po pierwszym nieudanym logowaniu hasłem pokaż „Zapomniałem hasła” (sesja karty). */
+const SESSION_SHOW_FORGOT_PASSWORD = "strzelca_login_modal_show_forgot";
 const FIREBASE_CONFIG_BASE = {
   authDomain: "strzelca-pl.firebaseapp.com",
   projectId: "strzelca-pl",
@@ -34,6 +36,17 @@ function ensureStyles() {
   const style = document.createElement("style");
   style.id = "strzelca-auth-widget-style";
   style.textContent = `
+    /*
+     * Starsze szablony mają własny #login-button / #user-panel obok widgetu.
+     * Gdy użytkownik jest w sesji SSO/API, inline onAuth często ma user=null — skrypt
+     * odkrywał z powrotem strzałkę. Ukrywamy duplikat zawsze, gdy widget jest w DOM.
+     */
+    body:has(#strzelca-auth-widget) #login-button,
+    body:has(#strzelca-auth-widget) #user-panel {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
     #strzelca-auth-widget {
       position: fixed;
       top: 14px;
@@ -84,8 +97,8 @@ function ensureStyles() {
     }
     .strzelca-auth-login-split {
       position: relative;
-      width: 300px;
-      height: 44px;
+      width: 320px;
+      height: 46px;
       border-radius: 999px;
       display: block;
       overflow: hidden;
@@ -132,33 +145,35 @@ function ensureStyles() {
     }
     .strzelca-auth-login-main {
       z-index: 1;
-      clip-path: polygon(0 0, 70% 0, 59% 100%, 0 100%);
+      /* Szerszy lewy klin — więcej miejsca na ZALOGUJ SIĘ */
+      clip-path: polygon(0 0, 63% 0, 54% 100%, 0 100%);
       background: rgba(193, 154, 107, 0.98);
       color: #0b0b0b;
-      font-size: 12px;
-      font-weight: 900;
-      letter-spacing: 0.05em;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
       transform-origin: center;
       justify-content: center;
       align-items: center;
-      padding-left: 6%;
-      padding-right: 34%;
+      padding-left: 10px;
+      padding-right: 38%;
     }
     .strzelca-auth-login-google {
       z-index: 2;
-      clip-path: polygon(70% 0, 100% 0, 100% 100%, 59% 100%);
+      clip-path: polygon(63% 0, 100% 0, 100% 100%, 54% 100%);
       background: #dc2626;
       color: #fff;
       font-size: 11px;
       font-weight: 800;
-      letter-spacing: 0.04em;
-      text-transform: none;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
       transform-origin: center;
+      /* Treść tylko w prawym klinie — inaczej „Go” ląduje pod złotem */
       justify-content: center;
       align-items: center;
-      padding-left: 40%;
-      padding-right: 7%;
+      padding-left: 64%;
+      padding-right: 12px;
     }
     .strzelca-auth-login-main:hover,
     .strzelca-auth-login-google:hover {
@@ -411,11 +426,17 @@ function ensureStyles() {
     }
     .strzelca-auth-login-actions {
       display: flex;
-      justify-content: center;
       align-items: center;
       flex-wrap: wrap;
       gap: 10px 28px;
       margin-top: 10px;
+      width: 100%;
+    }
+    .strzelca-auth-login-actions--solo {
+      justify-content: center;
+    }
+    .strzelca-auth-login-actions:not(.strzelca-auth-login-actions--solo) {
+      justify-content: space-between;
     }
     .strzelca-auth-login-reset {
       border: none;
@@ -924,9 +945,9 @@ function ensureLoginModal() {
               <span class="strzelca-auth-login-google">Google</span>
             </button>
           </div>
-          <div class="strzelca-auth-login-actions">
+          <div class="strzelca-auth-login-actions strzelca-auth-login-actions--solo">
             <a href="https://konto.strzelca.pl/rejestracja.html" class="strzelca-auth-login-reset">Zarejestruj się</a>
-            <button id="strzelca-login-reset" type="button" class="strzelca-auth-login-reset">Zapomniałem hasła</button>
+            <button id="strzelca-login-reset" type="button" class="strzelca-auth-login-reset" hidden aria-hidden="true">Zapomniałem hasła</button>
           </div>
           <div id="strzelca-login-status" class="strzelca-auth-login-status" hidden></div>
         </form>
@@ -934,6 +955,7 @@ function ensureLoginModal() {
     </div>
   `;
   document.body.appendChild(modal);
+  applyLoginFooterVisibility();
 }
 
 function openLoginModal() {
@@ -952,6 +974,7 @@ function openLoginModal() {
     }
   } catch {}
   ensureLoginModal();
+  applyLoginFooterVisibility();
   const modal = document.getElementById("strzelca-login-modal");
   if (!modal) return;
   modal.hidden = false;
@@ -975,6 +998,24 @@ function setLoginStatus(message, isError = false) {
   status.hidden = !message;
   status.textContent = message || "";
   status.classList.toggle("is-error", !!isError);
+}
+
+function shouldShowForgotPasswordLink() {
+  try {
+    return sessionStorage.getItem(SESSION_SHOW_FORGOT_PASSWORD) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function applyLoginFooterVisibility() {
+  const actions = document.querySelector("#strzelca-login-form .strzelca-auth-login-actions");
+  const resetBtn = document.getElementById("strzelca-login-reset");
+  if (!actions || !resetBtn) return;
+  const show = shouldShowForgotPasswordLink();
+  resetBtn.hidden = !show;
+  resetBtn.setAttribute("aria-hidden", show ? "false" : "true");
+  actions.classList.toggle("strzelca-auth-login-actions--solo", !show);
 }
 
 /** Po nieudanym redirect OAuth (np. konto już z hasłem) — pokaż komunikat w modalu. */
@@ -1202,11 +1243,23 @@ async function bindLoginModal(root) {
         message = "Brak połączenia z siecią. Spróbuj ponownie.";
       } else if (code) message = `Logowanie nie powiodło się (${code}).`;
       setLoginStatus(message, true);
+      if (
+        code === "auth/user-not-found" ||
+        code === "auth/wrong-password" ||
+        code === "auth/invalid-credential"
+      ) {
+        try {
+          sessionStorage.setItem(SESSION_SHOW_FORGOT_PASSWORD, "1");
+        } catch {}
+        applyLoginFooterVisibility();
+      }
     } finally {
       inFlight = false;
       submitButton.removeAttribute("disabled");
     }
   });
+
+  applyLoginFooterVisibility();
 }
 
 function renderLoggedIn(root, { avatarUrl, displayName, notificationsEnabled }) {

@@ -3638,7 +3638,7 @@
                       ${
                         canEdit
                           ? `<div class="flex flex-wrap gap-2">
-                              <button type="button" onclick="openOrderEditModal('${order.id}')" class="bg-coyote text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition">
+                              <button type="button" onclick="openOrderEditModal('${order.id}')" class="bg-coyote text-white px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition">
                                 <i class="fa-solid fa-pen mr-2"></i>Edycja
                               </button>
                               <button type="button" onclick="cancelOrderByUser('${order.id}')" class="bg-red-500/15 border border-red-500/40 text-red-300 px-4 py-2 rounded-lg font-semibold hover:bg-red-500/25 transition">
@@ -3761,7 +3761,10 @@
                 throw new Error(data?.error || "Nie udało się pobrać zamówień.");
               }
 
-              profileOrdersCache = Array.isArray(data.data) ? data.data : [];
+              const rawOrders = Array.isArray(data.data) ? data.data : [];
+              profileOrdersCache = rawOrders.filter(
+                (o) => o && o.userId === currentUser.uid,
+              );
               setProfileSectionVisible("orders-section", profileOrdersCache.length > 0 && isViewingOwnProfile);
               if (!profileOrdersCache.length) return;
               renderOrderCards(profileOrdersCache);
@@ -4735,7 +4738,7 @@
     </script>
     <script
       type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-03-29-5"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-03-29-8"
     ></script>
     <script
       type="module"

@@ -367,6 +367,60 @@
                 height: 38px;
             }
         }
+
+        /* Filtry akcji — wzorzec jak wydarzenia.strzelca.pl */
+        .filters-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 60;
+        }
+        .filters-modal {
+            width: 100%;
+            max-width: 420px;
+            max-height: 80vh;
+            background: rgba(17, 17, 17, 0.82);
+            border-radius: 18px;
+            border: 1px solid rgba(193, 154, 107, 0.4);
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.8);
+            overflow-y: auto;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+        .filter-trigger-btn {
+            position: fixed;
+            right: 16px;
+            bottom: calc(86px + 56px + 14px);
+            z-index: 2147483646;
+            width: 56px;
+            height: 56px;
+            padding: 0;
+            margin: 0;
+            border-radius: 999px;
+            border: 1px solid rgba(193, 154, 107, 0.45);
+            background: rgba(10, 10, 10, 0.78);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: rgba(193, 154, 107, 0.95);
+            font-size: 1.12rem;
+            transition: border-color 0.2s ease, color 0.2s ease;
+        }
+        .filter-trigger-btn:hover {
+            border-color: rgba(193, 154, 107, 0.8);
+            color: #fff;
+        }
+        .filter-trigger-btn:focus-visible {
+            outline: 2px solid rgba(193, 154, 107, 0.65);
+            outline-offset: 3px;
+        }
     </style>
     <!-- Wspólne poprawki responsywności -->
     <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-24-2" />
@@ -458,6 +512,50 @@
                 </button>
             </div>
         </section>
+
+        <!-- Filtry (jak w wydarzeniach): domyślnie bez zakończonych akcji -->
+        <div id="charity-desktop-filters" class="filters-modal-overlay hidden" onclick="if(event.target === this) window.toggleCharityFilters()">
+            <div class="filters-modal p-5 md:p-6" onclick="event.stopPropagation()">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg md:text-xl font-bold coyote-text flex items-center gap-2">
+                        <i class="fa-solid fa-filter"></i>
+                        <span>Filtry</span>
+                    </h3>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="window.resetCharityFilters(); event.stopPropagation();" class="text-xs text-zinc-400 hover:text-coyote transition" title="Wyczyść filtry">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </button>
+                        <button type="button" onclick="window.toggleCharityFilters(); event.stopPropagation();" class="text-zinc-400 hover:text-white text-lg">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="flex items-center gap-3 text-sm font-semibold text-zinc-300 cursor-pointer select-none">
+                        <input
+                            id="show-completed-charity-filter"
+                            type="checkbox"
+                            class="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-coyote focus:ring-0 accent-coyote"
+                            onchange="window.applyCharityFilters()"
+                        >
+                        <span class="text-zinc-200">Pokaż zakończone</span>
+                    </label>
+                </div>
+                <div id="charity-active-filters-info" class="mt-4 pt-4 border-t border-zinc-700/50 text-xs text-zinc-400">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fa-solid fa-info-circle text-coyote"></i>
+                        <span class="font-semibold">Aktywne filtry:</span>
+                    </div>
+                    <div id="charity-filters-display" class="space-y-1 text-zinc-500">
+                        Brak aktywnych filtrów
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button type="button" id="charity-filters-toggle-btn" onclick="window.toggleCharityFilters()" class="filter-trigger-btn" aria-label="Filtry" title="Filtry">
+            <i class="fa-solid fa-filter"></i>
+        </button>
 
     </div>
 
@@ -721,6 +819,8 @@ const firebaseConfig = {
         let charityCarouselSegments = [];
         let charityCarouselLeftIndex = 0;
         let activeCharityDetailsId = null;
+        /** Domyślnie ukryte; checkbox „Pokaż zakończone” jak na wydarzeniach. */
+        let charityShowCompleted = false;
 
         function syncCharityCarouselDots() {
             const dots = document.getElementById('charity-carousel-dots');
@@ -1043,6 +1143,16 @@ const firebaseConfig = {
             if (!item || item.hideDate === true || !item.date) return null;
             const dt = typeof item.date?.toDate === 'function' ? item.date.toDate() : new Date(item.date);
             return Number.isNaN(dt.getTime()) ? null : dt;
+        }
+
+        function isCharityCompleted(item, now = new Date()) {
+            const endDate = resolveCharityEndDate(item);
+            return !!(endDate && now >= endDate);
+        }
+
+        function getVisibleCharityItems(now = new Date()) {
+            if (charityShowCompleted) return publicCharityItems.slice();
+            return publicCharityItems.filter((item) => !isCharityCompleted(item, now));
         }
 
         function getCharityStatusLines(item, now = new Date()) {
@@ -1390,11 +1500,14 @@ const firebaseConfig = {
 
         function refreshCharityCardStates() {
             const now = new Date();
-            if (publicCharityItems.some((item) => {
-                const endDate = resolveCharityEndDate(item);
-                return endDate && now >= endDate;
-            })) {
-                fetchCharityActions();
+            const visible = getVisibleCharityItems(now);
+            const sig = visible
+                .map((v) => v.id)
+                .sort()
+                .join('|');
+            if (window.__charityVisibleSig != null && sig !== window.__charityVisibleSig) {
+                window.__charityVisibleSig = sig;
+                renderCharityCarousel();
                 return;
             }
             document.querySelectorAll('[data-charity-card-action-btn]').forEach((btn) => {
@@ -1443,6 +1556,36 @@ const firebaseConfig = {
             }, 1000);
         }
 
+        function updateCharityFiltersDisplay() {
+            const displayEl = document.getElementById('charity-filters-display');
+            if (!displayEl) return;
+            if (charityShowCompleted) {
+                displayEl.innerHTML = '<div class="text-zinc-400">• Pokaż zakończone</div>';
+            } else {
+                displayEl.innerHTML = '<span class="text-zinc-500">Brak aktywnych filtrów</span>';
+            }
+        }
+
+        window.toggleCharityFilters = () => {
+            document.getElementById('charity-desktop-filters')?.classList.toggle('hidden');
+        };
+
+        window.applyCharityFilters = () => {
+            const cb = document.getElementById('show-completed-charity-filter');
+            charityShowCompleted = cb?.checked === true;
+            updateCharityFiltersDisplay();
+            renderCharityCarousel();
+        };
+
+        window.resetCharityFilters = () => {
+            const cb = document.getElementById('show-completed-charity-filter');
+            if (cb) cb.checked = false;
+            charityShowCompleted = false;
+            updateCharityFiltersDisplay();
+            renderCharityCarousel();
+            document.getElementById('charity-desktop-filters')?.classList.add('hidden');
+        };
+
         function renderCharityCarousel() {
             const track = document.getElementById('charity-track');
             if (!track) return;
@@ -1450,8 +1593,15 @@ const firebaseConfig = {
             charityCarouselAnimating = false;
             charityPendingMoves = 0;
 
-            const cardsHtml = [buildPinnedDonateCard(), ...publicCharityItems.map((item) => buildCharityCard(item))];
-            if (publicCharityItems.length === 0) {
+            const now = new Date();
+            const visibleCharity = getVisibleCharityItems(now);
+            window.__charityVisibleSig = visibleCharity
+                .map((v) => v.id)
+                .sort()
+                .join('|');
+
+            const cardsHtml = [buildPinnedDonateCard(), ...visibleCharity.map((item) => buildCharityCard(item))];
+            if (visibleCharity.length === 0) {
                 cardsHtml.push(
                     buildEmptyCarouselArticleHtml(
                         'card-dark charity-card carousel-status-message p-6 md:p-8 w-full',
@@ -1970,10 +2120,7 @@ const firebaseConfig = {
                             if (d.id === PINNED_CHARITY_ID) return;
                             const data = d.data();
                             charityActionsFresh.push({ id: d.id, ...data });
-                            const eventDate = toEventDate(data);
-                            const hasValidDate = eventDate != null;
-                            const isPast = hasValidDate && eventDate < new Date() && data.hideDate !== true;
-                            if (data.active && !isPast) {
+                            if (data.active) {
                                 publicCharityItemsFresh.push({ id: d.id, ...data });
                             }
                         });
@@ -2081,7 +2228,7 @@ const firebaseConfig = {
     </script>
     <script
       type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-03-29-5"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-03-29-8"
     ></script>
     <script
       type="module"

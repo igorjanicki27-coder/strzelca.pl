@@ -1009,27 +1009,39 @@
             font-size: 0.9rem;
         }
 
+        /* Nad globalnym wyszukiwaniem (launcher bottom 86px, h 56px w global-search-widget.mjs); 14px jak odstęp między wyszukiwaniem a wiadomościami */
         .filter-trigger-btn {
+            position: fixed;
+            right: 16px;
+            bottom: calc(86px + 56px + 14px);
+            z-index: 2147483646;
+            width: 56px;
+            height: 56px;
+            padding: 0;
+            margin: 0;
+            border-radius: 999px;
+            border: 1px solid rgba(193, 154, 107, 0.45);
+            background: rgba(10, 10, 10, 0.78);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 2.45rem;
-            height: 2.45rem;
-            margin-right: 0.2rem;
-            border-radius: 12px;
-            border: 1px solid rgba(193, 154, 107, 0.44);
-            background: linear-gradient(150deg, rgba(193, 154, 107, 0.28) 0%, rgba(193, 154, 107, 0.08) 100%);
-            color: #f8e5c8;
-            font-size: 0.92rem;
-            font-weight: 700;
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 6px 14px rgba(0, 0, 0, 0.25);
-            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            cursor: pointer;
+            color: rgba(193, 154, 107, 0.95);
+            font-size: 1.12rem;
+            transition: border-color 0.2s ease, color 0.2s ease;
         }
 
         .filter-trigger-btn:hover {
-            transform: translateY(-1px);
-            border-color: rgba(193, 154, 107, 0.76);
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 18px rgba(0, 0, 0, 0.3);
+            border-color: rgba(193, 154, 107, 0.8);
+            color: #fff;
+        }
+
+        .filter-trigger-btn:focus-visible {
+            outline: 2px solid rgba(193, 154, 107, 0.65);
+            outline-offset: 3px;
         }
 
         @media (max-width: 640px) {
@@ -1044,12 +1056,6 @@
             .event-right-badges {
                 max-width: 55%;
                 gap: 0.32rem;
-            }
-
-            .filter-trigger-btn {
-                width: 2.25rem;
-                height: 2.25rem;
-                font-size: 0.84rem;
             }
         }
 
@@ -1198,13 +1204,6 @@
             flex-direction: column;
             justify-content: center;
             width: 100%;
-        }
-        .events-toolbar {
-            width: 100%;
-            max-width: 1600px;
-            margin: 0 auto 0.75rem;
-            display: flex;
-            justify-content: flex-end;
         }
         .shop-carousel {
             width: 100%;
@@ -1379,21 +1378,6 @@
             opacity: 0.35;
             cursor: not-allowed;
         }
-        .filter-trigger-btn {
-            width: 44px;
-            height: 44px;
-            border: 1px solid rgba(193, 154, 107, 0.44);
-            border-radius: 12px;
-            background: linear-gradient(150deg, rgba(193, 154, 107, 0.28) 0%, rgba(193, 154, 107, 0.08) 100%);
-            color: #f8e5c8;
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 6px 14px rgba(0, 0, 0, 0.25);
-            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-        }
-        .filter-trigger-btn:hover {
-            transform: translateY(-1px);
-            border-color: rgba(193, 154, 107, 0.76);
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 18px rgba(0, 0, 0, 0.3);
-        }
         @media (max-width: 1150px) {
             .event-carousel-card {
                 flex-basis: calc((100% - 20px) / 2);
@@ -1410,10 +1394,6 @@
                 flex-basis: 100%;
             }
             .carousel-arrow {
-                width: 38px;
-                height: 38px;
-            }
-            .filter-trigger-btn {
                 width: 38px;
                 height: 38px;
             }
@@ -1557,11 +1537,6 @@
 
         <main class="w-full px-4 md:px-8 py-6 md:py-10 flex-grow">
             <section id="arsenal">
-                <div class="events-toolbar">
-                    <button id="filters-toggle-btn" onclick="window.toggleFilters()" class="filter-trigger-btn" aria-label="Filtry" title="Filtry">
-                        <i class="fa-solid fa-filter"></i>
-                    </button>
-                </div>
                 <div class="shop-carousel">
                     <button id="events-carousel-prev" class="carousel-arrow" type="button" aria-label="Poprzednie wydarzenie" onclick="window.moveEventsCarousel(-1)">
                         <i class="fa-solid fa-chevron-left"></i>
@@ -1582,6 +1557,10 @@
                 </div>
             </section>
         </main>
+
+        <button type="button" id="filters-toggle-btn" onclick="window.toggleFilters()" class="filter-trigger-btn" aria-label="Filtry" title="Filtry">
+            <i class="fa-solid fa-filter"></i>
+        </button>
 
         <!-- Event Detail Modal -->
         <div id="event-modal" class="fixed inset-0 z-50 hidden event-detail-modal" onclick="if(!event.target.closest('#event-modal-panel')) closeEventModal()">
@@ -4000,7 +3979,7 @@ const firebaseConfig = {
     </script>
     <script
       type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-03-29-5"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-03-29-8"
     ></script>
     <script
       type="module"
