@@ -1051,7 +1051,7 @@
       role="contentinfo"
     >
       <a
-        href="https://kontakt.strzelca.pl/Igor_Janicki.html"
+        href="https://i-janicki.pl/"
         class="hover:text-white transition"
         title="Twórca strony"
         >Design &amp; Development by Igor Janicki</a
@@ -3610,129 +3610,195 @@
             link.remove();
           }
 
+          function renderOrderActionButtons(order, options = {}) {
+            const canEdit = order.status === "zlozone";
+            const canAcceptQuote = order.status === "wycena_zlozona";
+            const canPay =
+              ["oczekuje_na_platnosc", "platnosc_zakonczona_niepowodzeniem"].includes(order.status) &&
+              !!order.paymentLinkUrl;
+            const classes = options.compact
+              ? {
+                  primary: "bg-coyote text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition text-sm",
+                  danger:
+                    "bg-red-500/15 border border-red-500/40 text-red-300 px-4 py-2 rounded-lg font-semibold hover:bg-red-500/25 transition text-sm",
+                  success:
+                    "bg-emerald-500 text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition text-sm",
+                  neutral:
+                    "bg-zinc-700 text-white px-4 py-2 rounded-lg hover:bg-zinc-600 transition text-sm",
+                  pay: "bg-sky-500 text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition text-sm",
+                }
+              : {
+                  primary: "bg-coyote text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition",
+                  danger:
+                    "bg-red-500/15 border border-red-500/40 text-red-300 px-4 py-2 rounded-lg font-semibold hover:bg-red-500/25 transition",
+                  success:
+                    "bg-emerald-500 text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition",
+                  neutral:
+                    "bg-zinc-700 text-white px-4 py-2 rounded-lg hover:bg-zinc-600 transition",
+                  pay: "bg-sky-500 text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition",
+                };
+            return `
+              <div class="flex flex-wrap gap-2">
+                ${
+                  canEdit
+                    ? `<button type="button" onclick="openOrderEditModal('${order.id}')" class="${classes.primary}">
+                        <i class="fa-solid fa-pen mr-2"></i>Edytuj
+                      </button>
+                      <button type="button" onclick="cancelOrderByUser('${order.id}')" class="${classes.danger}">
+                        <i class="fa-solid fa-ban mr-2"></i>Anuluj
+                      </button>`
+                    : ""
+                }
+                ${
+                  canAcceptQuote
+                    ? `<button type="button" onclick="openOrderQuoteAcceptModal('${order.id}')" class="${classes.success}">
+                        <i class="fa-solid fa-check mr-2"></i>Akceptuj wycenę
+                      </button>
+                      <button type="button" onclick="openOrderQuoteRejectModal('${order.id}')" class="${classes.danger}">
+                        <i class="fa-solid fa-xmark mr-2"></i>Odrzuć
+                      </button>`
+                    : ""
+                }
+                ${
+                  canPay
+                    ? `<button type="button" onclick="payOrder('${order.id}')" class="${classes.pay}">
+                        <i class="fa-solid fa-credit-card mr-2"></i>Opłać
+                      </button>`
+                    : ""
+                }
+                <button type="button" onclick="openOrderReturnClaim('${order.id}')" class="${classes.neutral}">
+                  <i class="fa-solid fa-rotate-left mr-2"></i>Zwrot / reklamacja
+                </button>
+              </div>
+            `;
+          }
+
           function renderOrderCards(orders) {
             const ordersList = document.getElementById("orders-list");
             if (!ordersList) return;
             ordersList.innerHTML = orders
               .map((order) => {
                 const status = getOrderStatusMeta(order.status);
-                const canEdit = order.status === "zlozone";
-                const canAcceptQuote = order.status === "wycena_zlozona";
-                const canPay =
-                  ["oczekuje_na_platnosc", "platnosc_zakonczona_niepowodzeniem"].includes(order.status) &&
-                  !!order.paymentLinkUrl;
                 return `
-                  <div class="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700">
-                    <div class="flex flex-col gap-4 md:flex-row md:justify-between md:items-start mb-4">
+                  <button
+                    type="button"
+                    onclick="openOrderDetailsModal('${order.id}')"
+                    class="w-full text-left rounded-xl border border-zinc-700/90 bg-zinc-900/70 p-5 transition hover:border-coyote/60 hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coyote/50"
+                  >
+                    <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                       <div>
-                        <div class="flex flex-wrap items-center gap-3 mb-2">
-                          <h3 class="text-lg font-bold text-white">${escapeProfileHtml(order.orderNumber || "Brak numeru")}</h3>
+                        <div class="flex flex-wrap items-center gap-2 mb-2">
+                          <span class="text-xs uppercase tracking-widest text-zinc-500">Numer zamówienia</span>
+                          <h3 class="text-lg font-black text-white leading-tight">${escapeProfileHtml(order.orderNumber || "Brak numeru")}</h3>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
                           <span class="px-3 py-1 rounded text-xs font-medium border ${status.color}">
                             ${escapeProfileHtml(status.label)}
                           </span>
-                        </div>
-                        <div class="text-sm text-zinc-400">
-                          ${escapeProfileHtml(order.createdAtFormatted || "Brak daty")}
+                          <span class="text-sm text-zinc-400">${escapeProfileHtml(order.createdAtFormatted || "Brak daty")}</span>
                         </div>
                       </div>
-                      ${
-                        canEdit
-                          ? `<div class="flex flex-wrap gap-2">
-                              <button type="button" onclick="openOrderEditModal('${order.id}')" class="bg-coyote text-white px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition">
-                                <i class="fa-solid fa-pen mr-2"></i>Edycja
-                              </button>
-                              <button type="button" onclick="cancelOrderByUser('${order.id}')" class="bg-red-500/15 border border-red-500/40 text-red-300 px-4 py-2 rounded-lg font-semibold hover:bg-red-500/25 transition">
-                                <i class="fa-solid fa-ban mr-2"></i>Anuluj
-                              </button>
-                            </div>`
-                          : ""
-                      }
-                      ${
-                        canAcceptQuote
-                          ? `<div class="flex flex-wrap gap-2">
-                              <button type="button" onclick="openOrderQuoteAcceptModal('${order.id}')" class="bg-emerald-500 text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition">
-                                <i class="fa-solid fa-check mr-2"></i>Akceptuj wycenę
-                              </button>
-                              <button type="button" onclick="openOrderQuoteRejectModal('${order.id}')" class="bg-red-500/15 border border-red-500/40 text-red-300 px-4 py-2 rounded-lg font-semibold hover:bg-red-500/25 transition">
-                                <i class="fa-solid fa-xmark mr-2"></i>Odrzuć
-                              </button>
-                            </div>`
-                          : ""
-                      }
-                      ${
-                        canPay
-                          ? `<div class="flex flex-wrap gap-2">
-                              <button type="button" onclick="payOrder('${order.id}')" class="bg-sky-500 text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition">
-                                <i class="fa-solid fa-credit-card mr-2"></i>Opłać
-                              </button>
-                            </div>`
-                          : ""
-                      }
-                    </div>
-
-                    <div class="mb-4 text-sm text-zinc-300">
-                      <strong>Zamówienie:</strong> ${nl2brProfile(order.orderDetails || "Brak opisu")}
-                    </div>
-                    ${
-                      order.notes
-                        ? `<div class="mb-4 text-sm text-zinc-400 italic">${nl2brProfile(order.notes)}</div>`
-                        : ""
-                    }
-                    ${
-                      order.quoteRejectedReason
-                        ? `<div class="mb-4 text-sm text-red-300"><strong>Powód odrzucenia wyceny:</strong><br>${nl2brProfile(order.quoteRejectedReason)}</div>`
-                        : ""
-                    }
-
-                    <div class="grid grid-cols-2 gap-4 text-sm mb-4">
-                      <div class="text-zinc-400">Razem: <span class="text-coyote font-bold text-base">${escapeProfileHtml(order.totalDisplay || formatCurrency(order.total))}</span></div>
-                      <div class="text-zinc-400">Telefon: <span class="text-zinc-200">${escapeProfileHtml(order.phone || "—")}</span></div>
-                    </div>
-                    ${
-                      order.firstName || order.lastName || order.isCompany
-                        ? `<div class="mb-4 text-sm text-zinc-400 space-y-1">
-                            ${(order.firstName || order.lastName) ? `<div>Dane: <span class="text-zinc-200">${escapeProfileHtml([order.firstName, order.lastName].filter(Boolean).join(" "))}</span></div>` : ""}
-                            ${order.isCompany ? `<div>Firma: <span class="text-zinc-200">${escapeProfileHtml(order.companyName || "—")}</span></div>` : ""}
-                            ${order.isCompany ? `<div>NIP: <span class="text-zinc-200">${escapeProfileHtml(order.taxId || "—")}</span></div>` : ""}
-                          </div>`
-                        : ""
-                    }
-
-                    <div class="pt-4 border-t border-zinc-700 text-xs text-zinc-500 flex flex-col gap-2">
-                      <p>Edycja zamowienia mozliwa do czasu przyjecia do realizacji.</p>
-                      ${
-                        order.status === "wycena_zlozona"
-                          ? `<p>Wycena oczekuje na Twoją decyzję. Akceptacja jest wiążąca i oznacza zobowiązanie do opłacenia zamówienia.</p>`
-                          : ""
-                      }
-                      ${
-                        ["oczekuje_na_platnosc", "platnosc_zakonczona_niepowodzeniem"].includes(order.status) && order.paymentLinkUrl
-                          ? `<p>Po kliknięciu „Opłać” zamówienie przejdzie do statusu weryfikowania płatności i będzie oczekiwać na ręczne potwierdzenie przez administratora.</p>`
-                          : ""
-                      }
-                      ${
-                        order.status === "weryfikowanie_platnosci"
-                          ? `<p>Płatność jest obecnie sprawdzana przez administratora.</p>`
-                          : ""
-                      }
-                      <div class="flex flex-wrap gap-2">
-                        <button type="button" onclick="openOrderReturnClaim('${order.id}')" class="bg-zinc-700 text-white px-4 py-2 rounded-lg hover:bg-zinc-600 transition text-sm">
-                          <i class="fa-solid fa-rotate-left mr-2"></i>Zwrot / reklamacja
-                        </button>
+                      <div class="shrink-0 text-right">
+                        <div class="text-xs uppercase tracking-widest text-zinc-500 mb-1">Razem</div>
+                        <div class="text-xl font-black text-coyote">${escapeProfileHtml(order.totalDisplay || formatCurrency(order.total))}</div>
                       </div>
-                      ${
-                        order.invoiceFile
-                          ? `<a href="https://strzelca.pl/api/download-invoice?orderId=${order.id}" target="_blank" class="text-coyote hover:text-coyote/80 text-sm">
-                              <i class="fa-solid fa-file-pdf mr-2"></i>Pobierz fakturę
-                            </a>`
-                          : ""
-                      }
                     </div>
-                  </div>
+                    <div class="mt-4 flex items-center justify-between gap-3 border-t border-zinc-800 pt-3">
+                      <span class="text-xs text-zinc-500">
+                        ${escapeProfileHtml(order.phone ? `Kontakt: ${order.phone}` : "Brak telefonu")}
+                      </span>
+                      <span class="inline-flex items-center text-sm font-semibold text-coyote">
+                        Szczegóły i akcje <i class="fa-solid fa-chevron-right ml-2 text-xs"></i>
+                      </span>
+                    </div>
+                  </button>
                 `;
               })
               .join("");
           }
+
+          window.openOrderDetailsModal = function (orderId) {
+            const order = profileOrdersCache.find((item) => item.id === orderId);
+            if (!order) return;
+            const status = getOrderStatusMeta(order.status);
+            const modal = ensureProfileDynamicModal("order-details-modal");
+            modal.innerHTML = `
+              <div class="modal-content modal-content--wide">
+                <div class="modal-header">
+                  <h3 class="text-xl font-bold coyote-text">Szczegóły zamówienia</h3>
+                  <button class="modal-close" onclick="closeProfileDynamicModal('order-details-modal')">&times;</button>
+                </div>
+                <div class="space-y-5">
+                  <div class="flex flex-wrap items-center gap-3">
+                    <h4 class="text-lg font-black text-white">${escapeProfileHtml(order.orderNumber || "Brak numeru")}</h4>
+                    <span class="px-3 py-1 rounded text-xs font-medium border ${status.color}">
+                      ${escapeProfileHtml(status.label)}
+                    </span>
+                    <span class="text-sm text-zinc-400">${escapeProfileHtml(order.createdAtFormatted || "Brak daty")}</span>
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div><span class="text-zinc-500">Razem:</span> <span class="text-coyote font-bold">${escapeProfileHtml(order.totalDisplay || formatCurrency(order.total))}</span></div>
+                    <div><span class="text-zinc-500">Telefon:</span> <span class="text-zinc-100">${escapeProfileHtml(order.phone || "—")}</span></div>
+                    <div><span class="text-zinc-500">Klient:</span> <span class="text-zinc-100">${escapeProfileHtml([order.firstName, order.lastName].filter(Boolean).join(" ") || "—")}</span></div>
+                    <div><span class="text-zinc-500">Firma:</span> <span class="text-zinc-100">${escapeProfileHtml(order.isCompany ? (order.companyName || "—") : "Nie")}</span></div>
+                    ${order.isCompany ? `<div><span class="text-zinc-500">NIP:</span> <span class="text-zinc-100">${escapeProfileHtml(order.taxId || "—")}</span></div>` : ""}
+                    <div><span class="text-zinc-500">Paczkomat:</span> <span class="text-zinc-100">${escapeProfileHtml(order.parcelLocker || "—")}</span></div>
+                  </div>
+                  <div class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+                    <div class="text-xs uppercase tracking-widest text-zinc-500 mb-2">Treść zamówienia</div>
+                    <div class="text-sm text-zinc-200 leading-relaxed">${nl2brProfile(order.orderDetails || "Brak opisu")}</div>
+                  </div>
+                  ${
+                    order.notes
+                      ? `<div class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+                          <div class="text-xs uppercase tracking-widest text-zinc-500 mb-2">Uwagi</div>
+                          <div class="text-sm text-zinc-300">${nl2brProfile(order.notes)}</div>
+                        </div>`
+                      : ""
+                  }
+                  ${
+                    order.quoteRejectedReason
+                      ? `<div class="rounded-xl border border-red-500/40 bg-red-950/20 p-4">
+                          <div class="text-xs uppercase tracking-widest text-red-300 mb-2">Powód odrzucenia wyceny</div>
+                          <div class="text-sm text-red-200">${nl2brProfile(order.quoteRejectedReason)}</div>
+                        </div>`
+                      : ""
+                  }
+                  <div class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 text-xs text-zinc-400 space-y-2">
+                    <p>Edycja zamówienia możliwa do czasu przyjęcia do realizacji.</p>
+                    ${
+                      order.status === "wycena_zlozona"
+                        ? `<p>Wycena oczekuje na Twoją decyzję. Akceptacja jest wiążąca i oznacza zobowiązanie do opłacenia zamówienia.</p>`
+                        : ""
+                    }
+                    ${
+                      ["oczekuje_na_platnosc", "platnosc_zakonczona_niepowodzeniem"].includes(order.status) && order.paymentLinkUrl
+                        ? `<p>Po kliknięciu „Opłać” zamówienie przejdzie do statusu weryfikowania płatności i będzie oczekiwać na ręczne potwierdzenie przez administratora.</p>`
+                        : ""
+                    }
+                    ${
+                      order.status === "weryfikowanie_platnosci"
+                        ? `<p>Płatność jest obecnie sprawdzana przez administratora.</p>`
+                        : ""
+                    }
+                  </div>
+                  <div class="pt-2 border-t border-zinc-700">
+                    <div class="text-xs uppercase tracking-widest text-zinc-500 mb-3">Akcje</div>
+                    ${renderOrderActionButtons(order, { compact: true })}
+                  </div>
+                  ${
+                    order.invoiceFile
+                      ? `<a href="https://strzelca.pl/api/download-invoice?orderId=${order.id}" target="_blank" class="inline-flex items-center text-coyote hover:text-coyote/80 text-sm">
+                          <i class="fa-solid fa-file-pdf mr-2"></i>Pobierz fakturę
+                        </a>`
+                      : ""
+                  }
+                </div>
+              </div>
+            `;
+            modal.classList.add("show");
+            document.body.style.overflow = "hidden";
+          };
 
           window.loadMyOrders = async function () {
             try {

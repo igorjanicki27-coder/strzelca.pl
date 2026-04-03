@@ -918,6 +918,7 @@
       #info-message-editor .ql-editor {
         min-height: 300px;
         color: var(--text-primary);
+        padding-bottom: 56px;
       }
 
       #charity-description-editor .ql-editor,
@@ -954,6 +955,12 @@
         border: 1px solid rgba(255, 244, 224, 0.08);
         border-radius: 16px 16px 0 0;
         padding: 10px;
+        position: sticky;
+        bottom: 0;
+        z-index: 50;
+        width: 100%;
+        box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(10px);
       }
 
       #product-description-quill-host .ql-toolbar .ql-stroke,
@@ -1641,60 +1648,113 @@
       }
 
       .mobile-quicknav {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 110;
-        padding: 0 0.85rem calc(env(safe-area-inset-bottom, 0px) + 0.85rem);
-        pointer-events: none;
+        position: sticky;
+        top: 0;
+        z-index: 115;
+        padding: 0.7rem 0.75rem;
+        background: linear-gradient(180deg, rgba(24, 28, 36, 0.96), rgba(24, 28, 36, 0.84));
+        border-bottom: 1px solid rgba(255, 244, 224, 0.1);
+        backdrop-filter: blur(14px);
       }
 
       .mobile-quicknav-shell {
-        display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-        gap: 0.55rem;
-        padding: 0.55rem;
-        border-radius: 24px;
-        border: 1px solid rgba(255, 244, 224, 0.12);
-        background: rgba(22, 26, 33, 0.92);
-        backdrop-filter: blur(18px);
-        box-shadow: 0 16px 40px rgba(5, 7, 10, 0.35);
-        pointer-events: auto;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+      }
+
+      .mobile-quicknav-scroll {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex: 1;
+        min-width: 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+
+      .mobile-quicknav-scroll::-webkit-scrollbar {
+        display: none;
+      }
+
+      .admin-quicknav-toggle-btn {
+        flex-shrink: 0;
+        width: 44px;
+        height: 44px;
+        padding: 0 !important;
+      }
+
+      body.admin-quicknav-collapsed #mobile-quicknav {
+        display: none;
+      }
+
+      .admin-quicknav-reveal {
+        position: sticky;
+        top: 0;
+        z-index: 114;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 0.4rem 0.75rem;
+        background: linear-gradient(180deg, rgba(24, 28, 36, 0.98), rgba(24, 28, 36, 0.9));
+        border-bottom: 1px solid rgba(255, 244, 224, 0.1);
+        backdrop-filter: blur(14px);
+      }
+
+      body.admin-quicknav-collapsed .admin-quicknav-reveal {
+        display: flex;
+      }
+
+      .admin-quicknav-reveal-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-height: 40px;
+        padding: 0.45rem 1rem;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 244, 224, 0.14);
+        background: rgba(248, 245, 239, 0.07);
+        color: var(--text-secondary);
+        font-size: 0.83rem;
+        transition: 0.2s ease;
+      }
+
+      .admin-quicknav-reveal-btn:hover {
+        border-color: rgba(193, 154, 107, 0.4);
+        background: rgba(193, 154, 107, 0.12);
+        color: #fff6e8;
       }
 
       .mobile-quicknav-slots {
-        display: contents;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
       }
 
       .mobile-quicknav-item {
-        min-width: 0;
-        min-height: 62px;
-        border-radius: 18px;
-        border: 1px solid rgba(255, 244, 224, 0.08);
-        background: rgba(248, 245, 239, 0.045);
+        flex: 0 0 auto;
+        min-height: 44px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 244, 224, 0.12);
+        background: rgba(248, 245, 239, 0.055);
         color: var(--text-secondary);
-        display: flex;
-        flex-direction: column;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 0.32rem;
+        gap: 0.45rem;
         text-align: center;
-        padding: 0.55rem 0.35rem;
+        padding: 0.5rem 0.78rem;
+        font-size: 0.83rem;
+        line-height: 1;
+        white-space: nowrap;
         transition: 0.2s ease;
       }
 
       .mobile-quicknav-item i {
-        font-size: 1rem;
-      }
-
-      .mobile-quicknav-item span {
-        font-size: 0.68rem;
-        line-height: 1.1;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        width: 100%;
+        font-size: 0.9rem;
       }
 
       .mobile-quicknav-item:hover,
@@ -1702,6 +1762,22 @@
         border-color: rgba(193, 154, 107, 0.34);
         background: linear-gradient(135deg, rgba(193, 154, 107, 0.24), rgba(193, 154, 107, 0.08));
         color: #fff6e8;
+      }
+
+      .mobile-quicknav-item[data-mobile-quick-menu].status-ok {
+        border-color: rgba(34, 197, 94, 0.45);
+        box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.28) inset;
+      }
+
+      .mobile-quicknav-item[data-mobile-quick-menu].status-fail {
+        border-color: rgba(239, 68, 68, 0.45);
+        box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.28) inset;
+      }
+
+      .mobile-sidebar-divider {
+        height: 1px;
+        margin: 0.45rem 0;
+        background: linear-gradient(90deg, rgba(255, 244, 224, 0), rgba(255, 244, 224, 0.2), rgba(255, 244, 224, 0));
       }
 
       @media (max-width: 767px) {
@@ -1809,7 +1885,7 @@
 
         #main-content {
           padding-inline: 0.9rem;
-          padding-block: 0.9rem calc(6.5rem + env(safe-area-inset-bottom, 0px));
+          padding-block: 0.9rem 1rem;
         }
 
         input,
@@ -1819,10 +1895,10 @@
         }
       }
 
-      /* Tablet: dolny margines pod szybki pasek (ten sam co na telefonie) */
+      /* Tablet */
       @media (min-width: 768px) and (max-width: 1023px) {
         #main-content {
-          padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
+          padding-bottom: 1rem;
         }
       }
     </style>
@@ -1895,10 +1971,10 @@
 
     <!-- Główny panel administracyjny -->
     <div id="admin-panel" class="hidden h-full flex flex-col">
-      <div id="mobile-overlay" class="mobile-overlay hidden lg:hidden" onclick="window.toggleSidebar(false)"></div>
+      <div id="mobile-overlay" class="mobile-overlay hidden" onclick="window.toggleSidebar(false)"></div>
       <aside
         id="mobile-sidebar"
-        class="mobile-sidebar lg:hidden"
+        class="mobile-sidebar"
         aria-label="Wybór sekcji panelu"
         aria-hidden="true"
         role="dialog"
@@ -1907,8 +1983,8 @@
           <div class="mobile-sidebar-grabber" aria-hidden="true"></div>
           <div class="mobile-sidebar-header">
             <div>
-              <div class="mobile-sidebar-title">Wszystkie sekcje</div>
-              <div class="text-sm text-zinc-300 mt-1">Szybki pasek na dole daje wejście do najważniejszych miejsc, a tutaj masz pełne menu.</div>
+              <div class="mobile-sidebar-title">Menu sekcji</div>
+              <div class="text-sm text-zinc-300 mt-1">Wybierz sekcję. Po kliknięciu menu zamyka się automatycznie.</div>
             </div>
             <button
               type="button"
@@ -1922,47 +1998,7 @@
 
           <div class="mobile-sidebar-list">
             <div class="mobile-sidebar-section">
-              <div class="nav-group-label">Centrum</div>
-              <button type="button" class="mobile-nav-item" data-mobile-tab="dashboard">
-                <i class="fa-solid fa-tachometer-alt"></i>
-                <span>Dashboard</span>
-              </button>
-              <button type="button" class="mobile-nav-item" data-mobile-tab="messages">
-                <i class="fa-solid fa-comments"></i>
-                <span>Wiadomości</span>
-              </button>
-              <button type="button" class="mobile-nav-item" data-mobile-tab="orders">
-                <i class="fa-solid fa-shopping-bag"></i>
-                <span>Zamówienia</span>
-              </button>
-              <button type="button" class="mobile-nav-item" data-mobile-tab="invoices">
-                <i class="fa-solid fa-file-invoice"></i>
-                <span>Faktury</span>
-              </button>
-              <button type="button" class="mobile-nav-item" data-mobile-tab="returns">
-                <i class="fa-solid fa-rotate-left"></i>
-                <span>Zwroty</span>
-              </button>
-              <button type="button" class="mobile-nav-item" data-mobile-tab="users">
-                <i class="fa-solid fa-users"></i>
-                <span>Użytkownicy</span>
-              </button>
-              <button type="button" class="mobile-nav-item" data-mobile-tab="newsletter">
-                <i class="fa-solid fa-envelope-open"></i>
-                <span>Newsletter</span>
-              </button>
-              <button type="button" class="mobile-nav-item" data-mobile-tab="notifications">
-                <i class="fa-solid fa-bell"></i>
-                <span>Powiadomienia</span>
-              </button>
-              <button type="button" class="mobile-nav-item" data-mobile-tab="status">
-                <i class="fa-solid fa-server"></i>
-                <span>Status</span>
-              </button>
-            </div>
-
-            <div class="mobile-sidebar-section">
-              <div class="nav-group-label">Strony i treści</div>
+              <div class="nav-group-label">Sekcje dodatkowe</div>
               <button type="button" class="mobile-nav-item" data-mobile-tab="products">
                 <i class="fa-solid fa-shopping-cart"></i>
                 <span>Sklep</span>
@@ -1991,193 +2027,71 @@
                 <i class="fa-solid fa-file-pdf"></i>
                 <span>Dokumenty</span>
               </button>
+              <div class="mobile-sidebar-divider" aria-hidden="true"></div>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="promo-codes">
+                <i class="fa-solid fa-ticket"></i>
+                <span>Kody</span>
+              </button>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="status">
+                <i class="fa-solid fa-server"></i>
+                <span>Status</span>
+              </button>
               <button type="button" class="mobile-nav-item" data-mobile-tab="email-templates">
                 <i class="fa-solid fa-envelope"></i>
                 <span>Szablony maili</span>
               </button>
-              <button type="button" class="mobile-nav-item" data-mobile-tab="promo-codes">
-                <i class="fa-solid fa-ticket"></i>
-                <span>Kody</span>
+              <button type="button" class="mobile-nav-item" data-mobile-tab="notifications">
+                <i class="fa-solid fa-bell"></i>
+                <span>Powiadomienia</span>
               </button>
             </div>
           </div>
         </div>
       </aside>
-
-      <!-- Górny pasek nawigacji -->
-      <div class="top-nav sticky top-0 z-50">
-        <div class="admin-shell top-nav-inner">
-          <div class="top-nav-bar">
-            <div class="admin-brand">
-              <button
-                type="button"
-                onclick="window.toggleSidebar()"
-                class="icon-btn lg:hidden"
-                id="mobile-menu-btn"
-                aria-label="Otwórz menu sekcji"
-                aria-expanded="false"
-                aria-controls="mobile-sidebar"
-              >
-                <i class="fa-solid fa-bars"></i>
-              </button>
-              <a
-                href="https://strzelca.pl"
-                aria-label="Powrót do centrum dowodzenia"
-                class="icon-btn hidden lg:inline-flex"
-              >
-                <i class="fa-solid fa-arrow-left"></i>
-              </a>
-              <div class="admin-brand-badge">
-                <i class="fa-solid fa-crown text-lg"></i>
-              </div>
-              <div class="admin-brand-copy">
-                <div class="admin-brand-title">Panel Administracyjny</div>
-                <div class="admin-brand-subtitle">
-                  <span id="current-tab-label">Dashboard</span>
-                  <span class="hidden sm:inline"> • </span>
-                  <span id="current-tab-description">Najważniejsze dane i szybkie wejście do sekcji.</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="top-nav-status-slot">
-              <div class="nav-item" data-tab="status">
-                <i class="fa-solid fa-server"></i>
-                <span id="status-tab-text">Status</span>
-              </div>
-            </div>
-
-            <div class="admin-utility-actions">
-              <button
-                type="button"
-                id="admin-nav-desktop-toggle"
-                class="icon-btn hidden lg:inline-flex"
-                aria-label="Ukryj lub pokaż pasek zakładek"
-                aria-expanded="true"
-                aria-controls="admin-nav-shell"
-                title="Menu zakładek"
-              >
-                <i class="fa-solid fa-layer-group admin-nav-desktop-toggle-icon" aria-hidden="true"></i>
-              </button>
-              <div class="header-chip">
-                <div class="header-chip-icon">
-                  <i class="fa-solid fa-user-shield"></i>
-                </div>
-                <div>
-                  <strong id="admin-display-name-compact">Administrator</strong>
-                  <span>Aktywna sesja</span>
-                </div>
-              </div>
-              <button
-                onclick="logoutAdmin()"
-                class="icon-btn icon-btn-danger"
-                title="Wyloguj"
-                aria-label="Wyloguj"
-              >
-                <i class="fa-solid fa-sign-out-alt"></i>
-              </button>
-            </div>
-          </div>
-
-          <nav id="admin-nav-shell" class="nav-shell" aria-label="Główna nawigacja panelu">
-            <div class="nav-group">
-              <div class="nav-group-header">
-                <div class="nav-group-label">Operacje i obsługa</div>
-                <div class="nav-hint">Najczęściej używane sekcje administracyjne</div>
-              </div>
-              <div class="nav-scroll hide-scrollbar">
-                <div class="nav-item" data-tab="dashboard">
-                  <i class="fa-solid fa-tachometer-alt"></i>
-                  Dashboard
-                </div>
-                <div class="nav-item" data-tab="messages">
-                  <i class="fa-solid fa-comments"></i>
-                  Wiadomości
-                </div>
-                <div class="nav-item" data-tab="orders">
-                  <i class="fa-solid fa-shopping-bag"></i>
-                  Zamówienia
-                </div>
-                <div class="nav-item" data-tab="invoices">
-                  <i class="fa-solid fa-file-invoice"></i>
-                  Faktury
-                </div>
-                <div class="nav-item" data-tab="returns">
-                  <i class="fa-solid fa-rotate-left"></i>
-                  Zwroty
-                </div>
-                <div class="nav-item" data-tab="users">
-                  <i class="fa-solid fa-users"></i>
-                  Użytkownicy
-                </div>
-                <div class="nav-item" data-tab="newsletter">
-                  <i class="fa-solid fa-envelope-open"></i>
-                  Newsletter
-                </div>
-                <div class="nav-item" data-tab="notifications">
-                  <i class="fa-solid fa-bell"></i>
-                  Powiadomienia
-                </div>
-              </div>
-            </div>
-
-            <div class="nav-group">
-              <div class="nav-group-header">
-                <div class="nav-group-label">Strony i treści</div>
-                <div class="nav-hint">Sekcje publiczne, treści i automaty komunikacji</div>
-              </div>
-              <div class="nav-scroll scrollbar-hide" id="tabs-container">
-                <div class="nav-item" data-tab="products">
-                  <i class="fa-solid fa-shopping-cart"></i>
-                  Sklep
-                </div>
-                <div class="nav-item" data-tab="bazar">
-                  <i class="fa-solid fa-store"></i>
-                  Bazar
-                </div>
-                <div class="nav-item" data-tab="szkolenia">
-                  <i class="fa-solid fa-graduation-cap"></i>
-                  Szkolenia
-                </div>
-                <div class="nav-item" data-tab="events">
-                  <i class="fa-solid fa-calendar-alt"></i>
-                  Wydarzenia
-                </div>
-                <div class="nav-item" data-tab="blog">
-                  <i class="fa-solid fa-blog"></i>
-                  Blog
-                </div>
-                <div class="nav-item" data-tab="charity">
-                  <i class="fa-solid fa-heart"></i>
-                  Pomoc
-                </div>
-                <div class="nav-item" data-tab="dokumenty">
-                  <i class="fa-solid fa-file-pdf"></i>
-                  Dokumenty
-                </div>
-                <div class="nav-item" data-tab="email-templates">
-                  <i class="fa-solid fa-envelope"></i>
-                  Szablony maili
-                </div>
-                <div class="nav-item" data-tab="promo-codes">
-                  <i class="fa-solid fa-ticket"></i>
-                  Kody
-                </div>
-              </div>
-            </div>
-          </nav>
-        </div>
-      </div>
-
-      <nav id="mobile-quicknav" class="mobile-quicknav lg:hidden" aria-label="Szybka nawigacja mobilna">
+      <nav id="mobile-quicknav" class="mobile-quicknav" aria-label="Szybka nawigacja panelu">
         <div class="mobile-quicknav-shell">
-          <div id="mobile-quicknav-slots" class="mobile-quicknav-slots"></div>
-          <button type="button" class="mobile-quicknav-item" data-mobile-quick-menu aria-expanded="false" onclick="window.toggleSidebar(true)">
-            <i class="fa-solid fa-table-cells-large"></i>
-            <span>Menu</span>
+          <div class="mobile-quicknav-scroll">
+            <a
+              href="https://strzelca.pl"
+              class="mobile-quicknav-item"
+              aria-label="Cofnij do strony głównej"
+              title="Cofnij do strony głównej"
+            >
+              <i class="fa-solid fa-arrow-left"></i>
+              <span>Cofnij</span>
+            </a>
+            <div id="mobile-quicknav-slots" class="mobile-quicknav-slots"></div>
+            <button type="button" class="mobile-quicknav-item" data-mobile-quick-menu aria-expanded="false" onclick="window.toggleSidebar()">
+              <i class="fa-solid fa-bars"></i>
+              <span>Menu</span>
+            </button>
+          </div>
+          <button
+            type="button"
+            id="admin-quicknav-toggle"
+            class="icon-btn admin-quicknav-toggle-btn"
+            aria-label="Ukryj pasek zakładek"
+            title="Ukryj pasek zakładek"
+            onclick="window.toggleAdminQuickNavBar()"
+          >
+            <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
           </button>
         </div>
       </nav>
+
+      <div id="admin-quicknav-reveal" class="admin-quicknav-reveal" aria-hidden="true">
+        <button
+          type="button"
+          id="admin-quicknav-reveal-btn"
+          class="admin-quicknav-reveal-btn"
+          aria-label="Pokaż pasek zakładek"
+          title="Pokaż pasek zakładek"
+          onclick="window.toggleAdminQuickNavBar()"
+        >
+          <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+          <span>Pokaż pasek zakładek</span>
+        </button>
+      </div>
 
       <!-- Główna zawartość -->
       <div class="flex flex-1 min-h-0">
@@ -5566,27 +5480,15 @@
         "email-templates": { label: "Szablony maili", description: "Gotowe wiadomości i treści transakcyjne." },
         "promo-codes": { label: "Kody", description: "Promocje, zniżki i kody dostępowe." },
       };
-      const MOBILE_QUICKNAV_LIMIT = 4;
-      const MOBILE_QUICKNAV_ORDER = [
+      const QUICKNAV_PRIMARY_ORDER = [
         "dashboard",
-        "orders",
         "messages",
+        "orders",
+        "returns",
         "invoices",
         "users",
-        "notifications",
-        "products",
-        "bazar",
-        "events",
-        "blog",
-        "charity",
-        "returns",
-        "newsletter",
-        "status",
-        "szkolenia",
-        "dokumenty",
-        "email-templates",
-        "promo-codes",
       ];
+      let allServicesOnlineState = null;
       const MOBILE_QUICKNAV_ICONS = {
         dashboard: "fa-tachometer-alt",
         messages: "fa-comments",
@@ -5655,9 +5557,15 @@
 
       function getMobileQuickNavTabs(profileData = currentAdminProfile) {
         const allowedTabs = getAllowedAdminTabs(profileData);
-        const preferredTabs = MOBILE_QUICKNAV_ORDER.filter((tab) => allowedTabs.includes(tab));
-        const fallbackTabs = allowedTabs.filter((tab) => !preferredTabs.includes(tab));
-        return [...preferredTabs, ...fallbackTabs].slice(0, MOBILE_QUICKNAV_LIMIT);
+        return QUICKNAV_PRIMARY_ORDER.filter((tab) => allowedTabs.includes(tab));
+      }
+
+      function updateMenuStatusIndicator(state = allServicesOnlineState) {
+        const menuButton = document.querySelector("[data-mobile-quick-menu]");
+        if (!menuButton) return;
+        menuButton.classList.remove("status-ok", "status-fail");
+        if (state === true) menuButton.classList.add("status-ok");
+        if (state === false) menuButton.classList.add("status-fail");
       }
 
       function updateMobileQuickNavActiveState(tabName = currentTab) {
@@ -5672,6 +5580,7 @@
           menuButton.classList.toggle("active", isSidebarOpen);
           menuButton.setAttribute("aria-expanded", isSidebarOpen ? "true" : "false");
         }
+        updateMenuStatusIndicator();
       }
 
       function renderMobileQuickNav(profileData = currentAdminProfile) {
@@ -5680,7 +5589,6 @@
         if (!quickNav || !slots) return;
 
         const quickTabs = getMobileQuickNavTabs(profileData);
-        quickNav.classList.toggle("hidden", quickTabs.length === 0);
 
         slots.innerHTML = quickTabs.map((tab) => {
           const meta = TAB_META[tab] || TAB_META.dashboard;
@@ -5694,6 +5602,7 @@
         }).join("");
 
         updateMobileQuickNavActiveState(currentTab);
+        updateMenuStatusIndicator();
       }
       const OPERATOR_SCOPE_SHORT_LABELS = {
         users: "użytkowników",
@@ -5945,7 +5854,7 @@
         document.getElementById("login-section").classList.add("hidden");
         document.getElementById("admin-panel").classList.remove("hidden");
         applyAdminNavigationAccess();
-        initAdminNavDesktopToggle();
+        initAdminQuickNavBarPreference();
         startActivityTracking();
 
         if (!window.autoUnblockInterval && isAdminRoleValue(profileData?.role)) {
@@ -6719,53 +6628,44 @@
       }
 
 
-      const ADMIN_NAV_DESKTOP_KEY = "adminNavDesktopCollapsed";
+      const ADMIN_QUICKNAV_COLLAPSED_LS = "strzelca.admin.quicknavCollapsed";
 
-      function syncDesktopNavToggleUi() {
-        const btn = document.getElementById("admin-nav-desktop-toggle");
-        const icon = btn?.querySelector(".admin-nav-desktop-toggle-icon");
-        if (!btn || !icon) return;
-        const collapsed = document.body.classList.contains("admin-nav-desktop-collapsed");
-        btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
-        btn.title = collapsed ? "Pokaż pasek zakładek" : "Ukryj pasek zakładek";
-        icon.className =
-          (collapsed ? "fa-solid fa-bars " : "fa-solid fa-layer-group ") +
-          "admin-nav-desktop-toggle-icon";
-      }
-
-      function setDesktopNavCollapsed(collapsed, persist = true) {
-        document.body.classList.toggle("admin-nav-desktop-collapsed", Boolean(collapsed));
-        if (persist) {
-          try {
-            localStorage.setItem(ADMIN_NAV_DESKTOP_KEY, Boolean(collapsed) ? "1" : "0");
-          } catch (e) {
-            /* ignore */
-          }
-        }
-        syncDesktopNavToggleUi();
-      }
-
-      function initAdminNavDesktopToggle() {
-        const btn = document.getElementById("admin-nav-desktop-toggle");
-        if (!btn || btn.dataset.bound === "1") return;
-        btn.dataset.bound = "1";
+      function getAdminQuickNavCollapsedPreference() {
         try {
-          const stored = localStorage.getItem(ADMIN_NAV_DESKTOP_KEY);
-          if (stored === "1") setDesktopNavCollapsed(true, false);
-          else setDesktopNavCollapsed(false, false);
-        } catch (e) {
-          syncDesktopNavToggleUi();
+          return localStorage.getItem(ADMIN_QUICKNAV_COLLAPSED_LS) === "1";
+        } catch {
+          return false;
         }
-        btn.addEventListener("click", () => {
-          setDesktopNavCollapsed(!document.body.classList.contains("admin-nav-desktop-collapsed"));
-        });
       }
 
-      // Funkcja do przełączania menu sekcji (modal < lg oraz ten sam panel na tablecie)
+      function applyAdminQuickNavCollapsed(collapsed) {
+        document.body.classList.toggle("admin-quicknav-collapsed", collapsed);
+        const reveal = document.getElementById("admin-quicknav-reveal");
+        if (reveal) {
+          reveal.setAttribute("aria-hidden", collapsed ? "false" : "true");
+        }
+        try {
+          localStorage.setItem(ADMIN_QUICKNAV_COLLAPSED_LS, collapsed ? "1" : "0");
+        } catch {
+          /* ignore */
+        }
+      }
+
+      function toggleAdminQuickNavBar() {
+        applyAdminQuickNavCollapsed(!document.body.classList.contains("admin-quicknav-collapsed"));
+      }
+
+      function initAdminQuickNavBarPreference() {
+        applyAdminQuickNavCollapsed(getAdminQuickNavCollapsedPreference());
+      }
+
+      window.toggleAdminQuickNavBar = toggleAdminQuickNavBar;
+
+      // Funkcja do przełączania menu sekcji
       function toggleSidebar(forceState = null) {
         const sidebar = document.getElementById("mobile-sidebar");
         const overlay = document.getElementById("mobile-overlay");
-        const menuBtn = document.getElementById("mobile-menu-btn");
+        const menuBtn = document.querySelector("[data-mobile-quick-menu]");
 
         if (sidebar && overlay) {
           const shouldOpen =
@@ -6840,9 +6740,7 @@
       });
 
       window.addEventListener("resize", () => {
-        if (window.innerWidth >= 1024) {
-          toggleSidebar(false);
-        }
+        toggleSidebar(false);
       });
 
       // Logowanie administratora
@@ -16108,13 +16006,8 @@
               allServicesOnline = false;
             }
 
-            // Aktualizuj kolor zakładki status
-          const statusTabText = document.getElementById("status-tab-text");
-            if (allServicesOnline) {
-              statusTabText.className = "text-green-400";
-            } else {
-              statusTabText.className = "text-red-400";
-            }
+            allServicesOnlineState = allServicesOnline;
+            updateMenuStatusIndicator(allServicesOnlineState);
 
             // Aktualizuj czas ostatniego sprawdzenia
           const lastStatusCheckEl = document.getElementById("last-status-check");
@@ -16129,6 +16022,8 @@
             }
           } catch (error) {
             console.error("Error checking main services:", error);
+            allServicesOnlineState = false;
+            updateMenuStatusIndicator(allServicesOnlineState);
             showNotification("Błąd sprawdzania statusu usług", "error");
           }
         }
@@ -25503,6 +25398,14 @@
         return local.toISOString().slice(0, 16);
       }
 
+      function promoCodeDefaultExpiryLocalValue() {
+        const date = new Date();
+        date.setMonth(date.getMonth() + 1);
+        date.setSeconds(0, 0);
+        const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+        return local.toISOString().slice(0, 16);
+      }
+
       function promoCodePurposeLabel(code) {
         if (code.purpose === "training_access") {
           return "Kurs";
@@ -25810,7 +25713,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-y-5 md:gap-x-10">
                       <div>
                         <label class="block text-sm font-medium mb-2">Data zakończenia ważności</label>
-                        <input type="datetime-local" id="promo-code-expires-at" value="${escapeHtml(promoCodeDateTimeLocalValue(currentCode?.expiresAtIso || ""))}" />
+                        <input type="datetime-local" id="promo-code-expires-at" value="${escapeHtml(currentCode?.id ? promoCodeDateTimeLocalValue(currentCode?.expiresAtIso || "") : promoCodeDefaultExpiryLocalValue())}" />
                         <p class="text-xs text-zinc-500 mt-2">Pole pozostaje nieaktywne, jeśli zaznaczysz kod bezterminowy.</p>
                       </div>
                       <div>

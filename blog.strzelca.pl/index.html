@@ -266,7 +266,8 @@
             justify-content: center;
             border-radius: 10px;
             border: none;
-            background: rgba(193, 154, 107, 0.18);
+            /* Ma wyglądać jak "sam przycisk/ikona" bez wypełnienia tłem. */
+            background: transparent;
             color: #E9D3B7;
             font-size: 1rem;
             line-height: 1;
@@ -274,7 +275,7 @@
             transition: background 0.2s, transform 0.2s, opacity 0.2s;
         }
         .blog-comment-send-btn:hover:not(:disabled) {
-            background: rgba(193, 154, 107, 0.32);
+            background: transparent;
             transform: translateY(-1px);
         }
         .blog-comment-send-btn:disabled {
@@ -323,6 +324,10 @@
         }
         .blog-comment-guest-overlay-text {
             margin: 0;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.35rem;
         }
         .blog-comment-guest-login-link {
             background: none;
@@ -330,6 +335,8 @@
             padding: 0;
             margin: 0;
             font: inherit;
+            line-height: inherit;
+            vertical-align: baseline;
             color: var(--coyote, #c19a6b);
             cursor: pointer;
             text-decoration: underline;
@@ -1855,11 +1862,16 @@ const firebaseConfig = {
         let blogCommentCooldownUntil = 0;
         let blogCommentCooldownTimer = null;
 
+        function getActiveAuthUser() {
+            return currentUser || auth.currentUser || null;
+        }
+
         async function fetchBlogInteractionsApi(payload) {
             let idToken = null;
             try {
-                if (currentUser) {
-                    idToken = await currentUser.getIdToken();
+                const activeUser = getActiveAuthUser();
+                if (activeUser) {
+                    idToken = await activeUser.getIdToken();
                 }
             } catch (_) {}
 
@@ -1924,12 +1936,13 @@ const firebaseConfig = {
         }
 
         function restoreBlogCommentCooldown(postId) {
-            if (!postId || !currentUser?.uid) {
+            const activeUser = getActiveAuthUser();
+            if (!postId || !activeUser?.uid) {
                 blogCommentCooldownUntil = 0;
                 return;
             }
             try {
-                const raw = localStorage.getItem(getBlogCommentCooldownKey(postId, currentUser.uid));
+                const raw = localStorage.getItem(getBlogCommentCooldownKey(postId, activeUser.uid));
                 const parsed = Number(raw || 0);
                 blogCommentCooldownUntil = Number.isFinite(parsed) ? parsed : 0;
             } catch (_) {
@@ -2085,14 +2098,15 @@ const firebaseConfig = {
             const submitBtn = document.getElementById("blog-comment-submit");
             const note = document.getElementById("blog-comment-note");
             const guestOverlay = document.getElementById("blog-comment-guest-overlay");
+            const activeUser = getActiveAuthUser();
             const requiresCooldown = !currentEditingCommentId;
             const remainingSeconds = requiresCooldown ? getRemainingBlogCommentSeconds() : 0;
             const cooldownActive = requiresCooldown && remainingSeconds > 0;
 
             if (textarea) {
-                textarea.disabled = !currentUser || cooldownActive;
-                textarea.classList.toggle("blog-comment-textarea--guest", !currentUser);
-                if (!currentUser) {
+                textarea.disabled = !activeUser || cooldownActive;
+                textarea.classList.toggle("blog-comment-textarea--guest", !activeUser);
+                if (!activeUser) {
                     textarea.placeholder = "";
                     textarea.setAttribute("aria-hidden", "true");
                 } else {
@@ -2101,20 +2115,20 @@ const firebaseConfig = {
                 }
             }
             if (guestOverlay) {
-                guestOverlay.classList.toggle("hidden", !!currentUser);
-                guestOverlay.setAttribute("aria-hidden", currentUser ? "true" : "false");
+                guestOverlay.classList.toggle("hidden", !!activeUser);
+                guestOverlay.setAttribute("aria-hidden", activeUser ? "true" : "false");
             }
-            if (submitBtn) submitBtn.disabled = !currentUser || cooldownActive;
+            if (submitBtn) submitBtn.disabled = !activeUser || cooldownActive;
 
             if (note) {
-                if (!currentUser) {
+                if (!activeUser) {
                     note.textContent = "";
                 } else if (cooldownActive) {
                     note.textContent = `Kolejny komentarz w tym wpisie możesz dodać za ${remainingSeconds} s.`;
                 } else {
                     note.textContent = currentEditingCommentId
                         ? "Edytujesz swój komentarz. Zapisze się historia zmian."
-                        : "Komentarz w tym wpisie możesz dodać raz na 5 minut.";
+                        : "";
                 }
             }
 
@@ -2122,8 +2136,9 @@ const firebaseConfig = {
                 blogCommentCooldownTimer = setInterval(() => {
                     if (getRemainingBlogCommentSeconds() <= 0) {
                         stopBlogCommentCooldownTimer();
-                        if (currentBlogDetailId && currentUser?.uid) {
-                            persistBlogCommentCooldown(currentBlogDetailId, currentUser.uid, 0);
+                        const userForCooldown = getActiveAuthUser();
+                        if (currentBlogDetailId && userForCooldown?.uid) {
+                            persistBlogCommentCooldown(currentBlogDetailId, userForCooldown.uid, 0);
                         } else {
                             updateBlogCommentComposerState();
                         }
@@ -2214,7 +2229,7 @@ const firebaseConfig = {
         function bindBlogCommentActions() {
             document.querySelectorAll("[data-comment-like]").forEach((button) => {
                 button.addEventListener("click", async () => {
-                    if (!currentUser) {
+                    if (!getActiveAuthUser()) {
                         showNotification("Musisz być zalogowany, aby polubić komentarz.");
                         return;
                     }
@@ -2237,7 +2252,7 @@ const firebaseConfig = {
 
             document.querySelectorAll("[data-comment-reply]").forEach((button) => {
                 button.addEventListener("click", () => {
-                    if (!currentUser) {
+                    if (!getActiveAuthUser()) {
                         showNotification("Musisz być zalogowany, aby odpowiedzieć na komentarz.");
                         return;
                     }
@@ -2334,10 +2349,11 @@ const firebaseConfig = {
                 }));
                 currentBlogComments = buildBlogCommentTree(rawComments);
 
-                if (currentUser?.uid) {
+                const activeUser = getActiveAuthUser();
+                if (activeUser?.uid) {
                     const [postLikeSnap, commentLikesSnap] = await Promise.all([
-                        getDoc(doc(db, "blogPostLikes", getBlogPostLikeDocId(postId, currentUser.uid))),
-                        getDocs(query(collection(db, "blogCommentLikes"), where("userId", "==", currentUser.uid), where("postId", "==", postId))),
+                        getDoc(doc(db, "blogPostLikes", getBlogPostLikeDocId(postId, activeUser.uid))),
+                        getDocs(query(collection(db, "blogCommentLikes"), where("userId", "==", activeUser.uid), where("postId", "==", postId))),
                     ]);
                     currentBlogPostLiked = postLikeSnap.exists();
                     currentBlogCommentLikes = new Set(commentLikesSnap.docs.map((docSnap) => String(docSnap.data()?.commentId || "")));
@@ -3302,7 +3318,7 @@ const firebaseConfig = {
                             <div id="blog-comment-guest-overlay" class="blog-comment-guest-overlay hidden" aria-hidden="true">
                                 <p class="blog-comment-guest-overlay-text">
                                     Komentować mogą tylko zalogowani użytkownicy.
-                                    <button type="button" data-open-login-modal class="blog-comment-guest-login-link">Zaloguj się</button>.
+                                    <button type="button" data-open-login-modal class="blog-comment-guest-login-link">Zaloguj się</button>
                                 </p>
                             </div>
                             <button
@@ -3359,7 +3375,7 @@ const firebaseConfig = {
         };
 
         window.toggleBlogPostLike = async (postId) => {
-            if (!currentUser) {
+            if (!getActiveAuthUser()) {
                 showNotification("Musisz być zalogowany, aby polubić wpis.");
                 return;
             }
@@ -3380,7 +3396,8 @@ const firebaseConfig = {
         };
 
         window.submitBlogComment = async (postId) => {
-            if (!currentUser) {
+            const activeUser = getActiveAuthUser();
+            if (!activeUser) {
                 showNotification("Musisz być zalogowany, aby dodać komentarz.");
                 return;
             }
@@ -3397,7 +3414,7 @@ const firebaseConfig = {
                 });
 
                 if (!currentEditingCommentId) {
-                    persistBlogCommentCooldown(postId, currentUser.uid, Number(result.cooldownUntil || (Date.now() + 5 * 60 * 1000)));
+                    persistBlogCommentCooldown(postId, activeUser.uid, Number(result.cooldownUntil || (Date.now() + 5 * 60 * 1000)));
                     const post = allEvents.find((entry) => entry.id === postId);
                     updateBlogPostStatsInLocalState(postId, {
                         commentCount: Number(post?.commentCount || 0) + 1,
@@ -3408,7 +3425,7 @@ const firebaseConfig = {
                 await loadBlogPostInteractions(postId);
             } catch (error) {
                 if (error.code === "comment_cooldown" && error.remainingSeconds) {
-                    persistBlogCommentCooldown(postId, currentUser.uid, Date.now() + Number(error.remainingSeconds) * 1000);
+                    persistBlogCommentCooldown(postId, activeUser.uid, Date.now() + Number(error.remainingSeconds) * 1000);
                 }
                 showNotification(error.message || "Nie udało się zapisać komentarza.");
             }

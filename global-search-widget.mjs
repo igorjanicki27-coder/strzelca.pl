@@ -104,7 +104,7 @@ function makeStyles() {
     .launcher {
       position: fixed;
       right: 16px;
-      bottom: 86px;
+      bottom: 16px;
       z-index: 2147483647;
       width: 56px;
       height: 56px;
@@ -251,7 +251,7 @@ function makeStyles() {
       color: rgba(229,229,229,0.66);
     }
     @media (max-width: 900px) {
-      .launcher { bottom: 84px; }
+      .launcher { bottom: 16px; }
       .modal { width: min(96vw, 860px); }
       .input { font-size: 18px; }
     }
@@ -434,7 +434,7 @@ async function main() {
   }
 
   function updateLauncherOffset() {
-    launcher.style.bottom = currentUser ? "86px" : "16px";
+    launcher.style.bottom = "16px";
   }
 
   function visibleTypes() {

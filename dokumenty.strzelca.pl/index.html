@@ -62,7 +62,7 @@
             "name": "Jak zgłosić reklamację albo odstąpienie od umowy (zwrot)?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Na stronie dokumentów udostępniamy wzory formularzy w PDF oraz — gdy są dostępne — wersje do wypełnienia online. Postępuj zgodnie z instrukcją na formularzu i regulaminem danej usługi (sklep, bazar itd.). Terminy i sposób przesłania dokumentów są opisane w odpowiednim regulaminie."
+              "text": "Aby skorzystać z interaktywnego formularza, wybierz wersję online. Po wysłaniu formularz zostanie automatycznie złożony w systemie. Jeśli odsyłasz produkt, dołącz do przesyłki wydrukowany formularz albo kartkę z numerem zwrotu lub reklamacji."
             }
           },
           {
@@ -78,7 +78,7 @@
             "name": "Na jaki adres wysłać podpisany dokument lub pismo?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Adres korespondencyjny i tryb zgłoszeń są podane w regulaminie właściwej usługi oraz często na samym formularzu. Ogólne pytania można kierować na kontakt@strzelca.pl, ale nie zastępuje to wymogów z regulaminu (np. wskazanego działu reklamacji)."
+              "text": "Zwroty i reklamacje kierujemy na adres: ul. Pułtuska 20/9, 53-116 Wrocław."
             }
           },
           {
@@ -126,7 +126,7 @@
             "name": "Mam pytanie, na które nie ma odpowiedzi w FAQ — jak napisać, żeby dostać szybką odpowiedź?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Najpierw sprawdź regulamin właściwej usługi i stronę pomocy na strzelca.pl. Jeśli piszesz na kontakt@strzelca.pl, podaj: czego dotyczy sprawa (sklep, bazar, konto), numer zamówienia lub login — to skraca wymianę korespondencji."
+              "text": "Skontaktuj się przez system wiadomości z Pomocą STRZELCA.pl (po kliknięciu otwiera się czat, jeśli jest dostępny, a jeśli nie — formularz kontaktowy) lub napisz na kontakt@strzelca.pl."
             }
           }
         ]
@@ -444,6 +444,58 @@
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
+      #user-avatar-button {
+        width: 2.65rem;
+        height: 2.65rem;
+        border: 1px solid rgba(193, 154, 107, 0.45);
+        background:
+          radial-gradient(
+            circle at 30% 25%,
+            rgba(234, 197, 150, 0.35),
+            rgba(193, 154, 107, 0.92) 55%,
+            rgba(145, 108, 68, 0.95) 100%
+          );
+        box-shadow:
+          0 10px 24px rgba(0, 0, 0, 0.45),
+          inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        transition:
+          transform 0.22s ease,
+          box-shadow 0.22s ease,
+          filter 0.22s ease;
+      }
+      #user-avatar-button:hover {
+        transform: translateY(-1px) scale(1.02);
+        filter: brightness(1.05);
+        box-shadow:
+          0 14px 28px rgba(0, 0, 0, 0.5),
+          inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      }
+      #user-menu {
+        min-width: 11.5rem;
+        border-radius: 1rem;
+        border: 1px solid rgba(63, 63, 70, 0.75);
+        background: linear-gradient(
+          160deg,
+          rgba(9, 9, 11, 0.96) 0%,
+          rgba(20, 20, 25, 0.96) 100%
+        );
+        box-shadow:
+          0 24px 54px rgba(0, 0, 0, 0.58),
+          inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(12px);
+        transform-origin: top right;
+        opacity: 0;
+        transform: translateY(-4px) scale(0.97);
+        pointer-events: none;
+        transition:
+          opacity 0.18s ease,
+          transform 0.18s ease;
+      }
+      #user-menu.is-open {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+      }
     </style>
     <!-- Wspólne poprawki responsywności -->
     <link
@@ -481,8 +533,10 @@
         <!-- Avatar - widoczny zawsze -->
         <button
           id="user-avatar-button"
-          class="w-12 h-12 rounded-full bg-[#C19A6B] flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-80 transition shadow-lg overflow-hidden"
+          class="rounded-full flex items-center justify-center text-white font-bold cursor-pointer overflow-hidden"
           onclick="toggleUserMenu()"
+          aria-expanded="false"
+          aria-haspopup="menu"
         >
           <div
             id="user-avatar"
@@ -495,25 +549,25 @@
         <!-- Menu rozwijane -->
         <div
           id="user-menu"
-          class="absolute top-14 right-0 bg-zinc-900/95 backdrop-blur-md border border-zinc-700 rounded-2xl p-4 shadow-2xl min-w-[200px] hidden"
+          class="absolute top-12 right-0 p-3 z-[80]"
         >
-          <div class="space-y-2">
+          <div class="space-y-1.5">
             <div
               id="user-display-name"
-              class="text-white font-semibold text-sm mb-3 pb-3 border-b border-zinc-700"
+              class="text-zinc-100 font-semibold text-xs mb-2.5 pb-2.5 border-b border-zinc-700/70 tracking-wide truncate max-w-[170px]"
             ></div>
             <a
               id="profile-link"
               href="https://konto.strzelca.pl/profil.html"
-              class="block text-zinc-300 hover:text-[#C19A6B] transition text-sm"
+              class="flex items-center gap-2 rounded-lg px-2.5 py-2 text-zinc-300 hover:text-[#E4C8A2] hover:bg-zinc-800/70 transition text-sm"
             >
-              <i class="fa-solid fa-user mr-2"></i>Mój profil
+              <i class="fa-solid fa-user text-xs"></i>Mój profil
             </a>
             <button
               onclick="logout()"
-              class="block w-full text-left text-zinc-300 hover:text-red-400 transition text-sm"
+              class="flex items-center gap-2 rounded-lg px-2.5 py-2 w-full text-left text-zinc-300 hover:text-red-300 hover:bg-red-500/10 transition text-sm"
             >
-              <i class="fa-solid fa-sign-out-alt mr-2"></i>Wyloguj się
+              <i class="fa-solid fa-sign-out-alt text-xs"></i>Wyloguj się
             </button>
           </div>
         </div>
@@ -647,13 +701,11 @@
               <div id="faq-2" class="accordion-content">
                 <div class="accordion-body">
                   <p class="text-zinc-300">
-                    Udostępniamy
-                    <strong class="text-zinc-200">wzory formularzy</strong> (PDF
-                    oraz — gdy są dostępne — wersje online). Postępuj według
-                    instrukcji na formularzu i
-                    <strong class="text-zinc-200">regulaminu danej usługi</strong
-                    >. Terminy, adresy i tryb zgłoszenia są opisane w tym
-                    regulaminie — to pierwsze źródło przy zwrocie lub reklamacji.
+                    Aby skorzystać z interaktywnego formularza, wybierz wersję
+                    online. Po wysłaniu formularz zostanie automatycznie złożony
+                    w systemie. Jeśli odsyłasz produkt, dołącz do przesyłki
+                    wydrukowany formularz albo kartkę z numerem zwrotu lub
+                    reklamacji.
                   </p>
                 </div>
               </div>
@@ -706,19 +758,10 @@
               <div id="faq-4" class="accordion-content">
                 <div class="accordion-body">
                   <p class="text-zinc-300">
-                    Adres i tryb zgłoszeń są w
-                    <strong class="text-zinc-200">regulaminie właściwej usługi</strong
-                    >
-                    oraz często na samym formularzu. Na ogólne pytania można
-                    pisać na
-                    <a
-                      class="text-coyote hover:underline font-semibold"
-                      href="mailto:kontakt@strzelca.pl"
-                      >kontakt@strzelca.pl</a
-                    >
-                    — ale to
-                    <strong class="text-zinc-200">nie zastępuje</strong> wymogów
-                    z regulaminu (np. konkretnego adresu reklamacji).
+                    Zwroty i reklamacje kierujemy na adres:
+                    <strong class="text-zinc-200"
+                      >ul. Pułtuska 20/9, 53-116 Wrocław</strong
+                    >.
                   </p>
                 </div>
               </div>
@@ -879,22 +922,19 @@
               <div id="faq-10" class="accordion-content">
                 <div class="accordion-body">
                   <p class="text-zinc-300">
-                    Najpierw:
-                    <strong class="text-zinc-200"
-                      >regulamin właściwej usługi</strong
-                    >
-                    oraz
+                    Skontaktuj się przez system wiadomości z
                     <a
                       class="text-coyote hover:underline font-semibold"
                       href="https://pomoc.strzelca.pl"
-                      >pomoc.strzelca.pl</a
-                    >. W mailu podaj
-                    <strong class="text-zinc-200"
-                      >czego dotyczy sprawa</strong
+                      >Pomocą STRZELCA.pl</a
                     >
-                    (sklep, bazar, konto),
-                    <strong class="text-zinc-200">numer zamówienia</strong> lub
-                    login — bez tego często trzeba pisać drugi raz.
+                    (po kliknięciu otwiera się czat, jeśli jest dostępny, a jeśli
+                    nie — formularz kontaktowy) lub napisz na
+                    <a
+                      class="text-coyote hover:underline font-semibold"
+                      href="mailto:kontakt@strzelca.pl"
+                      >kontakt@strzelca.pl</a
+                    >.
                   </p>
                 </div>
               </div>
@@ -1518,7 +1558,7 @@
       role="contentinfo"
     >
       <a
-        href="https://kontakt.strzelca.pl/Igor_Janicki.html"
+        href="https://i-janicki.pl/"
         class="hover:text-white transition"
         title="Twórca strony"
         >Design &amp; Development by Igor Janicki</a
@@ -4676,8 +4716,12 @@ ${renderedBody}
       // Funkcja rozwijania/zwijania menu użytkownika
       window.toggleUserMenu = () => {
         const userMenu = document.getElementById("user-menu");
+        const avatarButton = document.getElementById("user-avatar-button");
         if (userMenu) {
-          userMenu.classList.toggle("hidden");
+          const isOpen = userMenu.classList.toggle("is-open");
+          if (avatarButton) {
+            avatarButton.setAttribute("aria-expanded", String(isOpen));
+          }
         }
       };
 
@@ -4690,9 +4734,13 @@ ${renderedBody}
           userPanel &&
           userMenu &&
           !userPanel.contains(event.target) &&
-          !userMenu.classList.contains("hidden")
+          userMenu.classList.contains("is-open")
         ) {
-          userMenu.classList.add("hidden");
+          userMenu.classList.remove("is-open");
+          const avatarButton = document.getElementById("user-avatar-button");
+          if (avatarButton) {
+            avatarButton.setAttribute("aria-expanded", "false");
+          }
         }
       });
 
@@ -4809,7 +4857,11 @@ ${renderedBody}
           // Zamknij menu po wylogowaniu
           const userMenu = document.getElementById("user-menu");
           if (userMenu) {
-            userMenu.classList.add("hidden");
+            userMenu.classList.remove("is-open");
+          }
+          const avatarButton = document.getElementById("user-avatar-button");
+          if (avatarButton) {
+            avatarButton.setAttribute("aria-expanded", "false");
           }
         } catch (error) {
           console.error("Logout error:", error);

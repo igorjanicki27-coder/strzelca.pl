@@ -966,7 +966,7 @@
                 mount.id = "strzelca-cert-temp-export";
                 mount.setAttribute("aria-hidden", "true");
                 mount.style.cssText =
-                    "position:fixed;left:-20000px;top:0;width:auto;height:auto;overflow:hidden;visibility:hidden;pointer-events:none;";
+                    "position:fixed;left:-20000px;top:0;width:auto;height:auto;overflow:hidden;opacity:0;pointer-events:none;";
                 mount.appendChild(wrap);
                 document.body.appendChild(mount);
 
@@ -1142,6 +1142,23 @@
                     await updateProgress();
                     // Odśwież panel lekcji po załadowaniu postępu, aby ikony były poprawne od razu
                     renderLessonsSidebar();
+
+                    // Przy pierwszym wejściu użytkownik może mieć 99% (wszystkie lekcje ukończone,
+                    // ale certyfikat jeszcze nie wydany). W takim przypadku pokaż certyfikat od razu.
+                    const regularLessons = lessons.filter((lesson) => lesson.id !== "certificate");
+                    const allRegularLessonsFinished =
+                        regularLessons.length > 0 &&
+                        regularLessons.every((lesson) => finishedLessons.has(lesson.id));
+
+                    if (allRegularLessonsFinished) {
+                        if (!lessons.find((lesson) => lesson.id === "certificate")) {
+                            await addCertificateLesson();
+                        }
+                        const certificateIndex = lessons.findIndex((lesson) => lesson.id === "certificate");
+                        if (certificateIndex !== -1 && currentLessonIndex !== certificateIndex) {
+                            await loadLesson(certificateIndex);
+                        }
+                    }
                 } catch (error) {
                     console.error("Error loading progress:", error);
                 }

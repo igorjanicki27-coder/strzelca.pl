@@ -324,6 +324,17 @@
             border: 1px solid #333;
             border-radius: 8px 8px 0 0;
         }
+        #charity-description-editor-pomoc .ql-editor {
+            padding-bottom: 56px;
+        }
+        #charity-description-editor-pomoc .ql-toolbar {
+            position: sticky;
+            bottom: 0;
+            z-index: 50;
+            width: 100%;
+            box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(10px);
+        }
         #charity-description-editor-pomoc .ql-toolbar .ql-stroke { stroke: #fff; }
         #charity-description-editor-pomoc .ql-toolbar .ql-fill { fill: #fff; }
         .carousel-arrow {
@@ -679,7 +690,7 @@
                 </p>
                 <h3 class="text-[var(--coyote)] font-semibold text-base">Informacja o wsparciu</h3>
                 <p class="text-zinc-200">
-                    „Wpłaty dokonywane za pomocą przycisku &apos;Na nowa 🔫&apos; mają charakter dobrowolnej darowizny na rzecz rozwoju portalu STRZELCA.PL. Nie
+                    „Wpłaty dokonywane za pomocą przycisku &apos;Wsprzyj 🔫.pl&apos; mają charakter dobrowolnej darowizny na rzecz rozwoju portalu STRZELCA.PL. Nie
                     stanowią one zapłaty za towar lub usługę. Darowizny od jednej osoby nieprzekraczające limitów ustawowych są zwolnione z podatku od spadków i
                     darowizn.”
                 </p>
@@ -804,6 +815,7 @@ const firebaseConfig = {
         const PINNED_CHARITY_ID = '__pinned_company_donations';
         const DEFAULT_STRIPE_BUY_BTN = 'buy_btn_1SmzvBCoixAPjvnwGm1XsRpP';
         const DEFAULT_STRIPE_PK = 'pk_test_51SmzhGCoixAPjvnwV7RfZLsfOnNOgYabPHMhKOJL1wLRaNLJcNd3O1mHxkUZw8QTytyUEwk25aqTPNDB3aGoIOSg00a7BAlDzj';
+        const DONATION_PAYMENT_URL = 'https://donate.stripe.com/7sY7sL3n85a3d57gNUes004';
 
         let charityActions = [];
         let publicCharityItems = [];
@@ -1057,8 +1069,8 @@ const firebaseConfig = {
                             </div>
                         </div>
                         <div class="p-4 md:p-6 pt-1.5 mt-auto shrink-0">
-                            <button type="button" onclick="event.stopPropagation(); window.openPinnedDonationsDetails()" class="charity-wesprzyj-btn w-full font-bold text-sm tracking-widest py-3 px-4 rounded-lg uppercase flex items-center justify-center transition-all duration-300">
-                                <span class="charity-wesprzyj-label transition-colors">Na nową 🔫</span>
+                            <button type="button" onclick="event.stopPropagation(); window.open(DONATION_PAYMENT_URL, '_blank', 'noopener,noreferrer')" class="charity-wesprzyj-btn w-full font-bold text-sm tracking-widest py-3 px-4 rounded-lg uppercase flex items-center justify-center transition-all duration-300">
+                                <span class="charity-wesprzyj-label transition-colors">Wsprzyj 🔫.pl</span>
                             </button>
                         </div>
                     </div>
@@ -1432,9 +1444,6 @@ const firebaseConfig = {
 
             const title = escapeHtml(p.title);
             const description = formatCharityDescriptionHtml(p.description);
-            const buyId = escapeHtml(p.stripeBuyButtonId);
-            const pk = escapeHtml(p.stripePublishableKey);
-
             body.innerHTML = `
                 ${imagesHtml}
                 <div class="p-6 md:p-8">
@@ -1443,10 +1452,16 @@ const firebaseConfig = {
                         ${description || '<p>Brak opisu — uzupełnij treść w panelu admina (Pomoc → Edytuj kafelek wpłat).</p>'}
                     </div>
                     <div class="mt-8 flex flex-col items-center gap-5 pt-6 border-t border-zinc-800">
-                        <stripe-buy-button
-                          buy-button-id="${buyId}"
-                          publishable-key="${pk}"
-                        ></stripe-buy-button>
+                        <a
+                          href="${escapeHtml(DONATION_PAYMENT_URL)}"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="charity-wesprzyj-btn font-bold text-sm tracking-[0.12em] py-4 px-8 rounded-lg uppercase inline-flex items-center justify-center gap-2 transition-all duration-300"
+                        >
+                          <i class="fa-solid fa-heart charity-heart-icon" aria-hidden="true"></i>
+                          <span class="charity-wesprzyj-label transition-colors">Wsprzyj 🔫.pl</span>
+                          <i class="fa-solid fa-heart charity-heart-icon" aria-hidden="true"></i>
+                        </a>
                         <button type="button" onclick="event.stopPropagation(); window.openDonationClauseModal();" class="text-xs text-zinc-400 hover:text-[var(--coyote)] transition underline">
                             Klauzula Donacji
                         </button>

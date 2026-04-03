@@ -137,8 +137,13 @@
         .custom-render img { max-width: 100%; height: auto; border-radius: 0.5rem; }
         .custom-render h1, .custom-render h2, .custom-render h3 { font-weight: 700; margin: 0.75rem 0 0.35rem; color: #fafafa; }
         .custom-render p { margin: 0.35rem 0; }
-        .custom-render div[style*="text-align: center"] { text-align: center !important; }
-        .custom-render div[style*="text-align: right"] { text-align: right !important; }
+        /* Quill potrafi zapisywać wyrównanie jako inline style (np. <p style="text-align: center;">)
+           albo jako klasy (np. <p class="ql-align-center">). */
+        .custom-render [style*="text-align: center"] { text-align: center !important; }
+        .custom-render [style*="text-align: right"] { text-align: right !important; }
+        .custom-render .ql-align-center { text-align: center !important; }
+        .custom-render .ql-align-right { text-align: right !important; }
+        .custom-render .ql-align-justify { text-align: justify !important; }
 
         .blog-social-row {
             display: flex;
@@ -253,7 +258,8 @@
             justify-content: center;
             border-radius: 10px;
             border: none;
-            background: rgba(193, 154, 107, 0.18);
+            /* Ma wyglądać jak "sam przycisk/ikona" bez wypełnienia tłem. */
+            background: transparent;
             color: #E9D3B7;
             font-size: 1rem;
             line-height: 1;
@@ -261,7 +267,7 @@
             transition: background 0.2s, transform 0.2s, opacity 0.2s;
         }
         .blog-comment-send-btn:hover:not(:disabled) {
-            background: rgba(193, 154, 107, 0.32);
+            background: transparent;
             transform: translateY(-1px);
         }
         .blog-comment-send-btn:disabled {
@@ -1297,15 +1303,25 @@
             flex-direction: column;
             gap: 0.34rem;
         }
+        .event-meta-section-label {
+            margin: 0.1rem 0 0;
+            font-size: 0.66rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #d4d7df;
+            text-align: center;
+        }
         .event-meta-row {
             font-size: 0.84rem;
             color: #a1a1aa;
             margin: 0;
             display: grid;
-            grid-template-columns: 1rem auto minmax(0, 1fr);
+            grid-template-columns: 1rem minmax(0, auto);
             align-items: center;
             gap: 0.42rem;
-            text-align: left;
+            justify-content: center;
+            text-align: center;
             line-height: 1.45;
         }
         .event-meta-icon {
@@ -1322,15 +1338,36 @@
         .event-meta-value {
             color: #b8bcc8;
             min-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            white-space: normal;
+            text-wrap: balance;
+        }
+        .event-meta-date {
+            margin: 0;
+            text-align: center;
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: #dde1eb;
+            letter-spacing: 0.01em;
+        }
+        .event-meta-time-range {
+            margin: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            font-size: 0.84rem;
+            color: #b8bcc8;
+            line-height: 1.4;
+            text-align: center;
+            align-self: center;
+        }
+        .event-meta-time-divider {
+            color: #8b90a0;
+            font-weight: 700;
+            margin: 0 0.06rem;
         }
         .event-meta-row.event-meta-row--location {
-            grid-template-columns: 1rem minmax(0, 1fr);
-        }
-        .event-meta-row.event-meta-row--location .event-meta-value {
-            grid-column: 2;
+            margin-top: 0.02rem;
         }
         .badge-chip {
             display: inline-flex;
@@ -2828,6 +2865,28 @@ const firebaseConfig = {
                 minute: '2-digit'
             });
             const shouldShowEndDate = startDateObj.toDateString() !== endDateObj.toDateString();
+            const eventTermHtml = shouldShowEndDate
+                ? `
+                            <p class="event-meta-row">
+                                <i class="fa-solid fa-play event-meta-icon" aria-hidden="true"></i>
+                                <span class="event-meta-value">${startDateLabel}, ${startTimeLabel}</span>
+                            </p>
+                            <p class="event-meta-row">
+                                <i class="fa-solid fa-flag-checkered event-meta-icon" aria-hidden="true"></i>
+                                <span class="event-meta-value">${endDateLabel}, ${endTimeLabel}</span>
+                            </p>
+                        `
+                : `
+                            <p class="event-meta-section-label">Termin</p>
+                            <p class="event-meta-date">${startDateLabel}</p>
+                            <p class="event-meta-time-range">
+                                <i class="fa-solid fa-play event-meta-icon" aria-hidden="true"></i>
+                                <span>${startTimeLabel}</span>
+                                <span class="event-meta-time-divider" aria-hidden="true">|</span>
+                                <i class="fa-solid fa-flag-checkered event-meta-icon" aria-hidden="true"></i>
+                                <span>${endTimeLabel}</span>
+                            </p>
+                        `;
             const isPast = isEventCompleted(event, now);
             const isPinned = !!event.pinned;
             const actionState = getEventParticipateButtonState(event, now);
@@ -2841,17 +2900,10 @@ const firebaseConfig = {
                         <h3 class="event-title">${safeTitle}</h3>
                         <div class="event-divider"></div>
                         <div class="event-data-slot">
-                            <p class="event-meta-row">
-                                <i class="fa-solid fa-play event-meta-icon" aria-hidden="true"></i>
-                                <span class="event-meta-label">Start:</span>
-                                <span class="event-meta-value">${startDateLabel}, ${startTimeLabel}</span>
-                            </p>
-                            <p class="event-meta-row">
-                                <i class="fa-solid fa-flag-checkered event-meta-icon" aria-hidden="true"></i>
-                                <span class="event-meta-label">Koniec:</span>
-                                <span class="event-meta-value">${shouldShowEndDate ? `${endDateLabel}, ` : ''}${endTimeLabel}</span>
-                            </p>
-                            ${safeLocation ? `<p class="event-meta-row event-meta-row--location"><i class="fa-solid fa-location-dot event-meta-icon" aria-hidden="true"></i><span class="event-meta-value">${safeLocation}</span></p>` : ''}
+                            ${eventTermHtml}
+                            ${safeLocation
+                                ? `<p class="event-meta-section-label">Lokalizacja</p><p class="event-meta-row event-meta-row--location"><i class="fa-solid fa-location-dot event-meta-icon" aria-hidden="true"></i><span class="event-meta-value">${safeLocation}</span></p>`
+                                : ''}
                         </div>
                         <div class="mt-2 space-y-1" data-event-status-lines="${encodeURIComponent(event.id)}">${statusLinesHtml}</div>
                         <div class="blog-card-stats">
@@ -3788,6 +3840,28 @@ const firebaseConfig = {
             const eventEnd = resolveEventEndDateObj(event);
             if (eventEnd) {
                 meta.push(`<div class="detail-meta-item"><i class="fa-solid fa-flag-checkered text-coyote"></i><span><strong class="text-zinc-200">Koniec:</strong> ${eventEnd.toLocaleString('pl-PL', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })}</span></div>`);
+            }
+            const registrationStart = getEventRegistrationStartDateObj(event);
+            if (registrationStart) {
+                meta.push(`<div class="detail-meta-item"><i class="fa-solid fa-door-open text-coyote"></i><span><strong class="text-zinc-200">Start zapisów:</strong> ${registrationStart.toLocaleString('pl-PL', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })}</span></div>`);
+            }
+            const registrationEnd = getEventRegistrationDeadlineDateObj(event);
+            if (registrationEnd) {
+                meta.push(`<div class="detail-meta-item"><i class="fa-solid fa-hourglass-end text-coyote"></i><span><strong class="text-zinc-200">Koniec zapisów:</strong> ${registrationEnd.toLocaleString('pl-PL', {
                     weekday: 'long',
                     year: 'numeric',
                     month: 'long',

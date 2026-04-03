@@ -316,7 +316,7 @@ function makeStyles() {
     .wrap {
       position: fixed;
       right: 16px;
-      bottom: 16px;
+      top: 16px;
       z-index: 2147483646;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       color: #e5e5e5;
@@ -360,7 +360,7 @@ function makeStyles() {
     .panel {
       position: absolute;
       right: 0;
-      bottom: 70px;
+      top: 70px;
       width: min(calc(100vw - 32px), 900px);
       max-width: calc(100vw - 32px);
       height: min(calc(100vh - 100px), 600px);
@@ -816,7 +816,7 @@ function makeStyles() {
         height: min(calc(100vh - 80px), 600px);
         max-height: calc(100vh - 80px);
         right: 8px;
-        bottom: 80px;
+        top: 80px;
       }
       .grid { grid-template-columns: 1fr; }
       .left { display: none; }
