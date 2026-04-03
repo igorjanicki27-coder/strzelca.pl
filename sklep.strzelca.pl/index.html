@@ -735,12 +735,13 @@
         function buildProductCard(item) {
             const encodedTitle = encodeURIComponent(item.title || '');
             const mainImage = item.mainImage || '';
+            const imgStyleAttr = item.mainImageObjectPosition ? `style="object-position:${item.mainImageObjectPosition}"` : '';
             const priceLabel = item.individualPricing ? 'Wycena indywidualna' : `${item.price} PLN`;
             const priceAriaLabel = item.individualPricing ? 'Wycena indywidualna' : `Cena: ${item.price} złotych`;
 
             return `
                 <article class="card-dark product-card flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50 cursor-pointer" role="button" tabindex="0" aria-label="Pokaż szczegóły produktu ${item.title}" onclick="window.showDetails('${item.id}')" onkeydown="if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); window.showDetails('${item.id}'); }">
-                    <div class="product-img-container"><img src="${mainImage}" alt="${item.title}" loading="lazy"></div>
+                    <div class="product-img-container"><img src="${mainImage}" alt="${item.title}" loading="lazy" ${imgStyleAttr}></div>
                     <div class="p-4 md:p-6 flex flex-col flex-grow text-center">
                         <h3 class="text-xl md:text-2xl font-black uppercase mb-2 font-[Orbitron] text-white tracking-tight">${item.title}</h3>
                         ${item.oldPrice ? `<p class="text-zinc-500 line-through text-sm mb-1">${item.oldPrice} PLN</p>` : ''}
@@ -966,8 +967,17 @@
                             snap.forEach((d) => {
                                 const p = d.data();
                                 let mainImage = p.img || '';
+                                let mainImagePosX = undefined;
+                                let mainImagePosY = undefined;
                                 if (p.images && Array.isArray(p.images) && p.images.length > 0) {
-                                    mainImage = typeof p.images[0] === 'string' ? p.images[0] : p.images[0].url;
+                                    const main = p.images[0];
+                                    if (typeof main === 'string') {
+                                        mainImage = main;
+                                    } else if (main && typeof main === 'object') {
+                                        mainImage = main.url || '';
+                                        if (typeof main.posX === 'number') mainImagePosX = main.posX;
+                                        if (typeof main.posY === 'number') mainImagePosY = main.posY;
+                                    }
                                 }
                                 rows.push({
                                     id: d.id,
@@ -975,6 +985,10 @@
                                     price: p.price || 0,
                                     individualPricing: p.individualPricing === true,
                                     mainImage,
+                                    mainImageObjectPosition:
+                                        typeof mainImagePosX === 'number' && typeof mainImagePosY === 'number'
+                                            ? `${mainImagePosX}% ${mainImagePosY}%`
+                                            : null,
                                 });
                             });
                             return rows;
@@ -1043,10 +1057,22 @@
             // Pobierz zdjęcia produktu
             let images = [];
             if (p.images && Array.isArray(p.images) && p.images.length > 0) {
-                images = p.images.map(img => typeof img === 'string' ? img : img.url);
+                images = p.images
+                    .map((img) => {
+                        if (typeof img === 'string') return { url: img };
+                        if (img && typeof img === 'object') {
+                            return {
+                                url: img.url || '',
+                                posX: typeof img.posX === 'number' ? img.posX : undefined,
+                                posY: typeof img.posY === 'number' ? img.posY : undefined,
+                            };
+                        }
+                        return null;
+                    })
+                    .filter(Boolean);
             } else if (p.img) {
                 // Fallback dla starych produktów
-                images = [p.img];
+                images = [{ url: p.img }];
             }
             
             // Jeśli nie ma zdjęć w tablicy, spróbuj wyciągnąć z opisu
@@ -1055,18 +1081,27 @@
                 tempDiv.innerHTML = p.description;
                 const imgs = tempDiv.querySelectorAll('img');
                 imgs.forEach(img => {
-                    if (img.src && !images.includes(img.src)) {
-                        images.push(img.src);
+                    const url = img.src;
+                    if (url && !images.some(i => i.url === url)) {
+                        images.push({ url });
                     }
                 });
             }
+
+            const getObjectPositionStyleAttr = (meta) => {
+                if (!meta) return '';
+                if (typeof meta.posX === 'number' && typeof meta.posY === 'number') {
+                    return `style="object-position:${meta.posX}% ${meta.posY}%"`;
+                }
+                return '';
+            };
             
             // Generuj HTML galerii
             let galleryHTML = '';
             if (images.length > 0) {
                 galleryHTML = `
                     <div class="product-gallery" id="product-gallery">
-                        <img id="gallery-main-img" src="${images[0]}" alt="${p.title}" />
+                        <img id="gallery-main-img" src="${images[0].url}" alt="${p.title}" ${getObjectPositionStyleAttr(images[0])} />
                         ${images.length > 1 ? `
                             <button class="gallery-nav prev" onclick="changeGalleryImage(-1, ${images.length})" id="gallery-prev" style="opacity: 0.3; cursor: not-allowed;">
                                 <i class="fa-solid fa-chevron-left"></i>
@@ -1108,9 +1143,10 @@
             if (descriptionHTML && images.length > 0) {
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = descriptionHTML;
+                const imageUrls = images.map((i) => i.url).filter(Boolean);
                 const imgs = tempDiv.querySelectorAll('img');
                 imgs.forEach(img => {
-                    if (images.includes(img.src)) {
+                    if (imageUrls.includes(img.src)) {
                         img.remove();
                     }
                 });
@@ -1162,7 +1198,13 @@
             const counter = document.getElementById('gallery-current');
             
             if (img) {
-                img.src = window.currentProductImages[window.currentGalleryIndex];
+                const meta = window.currentProductImages[window.currentGalleryIndex];
+                img.src = meta?.url || '';
+                if (meta && typeof meta.posX === 'number' && typeof meta.posY === 'number') {
+                    img.style.objectPosition = `${meta.posX}% ${meta.posY}%`;
+                } else {
+                    img.style.objectPosition = '';
+                }
             }
             if (counter) {
                 counter.textContent = window.currentGalleryIndex + 1;

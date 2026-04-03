@@ -41,6 +41,7 @@
       status: 'all',
       query: '',
       includeArchived: false,
+      view: 'all',
     },
     pendingSelection: null,
     exportLibPromise: null,
@@ -195,8 +196,9 @@
       headers['Content-Type'] = 'application/json';
     }
     try {
-      if (typeof auth !== 'undefined' && auth?.currentUser?.getIdToken) {
-        const token = await auth.currentUser.getIdToken();
+      const firebaseAuth = globalThis.auth;
+      if (firebaseAuth?.currentUser?.getIdToken) {
+        const token = await firebaseAuth.currentUser.getIdToken();
         if (token) headers.Authorization = `Bearer ${token}`;
       }
     } catch (error) {
@@ -236,14 +238,20 @@
       state.orders = Array.isArray(data) ? data.slice() : [];
     } catch (error) {
       console.warn('loadOrdersLookup API fallback:', error);
-      if (typeof db === 'undefined' || typeof collection !== 'function' || typeof getDocs !== 'function') {
-        throw error;
+      try {
+        if (typeof db === 'undefined' || typeof collection !== 'function' || typeof getDocs !== 'function') {
+          state.orders = [];
+        } else {
+          const snapshot =
+            typeof query === 'function' && typeof limit === 'function'
+              ? await getDocs(query(collection(db, 'orders'), limit(2500)))
+              : await getDocs(collection(db, 'orders'));
+          state.orders = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+        }
+      } catch (fallbackError) {
+        console.warn('loadOrdersLookup Firestore fallback failed:', fallbackError);
+        state.orders = [];
       }
-      const snapshot =
-        typeof query === 'function' && typeof limit === 'function'
-          ? await getDocs(query(collection(db, 'orders'), limit(2500)))
-          : await getDocs(collection(db, 'orders'));
-      state.orders = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
     }
     state.orders.sort((a, b) => getInvoiceSortValue(b) - getInvoiceSortValue(a));
     state.ordersLoaded = true;
@@ -288,11 +296,23 @@
   function getFilteredGroups() {
     const query = normalizeText(state.filters.query).toLowerCase();
     const status = state.filters.status;
+    const view = state.filters.view || 'all';
     return state.groups.filter((group) => {
       if (!state.filters.includeArchived && ['wyslana', 'anulowana'].includes(group.latest?.status)) {
         return false;
       }
       if (status !== 'all' && group.latest?.status !== status) return false;
+
+      if (view === 'invoices') {
+        const hasInvoice = (group.invoices || []).some((inv) => inv.kind !== 'correction');
+        if (!hasInvoice) return false;
+      } else if (view === 'corrections') {
+        const hasCorrection = (group.invoices || []).some((inv) => inv.kind === 'correction');
+        if (!hasCorrection) return false;
+      } else if (view === 'linked') {
+        if (!normalizeText(group.latest?.linkedOrder?.orderId)) return false;
+      }
+
       if (!query) return true;
       return group.searchText.includes(query);
     });
@@ -316,19 +336,49 @@
 
     const statsEl = document.getElementById('invoice-stats-grid');
     if (!statsEl) return;
+
+    const view = state.filters.view || 'all';
+    const invoicesActive = view === 'all' || view === 'invoices';
+    const correctionsActive = view === 'corrections';
+    const linkedActive = view === 'linked';
+
     statsEl.innerHTML = `
-      <div class="invoice-kpi-card">
-        <div class="invoice-kpi-value">${invoiceCount}</div>
-        <div class="invoice-kpi-label">Faktury</div>
-      </div>
-      <div class="invoice-kpi-card">
-        <div class="invoice-kpi-value">${correctionCount}</div>
-        <div class="invoice-kpi-label">Korekty</div>
-      </div>
-      <div class="invoice-kpi-card">
-        <div class="invoice-kpi-value">${linkedCount}</div>
-        <div class="invoice-kpi-label">Powiązane z zamówieniami</div>
-      </div>
+      <button
+        type="button"
+        class="invoice-kpi-tile ${invoicesActive ? 'active' : ''}"
+        aria-pressed="${invoicesActive ? 'true' : 'false'}"
+        onclick="setInvoiceKpiView('invoices')"
+      >
+        <div class="invoice-kpi-tile-left">
+          <div class="invoice-kpi-tile-icon"><i class="fa-solid fa-file-invoice"></i></div>
+          <div class="invoice-kpi-tile-title">Faktury</div>
+        </div>
+        <div class="invoice-kpi-tile-value">${invoiceCount}</div>
+      </button>
+      <button
+        type="button"
+        class="invoice-kpi-tile ${correctionsActive ? 'active' : ''}"
+        aria-pressed="${correctionsActive ? 'true' : 'false'}"
+        onclick="setInvoiceKpiView('corrections')"
+      >
+        <div class="invoice-kpi-tile-left">
+          <div class="invoice-kpi-tile-icon"><i class="fa-solid fa-file-circle-plus"></i></div>
+          <div class="invoice-kpi-tile-title">Korekty</div>
+        </div>
+        <div class="invoice-kpi-tile-value">${correctionCount}</div>
+      </button>
+      <button
+        type="button"
+        class="invoice-kpi-tile ${linkedActive ? 'active' : ''}"
+        aria-pressed="${linkedActive ? 'true' : 'false'}"
+        onclick="setInvoiceKpiView('linked')"
+      >
+        <div class="invoice-kpi-tile-left">
+          <div class="invoice-kpi-tile-icon"><i class="fa-solid fa-link"></i></div>
+          <div class="invoice-kpi-tile-title">Powiązane z zamówieniami</div>
+        </div>
+        <div class="invoice-kpi-tile-value">${linkedCount}</div>
+      </button>
     `;
   }
 
@@ -587,6 +637,14 @@
       `;
       previewEl.innerHTML = '';
       return;
+    }
+
+    // Jeśli wyświetlasz fakturę z zapisaną parafką, a w tej przeglądarce nie ma jej jeszcze jako domyślnej,
+    // ustaw ją automatycznie (dla podglądu oraz nowych/edytowanych dokumentów).
+    const invoiceSignature = normalizeText(invoice?.sellerSignatureDataUrl);
+    if (!state.signatureDataUrl && invoiceSignature) {
+      state.signatureDataUrl = invoiceSignature;
+      persistSignatureLocally(state.signatureDataUrl);
     }
 
     const canEdit = invoice.status === 'utworzona';
@@ -1012,7 +1070,14 @@
   }
 
   async function openModalFor(mode, sourceId) {
-    await loadOrdersLookup();
+    try {
+      await loadOrdersLookup();
+    } catch (error) {
+      // Nie blokuj tworzenia faktury jeśli nie udało się pobrać zamówień.
+      console.warn('openModalFor: orders lookup failed:', error);
+      state.orders = [];
+      state.ordersLoaded = true;
+    }
     let draft = makeBlankDraft();
 
     if (mode === 'edit') {
@@ -1155,6 +1220,12 @@
 
   window.refreshAdminInvoices = async function refreshAdminInvoices() {
     await loadInvoices({ preserveSelection: true });
+  };
+
+  window.setInvoiceKpiView = function setInvoiceKpiView(view) {
+    const current = state.filters.view || 'all';
+    state.filters.view = current === view ? 'all' : view;
+    renderInvoicesTab();
   };
 
   window.openAdminInvoiceModal = async function openAdminInvoiceModal(invoiceId) {

@@ -494,6 +494,35 @@ async function handlePostMessage(req, res, db, { requesterUid, requesterIsAdmin 
       }
     }
 
+    // Panel administracyjny ma nie móc odpowiadać na wiadomości z publicznego formularza kontaktowego.
+    // Te wiadomości przychodzą jako wątek z "anonymous" (senderId='anonymous', senderType='contact_form').
+    if (requesterUid && requesterIsAdmin && recipientId === 'anonymous') {
+      try {
+        const snap = await admin
+          .firestore()
+          .collection('messages')
+          .where('senderId', '==', 'anonymous')
+          .where('recipientId', '==', 'admin')
+          .where('senderType', '==', 'contact_form')
+          .limit(1)
+          .get();
+
+        if (!snap.empty) {
+          return res.status(403).json({
+            success: false,
+            error: 'Nie można odpowiadać na wiadomości z formularza kontaktowego.',
+          });
+        }
+      } catch (e) {
+        // Fail-closed: jeśli nie możemy sprawdzić powodu (np. brak indeksu), i tak blokujemy odpowiedź.
+        console.warn('handlePostMessage: contact_form reply guard failed (blocking):', e?.message || e);
+        return res.status(403).json({
+          success: false,
+          error: 'Nie można odpowiadać na wiadomości z formularza kontaktowego.',
+        });
+      }
+    }
+
     console.log('handlePostMessage: Adding message:', {
       content: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
       senderId,

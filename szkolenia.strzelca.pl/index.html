@@ -922,6 +922,7 @@ const firebaseConfig = {
                 const encodedTitle = encodeURIComponent(item.title || "");
                 const priceLabel = item.individualPricing ? "Cena ustalana indywidualnie" : `${item.price} PLN`;
                 const priceAriaLabel = item.individualPricing ? "Cena ustalana indywidualnie" : `Cena: ${item.price} złotych`;
+                const imgStyleAttr = item.imgObjectPosition ? `style="object-position:${item.imgObjectPosition}"` : '';
                 const progressPercent = Math.max(0, Math.min(100, item.progressPercent || 0));
                 const progressTextClass = item.isCompleted ? 'text-emerald-400' : 'text-zinc-300';
                 const cardStateClass = item.isCompleted
@@ -963,7 +964,7 @@ const firebaseConfig = {
 
                 return `
                     <article onclick="window.showTrainingDetails('${item.id}')" class="card-dark training-card flex flex-col h-full shadow-2xl transition ${cardStateClass} cursor-pointer" role="article">
-                        <div class="training-img-container"><img src="${item.img}" alt="${item.title}" loading="lazy"></div>
+                        <div class="training-img-container"><img src="${item.img}" alt="${item.title}" loading="lazy" ${imgStyleAttr}></div>
                         <div class="p-4 md:p-6 flex flex-col flex-grow text-center">
                             <h3 class="text-xl md:text-2xl font-black uppercase mb-2 font-[Orbitron] text-white tracking-tight min-h-[3.5rem] md:min-h-[4rem] flex items-center justify-center">${item.title}</h3>
                             <p class="coyote-text font-bold text-lg md:text-xl mb-4 md:mb-5 min-h-[2rem] flex items-center justify-center" aria-label="${priceAriaLabel}">${priceLabel}</p>
@@ -1152,12 +1153,29 @@ const firebaseConfig = {
                                 const rows = [];
                                 snap.forEach((d) => {
                                     const t = d.data();
+                                    let mainImg = t.img || '';
+                                    let mainImgPosX = undefined;
+                                    let mainImgPosY = undefined;
+                                    if (t.images && Array.isArray(t.images) && t.images.length > 0) {
+                                        const main = t.images[0];
+                                        if (typeof main === 'string') {
+                                            mainImg = main;
+                                        } else if (main && typeof main === 'object') {
+                                            mainImg = main.url || '';
+                                            if (typeof main.posX === 'number') mainImgPosX = main.posX;
+                                            if (typeof main.posY === 'number') mainImgPosY = main.posY;
+                                        }
+                                    }
                                     rows.push({
                                         id: d.id,
                                         title: t.title || "",
                                         price: t.price || 0,
                                         individualPricing: t.individualPricing === true,
-                                        img: t.img || "",
+                                        img: mainImg,
+                                        imgObjectPosition:
+                                            typeof mainImgPosX === 'number' && typeof mainImgPosY === 'number'
+                                                ? `${mainImgPosX}% ${mainImgPosY}%`
+                                                : null,
                                         available: t.available === true,
                                     });
                                 });
@@ -1222,6 +1240,7 @@ const firebaseConfig = {
                                 price: row.price,
                                 individualPricing: row.individualPricing === true,
                                 img: row.img,
+                                imgObjectPosition: row.imgObjectPosition,
                                 hasAccess,
                                 hasActiveOrder: activeOrderIds.has(row.id),
                                 detailActionLabel: user ? "Złóż zamówienie" : "Zapytaj o ofertę",
@@ -1333,27 +1352,50 @@ const firebaseConfig = {
                 // Pobierz zdjęcia szkolenia
                 let images = [];
                 if (t.images && Array.isArray(t.images) && t.images.length > 0) {
-                    images = t.images.map(img => typeof img === 'string' ? img : img.url);
+                    images = t.images
+                        .map((img) => {
+                            if (typeof img === 'string') return { url: img };
+                            if (img && typeof img === 'object') {
+                                return {
+                                    url: img.url || '',
+                                    posX: typeof img.posX === 'number' ? img.posX : undefined,
+                                    posY: typeof img.posY === 'number' ? img.posY : undefined,
+                                };
+                            }
+                            return null;
+                        })
+                        .filter(Boolean);
                 } else if (t.img) {
-                    images = [t.img];
+                    images = [{ url: t.img }];
                 }
                 
                 if (images.length === 0 && t.desc) {
                     const tempDiv = document.createElement('div');
                     tempDiv.innerHTML = t.desc;
                     const imgs = tempDiv.querySelectorAll('img');
+                    const imageUrls = [];
                     imgs.forEach(img => {
-                        if (img.src && !images.includes(img.src)) {
-                            images.push(img.src);
+                        const url = img.src;
+                        if (url && !imageUrls.includes(url)) {
+                            imageUrls.push(url);
+                            images.push({ url });
                         }
                     });
                 }
+
+                const getObjectPositionStyleAttr = (meta) => {
+                    if (!meta) return '';
+                    if (typeof meta.posX === 'number' && typeof meta.posY === 'number') {
+                        return `style="object-position:${meta.posX}% ${meta.posY}%"`;
+                    }
+                    return '';
+                };
                 
                 let galleryHTML = '';
                 if (images.length > 0) {
                     galleryHTML = `
                         <div class="product-gallery training-details-gallery" id="product-gallery">
-                            <img id="gallery-main-img" src="${images[0]}" alt="${t.title}" />
+                            <img id="gallery-main-img" src="${images[0].url}" alt="${t.title}" ${getObjectPositionStyleAttr(images[0])} />
                             ${images.length > 1 ? `
                                 <button class="gallery-nav prev" onclick="changeGalleryImage(-1, ${images.length})" id="gallery-prev" style="opacity: 0.3; cursor: not-allowed;">
                                     <i class="fa-solid fa-chevron-left"></i>
@@ -1390,9 +1432,10 @@ const firebaseConfig = {
                 if (descriptionHTML && images.length > 0) {
                     const tempDiv = document.createElement('div');
                     tempDiv.innerHTML = descriptionHTML;
+                    const imageUrls = images.map((i) => i.url).filter(Boolean);
                     const imgs = tempDiv.querySelectorAll('img');
                     imgs.forEach(img => {
-                        if (images.includes(img.src)) {
+                        if (imageUrls.includes(img.src)) {
                             img.remove();
                         }
                     });
@@ -1450,7 +1493,15 @@ const firebaseConfig = {
                 const img = document.getElementById('gallery-main-img');
                 const counter = document.getElementById('gallery-current');
                 
-                if (img) img.src = window.currentTrainingImages[window.currentGalleryIndex];
+                if (img) {
+                    const meta = window.currentTrainingImages[window.currentGalleryIndex];
+                    img.src = meta?.url || '';
+                    if (meta && typeof meta.posX === 'number' && typeof meta.posY === 'number') {
+                        img.style.objectPosition = `${meta.posX}% ${meta.posY}%`;
+                    } else {
+                        img.style.objectPosition = '';
+                    }
+                }
                 if (counter) counter.textContent = window.currentGalleryIndex + 1;
                 
                 const prevBtn = document.getElementById('gallery-prev');

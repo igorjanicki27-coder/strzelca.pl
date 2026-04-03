@@ -317,7 +317,9 @@ function makeStyles() {
       position: fixed;
       right: 16px;
       top: 16px;
-      z-index: 2147483646;
+      /* Musi być wyżej niż auth-widget (top-right avatar/menu),
+         bo inaczej floating przycisk czatu chowa się za awatarem. */
+      z-index: 2147483647;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       color: #e5e5e5;
       max-width: calc(100vw - 32px);
