@@ -677,8 +677,10 @@
       .nav-scroll {
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: 0.6rem;
         flex-wrap: wrap;
+        width: 100%;
         overflow: visible;
         padding-bottom: 0.2rem;
       }
@@ -11450,7 +11452,9 @@
               order: productImages.length,
               // Pozycja kadru w kafelku (dla front-end jako CSS object-position)
               posX: 50,
-              posY: 50
+              posY: 50,
+              // Zoom/powiększenie kadru w podglądzie (front-end: transform: scale)
+              zoom: 1
             });
           });
 
@@ -11516,13 +11520,13 @@
               <div class="text-xs text-zinc-500 truncate" title="${img.url}">${img.url}</div>
               <div class="mt-3">
                 <div class="text-[11px] text-zinc-400 mb-2">Kadr w kafelku (object-position)</div>
-                <div class="w-full h-24 bg-zinc-900 rounded overflow-hidden border border-zinc-700 mb-2">
+                <div class="w-full h-28 bg-zinc-900 rounded overflow-hidden border border-zinc-700 mb-2">
                   <img
                     id="product-pos-preview-img-${index}"
                     src="${img.url}"
                     alt=""
                     class="w-full h-full object-contain"
-                    style="object-position:${(typeof img.posX === 'number' ? img.posX : 50)}% ${(typeof img.posY === 'number' ? img.posY : 50)}%;"
+                    style="object-position:${(typeof img.posX === 'number' ? img.posX : 50)}% ${(typeof img.posY === 'number' ? img.posY : 50)}%; transform:scale(${(typeof img.zoom === 'number' ? img.zoom : 1)}); transform-origin:${(typeof img.posX === 'number' ? img.posX : 50)}% ${(typeof img.posY === 'number' ? img.posY : 50)}%;"
                     onerror="this.style.opacity='0.6'"
                   />
                 </div>
@@ -11551,6 +11555,19 @@
                     class="w-full"
                   />
                   <span class="text-[11px] text-zinc-400 w-12 text-right tabular-nums">${typeof img.posY === 'number' ? img.posY : 50}%</span>
+                </div>
+                <div class="flex items-center gap-2 mt-2">
+                  <span class="text-[11px] text-zinc-500 w-6">Zoom</span>
+                  <input
+                    type="range"
+                    min="50"
+                    max="250"
+                    step="1"
+                    value="${Math.round((typeof img.zoom === 'number' ? img.zoom : 1) * 100)}"
+                    oninput="window.updateProductImageZoom(${index}, this.value)"
+                    class="w-full"
+                  />
+                  <span class="text-[11px] text-zinc-400 w-12 text-right tabular-nums">${Math.round((typeof img.zoom === 'number' ? img.zoom : 1) * 100)}%</span>
                 </div>
               </div>
             </div>
@@ -11597,6 +11614,9 @@
         if (previewImg) {
           const y = typeof img.posY === 'number' ? img.posY : 50;
           previewImg.style.objectPosition = `${x}% ${y}%`;
+          const zoom = typeof img.zoom === 'number' ? img.zoom : 1;
+          previewImg.style.transformOrigin = `${x}% ${y}%`;
+          previewImg.style.transform = `scale(${zoom})`;
         }
       };
 
@@ -11610,6 +11630,26 @@
         if (previewImg) {
           const x = typeof img.posX === 'number' ? img.posX : 50;
           previewImg.style.objectPosition = `${x}% ${y}%`;
+          const zoom = typeof img.zoom === 'number' ? img.zoom : 1;
+          previewImg.style.transformOrigin = `${x}% ${y}%`;
+          previewImg.style.transform = `scale(${zoom})`;
+        }
+      };
+
+      window.updateProductImageZoom = (index, value) => {
+        const img = productImages[index];
+        if (!img) return;
+        const percent = Number(value);
+        if (!Number.isFinite(percent)) return;
+        // zoom suwaka: 50..250 => skala 0.5..2.5
+        const zoom = Math.max(0.1, Math.min(5, percent / 100));
+        img.zoom = zoom;
+        const previewImg = document.getElementById(`product-pos-preview-img-${index}`);
+        if (previewImg) {
+          const x = typeof img.posX === 'number' ? img.posX : 50;
+          const y = typeof img.posY === 'number' ? img.posY : 50;
+          previewImg.style.transform = `scale(${zoom})`;
+          previewImg.style.transformOrigin = `${x}% ${y}%`;
         }
       };
 
@@ -17169,6 +17209,7 @@
               order: typeof img === 'string' ? idx : (img.order !== undefined ? img.order : idx),
               posX: typeof img === 'string' ? 50 : (typeof img?.posX === 'number' ? img.posX : 50),
               posY: typeof img === 'string' ? 50 : (typeof img?.posY === 'number' ? img.posY : 50),
+              zoom: typeof img === 'string' ? 1 : (typeof img?.zoom === 'number' ? img.zoom : 1),
             }))
             .filter((x) => x.url)
             .sort((a, b) => a.order - b.order);
@@ -17176,7 +17217,7 @@
           // Jeśli nie ma tablicy images, spróbuj wyciągnąć zdjęcia z opisu lub użyj starego pola img
           productImages = [];
           if (product.img) {
-            productImages.push({ url: product.img, order: 0, posX: 50, posY: 50 });
+            productImages.push({ url: product.img, order: 0, posX: 50, posY: 50, zoom: 1 });
           }
           // Wyciągnij zdjęcia z opisu (HTML)
           if (product.description) {
@@ -17185,7 +17226,7 @@
             const imgs = tempDiv.querySelectorAll('img');
             imgs.forEach((img, idx) => {
               if (img.src && !productImages.find(p => p.url === img.src)) {
-                productImages.push({ url: img.src, order: productImages.length, posX: 50, posY: 50 });
+                productImages.push({ url: img.src, order: productImages.length, posX: 50, posY: 50, zoom: 1 });
               }
             });
           }
@@ -17299,6 +17340,7 @@
               order: idx,
               posX: typeof img.posX === 'number' ? img.posX : 50,
               posY: typeof img.posY === 'number' ? img.posY : 50,
+              zoom: typeof img.zoom === 'number' ? img.zoom : 1,
             }));
 
             // Zdjęcie główne to pierwsze zdjęcie (dla kompatybilności wstecznej)
@@ -17474,7 +17516,9 @@
               order: trainingImages.length,
               // Pozycja kadru w kafelku (front-end: CSS object-position)
               posX: 50,
-              posY: 50
+              posY: 50,
+              // Zoom/powiększenie kadru w podglądzie (front-end: transform: scale)
+              zoom: 1
             });
           });
 
@@ -17521,6 +17565,9 @@
         if (previewImg) {
           const y = typeof img.posY === 'number' ? img.posY : 50;
           previewImg.style.objectPosition = `${x}% ${y}%`;
+          const zoom = typeof img.zoom === 'number' ? img.zoom : 1;
+          previewImg.style.transformOrigin = `${x}% ${y}%`;
+          previewImg.style.transform = `scale(${zoom})`;
         }
       };
 
@@ -17534,6 +17581,25 @@
         if (previewImg) {
           const x = typeof img.posX === 'number' ? img.posX : 50;
           previewImg.style.objectPosition = `${x}% ${y}%`;
+          const zoom = typeof img.zoom === 'number' ? img.zoom : 1;
+          previewImg.style.transformOrigin = `${x}% ${y}%`;
+          previewImg.style.transform = `scale(${zoom})`;
+        }
+      };
+
+      window.updateTrainingImageZoom = (index, value) => {
+        const img = trainingImages[index];
+        if (!img) return;
+        const percent = Number(value);
+        if (!Number.isFinite(percent)) return;
+        const zoom = Math.max(0.1, Math.min(5, percent / 100));
+        img.zoom = zoom;
+        const previewImg = document.getElementById(`training-pos-preview-img-${index}`);
+        if (previewImg) {
+          const x = typeof img.posX === 'number' ? img.posX : 50;
+          const y = typeof img.posY === 'number' ? img.posY : 50;
+          previewImg.style.transform = `scale(${zoom})`;
+          previewImg.style.transformOrigin = `${x}% ${y}%`;
         }
       };
 
@@ -17551,13 +17617,13 @@
             <span class="absolute top-1 left-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded z-10">
               ${index === 0 ? 'Główne' : index + 1}
             </span>
-            <div class="aspect-square mb-2 overflow-hidden rounded relative">
+            <div class="aspect-[3/2] mb-2 overflow-hidden rounded relative">
               <img
                 id="training-pos-preview-img-${index}"
                 src="${img.url}"
                 alt="Zdjęcie ${index + 1}"
                 class="w-full h-full object-contain"
-                style="object-position:${(typeof img.posX === 'number' ? img.posX : 50)}% ${(typeof img.posY === 'number' ? img.posY : 50)}%;"
+                style="object-position:${(typeof img.posX === 'number' ? img.posX : 50)}% ${(typeof img.posY === 'number' ? img.posY : 50)}%; transform:scale(${(typeof img.zoom === 'number' ? img.zoom : 1)}); transform-origin:${(typeof img.posX === 'number' ? img.posX : 50)}% ${(typeof img.posY === 'number' ? img.posY : 50)}%;"
               >
               <button type="button" onclick="removeTrainingImage(${index})" class="absolute top-1 right-1 bg-red-600/80 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition opacity-0 group-hover:opacity-100">
                 <i class="fa-solid fa-times text-xs"></i>
@@ -17590,6 +17656,19 @@
                   class="w-full"
                 />
                 <span class="text-[11px] text-zinc-400 w-12 text-right tabular-nums">${typeof img.posY === 'number' ? img.posY : 50}%</span>
+              </div>
+              <div class="flex items-center gap-2 mt-2">
+                <span class="text-[11px] text-zinc-500 w-6">Zoom</span>
+                <input
+                  type="range"
+                  min="50"
+                  max="250"
+                  step="1"
+                  value="${Math.round((typeof img.zoom === 'number' ? img.zoom : 1) * 100)}"
+                  oninput="window.updateTrainingImageZoom(${index}, this.value)"
+                  class="w-full"
+                />
+                <span class="text-[11px] text-zinc-400 w-12 text-right tabular-nums">${Math.round((typeof img.zoom === 'number' ? img.zoom : 1) * 100)}%</span>
               </div>
             </div>
             <div class="flex justify-between items-center px-1">
@@ -17705,10 +17784,11 @@
                 order: typeof img === 'string' ? idx : (img?.order !== undefined ? img.order : idx),
                 posX: typeof img === 'string' ? 50 : (typeof img?.posX === 'number' ? img.posX : 50),
                 posY: typeof img === 'string' ? 50 : (typeof img?.posY === 'number' ? img.posY : 50),
+                zoom: typeof img === 'string' ? 1 : (typeof img?.zoom === 'number' ? img.zoom : 1),
               }))
               .filter((x) => x.url)
               .sort((a, b) => a.order - b.order)
-          : (training.img ? [{ url: training.img, order: 0, posX: 50, posY: 50 }] : []);
+          : (training.img ? [{ url: training.img, order: 0, posX: 50, posY: 50, zoom: 1 }] : []);
         renderTrainingImages();
 
         document.getElementById("training-public-description").innerHTML = training.desc || "";
@@ -18391,10 +18471,11 @@
               order: typeof img === "string" ? idx : img?.order !== undefined ? img.order : idx,
               posX: typeof img === "string" ? 50 : (typeof img?.posX === "number" ? img.posX : 50),
               posY: typeof img === "string" ? 50 : (typeof img?.posY === "number" ? img.posY : 50),
+            zoom: typeof img === "string" ? 1 : (typeof img?.zoom === "number" ? img.zoom : 1),
             }))
             .sort((a, b) => a.order - b.order);
         } else if (post.imageUrl) {
-          blogPostImages = [{ url: post.imageUrl, order: 0, posX: 50, posY: 50 }];
+        blogPostImages = [{ url: post.imageUrl, order: 0, posX: 50, posY: 50, zoom: 1 }];
         }
       }
 
@@ -18414,7 +18495,13 @@
           const processPromises = Array.from(files).map((file) => processProductImage(file));
           const base64Images = await Promise.all(processPromises);
           base64Images.forEach((base64) => {
-            blogPostImages.push({ url: base64, order: blogPostImages.length, posX: 50, posY: 50 });
+            blogPostImages.push({
+              url: base64,
+              order: blogPostImages.length,
+              posX: 50,
+              posY: 50,
+              zoom: 1,
+            });
           });
           renderBlogImages();
           showNotification(
@@ -18469,6 +18556,11 @@
         const y = typeof img.posY === "number" ? img.posY : 50;
         if (previewThumb) previewThumb.style.objectPosition = `${x}% ${y}%`;
         if (previewBig) previewBig.style.objectPosition = `${x}% ${y}%`;
+        const zoom = typeof img.zoom === "number" ? img.zoom : 1;
+        if (previewThumb) previewThumb.style.transformOrigin = `${x}% ${y}%`;
+        if (previewBig) previewBig.style.transformOrigin = `${x}% ${y}%`;
+        if (previewThumb) previewThumb.style.transform = `scale(${zoom})`;
+        if (previewBig) previewBig.style.transform = `scale(${zoom})`;
       };
 
       window.updateBlogImagePosY = (index, value) => {
@@ -18482,6 +18574,32 @@
         const x = typeof img.posX === "number" ? img.posX : 50;
         if (previewThumb) previewThumb.style.objectPosition = `${x}% ${y}%`;
         if (previewBig) previewBig.style.objectPosition = `${x}% ${y}%`;
+        const zoom = typeof img.zoom === "number" ? img.zoom : 1;
+        if (previewThumb) previewThumb.style.transformOrigin = `${x}% ${y}%`;
+        if (previewBig) previewBig.style.transformOrigin = `${x}% ${y}%`;
+        if (previewThumb) previewThumb.style.transform = `scale(${zoom})`;
+        if (previewBig) previewBig.style.transform = `scale(${zoom})`;
+      };
+
+      window.updateBlogImageZoom = (index, value) => {
+        const img = blogPostImages[index];
+        if (!img) return;
+        const percent = Number(value);
+        if (!Number.isFinite(percent)) return;
+        const zoom = Math.max(0.1, Math.min(5, percent / 100));
+        img.zoom = zoom;
+        const previewThumb = document.getElementById(`blog-pos-preview-img-${index}`);
+        const previewBig = document.getElementById(`blog-pos-preview-big-img-${index}`);
+        const x = typeof img.posX === "number" ? img.posX : 50;
+        const y = typeof img.posY === "number" ? img.posY : 50;
+        if (previewThumb) {
+          previewThumb.style.transform = `scale(${zoom})`;
+          previewThumb.style.transformOrigin = `${x}% ${y}%`;
+        }
+        if (previewBig) {
+          previewBig.style.transform = `scale(${zoom})`;
+          previewBig.style.transformOrigin = `${x}% ${y}%`;
+        }
       };
 
       function renderBlogImages() {
@@ -18506,7 +18624,7 @@
                 src="${img.url}"
                 alt="Okładka ${index + 1}"
                 class="w-full h-full object-cover"
-                style="object-position:${(typeof img.posX === 'number' ? img.posX : 50)}% ${(typeof img.posY === 'number' ? img.posY : 50)}%;"
+                style="object-position:${(typeof img.posX === 'number' ? img.posX : 50)}% ${(typeof img.posY === 'number' ? img.posY : 50)}%; transform:scale(${(typeof img.zoom === 'number' ? img.zoom : 1)}); transform-origin:${(typeof img.posX === 'number' ? img.posX : 50)}% ${(typeof img.posY === 'number' ? img.posY : 50)}%;"
                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\'%3E%3Crect fill=\\'%23333\\' width=\\'100\\' height=\\'100\\'/%3E%3C/svg%3E';"
               >
             </div>
@@ -18515,13 +18633,13 @@
               <div class="text-xs text-zinc-500 truncate" title="${isData ? "Okładka wgrana z dysku" : escBlogAttr(img.url)}">${escBlogHtml(lineLabel)}</div>
               <div class="mt-3">
                 <div class="text-[11px] text-zinc-400 mb-2 text-center">Podgląd kafelka</div>
-                <div class="w-44 h-16 bg-zinc-900 rounded overflow-hidden border border-zinc-700 mb-2 mx-auto">
+                <div class="w-64 h-24 bg-zinc-900 rounded overflow-hidden border border-zinc-700 mb-2 mx-auto">
                   <img
                     id="blog-pos-preview-big-img-${index}"
                     src="${img.url}"
                     alt=""
                     class="w-full h-full object-cover"
-                    style="object-position:${(typeof img.posX === 'number' ? img.posX : 50)}% ${(typeof img.posY === 'number' ? img.posY : 50)}%;"
+                    style="object-position:${(typeof img.posX === 'number' ? img.posX : 50)}% ${(typeof img.posY === 'number' ? img.posY : 50)}%; transform:scale(${(typeof img.zoom === 'number' ? img.zoom : 1)}); transform-origin:${(typeof img.posX === 'number' ? img.posX : 50)}% ${(typeof img.posY === 'number' ? img.posY : 50)}%;"
                   >
                 </div>
                 <div class="flex items-center gap-2">
@@ -18549,6 +18667,19 @@
                     class="w-full"
                   />
                   <span class="text-[11px] text-zinc-400 w-12 text-right tabular-nums">${typeof img.posY === 'number' ? img.posY : 50}%</span>
+                </div>
+                <div class="flex items-center gap-2 mt-2">
+                  <span class="text-[11px] text-zinc-500 w-6 text-right">Zoom</span>
+                  <input
+                    type="range"
+                    min="50"
+                    max="250"
+                    step="1"
+                    value="${Math.round((typeof img.zoom === 'number' ? img.zoom : 1) * 100)}"
+                    oninput="window.updateBlogImageZoom(${index}, this.value)"
+                    class="w-full"
+                  />
+                  <span class="text-[11px] text-zinc-400 w-12 text-right tabular-nums">${Math.round((typeof img.zoom === 'number' ? img.zoom : 1) * 100)}%</span>
                 </div>
               </div>
             </div>
@@ -19184,6 +19315,7 @@
           order: idx,
           posX: typeof img.posX === "number" ? img.posX : 50,
           posY: typeof img.posY === "number" ? img.posY : 50,
+          zoom: typeof img.zoom === "number" ? img.zoom : 1,
         }));
         const mainImage = images[0].url;
 
@@ -20082,6 +20214,7 @@
                 order: img.order,
                 posX: typeof img.posX === 'number' ? img.posX : 50,
                 posY: typeof img.posY === 'number' ? img.posY : 50,
+                zoom: typeof img.zoom === 'number' ? img.zoom : 1,
               })),
               img: trainingImages[0] ? trainingImages[0].url : "",
               desc,

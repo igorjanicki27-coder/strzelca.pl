@@ -2727,11 +2727,12 @@ const firebaseConfig = {
                             order,
                             posX: typeof img?.posX === 'number' ? img.posX : undefined,
                             posY: typeof img?.posY === 'number' ? img.posY : undefined,
+                            zoom: typeof img?.zoom === 'number' ? img.zoom : undefined,
                         };
                     })
                     .filter((x) => x.url);
                 items.sort((a, b) => a.order - b.order);
-                items.forEach((x) => images.push({ url: x.url, posX: x.posX, posY: x.posY }));
+                items.forEach((x) => images.push({ url: x.url, posX: x.posX, posY: x.posY, zoom: x.zoom }));
             }
             if (images.length === 0 && event.imageUrl) {
                 images.push({ url: event.imageUrl });
@@ -2760,6 +2761,15 @@ const firebaseConfig = {
                     imgEl.style.objectPosition = `${meta.posX}% ${meta.posY}%`;
                 } else {
                     imgEl.style.objectPosition = '';
+                }
+                if (meta && typeof meta.zoom === 'number') {
+                    const x = typeof meta.posX === 'number' ? meta.posX : 50;
+                    const y = typeof meta.posY === 'number' ? meta.posY : 50;
+                    imgEl.style.transform = `scale(${meta.zoom})`;
+                    imgEl.style.transformOrigin = `${x}% ${y}%`;
+                } else {
+                    imgEl.style.transform = '';
+                    imgEl.style.transformOrigin = '';
                 }
             }
             const counter = document.getElementById('blog-gallery-current');
@@ -3019,9 +3029,11 @@ const firebaseConfig = {
                 cardThumb && typeof cardThumb.posX === 'number' && typeof cardThumb.posY === 'number'
                     ? `${cardThumb.posX}% ${cardThumb.posY}%`
                     : null;
+            const cardThumbObjectScale = cardThumb && typeof cardThumb.zoom === 'number' ? cardThumb.zoom : null;
+            const cardThumbTransformOrigin = cardThumbObjectPosition || '50% 50%';
             return `
                     <article class="card-dark event-carousel-card" style="padding: 0; padding-bottom: 1rem;" data-event-id="${encodeURIComponent(event.id)}">
-                        ${cardThumb ? `<img src="${cardThumb.url}" style="width: 100%; height: 160px; object-fit: cover; ${cardThumbObjectPosition ? `object-position: ${cardThumbObjectPosition};` : ''} border-top-left-radius: 12px; border-top-right-radius: 12px; margin-bottom: 0.5rem;" alt="">` : ''}
+                        ${cardThumb ? `<img src="${cardThumb.url}" style="width: 100%; height: 160px; object-fit: cover; ${cardThumbObjectPosition ? `object-position: ${cardThumbObjectPosition};` : ''}${cardThumbObjectScale != null ? `transform: scale(${cardThumbObjectScale}); transform-origin: ${cardThumbTransformOrigin};` : ''} border-top-left-radius: 12px; border-top-right-radius: 12px; margin-bottom: 0.5rem;" alt="">` : ''}
                         <div style="padding: 0 1rem;">
                             <p class="event-category-slot" style="margin-top: 0.5rem;">${safeCategory}</p>
                             <div class="event-divider"></div>
@@ -3285,10 +3297,17 @@ const firebaseConfig = {
             const images = getBlogPostImages(event);
             const safeTitle = escapeHtml(event.title || 'Wpis');
             const getObjectPositionStyleAttr = (meta) => {
-                if (meta && typeof meta.posX === 'number' && typeof meta.posY === 'number') {
-                    return `style="object-position:${meta.posX}% ${meta.posY}%"`;
-                }
-                return '';
+                if (!meta) return '';
+                const posOk = typeof meta.posX === 'number' && typeof meta.posY === 'number';
+                const zoomOk = typeof meta.zoom === 'number';
+                if (!posOk && !zoomOk) return '';
+                const x = posOk ? meta.posX : 50;
+                const y = posOk ? meta.posY : 50;
+                const styles = [
+                    posOk ? `object-position:${x}% ${y}%;` : '',
+                    zoomOk ? `transform: scale(${meta.zoom}); transform-origin:${x}% ${y}%;` : '',
+                ].filter(Boolean).join('');
+                return `style="${styles}"`;
             };
             let htmlContent = '';
 

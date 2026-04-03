@@ -735,7 +735,17 @@
         function buildProductCard(item) {
             const encodedTitle = encodeURIComponent(item.title || '');
             const mainImage = item.mainImage || '';
-            const imgStyleAttr = item.mainImageObjectPosition ? `style="object-position:${item.mainImageObjectPosition}"` : '';
+            const imgStyleAttr = (() => {
+                const styles = [];
+                if (item.mainImageObjectPosition) {
+                    styles.push(`object-position:${item.mainImageObjectPosition};`);
+                }
+                if (typeof item.mainImageObjectScale === 'number') {
+                    const origin = item.mainImageObjectPosition || '50% 50%';
+                    styles.push(`transform: scale(${item.mainImageObjectScale}); transform-origin:${origin};`);
+                }
+                return styles.length ? `style="${styles.join('')}"` : '';
+            })();
             const priceLabel = item.individualPricing ? 'Wycena indywidualna' : `${item.price} PLN`;
             const priceAriaLabel = item.individualPricing ? 'Wycena indywidualna' : `Cena: ${item.price} złotych`;
 
@@ -969,6 +979,7 @@
                                 let mainImage = p.img || '';
                                 let mainImagePosX = undefined;
                                 let mainImagePosY = undefined;
+                                let mainImageZoom = undefined;
                                 if (p.images && Array.isArray(p.images) && p.images.length > 0) {
                                     const main = p.images[0];
                                     if (typeof main === 'string') {
@@ -977,6 +988,7 @@
                                         mainImage = main.url || '';
                                         if (typeof main.posX === 'number') mainImagePosX = main.posX;
                                         if (typeof main.posY === 'number') mainImagePosY = main.posY;
+                                        if (typeof main.zoom === 'number') mainImageZoom = main.zoom;
                                     }
                                 }
                                 rows.push({
@@ -989,6 +1001,7 @@
                                         typeof mainImagePosX === 'number' && typeof mainImagePosY === 'number'
                                             ? `${mainImagePosX}% ${mainImagePosY}%`
                                             : null,
+                                    mainImageObjectScale: typeof mainImageZoom === 'number' ? mainImageZoom : null,
                                 });
                             });
                             return rows;
@@ -1065,6 +1078,7 @@
                                 url: img.url || '',
                                 posX: typeof img.posX === 'number' ? img.posX : undefined,
                                 posY: typeof img.posY === 'number' ? img.posY : undefined,
+                                zoom: typeof img.zoom === 'number' ? img.zoom : undefined,
                             };
                         }
                         return null;
@@ -1090,10 +1104,16 @@
 
             const getObjectPositionStyleAttr = (meta) => {
                 if (!meta) return '';
-                if (typeof meta.posX === 'number' && typeof meta.posY === 'number') {
-                    return `style="object-position:${meta.posX}% ${meta.posY}%"`;
-                }
-                return '';
+                const posOk = typeof meta.posX === 'number' && typeof meta.posY === 'number';
+                const zoomOk = typeof meta.zoom === 'number';
+                if (!posOk && !zoomOk) return '';
+                const x = posOk ? meta.posX : 50;
+                const y = posOk ? meta.posY : 50;
+                const styles = [
+                    posOk ? `object-position:${x}% ${y}%;` : '',
+                    zoomOk ? `transform: scale(${meta.zoom}); transform-origin:${x}% ${y}%;` : '',
+                ].filter(Boolean).join('');
+                return `style="${styles}"`;
             };
             
             // Generuj HTML galerii
@@ -1204,6 +1224,15 @@
                     img.style.objectPosition = `${meta.posX}% ${meta.posY}%`;
                 } else {
                     img.style.objectPosition = '';
+                }
+                if (meta && typeof meta.zoom === 'number') {
+                    const x = typeof meta.posX === 'number' ? meta.posX : 50;
+                    const y = typeof meta.posY === 'number' ? meta.posY : 50;
+                    img.style.transform = `scale(${meta.zoom})`;
+                    img.style.transformOrigin = `${x}% ${y}%`;
+                } else {
+                    img.style.transform = '';
+                    img.style.transformOrigin = '';
                 }
             }
             if (counter) {

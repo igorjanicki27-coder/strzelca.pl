@@ -922,7 +922,15 @@ const firebaseConfig = {
                 const encodedTitle = encodeURIComponent(item.title || "");
                 const priceLabel = item.individualPricing ? "Cena ustalana indywidualnie" : `${item.price} PLN`;
                 const priceAriaLabel = item.individualPricing ? "Cena ustalana indywidualnie" : `Cena: ${item.price} złotych`;
-                const imgStyleAttr = item.imgObjectPosition ? `style="object-position:${item.imgObjectPosition}"` : '';
+                const imgStyleAttr = (() => {
+                    const styles = [];
+                    if (item.imgObjectPosition) styles.push(`object-position:${item.imgObjectPosition};`);
+                    if (typeof item.imgObjectScale === 'number') {
+                        const origin = item.imgObjectPosition || '50% 50%';
+                        styles.push(`transform: scale(${item.imgObjectScale}); transform-origin:${origin};`);
+                    }
+                    return styles.length ? `style="${styles.join('')}"` : '';
+                })();
                 const progressPercent = Math.max(0, Math.min(100, item.progressPercent || 0));
                 const progressTextClass = item.isCompleted ? 'text-emerald-400' : 'text-zinc-300';
                 const cardStateClass = item.isCompleted
@@ -1156,6 +1164,7 @@ const firebaseConfig = {
                                     let mainImg = t.img || '';
                                     let mainImgPosX = undefined;
                                     let mainImgPosY = undefined;
+                                    let mainImgZoom = undefined;
                                     if (t.images && Array.isArray(t.images) && t.images.length > 0) {
                                         const main = t.images[0];
                                         if (typeof main === 'string') {
@@ -1164,6 +1173,7 @@ const firebaseConfig = {
                                             mainImg = main.url || '';
                                             if (typeof main.posX === 'number') mainImgPosX = main.posX;
                                             if (typeof main.posY === 'number') mainImgPosY = main.posY;
+                                            if (typeof main.zoom === 'number') mainImgZoom = main.zoom;
                                         }
                                     }
                                     rows.push({
@@ -1176,6 +1186,7 @@ const firebaseConfig = {
                                             typeof mainImgPosX === 'number' && typeof mainImgPosY === 'number'
                                                 ? `${mainImgPosX}% ${mainImgPosY}%`
                                                 : null,
+                                        imgObjectScale: typeof mainImgZoom === 'number' ? mainImgZoom : null,
                                         available: t.available === true,
                                     });
                                 });
@@ -1360,6 +1371,7 @@ const firebaseConfig = {
                                     url: img.url || '',
                                     posX: typeof img.posX === 'number' ? img.posX : undefined,
                                     posY: typeof img.posY === 'number' ? img.posY : undefined,
+                                zoom: typeof img.zoom === 'number' ? img.zoom : undefined,
                                 };
                             }
                             return null;
@@ -1385,10 +1397,16 @@ const firebaseConfig = {
 
                 const getObjectPositionStyleAttr = (meta) => {
                     if (!meta) return '';
-                    if (typeof meta.posX === 'number' && typeof meta.posY === 'number') {
-                        return `style="object-position:${meta.posX}% ${meta.posY}%"`;
-                    }
-                    return '';
+                    const posOk = typeof meta.posX === 'number' && typeof meta.posY === 'number';
+                    const zoomOk = typeof meta.zoom === 'number';
+                    if (!posOk && !zoomOk) return '';
+                    const x = posOk ? meta.posX : 50;
+                    const y = posOk ? meta.posY : 50;
+                    const styles = [
+                        posOk ? `object-position:${x}% ${y}%;` : '',
+                        zoomOk ? `transform: scale(${meta.zoom}); transform-origin:${x}% ${y}%;` : '',
+                    ].filter(Boolean).join('');
+                    return `style="${styles}"`;
                 };
                 
                 let galleryHTML = '';
@@ -1500,6 +1518,15 @@ const firebaseConfig = {
                         img.style.objectPosition = `${meta.posX}% ${meta.posY}%`;
                     } else {
                         img.style.objectPosition = '';
+                    }
+                    if (meta && typeof meta.zoom === 'number') {
+                        const x = typeof meta.posX === 'number' ? meta.posX : 50;
+                        const y = typeof meta.posY === 'number' ? meta.posY : 50;
+                        img.style.transform = `scale(${meta.zoom})`;
+                        img.style.transformOrigin = `${x}% ${y}%`;
+                    } else {
+                        img.style.transform = '';
+                        img.style.transformOrigin = '';
                     }
                 }
                 if (counter) counter.textContent = window.currentGalleryIndex + 1;
