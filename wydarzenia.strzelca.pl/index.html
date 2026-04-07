@@ -212,10 +212,10 @@
         }
         .blog-comments-section {
             margin-top: 1.75rem;
-            padding: 1.25rem;
-            border: 1px solid rgba(193,154,107,0.22);
-            border-radius: 18px;
-            background: linear-gradient(180deg, rgba(193,154,107,0.1) 0%, rgba(255,255,255,0.03) 100%);
+            padding: 0;
+            border: none;
+            border-radius: 0;
+            background: transparent;
         }
         .blog-comments-title {
             display: flex;
@@ -274,6 +274,21 @@
             opacity: 0.4;
             cursor: not-allowed;
             transform: none;
+        }
+        .blog-comment-send-btn.blog-comment-send-btn--cooldown {
+            width: auto;
+            min-width: 52px;
+            padding: 0 6px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.04em;
+            color: #f87171;
+            opacity: 1;
+            cursor: default;
+        }
+        .blog-comment-send-btn.blog-comment-send-btn--cooldown .blog-comment-cooldown-digits {
+            pointer-events: none;
         }
         .blog-comment-textarea:disabled {
             background: rgba(39, 39, 42, 0.45);
@@ -989,6 +1004,23 @@
         .event-participate-btn.event-participate-btn--start:disabled .event-participate-label,
         .event-participate-btn.event-participate-btn--start:hover .event-participate-label {
             color: #4ade80;
+        }
+
+        /* Kafelek: etykieta bez zmiany koloru przy najechaniu */
+        .event-participate-btn.event-participate-btn--tile:hover .event-participate-label {
+            color: #fff;
+        }
+        .event-participate-btn.event-participate-btn--tile.event-participate-btn--start .event-participate-label,
+        .event-participate-btn.event-participate-btn--tile.event-participate-btn--start:hover .event-participate-label {
+            color: #4ade80;
+        }
+        .event-participate-btn.event-participate-btn--tile.event-participate-btn--ending .event-participate-label,
+        .event-participate-btn.event-participate-btn--tile.event-participate-btn--ending:hover .event-participate-label {
+            color: #f87171;
+        }
+        .event-participate-btn.event-participate-btn--tile.event-participate-btn--locked:hover .event-participate-label,
+        .event-participate-btn.event-participate-btn--tile:disabled:hover .event-participate-label {
+            color: #ef4444;
         }
 
         .event-status-line {
@@ -2428,6 +2460,11 @@ const firebaseConfig = {
             return { label: 'Weź udział', disabled: false, tone: 'default' };
         }
 
+        function getEventCardActionButtonLabel(state) {
+            if (state && state.tone === 'default' && !state.disabled) return 'SZCZEGÓŁY';
+            return state.label;
+        }
+
         function resolveFilterSource(sourceHint = 'auto') {
             if (sourceHint === 'mobile' || sourceHint === 'desktop') {
                 return sourceHint;
@@ -2498,8 +2535,10 @@ const firebaseConfig = {
                 const msg = (err && (err.message || String(err))) || 'Nieznany błąd';
                 track.innerHTML = `
                     <article class="card-dark event-carousel-card carousel-status-message">
-                        <p class="text-red-500 font-bold mb-2">${label || 'Błąd aplikacji'}</p>
-                        <p class="text-sm text-zinc-500 break-words">${msg}</p>
+                        <div class="flex flex-col items-center justify-center gap-2 w-full px-1 min-w-0">
+                            <p class="text-red-400 uppercase tracking-[0.15em] text-xs text-center font-semibold">${label || 'Błąd aplikacji'}</p>
+                            <p class="text-sm text-zinc-500 break-words text-center">${msg}</p>
+                        </div>
                     </article>
                 `;
                 updateEventsCarouselControls();
@@ -2645,8 +2684,10 @@ const firebaseConfig = {
                     track.classList.add('carousel-track--status-single');
                     track.innerHTML = `
                         <article class="card-dark event-carousel-card carousel-status-message">
-                            <p class="text-red-500 font-bold mb-2">${errorMessage}</p>
-                            <p class="text-sm text-zinc-500">${error.message || 'Nieznany błąd'}</p>
+                            <div class="flex flex-col items-center justify-center gap-2 w-full px-1 min-w-0">
+                                <p class="text-red-400 uppercase tracking-[0.15em] text-xs text-center font-semibold">${errorMessage}</p>
+                                <p class="text-sm text-zinc-500 break-words text-center">${error.message || 'Nieznany błąd'}</p>
+                            </div>
                         </article>
                     `;
                     updateEventsCarouselControls();
@@ -2927,8 +2968,8 @@ const firebaseConfig = {
                             </span>
                         </div>
                         <div class="mt-3 pt-2 border-t border-zinc-700/50">
-                            <button type="button" data-details-event-id="${encodeURIComponent(event.id)}" data-event-card-action-btn="${encodeURIComponent(event.id)}" aria-label="Pokaż szczegóły wydarzenia ${safeTitle}" class="event-participate-btn w-full py-3 md:py-4 text-[11px] md:text-xs uppercase font-black rounded tracking-[0.12em] flex items-center justify-center transition ${buttonToneClass.trim()}">
-                                <span class="event-participate-label transition-colors">${escapeHtml(actionState.label)}</span>
+                            <button type="button" data-details-event-id="${encodeURIComponent(event.id)}" data-event-card-action-btn="${encodeURIComponent(event.id)}" aria-label="Pokaż szczegóły wydarzenia ${safeTitle}" class="event-participate-btn event-participate-btn--tile w-full py-3 md:py-4 text-[11px] md:text-xs uppercase font-black rounded tracking-[0.12em] flex items-center justify-center transition ${buttonToneClass.trim()}">
+                                <span class="event-participate-label">${escapeHtml(getEventCardActionButtonLabel(actionState))}</span>
                             </button>
                         </div>
                     </article>
@@ -2988,7 +3029,7 @@ const firebaseConfig = {
                     if (toneClass) actionBtn.classList.add(toneClass);
                     const labelEl = actionBtn.querySelector('.event-participate-label');
                     if (labelEl) {
-                        labelEl.textContent = state.label;
+                        labelEl.textContent = getEventCardActionButtonLabel(state);
                     }
                 }
             });
@@ -3146,6 +3187,13 @@ const firebaseConfig = {
             return Math.max(0, Math.ceil((eventCommentCooldownUntil - Date.now()) / 1000));
         }
 
+        function formatEventCommentCooldownMMSS(totalSeconds) {
+            const s = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+            const m = Math.floor(s / 60);
+            const sec = s % 60;
+            return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+        }
+
         function nl2brSafe(text) {
             return escapeHtml(String(text || "")).replace(/\n/g, "<br>");
         }
@@ -3283,9 +3331,10 @@ const firebaseConfig = {
             const submitBtn = document.getElementById("event-comment-submit");
             const note = document.getElementById("event-comment-note");
             const guestOverlay = document.getElementById("event-comment-guest-overlay");
+            const noteToolbar = note?.closest(".blog-comment-toolbar");
             const requiresCooldown = !currentEditingEventCommentId;
             const remainingSeconds = requiresCooldown ? getRemainingEventCommentSeconds() : 0;
-            const cooldownActive = requiresCooldown && remainingSeconds > 0;
+            const cooldownActive = !!(currentUser && requiresCooldown && remainingSeconds > 0);
 
             if (textarea) {
                 textarea.disabled = !currentUser || cooldownActive;
@@ -3302,18 +3351,42 @@ const firebaseConfig = {
                 guestOverlay.classList.toggle("hidden", !!currentUser);
                 guestOverlay.setAttribute("aria-hidden", currentUser ? "true" : "false");
             }
-            if (submitBtn) submitBtn.disabled = !currentUser || cooldownActive;
+            if (submitBtn) {
+                if (!currentUser) {
+                    submitBtn.classList.remove("blog-comment-send-btn--cooldown");
+                    submitBtn.disabled = true;
+                    applyEventCommentSubmitIcon(
+                        submitBtn,
+                        currentEditingEventCommentId ? "edit" : currentReplyToEventCommentId ? "reply" : "create",
+                    );
+                } else if (cooldownActive) {
+                    submitBtn.classList.add("blog-comment-send-btn--cooldown");
+                    submitBtn.disabled = true;
+                    const mmss = formatEventCommentCooldownMMSS(remainingSeconds);
+                    submitBtn.innerHTML = `<span class="blog-comment-cooldown-digits">${mmss}</span>`;
+                    submitBtn.setAttribute("aria-label", `Następny komentarz za ${mmss}`);
+                    submitBtn.removeAttribute("title");
+                } else {
+                    submitBtn.classList.remove("blog-comment-send-btn--cooldown");
+                    submitBtn.disabled = false;
+                    applyEventCommentSubmitIcon(
+                        submitBtn,
+                        currentEditingEventCommentId ? "edit" : currentReplyToEventCommentId ? "reply" : "create",
+                    );
+                }
+            }
 
             if (note) {
                 if (!currentUser) {
                     note.textContent = "";
-                } else if (cooldownActive) {
-                    note.textContent = `Kolejny komentarz do tego wydarzenia możesz dodać za ${remainingSeconds} s.`;
+                } else if (currentEditingEventCommentId) {
+                    note.textContent = "Edytujesz swój komentarz. Zapisze się historia zmian.";
                 } else {
-                    note.textContent = currentEditingEventCommentId
-                        ? "Edytujesz swój komentarz. Zapisze się historia zmian."
-                        : "Komentarz do tego wydarzenia możesz dodać raz na 5 minut.";
+                    note.textContent = "";
                 }
+            }
+            if (noteToolbar) {
+                noteToolbar.classList.toggle("hidden", !note?.textContent);
             }
 
             if (cooldownActive && !eventCommentCooldownTimer) {
@@ -4034,7 +4107,7 @@ const firebaseConfig = {
                 });
 
                 if (!currentEditingEventCommentId) {
-                    persistEventCommentCooldown(eventId, currentUser.uid, Number(result.cooldownUntil || (Date.now() + 5 * 60 * 1000)));
+                    persistEventCommentCooldown(eventId, currentUser.uid, Number(result.cooldownUntil || (Date.now() + 2 * 60 * 1000)));
                     const currentEvent = allEvents.find((entry) => entry.id === eventId);
                     updateEventStatsInLocalState(eventId, {
                         commentCount: Number(currentEvent?.commentCount || 0) + 1,
