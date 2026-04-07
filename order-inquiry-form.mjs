@@ -772,17 +772,17 @@ function renderOrderFormModal({
         <div id="order-form-scroll" class="min-h-0 flex-1 overflow-y-auto px-5 py-5 md:px-8 md:py-7">
           <section id="order-step-type" class="space-y-4">
             <div class="grid gap-4 md:grid-cols-2">
-              <button type="button" id="order-type-card-private" onclick="window.selectStrzelcaOrderCustomerType('private')" class="${tileClass}">
+              <button type="button" id="order-type-card-private" onclick="window.selectStrzelcaOrderCustomerType('private')" class="${tileClass} py-6 md:py-7 text-center flex items-center justify-center">
                 <div class="text-xl font-black text-white uppercase font-[Orbitron]">OSOBA PRYWATNA</div>
               </button>
-              <button type="button" id="order-type-card-company" onclick="window.selectStrzelcaOrderCustomerType('company')" class="${tileClass}">
+              <button type="button" id="order-type-card-company" onclick="window.selectStrzelcaOrderCustomerType('company')" class="${tileClass} py-6 md:py-7 text-center flex items-center justify-center">
                 <div class="text-xl font-black text-white uppercase font-[Orbitron]">FIRMA</div>
               </button>
             </div>
           </section>
 
           <section id="order-step-delivery" class="hidden space-y-4">
-            <div class="rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6">
+            <div class="p-0">
               <div class="grid gap-4 md:grid-cols-2">
                 <button type="button" id="order-delivery-card-courier" onclick="window.selectStrzelcaOrderDeliveryMethod('courier')" class="${tileClass}">
                   <input type="radio" name="order-delivery-method" value="courier" class="sr-only">

@@ -584,6 +584,17 @@ async function sendOrderAdminNotification(order, kind) {
   }
 }
 
+async function waitForOrderEmailTasks(tasks) {
+  const normalizedTasks = Array.isArray(tasks) ? tasks.filter(Boolean) : [];
+  if (!normalizedTasks.length) return;
+  const results = await Promise.allSettled(normalizedTasks);
+  for (const result of results) {
+    if (result.status === 'rejected') {
+      console.error('Order email task failed:', result.reason);
+    }
+  }
+}
+
 function getStatusName(status) {
   const names = {
     zlozone: 'Złożone',
@@ -1110,15 +1121,11 @@ module.exports = async (req, res) => {
       const createdOrder = await orderRef.get();
       const orderDataWithId = toOrderResponse(createdOrder);
 
-      // Wysyłanie maila o utworzeniu zamówienia (asynchronicznie, nie blokuje odpowiedzi)
-      sendOrderEmail(orderDataWithId, 'created').catch(err => {
-        console.error('Error sending order creation email:', err);
-      });
-      if (!isUserAdmin) {
-        sendOrderAdminNotification(orderDataWithId, 'created_by_user').catch((err) => {
-          console.error('Error sending admin order creation email:', err);
-        });
-      }
+      // W serverless wysyłka "po odpowiedzi" bywa ucinana, więc czekamy na próbę wysyłki.
+      await waitForOrderEmailTasks([
+        sendOrderEmail(orderDataWithId, 'created'),
+        !isUserAdmin ? sendOrderAdminNotification(orderDataWithId, 'created_by_user') : null,
+      ]);
       if (promoEvaluation) {
         sendPromoCodeUsageNotification({
           db,

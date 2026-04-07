@@ -23749,8 +23749,26 @@
       function toggleOrderStatusExtras() {
         const status = document.getElementById('order-status')?.value || '';
         const paymentWrap = document.getElementById('order-payment-link-wrap');
+        const paymentInput = document.getElementById('order-paymentLinkUrl');
+        const paymentHint = document.getElementById('order-payment-link-hint');
+        const paymentLabelSuffix = document.getElementById('order-payment-link-required');
+        const isPaymentLinkRequired = status === 'oczekuje_na_platnosc';
         if (paymentWrap) {
-          paymentWrap.classList.toggle('hidden', status !== 'oczekuje_na_platnosc');
+          paymentWrap.classList.toggle('ring-1', isPaymentLinkRequired);
+          paymentWrap.classList.toggle('ring-sky-400/40', isPaymentLinkRequired);
+          paymentWrap.classList.toggle('rounded-lg', isPaymentLinkRequired);
+          paymentWrap.classList.toggle('p-3', isPaymentLinkRequired);
+        }
+        if (paymentInput) {
+          paymentInput.required = isPaymentLinkRequired;
+        }
+        if (paymentLabelSuffix) {
+          paymentLabelSuffix.classList.toggle('hidden', !isPaymentLinkRequired);
+        }
+        if (paymentHint) {
+          paymentHint.textContent = isPaymentLinkRequired
+            ? 'Pole wymagane dla statusu "Oczekuje na płatność". Klient zobaczy w profilu przycisk "Opłać", który przekieruje go pod ten adres.'
+            : 'Pole opcjonalne. Uzupełnij je, jeśli chcesz udostępnić klientowi szybki link "Opłać" w profilu.';
         }
       }
 
@@ -23762,7 +23780,7 @@
         if (!modal) {
           modal = document.createElement('div');
           modal.id = 'order-modal';
-          modal.className = 'fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl';
+          modal.className = 'fixed inset-0 z-50 hidden flex items-start justify-center overflow-y-auto p-4 pt-8 pb-6 bg-black/95 backdrop-blur-xl sm:items-center sm:pt-4 sm:pb-4';
           modal.onclick = function(e) {
             if (e.target.id === 'order-modal') closeOrderModal();
           };
@@ -23771,7 +23789,7 @@
 
         const isEdit = !!currentEditingOrder;
         modal.innerHTML = `
-          <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+          <div class="admin-card max-w-4xl w-full max-h-[calc(100vh-3.5rem)] overflow-y-auto sm:max-h-[90vh]" onclick="event.stopPropagation()">
             <div class="flex justify-between items-center mb-6">
               <h2 class="text-2xl font-bold coyote-text">${isEdit ? 'Edytuj zamówienie' : 'Dodaj zamówienie'}</h2>
               <button onclick="closeOrderModal()" class="text-zinc-400 hover:text-white">
@@ -23887,10 +23905,10 @@
               </div>
 
               <div class="mb-6">
-                <div id="order-payment-link-wrap" class="hidden mb-6">
-                  <label class="block text-sm font-medium mb-2">Link do płatności</label>
+                <div id="order-payment-link-wrap" class="mb-6 transition-all">
+                  <label class="block text-sm font-medium mb-2">Link do płatności <span id="order-payment-link-required" class="hidden text-sky-300">*</span></label>
                   <input type="url" id="order-paymentLinkUrl" class="w-full" placeholder="https://buy.stripe.com/..." />
-                  <p class="text-xs text-zinc-400 mt-1">Pole wymagane dla statusu "Oczekuje na płatność". Klient zobaczy w profilu przycisk „Opłać”, który przekieruje go pod ten adres.</p>
+                  <p id="order-payment-link-hint" class="text-xs text-zinc-400 mt-1">Pole opcjonalne. Uzupełnij je, jeśli chcesz udostępnić klientowi szybki link "Opłać" w profilu.</p>
                 </div>
 
                 <label class="block text-sm font-medium mb-2">Faktura (PDF)</label>
