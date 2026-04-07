@@ -508,16 +508,8 @@ function syncOrderCustomerTypeUI() {
   if (parcelSection) parcelSection.classList.toggle("hidden", !showParcelLocker);
 
   const addressLabel = document.getElementById("order-address-label");
-  const addressHint = document.getElementById("order-address-hint");
   if (addressLabel) {
     addressLabel.textContent = isCompany ? "Adres firmy" : "Adres dostawy";
-  }
-  if (addressHint) {
-    addressHint.textContent = isCompany
-      ? p.context === "shop" && deliveryMethod === "courier"
-        ? "Adres firmy zostanie użyty jako dane zamówienia i adres dostawy."
-        : "Adres zostanie użyty jako dane podstawowe zamówienia."
-      : "Adres będzie użyty do dostawy kurierem.";
   }
 }
 
@@ -781,33 +773,26 @@ function renderOrderFormModal({
           <section id="order-step-type" class="space-y-4">
             <div class="grid gap-4 md:grid-cols-2">
               <button type="button" id="order-type-card-private" onclick="window.selectStrzelcaOrderCustomerType('private')" class="${tileClass}">
-                <div class="text-[11px] uppercase tracking-[0.26em] text-zinc-500">Opcja</div>
-                <div class="mt-3 text-xl font-black text-white font-[Orbitron]">Osoba prywatna</div>
-                <p class="mt-2 text-sm text-zinc-400 leading-relaxed">Dane prywatne z możliwością uzupełnienia adresem z konta.</p>
+                <div class="text-xl font-black text-white uppercase font-[Orbitron]">OSOBA PRYWATNA</div>
               </button>
               <button type="button" id="order-type-card-company" onclick="window.selectStrzelcaOrderCustomerType('company')" class="${tileClass}">
-                <div class="text-[11px] uppercase tracking-[0.26em] text-zinc-500">Opcja</div>
-                <div class="mt-3 text-xl font-black text-white font-[Orbitron]">Firma</div>
-                <p class="mt-2 text-sm text-zinc-400 leading-relaxed">Dane kontaktowe + dane firmy i adres firmy do zamówienia.</p>
+                <div class="text-xl font-black text-white uppercase font-[Orbitron]">FIRMA</div>
               </button>
             </div>
           </section>
 
           <section id="order-step-delivery" class="hidden space-y-4">
             <div class="rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6">
-              <p class="text-sm text-zinc-500 mb-5">Wybierz sposób dostawy. Dane adresowe lub numer paczkomatu uzupełnisz w kolejnym kroku.</p>
               <div class="grid gap-4 md:grid-cols-2">
                 <button type="button" id="order-delivery-card-courier" onclick="window.selectStrzelcaOrderDeliveryMethod('courier')" class="${tileClass}">
                   <input type="radio" name="order-delivery-method" value="courier" class="sr-only">
-                  <div class="text-[11px] uppercase tracking-[0.26em] text-zinc-500">Dostawa</div>
-                  <div class="mt-3 text-xl font-black text-white font-[Orbitron]">Kurier</div>
-                  <p class="mt-2 text-sm text-zinc-400">Koszt: ${formatMoney(30)}.</p>
+                  <div class="text-xl font-black text-white font-[Orbitron]">Kurier</div>
+                  <p class="mt-2 text-sm text-zinc-400">Koszt 30,00 zł</p>
                 </button>
                 <button type="button" id="order-delivery-card-inpost" onclick="window.selectStrzelcaOrderDeliveryMethod('inpost')" class="${tileClass}">
                   <input type="radio" name="order-delivery-method" value="inpost" class="sr-only">
-                  <div class="text-[11px] uppercase tracking-[0.26em] text-zinc-500">Dostawa</div>
-                  <div class="mt-3 text-xl font-black text-white font-[Orbitron]">Paczkomat InPost</div>
-                  <p class="mt-2 text-sm text-zinc-400">Koszt: ${formatMoney(25)}.</p>
+                  <div class="text-xl font-black text-white font-[Orbitron]">Paczkomat InPost</div>
+                  <p class="mt-2 text-sm text-zinc-400">Koszt: 25,00 zł</p>
                 </button>
               </div>
             </div>
@@ -817,7 +802,6 @@ function renderOrderFormModal({
             <div class="rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6">
               <div class="flex flex-col gap-1 mb-4">
                 <h3 class="text-lg font-bold text-white">Dane osobowe</h3>
-                <p class="text-sm text-zinc-500">Jeżeli dane są zapisane na koncie, formularz uzupełni je automatycznie.</p>
               </div>
               <div class="grid gap-4 md:grid-cols-2">
                 <div>
@@ -859,7 +843,6 @@ function renderOrderFormModal({
             <div id="order-address-section" class="hidden rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6">
               <div class="flex flex-col gap-1 mb-4">
                 <h3 class="text-lg font-bold text-white" id="order-address-label">Adres</h3>
-                <p class="text-sm text-zinc-500" id="order-address-hint">Adres zostanie użyty jako dane podstawowe zamówienia.</p>
               </div>
               <div class="grid gap-4 md:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
                 <div>
@@ -871,19 +854,18 @@ function renderOrderFormModal({
                   <input type="text" id="order-address-building" value="${escapeHtml(decodedAddress.buildingNumber)}" class="${orderFieldClass}" placeholder="Nr budynku / nr lokalu">
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Kod pocztowy</label>
-                  <input type="text" id="order-address-postal" value="${escapeHtml(decodedAddress.postalCode)}" class="${orderFieldClass}" placeholder="Kod pocztowy">
-                </div>
-                <div>
                   <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Miejscowość</label>
                   <input type="text" id="order-address-city" value="${escapeHtml(decodedAddress.city)}" class="${orderFieldClass}" placeholder="Miejscowość">
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Kod pocztowy</label>
+                  <input type="text" id="order-address-postal" value="${escapeHtml(decodedAddress.postalCode)}" class="${orderFieldClass}" placeholder="Kod pocztowy">
                 </div>
               </div>
             </div>
             <div id="order-parcel-section" class="hidden rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6">
               <div class="flex flex-col gap-1 mb-4">
                 <h3 class="text-lg font-bold text-white">Numer paczkomatu</h3>
-                <p class="text-sm text-zinc-500">Jeżeli zapisano paczkomat na koncie, pole zostanie uzupełnione automatycznie.</p>
               </div>
               <div>
                 <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-2">Numer paczkomatu</label>
@@ -921,7 +903,7 @@ function renderOrderFormModal({
 
                 <div class="rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6 h-full flex flex-col">
                   <h3 class="text-lg font-bold text-white mb-3">Dodatkowe informacje</h3>
-                  <textarea id="order-notes" class="${orderFieldClass} flex-1 min-h-[220px] lg:min-h-0" placeholder="Pole dla użytkownika do wpisania dodatkowych informacji"></textarea>
+                  <textarea id="order-notes" class="${orderFieldClass} flex-1 min-h-[220px] lg:min-h-0" placeholder="Dodatkowe informacje dot. zamówienia lub dostawy."></textarea>
                 </div>
               </div>
 

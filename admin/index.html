@@ -1660,31 +1660,28 @@
       }
 
       .mobile-quicknav-shell {
-        display: flex;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
         align-items: center;
-        justify-content: space-between;
         gap: 0.75rem;
       }
 
       .mobile-quicknav-left {
-        flex: 1;
-        min-width: 0;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        overflow-x: auto;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-      }
-
-      .mobile-quicknav-left::-webkit-scrollbar {
-        display: none;
+        display: contents;
       }
 
       .mobile-quicknav-slots {
         display: flex;
         align-items: center;
         gap: 0.85rem;
+        justify-content: center;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+
+      .mobile-quicknav-slots::-webkit-scrollbar {
+        display: none;
       }
 
       .mobile-quicknav-item {
@@ -25747,10 +25744,15 @@
             ? `Szkolenie: ${escapeHtml(code.targetTrainingTitle)}`
             : "Szkolenie nieprzypisane";
         }
+        const minOrderValue = Number(code.minOrderValue || 0);
         if (code.discountType === "percent") {
-          return `Rabat: ${Number(code.discountValue || 0)}%`;
+          return minOrderValue > 0
+            ? `Rabat: ${Number(code.discountValue || 0)}% (min. zamówienie: ${minOrderValue.toFixed(2)} PLN)`
+            : `Rabat: ${Number(code.discountValue || 0)}%`;
         }
-        return `Voucher: ${Number(code.discountValue || 0).toFixed(2)} PLN`;
+        return minOrderValue > 0
+          ? `Voucher: ${Number(code.discountValue || 0).toFixed(2)} PLN (min. zamówienie: ${minOrderValue.toFixed(2)} PLN)`
+          : `Voucher: ${Number(code.discountValue || 0).toFixed(2)} PLN`;
       }
 
       async function ensurePromoCodeTrainingsLoaded() {
@@ -25987,13 +25989,13 @@
                     </div>
                   </section>
 
-                  <section class="rounded-2xl border border-zinc-800 bg-zinc-950/35 p-5 space-y-5">
+                  <section class="rounded-2xl border border-zinc-800 bg-zinc-950/35 p-5 space-y-6">
                     <div>
                       <h3 class="text-base font-semibold text-white">Przeznaczenie kodu</h3>
                       <p class="text-sm text-zinc-500 mt-1">Wybierz, czy kod ma przyznawać dostęp do szkolenia, czy działać jako rabat.</p>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
                       <div>
                         <label class="block text-sm font-medium mb-2">Typ kodu</label>
                         <select id="promo-code-purpose" onchange="syncPromoCodePurposeFields()">
@@ -26001,18 +26003,17 @@
                           <option value="discount" ${selectedPurpose === "discount" ? "selected" : ""}>Kupon rabatowy</option>
                         </select>
                       </div>
-                      <div id="promo-code-training-section" class="space-y-2 ${selectedPurpose === "training_access" ? "" : "hidden"}">
-                        <label class="block text-sm font-medium">Szkolenie</label>
+                      <div id="promo-code-training-section" class="rounded-xl border border-zinc-800/80 bg-black/20 p-4 space-y-2 ${selectedPurpose === "training_access" ? "" : "hidden"}">
+                        <label class="block text-sm font-medium mb-1">Szkolenie</label>
                         <select id="promo-code-training-id">
                           <option value="">Wybierz szkolenie</option>
                           ${getPromoCodeTrainingOptions(currentCode?.targetTrainingId || "")}
                         </select>
-                        <p class="text-xs text-zinc-500">Kod zadziała tylko dla wybranego szkolenia.</p>
                       </div>
                     </div>
 
-                    <div id="promo-code-discount-section" class="space-y-4 ${selectedPurpose === "discount" ? "" : "hidden"}">
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div id="promo-code-discount-section" class="rounded-xl border border-zinc-800/80 bg-black/20 p-4 space-y-4 ${selectedPurpose === "discount" ? "" : "hidden"}">
+                      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <div>
                           <label class="block text-sm font-medium mb-2">Typ rabatu</label>
                           <select id="promo-code-discount-type">
@@ -26024,8 +26025,12 @@
                           <label class="block text-sm font-medium mb-2">Wartość</label>
                           <input type="number" id="promo-code-discount-value" min="0" step="0.01" value="${escapeHtml(String(currentCode?.discountValue || 0))}" />
                         </div>
+                        <div>
+                          <label class="block text-sm font-medium mb-2">Minimalna wartość zamówienia (PLN)</label>
+                          <input type="number" id="promo-code-min-order-value" min="0" step="0.01" value="${escapeHtml(String(currentCode?.minOrderValue || 0))}" />
+                        </div>
                       </div>
-                      <p class="text-xs text-zinc-500">Dla vouchera wpisz kwotę, a dla rabatu procentowego liczbę procent.</p>
+                      <p class="text-xs text-zinc-500">Dla vouchera wpisz kwotę, a dla rabatu procentowego liczbę procent. Minimalna wartość zamówienia: wpisz 0, aby wyłączyć próg.</p>
                     </div>
                   </section>
 
@@ -26133,6 +26138,7 @@
                 : "",
             discountType: purpose === "discount" ? document.getElementById("promo-code-discount-type")?.value || "" : "",
             discountValue: purpose === "discount" ? document.getElementById("promo-code-discount-value")?.value || 0 : 0,
+            minOrderValue: purpose === "discount" ? document.getElementById("promo-code-min-order-value")?.value || 0 : 0,
           };
 
           if (!payload.code) {

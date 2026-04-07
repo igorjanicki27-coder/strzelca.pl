@@ -2,7 +2,6 @@
 // API WYSYŁANIA MAILI - SMTP dla Strzelca.pl (Vercel Serverless)
 // =============================================================================
 
-const nodemailer = require('nodemailer');
 const {
   initAdmin,
   admin,
@@ -10,6 +9,7 @@ const {
   getSessionUser,
   readJsonBody,
 } = require('./_sso-utils');
+const { sendTransactionalEmail, assertSmtpConfigured } = require('./_transactional-mail');
 
 const SUPERADMIN_UID = 'nCMUz2fc8MM9WhhMVBLZ1pdR7O43';
 
@@ -28,22 +28,6 @@ async function isAdmin(uid) {
     console.error('Error checking admin status:', e);
     return false;
   }
-}
-
-// Tworzenie transportera SMTP
-function createTransporter() {
-  // Konfiguracja z zmiennych środowiskowych
-  const smtpConfig = {
-    host: process.env.SMTP_HOST || 'ssl0.ovh.net',
-    port: parseInt(process.env.SMTP_PORT || '465', 10),
-    secure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465',
-    auth: {
-      user: process.env.SMTP_USER || 'kontakt@strzelca.pl',
-      pass: process.env.SMTP_PASSWORD || '',
-    },
-  };
-
-  return nodemailer.createTransport(smtpConfig);
 }
 
 // Zamiana zmiennych w szablonie
@@ -104,30 +88,30 @@ module.exports = async (req, res) => {
     mailTo = to;
     mailSubject = subject;
 
-    if (!String(process.env.SMTP_PASSWORD || '').trim()) {
+    try {
+      await assertSmtpConfigured();
+    } catch (smtpErr) {
       res.status(503).json({
         success: false,
-        error:
-          'SMTP nie skonfigurowany na serwerze (brak SMTP_PASSWORD w Vercel).',
+        error: smtpErr?.message || 'SMTP nie skonfigurowany na serwerze.',
+        code: smtpErr?.code || 'SMTP_NOT_CONFIGURED',
+        diag: smtpErr?.diag || null,
       });
       return;
     }
 
-    const transporter = createTransporter();
-    
-    const mailOptions = {
-      from: `"Strzelca.pl" <${process.env.SMTP_USER || 'kontakt@strzelca.pl'}>`,
+    await sendTransactionalEmail({
       to,
       subject,
       html,
       attachments: attachments || [],
-    };
-
-    const info = await transporter.sendMail(mailOptions);
+      logCategory: 'admin_smtp',
+      logMeta: { source: 'send-email' },
+      skipFailureLog: true,
+    });
     
     res.status(200).json({ 
       success: true, 
-      messageId: info.messageId,
       message: 'Email sent successfully' 
     });
   } catch (error) {

@@ -316,9 +316,8 @@ function makeStyles() {
     .wrap {
       position: fixed;
       right: 16px;
-      top: 16px;
-      /* Musi być wyżej niż auth-widget (top-right avatar/menu),
-         bo inaczej floating przycisk czatu chowa się za awatarem. */
+      bottom: 16px;
+      /* Pływający przycisk wiadomości ma być pod przyciskiem wyszukiwania. */
       z-index: 2147483647;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       color: #e5e5e5;

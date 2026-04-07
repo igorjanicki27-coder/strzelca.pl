@@ -193,6 +193,7 @@ async function sendTransactionalEmail(opts) {
     to,
     subject,
     html,
+    attachments,
     logCategory,
     logMeta,
     skipFailureLog,
@@ -213,6 +214,7 @@ async function sendTransactionalEmail(opts) {
       replyTo: replyTo || undefined,
       subject,
       html,
+      attachments: Array.isArray(attachments) ? attachments : undefined,
     });
   } catch (err) {
     if (!skipFailureLog) {

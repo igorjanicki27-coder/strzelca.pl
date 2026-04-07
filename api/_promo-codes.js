@@ -144,6 +144,12 @@ function parseDiscountValue(value) {
   return Math.round(parsed * 100) / 100;
 }
 
+function parseMinimumOrderValue(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+  return Math.round(parsed * 100) / 100;
+}
+
 function sanitizePromoCodeInput(input, currentData = null) {
   const rawCode = String(input?.code || currentData?.code || '').trim();
   const normalizedCode = normalizePromoCode(rawCode);
@@ -187,6 +193,7 @@ function sanitizePromoCodeInput(input, currentData = null) {
     targetTrainingTitle: '',
     discountType: '',
     discountValue: 0,
+    minOrderValue: 0,
   };
 
   if (purpose === 'training_access') {
@@ -213,6 +220,9 @@ function sanitizePromoCodeInput(input, currentData = null) {
     }
     base.discountType = discountType;
     base.discountValue = discountValue;
+    base.minOrderValue = parseMinimumOrderValue(
+      input?.minOrderValue === undefined ? currentData?.minOrderValue : input?.minOrderValue,
+    );
   }
 
   return base;
@@ -258,6 +268,17 @@ function mapPromoCodeReasonToMessage(reason, extra = {}) {
       message: title
         ? `Ten kod służy do uzyskania dostępu do innego szkolenia: ${title}.`
         : 'Ten kod służy do uzyskania dostępu do innego szkolenia.',
+    };
+  }
+  if (reason === 'minimum_order_not_met') {
+    const minOrderValue = Math.max(0, Number(extra?.minOrderValue) || 0);
+    return {
+      ok: false,
+      reason,
+      message:
+        minOrderValue > 0
+          ? `Minimalna wartość zamówienia dla tego kodu to ${minOrderValue.toFixed(2)} PLN.`
+          : 'Minimalna wartość zamówienia dla tego kodu nie została spełniona.',
     };
   }
   return {
@@ -368,6 +389,11 @@ async function evaluatePromoCodeForOrder({
   }
 
   if (data.purpose === 'discount') {
+    const price = Math.max(0, Number(basePrice) || 0);
+    const minOrderValue = parseMinimumOrderValue(data.minOrderValue);
+    if (minOrderValue > 0 && price < minOrderValue) {
+      return mapPromoCodeReasonToMessage('minimum_order_not_met', { minOrderValue });
+    }
     const discountAmount = computeDiscount(basePrice, data);
     return {
       ok: true,
@@ -568,6 +594,7 @@ function serializePromoCodeForAdmin(doc) {
     targetTrainingTitle: String(data.targetTrainingTitle || '').trim(),
     discountType: String(data.discountType || '').trim(),
     discountValue: Number(data.discountValue || 0),
+    minOrderValue: parseMinimumOrderValue(data.minOrderValue),
     createdAt: data.createdAt || null,
     updatedAt: data.updatedAt || null,
   };

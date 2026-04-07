@@ -434,7 +434,7 @@ async function main() {
   }
 
   function updateLauncherOffset() {
-    launcher.style.bottom = "16px";
+    launcher.style.bottom = "88px";
   }
 
   function visibleTypes() {
