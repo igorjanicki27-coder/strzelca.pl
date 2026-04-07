@@ -23772,7 +23772,10 @@
         }
       }
 
-      // Modal zamówienia
+      // Modal zamówienia (z-index > sticky #mobile-quicknav, żeby nie nachodził na dialog)
+      const ORDER_MODAL_ROOT_CLASS =
+        "fixed inset-0 z-[130] hidden flex items-start justify-center overflow-y-auto p-4 pt-8 pb-6 bg-black/95 backdrop-blur-xl sm:items-center sm:pt-4 sm:pb-4";
+
       function showOrderModal() {
         // Utworzę modal dynamicznie - będzie to duży formularz
         // Najpierw sprawdzę czy modal już istnieje
@@ -23780,11 +23783,13 @@
         if (!modal) {
           modal = document.createElement('div');
           modal.id = 'order-modal';
-          modal.className = 'fixed inset-0 z-50 hidden flex items-start justify-center overflow-y-auto p-4 pt-8 pb-6 bg-black/95 backdrop-blur-xl sm:items-center sm:pt-4 sm:pb-4';
+          modal.className = ORDER_MODAL_ROOT_CLASS;
           modal.onclick = function(e) {
             if (e.target.id === 'order-modal') closeOrderModal();
           };
           document.body.appendChild(modal);
+        } else {
+          modal.className = ORDER_MODAL_ROOT_CLASS;
         }
 
         const isEdit = !!currentEditingOrder;
@@ -24051,6 +24056,9 @@
       let originalCustomerData = null;
       let customerDataEditMode = false;
 
+      const CUSTOMER_DATA_MODAL_ROOT_CLASS =
+        "fixed inset-0 z-[140] hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl";
+
       // Modal z danymi zamawiającego
       window.showCustomerDataModal = async function() {
         const userId = document.getElementById('order-userId')?.value;
@@ -24066,11 +24074,13 @@
         if (!modal) {
           modal = document.createElement('div');
           modal.id = 'customer-data-modal';
-          modal.className = 'fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl';
+          modal.className = CUSTOMER_DATA_MODAL_ROOT_CLASS;
           modal.onclick = function(e) {
             if (e.target.id === 'customer-data-modal') closeCustomerDataModal();
           };
           document.body.appendChild(modal);
+        } else {
+          modal.className = CUSTOMER_DATA_MODAL_ROOT_CLASS;
         }
 
         // Pobierz dane - najpierw z zamówienia, potem z profilu użytkownika
