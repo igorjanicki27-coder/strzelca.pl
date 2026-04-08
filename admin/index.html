@@ -30,7 +30,7 @@
     <script src="https://cdn.jsdelivr.net/npm/quill-image-resize-module@3.0.0/image-resize.min.js"></script>
     <!-- Wspólne poprawki responsywności -->
     <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-24-2" />
-    <link rel="stylesheet" href="/admin/invoices-admin.css?v=2026-03-25-2" />
+    <link rel="stylesheet" href="/admin/invoices-admin.css?v=2026-04-08-3" />
     <style>
       :root {
         --coyote: #c19a6b;
@@ -1069,6 +1069,52 @@
         color: black;
       }
 
+      /*
+       * Zakładka Powiadomienia: host Quilla nie może mieć .editor-content (padding + własna ramka),
+       * bo nakłada się na obramowanie Snow + sticky toolbar (bottom:0) nachodził na przyciski akcji.
+       */
+      #notification-message-editor.admin-comm-quill-host,
+      #info-message-editor.admin-comm-quill-host {
+        padding: 0;
+        margin: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        border-radius: 14px;
+        overflow: hidden;
+        background: rgba(24, 24, 27, 0.92);
+        /* Nadpisuje .ql-container.ql-snow { border: 1px solid #ccc } — inaczej jest podwójna jasna ramka */
+        border: 1px solid rgba(255, 244, 224, 0.1) !important;
+      }
+
+      #notification-message-editor.admin-comm-quill-host .ql-toolbar,
+      #info-message-editor.admin-comm-quill-host .ql-toolbar,
+      #notification-message-editor.admin-comm-quill-host .ql-toolbar.ql-snow,
+      #info-message-editor.admin-comm-quill-host .ql-toolbar.ql-snow {
+        position: static !important;
+        top: auto !important;
+        bottom: auto !important;
+        z-index: auto !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        /* Nadpisuje .ql-toolbar.ql-snow — jedna linia oddzielająca od edytora */
+        border: none !important;
+        border-bottom: 1px solid rgba(255, 244, 224, 0.1) !important;
+      }
+
+      #notification-message-editor.admin-comm-quill-host .ql-container,
+      #info-message-editor.admin-comm-quill-host .ql-container {
+        border: none !important;
+        border-radius: 0 !important;
+        background: transparent;
+      }
+
+      #notification-message-editor.admin-comm-quill-host .ql-editor,
+      #info-message-editor.admin-comm-quill-host .ql-editor {
+        border: none !important;
+      }
+
       .status-active {
         border-left: 4px solid #10b981;
         background: rgba(16, 185, 129, 0.1);
@@ -1815,6 +1861,31 @@
         box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.28) inset;
       }
 
+      /*
+        Modale zamówienia nad sticky #mobile-quicknav.
+        admin.tailwind.min.css może nie zawierać klas typu z-[130], więc z-index ustawiamy tutaj.
+      */
+      #order-modal {
+        z-index: 200;
+      }
+
+      #customer-data-modal {
+        z-index: 210;
+      }
+
+      /* Czat admina i modal „nowa wiadomość” nad sticky menu */
+      #chat-modal {
+        z-index: 205;
+      }
+
+      #new-chat-modal {
+        z-index: 220;
+      }
+
+      #new-chat-user-search-results {
+        z-index: 10;
+      }
+
       .mobile-sidebar-divider {
         height: 1px;
         margin: 0.45rem 0;
@@ -2233,6 +2304,16 @@
                 </div>
                 <p id="search-index-status" class="text-xs text-zinc-500 mt-3">Nie uruchamiano przebudowy indeksu w tej sesji.</p>
               </div>
+            </div>
+
+            <div class="admin-card mb-8">
+              <h2 class="text-2xl font-bold coyote-text mb-2">Kafelki strony głównej</h2>
+              <p class="text-sm text-zinc-400 mb-4">
+                Konfiguracja hubu <span class="text-zinc-300">strzelca.pl</span>: wyłączony kafelek jest wyszarzony i nie da się go otworzyć; skróty
+                <code class="text-zinc-500">/sklep</code>, <code class="text-zinc-500">?q=sklep</code> i filtry wyszukiwarki nie prowadzą do wyłączonej sekcji.
+              </p>
+              <p id="home-hub-tiles-status" class="text-sm text-zinc-500 mb-4">Ładowanie…</p>
+              <div id="home-hub-tiles-form" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
             </div>
           </div>
 
@@ -3212,7 +3293,7 @@
                           <p>Treść wiadomości widoczna po wejściu do centrum powiadomień.</p>
                         </div>
                       </div>
-                      <div id="notification-message-editor" style="min-height: 240px;" class="editor-content rounded-lg overflow-hidden border border-zinc-700 bg-zinc-900"></div>
+                      <div id="notification-message-editor" style="min-height: 240px;" class="admin-comm-quill-host"></div>
                     </section>
 
                     <div class="flex flex-wrap gap-3 justify-end">
@@ -3321,7 +3402,7 @@
                           <p>To właśnie tę zawartość zobaczy użytkownik w modalu.</p>
                         </div>
                       </div>
-                      <div id="info-message-editor" style="min-height: 240px;" class="editor-content rounded-lg overflow-hidden border border-zinc-700 bg-zinc-900"></div>
+                      <div id="info-message-editor" style="min-height: 240px;" class="admin-comm-quill-host"></div>
                     </section>
 
                     <div class="flex flex-wrap gap-3 justify-end">
@@ -3392,10 +3473,21 @@
                     Wszystkie: <span id="total-count" class="text-white font-semibold">0</span>
                   </div>
                 </div>
-                <button onclick="refreshMessages()" class="btn-admin text-sm px-3 py-1 flex items-center gap-2" id="refresh-messages-btn">
-                  <i class="fa-solid fa-sync-alt" id="refresh-icon"></i>
-                  <span id="refresh-text">Odśwież</span>
-                </button>
+                <div class="flex flex-wrap items-center justify-end gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onclick="window.startNewChat()"
+                    class="btn-admin text-sm px-3 py-1 flex items-center gap-2"
+                    id="new-conversation-btn"
+                  >
+                    <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                    <span>Nowa konwersacja</span>
+                  </button>
+                  <button onclick="refreshMessages()" class="btn-admin text-sm px-3 py-1 flex items-center gap-2" id="refresh-messages-btn">
+                    <i class="fa-solid fa-sync-alt" id="refresh-icon"></i>
+                    <span id="refresh-text">Odśwież</span>
+                  </button>
+                </div>
               </div>
 
               <!-- Wyszukiwanie -->
@@ -3528,66 +3620,38 @@
           </div>
 
           <div id="tab-invoices" class="tab-content">
-            <div class="invoice-stack">
-              <div class="invoice-toolbar">
-                <div>
-                  <h1 class="text-3xl font-bold coyote-text">Generator Faktur</h1>
+            <div class="invoice-page">
+              <header class="invoice-page-header">
+                <div class="invoice-page-header-text">
+                  <h1 class="invoice-page-title coyote-text">Faktury</h1>
+                  <p class="invoice-page-lead">
+                    Po lewej: parafka (tylko lokalnie w tej przeglądarce), filtry i lista dokumentów. Po prawej: podgląd jak na wydruku.
+                    Parafka <strong>nie jest w repozytorium Git</strong> — wgrywasz ją sam; przy zapisie faktury trafia do bazy razem z dokumentem.
+                  </p>
                 </div>
-                <div class="invoice-toolbar-actions">
-                  <button onclick="refreshAdminInvoices()" class="invoice-secondary-button">
+                <div class="invoice-page-actions">
+                  <button type="button" onclick="refreshAdminInvoices()" class="invoice-secondary-button">
                     <i class="fa-solid fa-rotate"></i> Odśwież
                   </button>
-                  <button onclick="openAdminInvoiceModal()" class="btn-admin text-sm px-4 py-2">
+                  <button type="button" onclick="openAdminInvoiceModal()" class="btn-admin text-sm px-4 py-2">
                     <i class="fa-solid fa-plus mr-2"></i> Nowa faktura
                   </button>
                 </div>
-              </div>
+              </header>
 
-              <div id="invoice-stats-grid" class="invoice-kpi-grid"></div>
-
-              <div class="invoice-tab-grid">
-                <div class="invoice-stack">
-                  <div class="admin-card invoice-panel-card">
-                    <div class="invoice-panel-head">
-                      <div>
-                        <h2 class="invoice-panel-title">Filtrowanie</h2>
-                        <p class="invoice-panel-copy">Szybkie wyszukiwanie po numerze, nabywcy i powiązanym zamówieniu.</p>
-                      </div>
-                    </div>
-                    <div class="invoice-filter-grid">
-                      <div class="invoice-filter-grid-search">
-                        <label class="block text-sm font-medium mb-2">Szukaj</label>
-                        <input
-                          type="text"
-                          id="invoice-search-input"
-                          placeholder="Numer, nabywca, zamówienie, korekta..."
-                        />
-                      </div>
-                      <div class="invoice-filter-grid-status">
-                        <label class="block text-sm font-medium mb-2">Status</label>
-                        <select id="invoice-status-filter">
-                          <option value="all">Wszystkie</option>
-                          <option value="utworzona">Utworzone</option>
-                          <option value="wyslana">Wysłane</option>
-                          <option value="anulowana">Anulowane</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div class="invoice-filter-toggle-row">
-                      <label class="inline-flex items-center gap-3 text-sm text-zinc-300">
-                        <input type="checkbox" id="invoice-include-archived" />
-                        Pokaż wysłane i anulowane
-                      </label>
-                    </div>
-                  </div>
-
-                  <div class="admin-card invoice-panel-card">
-                    <div class="invoice-panel-head">
-                      <div>
-                        <h2 class="invoice-panel-title">Parafka sprzedawcy</h2>
-                        <p class="invoice-panel-copy">Domyślna parafka dla nowych i edytowanych faktur. Będzie widoczna w podglądzie oraz zapisana w fakturze.</p>
-                      </div>
-                    </div>
+              <div class="invoice-hub">
+                <aside class="invoice-hub-aside" aria-label="Lista i ustawienia">
+                  <section class="invoice-surface invoice-surface--sig" aria-labelledby="invoice-sig-heading">
+                    <p class="invoice-step-badge" id="invoice-sig-heading">Krok 1 — Parafka</p>
+                    <h2 class="invoice-surface-title">Podpis na fakturze</h2>
+                    <p class="invoice-surface-desc">
+                      Obraz zapisuje się w <strong>pamięci przeglądarki</strong> (localStorage), nie w plikach projektu. Na GitHubie nie ma żadnej parafki do podmiany.
+                    </p>
+                    <ol class="invoice-sig-steps">
+                      <li>Kliknij <em>Wgraj obraz</em> i wybierz PNG, JPG lub WebP.</li>
+                      <li>Podgląd i nowe faktury od razu pokazują podpis w polu sprzedawcy.</li>
+                      <li>Po <strong>Zapisz fakturę</strong> kopia obrazu jest zapisywana w dokumencie w bazie (PDF / druk / wysyłka).</li>
+                    </ol>
                     <div class="invoice-signature-toolbar">
                       <label class="invoice-secondary-button cursor-pointer">
                         <input
@@ -3597,30 +3661,66 @@
                           class="hidden"
                           onchange="handleInvoiceSignatureUpload(event)"
                         />
-                        <i class="fa-solid fa-signature"></i> Wgraj parafkę
+                        <i class="fa-solid fa-image"></i> Wgraj obraz
                       </label>
-                      <button class="invoice-secondary-button" onclick="clearSessionInvoiceSignature()">
-                        <i class="fa-solid fa-trash"></i> Usuń
+                      <button type="button" class="invoice-secondary-button" onclick="clearSessionInvoiceSignature()">
+                        <i class="fa-solid fa-trash"></i> Wyczyść
                       </button>
                     </div>
-                    <div id="invoice-signature-session" class="mt-4"></div>
-                  </div>
+                    <div id="invoice-signature-session" class="invoice-signature-session-slot"></div>
+                  </section>
 
-                  <div class="admin-card invoice-panel-card">
-                    <div class="invoice-panel-head">
-                      <div>
-                        <h2 class="invoice-panel-title">Lista faktur</h2>
-                        <p class="invoice-panel-copy">Grupy dokumentów z korektami i powiązaniami do zamówień.</p>
+                  <section class="invoice-surface" aria-labelledby="invoice-list-heading">
+                    <p class="invoice-step-badge" id="invoice-list-heading">Krok 2 — Wybór dokumentu</p>
+                    <h2 class="invoice-surface-title">Twoje faktury</h2>
+                    <p class="invoice-surface-desc">
+                      Szukaj po numerze, nabywcy lub zamówieniu. Korekty są w tej samej grupie co faktura pierwotna.
+                    </p>
+
+                    <div class="invoice-filter-stack">
+                      <div class="invoice-filter-stack-field">
+                        <label class="block text-sm font-medium mb-2 text-zinc-300">Szukaj</label>
+                        <input
+                          type="text"
+                          id="invoice-search-input"
+                          placeholder="Numer, nabywca, zamówienie…"
+                          autocomplete="off"
+                        />
                       </div>
+                      <div class="invoice-filter-stack-field invoice-filter-stack-field--row">
+                        <div class="invoice-filter-stack-grow">
+                          <label class="block text-sm font-medium mb-2 text-zinc-300">Status (ostatni w grupie)</label>
+                          <select id="invoice-status-filter">
+                            <option value="all">Wszystkie</option>
+                            <option value="utworzona">Utworzona</option>
+                            <option value="wyslana">Wysłana</option>
+                            <option value="anulowana">Anulowana</option>
+                          </select>
+                        </div>
+                      </div>
+                      <label class="invoice-filter-archive inline-flex items-center gap-2 text-sm text-zinc-400 cursor-pointer select-none">
+                        <input type="checkbox" id="invoice-include-archived" />
+                        Pokaż wysłane i anulowane
+                      </label>
                     </div>
-                    <div id="invoice-groups-list" class="invoice-stack"></div>
-                  </div>
-                </div>
 
-                <div class="invoice-preview-shell">
-                  <div id="invoice-preview-meta"></div>
-                  <div id="invoice-preview-document"></div>
-                </div>
+                    <div id="invoice-filter-chips" class="invoice-filter-chips" role="group" aria-label="Szybki filtr widoku"></div>
+
+                    <div id="invoice-groups-list" class="invoice-groups-list"></div>
+                  </section>
+                </aside>
+
+                <main class="invoice-hub-main" aria-label="Podgląd">
+                  <section class="invoice-surface invoice-surface--preview">
+                    <p class="invoice-step-badge">Krok 3 — Podgląd</p>
+                    <h2 class="invoice-surface-title">Dokument A4</h2>
+                    <p class="invoice-surface-desc invoice-surface-desc--tight">
+                      Akcje (edycja, PDF, druk) są pod nagłówkiem wybranej faktury.
+                    </p>
+                    <div id="invoice-preview-meta" class="invoice-preview-meta-slot"></div>
+                    <div id="invoice-preview-document" class="invoice-preview-document-slot"></div>
+                  </section>
+                </main>
               </div>
             </div>
           </div>
@@ -6582,6 +6682,7 @@
         switch (tabName) {
           case "status":
             checkMainServicesStatus();
+            loadHomeHubTileSettings();
             break;
           case "dashboard":
             // Opóźnij ładowanie dashboard żeby dać czas na renderowanie DOM
@@ -6745,6 +6846,10 @@
 
       window.addEventListener("resize", () => {
         toggleSidebar(false);
+        const orderModal = document.getElementById("order-modal");
+        if (orderModal && !orderModal.classList.contains("hidden")) {
+          syncAdminModalTopInsetForQuickNav(orderModal);
+        }
       });
 
       // Logowanie administratora
@@ -9272,6 +9377,34 @@
         }
       };
 
+      const adminAudienceExclusiveBound = new Set();
+
+      function bindAdminAudienceExclusiveToggle(prefix) {
+        if (adminAudienceExclusiveBound.has(prefix)) return;
+        const allEl = document.getElementById(`${prefix}-audience-all`);
+        const roleCheckboxes = ["user", "company", "admin", "moderator", "operator"]
+          .map((role) => document.getElementById(`${prefix}-audience-${role}`))
+          .filter(Boolean);
+        if (!allEl || roleCheckboxes.length === 0) return;
+        adminAudienceExclusiveBound.add(prefix);
+
+        allEl.addEventListener("change", () => {
+          if (allEl.checked) {
+            roleCheckboxes.forEach((el) => {
+              el.checked = false;
+            });
+          }
+        });
+
+        roleCheckboxes.forEach((el) => {
+          el.addEventListener("change", () => {
+            if (el.checked) {
+              allEl.checked = false;
+            }
+          });
+        });
+      }
+
       function collectAdminCommunicationAudience(prefix) {
         const all = !!document.getElementById(`${prefix}-audience-all`)?.checked;
         const roles = [];
@@ -9382,8 +9515,14 @@
       window.sendAdminInfoAnnouncement = async function() {
         try {
           const payload = getAdminCommunicationFormData("info");
-          await fetchAdminNotificationsApi(payload);
-          showNotification("Okno informacji zostało utworzone.", "success");
+          const result = await fetchAdminNotificationsApi(payload);
+          const n = result?.recipientCount;
+          showNotification(
+            typeof n === "number"
+              ? `Okno informacji utworzone. Wysłano do: ${n} odbiorców.`
+              : "Okno informacji zostało utworzone.",
+            "success",
+          );
           resetAdminInfoForm();
           await loadAdminNotificationsHistory();
         } catch (error) {
@@ -9437,6 +9576,12 @@
           .join("");
       }
 
+      function formatAdminInfoRecipientCount(value) {
+        if (value === null || value === undefined || value === "") return "—";
+        const n = Number(value);
+        return Number.isFinite(n) ? String(n) : "—";
+      }
+
       function renderAdminInfoHistoryItems(items) {
         if (!items.length) {
           return '<div class="text-zinc-500">Brak aktywnych okien informacji.</div>';
@@ -9453,15 +9598,26 @@
                     roles: Array.isArray(item.targetRoles) ? item.targetRoles : [],
                     userIds: Array.isArray(item.targetUserIds) ? item.targetUserIds : [],
                   }))}</div>
-                  <div class="text-xs text-zinc-500 mt-1">Zrozumiałem: <span class="text-coyote font-semibold">${Number(item.ackCount || 0)}</span></div>
                 </div>
-                <button
-                  type="button"
-                  onclick="toggleInfoAnnouncementActive('${item.id}', false)"
-                  class="shrink-0 px-3 py-2 rounded-lg border border-red-500/40 text-red-300 hover:bg-red-500/10 transition"
-                >
-                  Wyłącz
-                </button>
+                <div class="flex flex-col items-end gap-2 shrink-0">
+                  <div class="admin-history-metrics">
+                    <div class="admin-history-metric">
+                      <div class="text-coyote font-bold">${escapeHtml(formatAdminInfoRecipientCount(item.recipientCount))}</div>
+                      <div class="text-[11px] text-zinc-500 uppercase tracking-wide">wysłano</div>
+                    </div>
+                    <div class="admin-history-metric">
+                      <div class="text-coyote font-bold">${Number(item.ackCount || 0)}</div>
+                      <div class="text-[11px] text-zinc-500 uppercase tracking-wide">zrozumiałem</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onclick="toggleInfoAnnouncementActive('${item.id}', false)"
+                    class="px-3 py-2 rounded-lg border border-red-500/40 text-red-300 hover:bg-red-500/10 transition"
+                  >
+                    Wyłącz
+                  </button>
+                </div>
               </div>
             </div>
           `)
@@ -9527,6 +9683,8 @@
 
       window.initializeAdminNotificationsTab = async function() {
         switchAdminCommunicationComposer("notification");
+        bindAdminAudienceExclusiveToggle("notification");
+        bindAdminAudienceExclusiveToggle("info");
         initAdminNotificationsQuill();
         await loadAdminNotificationsUserPool();
         await loadAdminNotificationsHistory();
@@ -11989,19 +12147,21 @@
 
       // Funkcja do rozpoczynania nowego czatu
       function startNewChat() {
+        if (document.getElementById("new-chat-modal")) return;
+
         // Utwórz modal do tworzenia nowego czatu
         const modalHtml = `
-          <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-50" id="new-chat-modal">
-            <div class="bg-zinc-900 rounded-xl shadow-2xl w-full max-w-md mx-4">
+          <div class="fixed inset-0 bg-black/80 flex items-center justify-center" id="new-chat-modal">
+            <div class="bg-zinc-900 rounded-xl shadow-2xl w-full max-w-md mx-4" onclick="event.stopPropagation()">
               <div class="p-6">
                 <div class="flex items-center justify-between mb-6">
                   <h3 class="text-xl font-bold text-white">Nowa wiadomość</h3>
-                  <button onclick="closeNewChatModal()" class="text-zinc-400 hover:text-white">
+                  <button type="button" onclick="window.closeNewChatModal()" class="text-zinc-400 hover:text-white">
                     <i class="fa-solid fa-times text-xl"></i>
                   </button>
                 </div>
 
-                <form id="new-chat-form" onsubmit="createNewChat(event)">
+                <form id="new-chat-form" onsubmit="window.createNewChat(event)">
                   <div class="space-y-4">
                   <div class="relative">
                       <label class="block text-sm font-medium text-zinc-300 mb-2">
@@ -12023,7 +12183,7 @@
                         type="hidden"
                         id="new-chat-email"
                       >
-                      <div id="user-search-results" class="absolute z-50 w-full mt-1 bg-zinc-800 border border-zinc-600 rounded-lg max-h-60 overflow-y-auto hidden">
+                      <div id="new-chat-user-search-results" class="absolute w-full mt-1 bg-zinc-800 border border-zinc-600 rounded-lg max-h-60 overflow-y-auto hidden">
                         <!-- Wyniki wyszukiwania będą tutaj -->
                       </div>
                   </div>
@@ -12057,7 +12217,7 @@
                   <div class="flex space-x-3 mt-6">
                     <button
                       type="button"
-                      onclick="closeNewChatModal()"
+                      onclick="window.closeNewChatModal()"
                       class="flex-1 btn-secondary"
                     >
                       Anuluj
@@ -12080,14 +12240,20 @@
         // Dodaj modal do strony
         document.body.insertAdjacentHTML('beforeend', modalHtml);
 
+        const modalRoot = document.getElementById("new-chat-modal");
+        if (modalRoot) {
+          modalRoot.addEventListener("click", () => window.closeNewChatModal());
+        }
+
         // Dodaj event listenery dla wyszukiwania użytkowników
         setTimeout(() => {
-          const searchInput = document.getElementById('new-chat-user-search');
-          const resultsContainer = document.getElementById('user-search-results');
-          const userIdInput = document.getElementById('new-chat-user-id');
-          const emailInput = document.getElementById('new-chat-email');
+          const root = document.getElementById("new-chat-modal");
+          const searchInput = root?.querySelector("#new-chat-user-search");
+          const resultsContainer = root?.querySelector("#new-chat-user-search-results");
+          const userIdInput = root?.querySelector("#new-chat-user-id");
+          const emailInput = root?.querySelector("#new-chat-email");
 
-          if (searchInput && resultsContainer) {
+          if (searchInput && resultsContainer && userIdInput && emailInput) {
             let searchTimeout = null;
 
             searchInput.addEventListener('input', async (e) => {
@@ -12111,15 +12277,19 @@
               }, 300);
             });
 
-            // Ukryj wyniki po kliknięciu poza nimi
-            document.addEventListener('click', (e) => {
+            const hideResultsOnOutsideClick = (e) => {
+              if (!root?.contains(e.target)) return;
               if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) {
                 resultsContainer.classList.add('hidden');
               }
-            });
+            };
+            document.addEventListener("click", hideResultsOnOutsideClick);
+            root._newChatHideResults = hideResultsOnOutsideClick;
           }
         }, 100);
       }
+
+      window.startNewChat = startNewChat;
 
       // Funkcja wyszukiwania użytkowników
       async function searchUsers(searchTerm, resultsContainer, userIdInput, emailInput, searchInput) {
@@ -12212,10 +12382,15 @@
       // Funkcja do zamykania modalu nowego czatu
       function closeNewChatModal() {
         const modal = document.getElementById('new-chat-modal');
+        if (modal?._newChatHideResults) {
+          document.removeEventListener("click", modal._newChatHideResults);
+        }
         if (modal) {
           modal.remove();
         }
       }
+
+      window.closeNewChatModal = closeNewChatModal;
 
       // Funkcja do tworzenia nowego czatu
       async function createNewChat(event) {
@@ -12291,10 +12466,14 @@
           console.error('Error creating chat:', error);
           showNotification("Błąd podczas tworzenia wiadomości: " + (error.message || 'Nieznany błąd'), "error");
         } finally {
-          createBtn.disabled = false;
-          createBtn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i>Utwórz czat';
+          if (createBtn) {
+            createBtn.disabled = false;
+            createBtn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i>Utwórz czat';
+          }
         }
       }
+
+      window.createNewChat = createNewChat;
 
 
       // Dodaj obsługę zdarzeń po załadowaniu strony
@@ -15839,8 +16018,9 @@
           event.createdUserNickname = await getUserNicknameByIdAsync(event.userId);
           event.createdUserEmail = await getUserProfileEmailAsync(event.userId);
         }
-        const activityLog = await renderActivityLog(event);
         const userDisplayName = await getUserDisplayNameAsync(event);
+        event.userDisplayName = userDisplayName;
+        const activityLog = await renderActivityLog(event);
         const encModalLogId = activityLogEncodedIdAttr(event.id);
 
           // Utwórz modal
@@ -15926,6 +16106,86 @@
             });
           }
         };
+
+        const HOME_HUB_TILE_DEFS = [
+          { id: "sklep", label: "Sklep" },
+          { id: "bazar", label: "Bazar" },
+          { id: "szkolenia", label: "Szkolenia" },
+          { id: "wydarzenia", label: "Wydarzenia" },
+          { id: "blog", label: "Blog" },
+          { id: "pomoc", label: "Pomoc" },
+          { id: "dokumenty", label: "Dokumenty" },
+          { id: "kontakt", label: "Kontakt" },
+        ];
+
+        async function loadHomeHubTileSettings() {
+          const statusEl = document.getElementById("home-hub-tiles-status");
+          const formEl = document.getElementById("home-hub-tiles-form");
+          if (!formEl) return;
+          if (typeof db === "undefined" || !db) {
+            if (statusEl) statusEl.textContent = "Firestore niedostępny.";
+            return;
+          }
+          try {
+            const snap = await getDoc(doc(db, "siteSettings", "homeHub"));
+            const rawTiles =
+              snap.exists() && snap.data()?.tiles && typeof snap.data().tiles === "object" ? snap.data().tiles : {};
+            formEl.innerHTML = "";
+            for (const { id, label } of HOME_HUB_TILE_DEFS) {
+              const on = rawTiles[id] !== false;
+              const row = document.createElement("label");
+              row.className =
+                "flex items-center gap-3 bg-zinc-800/50 rounded-lg p-4 border border-zinc-700/60 cursor-pointer hover:border-zinc-600";
+              const cb = document.createElement("input");
+              cb.type = "checkbox";
+              cb.className = "home-hub-tile-cb accent-coyote w-4 h-4 shrink-0";
+              cb.setAttribute("data-tile-id", id);
+              cb.checked = on;
+              const span = document.createElement("span");
+              span.className = "text-sm text-zinc-200";
+              span.textContent = `${label} — widoczny na stronie głównej`;
+              row.appendChild(cb);
+              row.appendChild(span);
+              formEl.appendChild(row);
+              cb.addEventListener("change", () => void saveHomeHubTilesFromForm());
+            }
+            if (statusEl) {
+              statusEl.textContent = snap.exists()
+                ? "Zapisane w Firestore (siteSettings/homeHub)."
+                : "Brak dokumentu — pierwszy zapis utworzy konfigurację.";
+            }
+          } catch (e) {
+            console.warn("homeHub tiles admin:", e);
+            if (statusEl) statusEl.textContent = "Błąd: " + (e?.message || String(e));
+          }
+        }
+
+        async function saveHomeHubTilesFromForm() {
+          const statusEl = document.getElementById("home-hub-tiles-status");
+          const formEl = document.getElementById("home-hub-tiles-form");
+          if (!formEl || typeof db === "undefined" || !db) return;
+          const tiles = {};
+          for (const { id } of HOME_HUB_TILE_DEFS) {
+            const cb = formEl.querySelector(`.home-hub-tile-cb[data-tile-id="${id}"]`);
+            tiles[id] = !!cb?.checked;
+          }
+          try {
+            await setDoc(
+              doc(db, "siteSettings", "homeHub"),
+              { tiles, updatedAt: serverTimestamp() },
+              { merge: true },
+            );
+            if (statusEl) statusEl.textContent = "Zapisano.";
+            setTimeout(() => {
+              if (statusEl && document.getElementById("home-hub-tiles-form")) {
+                statusEl.textContent = "Zapisane w Firestore (siteSettings/homeHub).";
+              }
+            }, 2000);
+          } catch (e) {
+            console.warn(e);
+            if (statusEl) statusEl.textContent = "Błąd zapisu: " + (e?.message || String(e));
+          }
+        }
 
         // Funkcja sprawdzania głównych usług serwera
         // showStatusNotification - czy wyświetlać powiadomienie (domyślnie true)
@@ -16467,7 +16727,15 @@
           "service_offline": "Usługa wyłączona",
           "site_online": "Strona włączona",
           "site_offline": "Strona wyłączona",
-          "EMAIL_DELIVERY_FAILED": "E-mail — niepowodzenie wysyłki"
+          "EMAIL_DELIVERY_FAILED": "E-mail — niepowodzenie wysyłki",
+          "ORDER_STATUS_CHANGED_BY_ADMIN": "Zmiana statusu zamówienia (administrator)",
+          "ORDER_EDITED_BY_ADMIN": "Edycja zamówienia (administrator)",
+          "ORDER_EDITED_BY_USER": "Edycja zamówienia (klient)",
+          "ORDER_QUOTE_ACCEPTED_BY_USER": "Akceptacja wyceny przez klienta",
+          "ORDER_QUOTE_REJECTED_BY_USER": "Odrzucenie wyceny przez klienta",
+          "ORDER_PAYMENT_STARTED_BY_USER": "Rozpoczęcie płatności przez klienta",
+          "ORDER_CANCELLED_BY_USER": "Anulowanie zamówienia przez klienta",
+          "ORDER_HARD_DELETED_BY_ADMIN": "Trwałe usunięcie zamówienia (administrator)"
         };
         return actionLabels[action] || action || "Nieznana akcja";
       }
@@ -16654,6 +16922,26 @@
           }
         }
         return cleanError || "";
+      }
+
+      /** Etykiety statusów zamówienia — spójne z listą zamówień w panelu. */
+      function formatOrderStatusLabelForLog(code) {
+        if (code === undefined || code === null || code === "") return "—";
+        const c = String(code);
+        const names = {
+          zlozone: "Złożone",
+          wycena_zlozona: "Wycena złożona",
+          wycena_zaakceptowana: "Wycena zaakceptowana",
+          wycena_odrzucona: "Wycena odrzucona",
+          oczekuje_na_platnosc: "Oczekuje na płatność",
+          weryfikowanie_platnosci: "Weryfikowanie płatności",
+          platnosc_zakonczona_niepowodzeniem: "Płatność zakończona niepowodzeniem",
+          realizacja: "W realizacji",
+          wyslane: "Wysłane",
+          zakonczone: "Zakończone",
+          anulowane: "Anulowane",
+        };
+        return names[c] || c;
       }
 
       async function renderActivityLog(event) {
@@ -17076,6 +17364,115 @@
             details = `Kategoria: ${cat}. Odbiorca (zmaskowany): ${masked}. Temat: ${subj}. Błąd: ${err}`;
             break;
           }
+          case "ORDER_STATUS_CHANGED_BY_ADMIN": {
+            const num = eventDetails.orderNumber || "—";
+            const oid = eventDetails.orderId || "";
+            const oldL = formatOrderStatusLabelForLog(eventDetails.oldStatus);
+            const newL = formatOrderStatusLabelForLog(eventDetails.newStatus);
+            description = `${userDisplayName} zmienił status zamówienia`;
+            content = num !== "—" ? num : oid || "Zamówienie";
+            const lines = [
+              `Numer zamówienia: ${num}`,
+              `Status przed zmianą: ${oldL}`,
+              `Status po zmianie: ${newL}`,
+            ];
+            if (oid) lines.push(`ID dokumentu zamówienia: ${oid}`);
+            cardLines = lines;
+            details = lines.join("\n");
+            break;
+          }
+          case "ORDER_EDITED_BY_ADMIN": {
+            const num = eventDetails.orderNumber || "—";
+            const oid = eventDetails.orderId || "";
+            const oldL = formatOrderStatusLabelForLog(eventDetails.oldStatus);
+            const newL = formatOrderStatusLabelForLog(eventDetails.newStatus);
+            description = `${userDisplayName} zedytował zamówienie (bez zmiany statusu)`;
+            content = num !== "—" ? num : oid || "Zamówienie";
+            const lines = [
+              `Numer zamówienia: ${num}`,
+              `Status (bez zmian): ${newL || oldL}`,
+            ];
+            if (oid) lines.push(`ID dokumentu zamówienia: ${oid}`);
+            cardLines = lines;
+            details = lines.join("\n");
+            break;
+          }
+          case "ORDER_EDITED_BY_USER": {
+            const num = eventDetails.orderNumber || "—";
+            const oid = eventDetails.orderId || "";
+            const st = formatOrderStatusLabelForLog(eventDetails.status);
+            description = `${userDisplayName} zaktualizował dane zamówienia`;
+            content = num !== "—" ? num : oid || "Zamówienie";
+            const lines = [`Numer zamówienia: ${num}`, `Aktualny status: ${st}`];
+            if (oid) lines.push(`ID dokumentu zamówienia: ${oid}`);
+            cardLines = lines;
+            details = lines.join("\n");
+            break;
+          }
+          case "ORDER_QUOTE_ACCEPTED_BY_USER":
+          case "ORDER_QUOTE_REJECTED_BY_USER": {
+            const num = eventDetails.orderNumber || "—";
+            const oid = eventDetails.orderId || "";
+            const oldL = formatOrderStatusLabelForLog(eventDetails.oldStatus);
+            const newL = formatOrderStatusLabelForLog(eventDetails.newStatus);
+            const rejected = action === "ORDER_QUOTE_REJECTED_BY_USER";
+            description = rejected
+              ? `${userDisplayName} odrzucił wycenę zamówienia`
+              : `${userDisplayName} zaakceptował wycenę zamówienia`;
+            content = num !== "—" ? num : oid || "Zamówienie";
+            const lines = [
+              `Numer zamówienia: ${num}`,
+              `Status przed: ${oldL}`,
+              `Status po: ${newL}`,
+            ];
+            if (rejected && eventDetails.rejectionReason) {
+              lines.push(`Powód odrzucenia: ${eventDetails.rejectionReason}`);
+            }
+            if (oid) lines.push(`ID dokumentu zamówienia: ${oid}`);
+            cardLines = lines;
+            details = lines.join("\n");
+            break;
+          }
+          case "ORDER_PAYMENT_STARTED_BY_USER": {
+            const num = eventDetails.orderNumber || "—";
+            const oid = eventDetails.orderId || "";
+            const oldL = formatOrderStatusLabelForLog(eventDetails.oldStatus);
+            const newL = formatOrderStatusLabelForLog(eventDetails.newStatus);
+            description = `${userDisplayName} rozpoczął płatność za zamówienie`;
+            content = num !== "—" ? num : oid || "Zamówienie";
+            const lines = [
+              `Numer zamówienia: ${num}`,
+              `Status przed: ${oldL}`,
+              `Status po: ${newL}`,
+            ];
+            if (oid) lines.push(`ID dokumentu zamówienia: ${oid}`);
+            cardLines = lines;
+            details = lines.join("\n");
+            break;
+          }
+          case "ORDER_CANCELLED_BY_USER": {
+            const num = eventDetails.orderNumber || "—";
+            const oid = eventDetails.orderId || "";
+            description = `${userDisplayName} anulował zamówienie`;
+            content = num !== "—" ? num : oid || "Zamówienie";
+            const lines = [`Numer zamówienia: ${num}`];
+            if (eventDetails.reason) lines.push(`Powód: ${eventDetails.reason}`);
+            if (oid) lines.push(`ID dokumentu zamówienia: ${oid}`);
+            cardLines = lines;
+            details = lines.join("\n");
+            break;
+          }
+          case "ORDER_HARD_DELETED_BY_ADMIN": {
+            const num = eventDetails.orderNumber || "—";
+            const oid = eventDetails.orderId || "";
+            description = `${userDisplayName} trwale usunął zamówienie`;
+            content = num !== "—" ? num : oid || "Zamówienie";
+            const lines = [`Numer zamówienia: ${num}`];
+            if (oid) lines.push(`ID dokumentu zamówienia: ${oid}`);
+            cardLines = lines;
+            details = lines.join("\n");
+            break;
+          }
           default:
             description = `${userDisplayName} wykonał akcję: ${actionLabel}`;
             content = actionLabel;
@@ -17468,9 +17865,12 @@
           }
 
           try {
-            // Przygotuj tablicę zdjęć
-            const images = productImages.map((img, idx) => ({
-              url: img.url,
+            // Tylko wpisy z realnym URL (Firestore pomija undefined — bez tego pierwszy element mógł być „pusty” i zepsuć kafelek w sklepie)
+            const imagesWithUrl = productImages.filter(
+              (img) => img && typeof img.url === 'string' && img.url.trim(),
+            );
+            const images = imagesWithUrl.map((img, idx) => ({
+              url: img.url.trim(),
               order: idx,
               posX: typeof img.posX === 'number' ? img.posX : 50,
               posY: typeof img.posY === 'number' ? img.posY : 50,
@@ -23909,9 +24309,17 @@
         }
       }
 
-      // Modal zamówienia (z-index > sticky #mobile-quicknav, żeby nie nachodził na dialog)
+      // Modal zamówienia: nad sticky menu + padding od wysokości paska (treść nie „wchodzi” pod menu)
       const ORDER_MODAL_ROOT_CLASS =
-        "fixed inset-0 z-[130] hidden flex items-start justify-center overflow-y-auto p-4 pt-8 pb-6 bg-black/95 backdrop-blur-xl sm:items-center sm:pt-4 sm:pb-4";
+        "fixed inset-0 hidden flex items-start justify-center overflow-y-auto px-4 pb-6 bg-black/95 backdrop-blur-xl";
+
+      function syncAdminModalTopInsetForQuickNav(modalEl) {
+        if (!modalEl) return;
+        const quickNavEl = document.getElementById("mobile-quicknav");
+        const navH = quickNavEl ? Math.round(quickNavEl.getBoundingClientRect().height) : 0;
+        const pad = Math.max(16, navH + 12);
+        modalEl.style.paddingTop = `max(${pad}px, env(safe-area-inset-top, 0px))`;
+      }
 
       function showOrderModal() {
         // Utworzę modal dynamicznie - będzie to duży formularz
@@ -23928,10 +24336,11 @@
         } else {
           modal.className = ORDER_MODAL_ROOT_CLASS;
         }
+        syncAdminModalTopInsetForQuickNav(modal);
 
         const isEdit = !!currentEditingOrder;
         modal.innerHTML = `
-          <div class="admin-card max-w-4xl w-full max-h-[calc(100vh-3.5rem)] overflow-y-auto sm:max-h-[90vh]" onclick="event.stopPropagation()">
+          <div class="admin-card max-w-4xl w-full max-h-[calc(100dvh-5.5rem)] overflow-y-auto sm:max-h-[min(90vh,calc(100dvh-5.5rem))]" onclick="event.stopPropagation()">
             <div class="flex justify-between items-center mb-6">
               <h2 class="text-2xl font-bold coyote-text">${isEdit ? 'Edytuj zamówienie' : 'Dodaj zamówienie'}</h2>
               <button onclick="closeOrderModal()" class="text-zinc-400 hover:text-white">
@@ -24182,6 +24591,7 @@
         const modal = document.getElementById('order-modal');
         if (modal) {
           modal.classList.add('hidden');
+          modal.style.paddingTop = "";
         }
         // Odblokuj scrollowanie tła
         document.body.style.overflow = '';
@@ -24194,7 +24604,7 @@
       let customerDataEditMode = false;
 
       const CUSTOMER_DATA_MODAL_ROOT_CLASS =
-        "fixed inset-0 z-[140] hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl";
+        "fixed inset-0 hidden flex items-center justify-center px-4 pb-4 bg-black/95 backdrop-blur-xl";
 
       // Modal z danymi zamawiającego
       window.showCustomerDataModal = async function() {
@@ -24219,6 +24629,7 @@
         } else {
           modal.className = CUSTOMER_DATA_MODAL_ROOT_CLASS;
         }
+        syncAdminModalTopInsetForQuickNav(modal);
 
         // Pobierz dane - najpierw z zamówienia, potem z profilu użytkownika
         let customerData = {
@@ -24446,6 +24857,7 @@
         const modal = document.getElementById('customer-data-modal');
         if (modal) {
           modal.classList.add('hidden');
+          modal.style.paddingTop = "";
         }
         document.body.style.overflow = '';
         originalCustomerData = null;
@@ -27243,7 +27655,7 @@
       };
     </script>
     <div id="invoice-modal" class="invoice-modal-backdrop"></div>
-    <script src="/admin/invoices-admin.js?v=2026-03-25-2"></script>
+    <script src="/admin/invoices-admin.js?v=2026-04-08-3"></script>
     <!-- Bez auth-widget / messages-widget: na /admin/ inicjalizują Firestore przed initAuth
          i psują Safari (WebChannel „access control checks”). Panel ma własny UI i zakładkę wiadomości. -->
   </body>

@@ -31,10 +31,24 @@ function sanitizeRichHtml(html) {
 }
 
 function sanitizeLinkUrl(value) {
-  const url = cleanString(value, 2048);
+  let url = cleanString(value, 2048);
   if (!url) return '';
-  if (/^https:\/\/[a-z0-9./?#[\]@!$&'()*+,;=%:_-]+$/i.test(url)) return url;
+  if (url.startsWith('//')) return '';
   if (url.startsWith('/')) return url;
+
+  if (!/^https?:\/\//i.test(url)) {
+    const hostPart = url.split('/')[0].split('?')[0].split('#')[0];
+    const looksLikeHost =
+      hostPart.includes('.') &&
+      /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/i.test(hostPart);
+    if (looksLikeHost) {
+      url = `https://${url}`;
+    } else {
+      return '';
+    }
+  }
+  if (/^https:\/\/[a-z0-9./?#[\]@!$&'()*+,;=%:_-]+$/i.test(url)) return url;
+  if (/^http:\/\/[a-z0-9./?#[\]@!$&'()*+,;=%:_-]+$/i.test(url)) return url;
   return '';
 }
 
@@ -210,6 +224,8 @@ async function createAdminBroadcast(db, actor, input = {}) {
 async function createInfoWindow(db, actor, input = {}) {
   const audience = normalizeAudience(input.audience);
   const base = normalizeBasePayload(input);
+  const targetUserIds = await resolveAudienceUserIds(db, audience);
+  const recipientCount = targetUserIds.length;
 
   const docRef = await db.collection('infoAnnouncements').add({
     kind: 'info',
@@ -222,13 +238,14 @@ async function createInfoWindow(db, actor, input = {}) {
     audienceAll: audience.all,
     targetRoles: audience.roles,
     targetUserIds: audience.userIds,
+    recipientCount,
     isActive: true,
     createdById: cleanString(actor?.uid || 'system', 128) || 'system',
     createdByName: cleanString(actor?.displayName || 'System', 120) || 'System',
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  return { id: docRef.id, audience };
+  return { id: docRef.id, audience, recipientCount };
 }
 
 module.exports = {

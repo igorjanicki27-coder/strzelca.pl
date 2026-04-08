@@ -1076,8 +1076,8 @@ module.exports = async (req, res) => {
               typeof cancellationReason === 'string' ? cancellationReason.trim() : '';
           }
 
-          tx.set(orderRef, orderData);
-
+          // redeem przed tx.set(order): w redeem dla training_access jest tx.get(trainingAccess),
+          // a Firestore wymaga wszystkich odczytów przed jakimkolwiek zapisem w transakcji.
           if (promoEvaluation) {
             promoRedemption = await redeemPromoCodeForOrder({
               db,
@@ -1091,6 +1091,8 @@ module.exports = async (req, res) => {
               grantedBy: sessionUser.uid,
             });
           }
+
+          tx.set(orderRef, orderData);
         });
       } catch (error) {
         if (error?.code === 'PROMO_CODE_INVALID') {

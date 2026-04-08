@@ -7,6 +7,7 @@ const {
   setCors,
   readJsonBody,
   setSessionCookie,
+  syncEmailVerifiedToProfileStores,
 } = require("./_sso-utils");
 
 function safeDecodeJwtDebug(idToken) {
@@ -60,13 +61,16 @@ module.exports = async (req, res) => {
     // Zamiast tego wystawiamy własny, lokalnie podpisany JWT w cookie HttpOnly.
     const maxAgeSec = getCookieMaxAgeSeconds();
     const nowSec = Math.floor(Date.now() / 1000);
+    const emailVerified = decoded.email_verified === true;
     const localSession = signLocalSessionJwt({
       v: 1,
       uid: decoded.uid,
-      emailVerified: decoded.email_verified === true,
+      emailVerified,
       iat: nowSec,
       exp: nowSec + maxAgeSec,
     });
+
+    await syncEmailVerifiedToProfileStores(decoded.uid, emailVerified);
 
     setSessionCookie(res, localSession);
 
@@ -74,7 +78,7 @@ module.exports = async (req, res) => {
       success: true,
       uid: decoded.uid,
       email: decoded.email || null,
-      emailVerified: decoded.email_verified === true,
+      emailVerified,
     });
   } catch (e) {
     console.error("sso-session-login error:", e);

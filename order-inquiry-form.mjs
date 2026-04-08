@@ -226,6 +226,59 @@ function showPromoNotice(result) {
   modal.classList.add("flex");
 }
 
+function ensureUnappliedPromoConfirmModal() {
+  let modal = document.getElementById("strzelca-promo-unapplied-confirm-modal");
+  if (modal) return modal;
+  modal = document.createElement("div");
+  modal.id = "strzelca-promo-unapplied-confirm-modal";
+  modal.className =
+    "fixed inset-0 z-[240] hidden items-center justify-center p-4 bg-black/90 backdrop-blur-md";
+  document.body.appendChild(modal);
+  return modal;
+}
+
+/** @returns {Promise<boolean>} `true` gdy użytkownik wybierze „Tak” (kontynuuj zamówienie). */
+function showUnappliedPromoConfirmModal() {
+  return new Promise((resolve) => {
+    const modal = ensureUnappliedPromoConfirmModal();
+    const finish = (value) => {
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+      modal.onclick = null;
+      resolve(value);
+    };
+    modal.onclick = (e) => {
+      if (e.target === modal) finish(false);
+    };
+    modal.innerHTML = `
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl max-w-md w-full p-5" onclick="event.stopPropagation()">
+      <div class="flex justify-between items-start gap-3 mb-4">
+        <h3 class="text-lg font-bold text-[#C19A6B] font-[Orbitron]">Kody rabatowe</h3>
+        <button type="button" class="strzelca-promo-unapplied-close text-zinc-400 hover:text-white p-1" aria-label="Zamknij">
+          <i class="fa-solid fa-times" aria-hidden="true"></i>
+        </button>
+      </div>
+      <p class="text-sm text-zinc-200 leading-relaxed">${escapeHtml(
+        "Masz niezatwierdzone zmiany w polu kody rabatowe. Aby je zastosować należy kliknąć przycisk +. Czy mimo to chcesz kontynuować?",
+      )}</p>
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5">
+        <button type="button" class="strzelca-promo-unapplied-no px-4 py-2 rounded-lg border border-zinc-600 text-zinc-300 text-sm hover:bg-zinc-800 transition">
+          Nie
+        </button>
+        <button type="button" class="strzelca-promo-unapplied-tak px-4 py-2 rounded-lg bg-[#C19A6B] text-black text-sm font-bold hover:bg-[#b18a5f] transition">
+          Tak
+        </button>
+      </div>
+    </div>
+  `;
+    modal.querySelector(".strzelca-promo-unapplied-close")?.addEventListener("click", () => finish(false));
+    modal.querySelector(".strzelca-promo-unapplied-no")?.addEventListener("click", () => finish(false));
+    modal.querySelector(".strzelca-promo-unapplied-tak")?.addEventListener("click", () => finish(true));
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+  });
+}
+
 function updatePromoFeedback(result, tone = "info") {
   const box = document.getElementById("order-promo-feedback");
   if (!box) return;
@@ -1421,6 +1474,14 @@ function attachOrderInquiryGlobals() {
     try {
       if (!validateCurrentOrderStep()) {
         return;
+      }
+
+      if (!p.individualPricing) {
+        const promoDraft = getOrderFieldValue("order-promo-code");
+        if (promoDraft && !p.appliedPromo?.ok) {
+          const proceed = await showUnappliedPromoConfirmModal();
+          if (!proceed) return;
+        }
       }
 
       const user = p.auth.currentUser;

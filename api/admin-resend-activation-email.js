@@ -4,6 +4,7 @@ const {
   setCors,
   readJsonBody,
   getSessionUser,
+  syncEmailVerifiedToProfileStores,
 } = require("./_sso-utils");
 const { sendTransactionalEmail } = require("./_transactional-mail");
 const {
@@ -97,6 +98,7 @@ module.exports = async (req, res) => {
     }
 
     if (userRecord.emailVerified === true) {
+      await syncEmailVerifiedToProfileStores(targetUserId, true);
       res.status(409).json({
         success: false,
         error: "Adres e-mail tego użytkownika jest już zweryfikowany",

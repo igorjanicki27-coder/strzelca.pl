@@ -140,6 +140,7 @@
         opacity: 0.25;
         cursor: not-allowed;
         filter: grayscale(1);
+        pointer-events: none;
       }
       .coyote-text {
         color: var(--coyote);
@@ -541,6 +542,7 @@
           >
           <a
             href="https://sklep.strzelca.pl"
+            data-hub-tile="sklep"
             class="hub-button p-3 sm:p-6 md:p-10 rounded-xl md:rounded-3xl flex flex-col items-center justify-center gap-0 min-h-0 aspect-[5/4] sm:aspect-auto"
           >
             <svg
@@ -562,6 +564,7 @@
           </a>
           <a
             href="https://bazar.strzelca.pl"
+            data-hub-tile="bazar"
             class="hub-button p-3 sm:p-6 md:p-10 rounded-xl md:rounded-3xl flex flex-col items-center justify-center gap-0 min-h-0 aspect-[5/4] sm:aspect-auto"
           >
             <svg
@@ -583,6 +586,7 @@
           </a>
           <a
             href="https://szkolenia.strzelca.pl"
+            data-hub-tile="szkolenia"
             class="hub-button p-3 sm:p-6 md:p-10 rounded-xl md:rounded-3xl flex flex-col items-center justify-center gap-0 min-h-0 aspect-[5/4] sm:aspect-auto"
           >
             <svg
@@ -604,6 +608,7 @@
           </a>
           <a
             href="https://wydarzenia.strzelca.pl"
+            data-hub-tile="wydarzenia"
             class="hub-button p-3 sm:p-6 md:p-10 rounded-xl md:rounded-3xl flex flex-col items-center justify-center gap-0 min-h-0 aspect-[5/4] sm:aspect-auto"
           >
             <svg
@@ -625,6 +630,7 @@
           </a>
           <a
             href="https://blog.strzelca.pl"
+            data-hub-tile="blog"
             class="hub-button p-3 sm:p-6 md:p-10 rounded-xl md:rounded-3xl flex flex-col items-center justify-center gap-0 min-h-0 aspect-[5/4] sm:aspect-auto"
           >
             <svg
@@ -646,6 +652,7 @@
           </a>
           <a
             href="https://pomoc.strzelca.pl"
+            data-hub-tile="pomoc"
             class="hub-button p-3 sm:p-6 md:p-10 rounded-xl md:rounded-3xl flex flex-col items-center justify-center gap-0 min-h-0 aspect-[5/4] sm:aspect-auto"
           >
             <svg
@@ -667,6 +674,7 @@
           </a>
           <a
             href="https://dokumenty.strzelca.pl"
+            data-hub-tile="dokumenty"
             class="hub-button p-3 sm:p-6 md:p-10 rounded-xl md:rounded-3xl flex flex-col items-center justify-center gap-0 min-h-0 aspect-[5/4] sm:aspect-auto"
           >
             <svg
@@ -688,6 +696,7 @@
           </a>
           <a
             href="https://kontakt.strzelca.pl"
+            data-hub-tile="kontakt"
             class="hub-button p-3 sm:p-6 md:p-10 rounded-xl md:rounded-3xl flex flex-col items-center justify-center gap-0 min-h-0 aspect-[5/4] sm:aspect-auto"
           >
             <svg
@@ -804,7 +813,44 @@
           console.warn("Could not initialize trackers:", error);
         }
       })();
-      
+
+      const HUB_TILE_IDS = ["sklep", "bazar", "szkolenia", "wydarzenia", "blog", "pomoc", "dokumenty", "kontakt"];
+      const HUB_TILE_URLS = {
+        sklep: "https://sklep.strzelca.pl/",
+        bazar: "https://bazar.strzelca.pl/",
+        szkolenia: "https://szkolenia.strzelca.pl/",
+        wydarzenia: "https://wydarzenia.strzelca.pl/",
+        blog: "https://blog.strzelca.pl/",
+        pomoc: "https://pomoc.strzelca.pl/",
+        dokumenty: "https://dokumenty.strzelca.pl/",
+        kontakt: "https://kontakt.strzelca.pl/",
+      };
+      const hubTileEnabled = Object.fromEntries(HUB_TILE_IDS.map((id) => [id, true]));
+      const SEARCH_TYPE_TO_HUB_TILE = {
+        shop: "sklep",
+        bazar: "bazar",
+        event: "wydarzenia",
+        blog: "blog",
+      };
+
+      async function refreshHubTilesFromFirestore() {
+        try {
+          const snap = await getDoc(doc(db, "siteSettings", "homeHub"));
+          if (!snap.exists()) return;
+          const tiles = snap.data()?.tiles;
+          if (!tiles || typeof tiles !== "object") return;
+          for (const id of HUB_TILE_IDS) {
+            if (Object.prototype.hasOwnProperty.call(tiles, id)) {
+              hubTileEnabled[id] = !!tiles[id];
+            }
+          }
+        } catch (e) {
+          console.warn("homeHub tiles:", e?.message || e);
+        }
+      }
+
+      await refreshHubTilesFromFirestore();
+
       let productsList = [];
       let contactTopics = [];
       let currentMessageFilter = "all";
@@ -883,6 +929,63 @@
           .trim();
       }
 
+      function isSearchTypeHubEnabled(type) {
+        const tileId = SEARCH_TYPE_TO_HUB_TILE[type];
+        if (!tileId) return true;
+        return hubTileEnabled[tileId] !== false;
+      }
+
+      function handleHubDeepLinkNavigation() {
+        const rawPath = window.location.pathname || "/";
+        const path = rawPath.replace(/\/+$/, "") || "/";
+        const seg = path.startsWith("/") ? path.slice(1) : path;
+        if (seg && HUB_TILE_IDS.includes(seg)) {
+          if (hubTileEnabled[seg] === false) {
+            history.replaceState(null, "", "/");
+            return;
+          }
+          const target = HUB_TILE_URLS[seg];
+          if (target) {
+            window.location.replace(target);
+          }
+          return;
+        }
+
+        const sp = new URLSearchParams(window.location.search);
+        const gotoRaw = (sp.get("goto") || "").trim().toLowerCase();
+        if (gotoRaw && HUB_TILE_IDS.includes(gotoRaw)) {
+          if (hubTileEnabled[gotoRaw] === false) {
+            sp.delete("goto");
+            const qs = sp.toString();
+            history.replaceState(null, "", qs ? `/?${qs}` : "/");
+          }
+          return;
+        }
+
+        const qNorm = normalizeSearchText(sp.get("q") || "");
+        if (!qNorm) return;
+        const qTokens = qNorm.split(" ").filter((p) => p.length > 0);
+        if (qTokens.length !== 1) return;
+        const only = qTokens[0];
+        if (HUB_TILE_IDS.includes(only) && hubTileEnabled[only] === false) {
+          sp.delete("q");
+          const qs = sp.toString();
+          history.replaceState(null, "", qs ? `/?${qs}` : "/");
+        }
+      }
+
+      function applyHubTilesToDom() {
+        document.querySelectorAll("[data-hub-tile]").forEach((el) => {
+          const id = el.getAttribute("data-hub-tile");
+          if (!id || !HUB_TILE_IDS.includes(id)) return;
+          const on = hubTileEnabled[id] !== false;
+          el.classList.toggle("disabled", !on);
+          el.setAttribute("aria-disabled", on ? "false" : "true");
+          el.setAttribute("tabindex", on ? "0" : "-1");
+        });
+        handleHubDeepLinkNavigation();
+      }
+
       function stripHtmlText(value) {
         if (!value) return "";
         return String(value)
@@ -904,7 +1007,10 @@
       }
 
       function visibleSearchTypes() {
-        return SEARCH_TYPE_ORDER.filter((type) => type !== "user" || userSearchVisible());
+        return SEARCH_TYPE_ORDER.filter((type) => {
+          if (type === "user" && !userSearchVisible()) return false;
+          return isSearchTypeHubEnabled(type);
+        });
       }
 
       function activeSearchTypes() {
@@ -922,7 +1028,16 @@
         if (userItem) {
           userItem.classList.toggle("hidden", !userSearchVisible());
         }
+        menu.querySelectorAll(".spotlight-filter-item[data-category]").forEach((item) => {
+          const cat = item.getAttribute("data-category") || "all";
+          if (cat === "all" || cat === "user") return;
+          item.classList.toggle("hidden", !isSearchTypeHubEnabled(cat));
+        });
         if (!userSearchVisible() && current === "user") {
+          spotlightState.selectedCategory = "all";
+          spotlightState.lastFullSignature = "";
+        }
+        if (current !== "all" && current !== "user" && !isSearchTypeHubEnabled(current)) {
           spotlightState.selectedCategory = "all";
           spotlightState.lastFullSignature = "";
         }
@@ -1457,6 +1572,10 @@
 
       function openSearchEntry(entry) {
         if (!entry) return;
+        if (entry.type && !isSearchTypeHubEnabled(entry.type)) {
+          spotlightEls.results?.classList.add("hidden");
+          return;
+        }
 
         spotlightEls.results?.classList.add("hidden");
         spotlightEls.shell?.classList.remove("is-active");
@@ -1631,6 +1750,7 @@
         });
       }
 
+      applyHubTilesToDom();
       initSpotlightSearch();
 
       // Dodaj globalną obsługę błędów CORS (ignoruj błędy Firebase internal)

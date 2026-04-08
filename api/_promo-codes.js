@@ -382,9 +382,9 @@ async function evaluatePromoCodeForOrder({
       application: 'training_access',
       discountAmount: Math.max(0, Number(basePrice) || 0),
       finalPrice: 0,
-      customerMessage: `Kupon: dostep do szkolenia ${String(
+      customerMessage: `Kupon: dostęp do szkolenia ${String(
         data.targetTrainingTitle || '',
-      ).trim()} - dokoncz skladanie zamowienia i odswiez strone, aby uzyskac dostep.`,
+      ).trim()} - dokończ składanie zamówienia i odśwież stronę, aby uzyskać dostęp.`,
     };
   }
 
@@ -417,30 +417,23 @@ async function evaluatePromoCodeForOrder({
   return mapPromoCodeReasonToMessage('invalid');
 }
 
-async function grantTrainingAccessInTransaction({
-  db,
-  tx,
-  trainingId,
-  userId,
-  grantedBy,
-}) {
+/**
+ * Firestore wymaga: w transakcji najpierw wszystkie odczyty, potem zapisy.
+ * Dlatego sprawdzenie istniejącego trainingAccess musi nastąpić przed tx.set/tx.update w redeem.
+ */
+async function resolveTrainingAccessWriteInTransaction({ db, tx, trainingId, userId }) {
+  const tid = String(trainingId || '').trim();
+  const uid = String(userId || '').trim();
   const accessQuery = db
     .collection('trainingAccess')
-    .where('trainingId', '==', String(trainingId || '').trim())
-    .where('userId', '==', String(userId || '').trim())
+    .where('trainingId', '==', tid)
+    .where('userId', '==', uid)
     .limit(1);
   const existingAccess = await tx.get(accessQuery);
-  if (!existingAccess.empty) return false;
-
-  const accessRef = db.collection('trainingAccess').doc();
-  tx.set(accessRef, {
-    trainingId: String(trainingId || '').trim(),
-    userId: String(userId || '').trim(),
-    grantedAt: admin.firestore.FieldValue.serverTimestamp(),
-    grantedBy: String(grantedBy || 'system').trim() || 'system',
-    grantedVia: 'promo_code',
-  });
-  return true;
+  if (!existingAccess.empty) {
+    return { accessRef: null };
+  }
+  return { accessRef: db.collection('trainingAccess').doc() };
 }
 
 async function redeemPromoCodeForOrder({
@@ -456,6 +449,17 @@ async function redeemPromoCodeForOrder({
 }) {
   if (!evaluation?.ok) {
     throw new Error('Cannot redeem invalid promo code');
+  }
+
+  let trainingAccessRef = null;
+  if (evaluation.application === 'training_access') {
+    const { accessRef } = await resolveTrainingAccessWriteInTransaction({
+      db,
+      tx,
+      trainingId: evaluation.codeData?.targetTrainingId,
+      userId,
+    });
+    trainingAccessRef = accessRef;
   }
 
   const usagePayload = {
@@ -480,14 +484,15 @@ async function redeemPromoCodeForOrder({
   });
 
   let trainingAccessGranted = false;
-  if (evaluation.application === 'training_access') {
-    trainingAccessGranted = await grantTrainingAccessInTransaction({
-      db,
-      tx,
-      trainingId: evaluation.codeData?.targetTrainingId,
-      userId,
-      grantedBy,
+  if (trainingAccessRef) {
+    tx.set(trainingAccessRef, {
+      trainingId: String(evaluation.codeData?.targetTrainingId || '').trim(),
+      userId: String(userId || '').trim(),
+      grantedAt: admin.firestore.FieldValue.serverTimestamp(),
+      grantedBy: String(grantedBy || 'system').trim() || 'system',
+      grantedVia: 'promo_code',
     });
+    trainingAccessGranted = true;
   }
 
   return {

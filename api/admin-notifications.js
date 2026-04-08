@@ -70,6 +70,7 @@ module.exports = async (req, res) => {
         success: true,
         kind,
         infoId: result.id,
+        recipientCount: result.recipientCount,
       });
     }
 

@@ -643,6 +643,54 @@
         let productPendingMoves = 0;
         const PRODUCT_CAROUSEL_DURATION_MS = 180;
 
+        /** Niepusty URL z wpisu images (string lub { url }) — chroni przed nadpisaniem działającego p.img przez pierwszy element bez url. */
+        function shopProductImageEntryUrl(entry) {
+            if (typeof entry === 'string') return entry.trim() || '';
+            if (entry && typeof entry === 'object' && typeof entry.url === 'string') return entry.url.trim() || '';
+            return '';
+        }
+
+        function shopOptionalNumber(v) {
+            if (typeof v === 'number' && Number.isFinite(v)) return v;
+            if (typeof v === 'string' && v.trim() !== '') {
+                const n = Number(v);
+                if (Number.isFinite(n)) return n;
+            }
+            return undefined;
+        }
+
+        /** Pierwsze zdjęcie z realnym adresem + meta kadru (X/Y/zoom); fallback: pole img (kompatybilność wstecz). */
+        function pickShopProductCover(p) {
+            let mainImage = typeof p.img === 'string' ? p.img.trim() : '';
+            let mainImagePosX;
+            let mainImagePosY;
+            let mainImageZoom;
+            if (p.images && Array.isArray(p.images)) {
+                for (const raw of p.images) {
+                    const u = shopProductImageEntryUrl(raw);
+                    if (!u) continue;
+                    mainImage = u;
+                    if (raw && typeof raw === 'object') {
+                        const px = shopOptionalNumber(raw.posX);
+                        const py = shopOptionalNumber(raw.posY);
+                        const zm = shopOptionalNumber(raw.zoom);
+                        if (px !== undefined) mainImagePosX = px;
+                        if (py !== undefined) mainImagePosY = py;
+                        if (zm !== undefined) mainImageZoom = zm;
+                    }
+                    break;
+                }
+            }
+            return {
+                mainImage,
+                mainImageObjectPosition:
+                    typeof mainImagePosX === 'number' && typeof mainImagePosY === 'number'
+                        ? `${mainImagePosX}% ${mainImagePosY}%`
+                        : null,
+                mainImageObjectScale: typeof mainImageZoom === 'number' ? mainImageZoom : null,
+            };
+        }
+
         function isOrderBlockingStatus(status) {
             return status !== 'zakonczone' && status !== 'anulowane';
         }
@@ -982,32 +1030,15 @@
                             const rows = [];
                             snap.forEach((d) => {
                                 const p = d.data();
-                                let mainImage = p.img || '';
-                                let mainImagePosX = undefined;
-                                let mainImagePosY = undefined;
-                                let mainImageZoom = undefined;
-                                if (p.images && Array.isArray(p.images) && p.images.length > 0) {
-                                    const main = p.images[0];
-                                    if (typeof main === 'string') {
-                                        mainImage = main;
-                                    } else if (main && typeof main === 'object') {
-                                        mainImage = main.url || '';
-                                        if (typeof main.posX === 'number') mainImagePosX = main.posX;
-                                        if (typeof main.posY === 'number') mainImagePosY = main.posY;
-                                        if (typeof main.zoom === 'number') mainImageZoom = main.zoom;
-                                    }
-                                }
+                                const cover = pickShopProductCover(p);
                                 rows.push({
                                     id: d.id,
                                     title: p.title || '',
                                     price: p.price || 0,
                                     individualPricing: p.individualPricing === true,
-                                    mainImage,
-                                    mainImageObjectPosition:
-                                        typeof mainImagePosX === 'number' && typeof mainImagePosY === 'number'
-                                            ? `${mainImagePosX}% ${mainImagePosY}%`
-                                            : null,
-                                    mainImageObjectScale: typeof mainImageZoom === 'number' ? mainImageZoom : null,
+                                    mainImage: cover.mainImage,
+                                    mainImageObjectPosition: cover.mainImageObjectPosition,
+                                    mainImageObjectScale: cover.mainImageObjectScale,
                                 });
                             });
                             return rows;
@@ -1081,21 +1112,29 @@
             if (p.images && Array.isArray(p.images) && p.images.length > 0) {
                 images = p.images
                     .map((img) => {
-                        if (typeof img === 'string') return { url: img };
+                        if (typeof img === 'string') {
+                            const url = img.trim();
+                            return url ? { url } : null;
+                        }
                         if (img && typeof img === 'object') {
+                            const url = typeof img.url === 'string' ? img.url.trim() : '';
+                            if (!url) return null;
+                            const posX = shopOptionalNumber(img.posX);
+                            const posY = shopOptionalNumber(img.posY);
+                            const zoom = shopOptionalNumber(img.zoom);
                             return {
-                                url: img.url || '',
-                                posX: typeof img.posX === 'number' ? img.posX : undefined,
-                                posY: typeof img.posY === 'number' ? img.posY : undefined,
-                                zoom: typeof img.zoom === 'number' ? img.zoom : undefined,
+                                url,
+                                posX,
+                                posY,
+                                zoom,
                             };
                         }
                         return null;
                     })
                     .filter(Boolean);
-            } else if (p.img) {
-                // Fallback dla starych produktów
-                images = [{ url: p.img }];
+            }
+            if (images.length === 0 && typeof p.img === 'string' && p.img.trim()) {
+                images = [{ url: p.img.trim() }];
             }
             
             // Jeśli nie ma zdjęć w tablicy, spróbuj wyciągnąć z opisu

@@ -309,6 +309,32 @@ function clearSessionCookie(res) {
   );
 }
 
+/**
+ * Utrzymuje userProfiles / publicProfiles.emailVerified zgodne z Firebase Auth.
+ * Bez tego pole z rejestracji (false) zostaje na zawsze, mimo potwierdzonego maila w Auth.
+ */
+async function syncEmailVerifiedToProfileStores(uid, emailVerified) {
+  if (!uid || typeof emailVerified !== "boolean") return;
+  try {
+    initAdmin();
+    const db = admin.firestore();
+    const payload = {
+      emailVerified,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    await Promise.all([
+      db.collection("userProfiles").doc(uid).set(payload, { merge: true }),
+      db.collection("publicProfiles").doc(uid).set(payload, { merge: true }),
+    ]);
+  } catch (e) {
+    console.warn(
+      "[SSO] syncEmailVerifiedToProfileStores failed:",
+      uid,
+      e?.message || e
+    );
+  }
+}
+
 module.exports = {
   admin,
   initAdmin,
@@ -326,5 +352,6 @@ module.exports = {
   getCookieMaxAgeSeconds,
   setSessionCookie,
   clearSessionCookie,
+  syncEmailVerifiedToProfileStores,
 };
 

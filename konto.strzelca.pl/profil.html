@@ -343,6 +343,9 @@
       .modal.show {
         display: flex;
       }
+      .modal.modal--stack-top {
+        z-index: 1100;
+      }
       .modal-content {
         background: #1a1a1a;
         border-radius: 16px;
@@ -3463,6 +3466,7 @@
           let profileReturnsCache = [];
           let activeReturnClaimDetail = null;
           let returnClaimEditAttachments = [];
+          let returnClaimNewAttachments = [];
           const RETURN_ATTACHMENT_LIMIT = 5;
 
           function escapeProfileHtml(value) {
@@ -3543,7 +3547,7 @@
                 color: "text-sky-300 bg-sky-400/10 border-sky-400/30",
               },
               weryfikowanie_platnosci: {
-                label: "Weryfikowanie płatności",
+                label: "Weryfikacja płatności",
                 color: "text-cyan-300 bg-cyan-400/10 border-cyan-400/30",
               },
               platnosc_zakonczona_niepowodzeniem: {
@@ -3769,16 +3773,12 @@
                         </div>`
                       : ""
                   }
-                  <div class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 text-xs text-zinc-400 space-y-2">
-                    <p>Edycja zamówienia możliwa do czasu przyjęcia do realizacji.</p>
+                  ${
+                    order.status === "wycena_zlozona" || order.status === "weryfikowanie_platnosci"
+                      ? `<div class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 text-xs text-zinc-400 space-y-2">
                     ${
                       order.status === "wycena_zlozona"
                         ? `<p>Wycena oczekuje na Twoją decyzję. Akceptacja jest wiążąca i oznacza zobowiązanie do opłacenia zamówienia.</p>`
-                        : ""
-                    }
-                    ${
-                      ["oczekuje_na_platnosc", "platnosc_zakonczona_niepowodzeniem"].includes(order.status) && order.paymentLinkUrl
-                        ? `<p>Po kliknięciu „Opłać” zamówienie przejdzie do statusu weryfikowania płatności i będzie oczekiwać na ręczne potwierdzenie przez administratora.</p>`
                         : ""
                     }
                     ${
@@ -3786,7 +3786,9 @@
                         ? `<p>Płatność jest obecnie sprawdzana przez administratora.</p>`
                         : ""
                     }
-                  </div>
+                  </div>`
+                      : ""
+                  }
                   <div class="pt-2 border-t border-zinc-700">
                     <div class="text-xs uppercase tracking-widest text-zinc-500 mb-3">Akcje</div>
                     ${renderOrderActionButtons(order, { compact: true })}
@@ -3856,25 +3858,13 @@
           };
 
           window.openOrderReturnClaim = function (orderId) {
+            if (!currentUser || !isViewingOwnProfile) {
+              alert("Ta funkcja jest dostępna tylko na Twoim profilu.");
+              return;
+            }
             const order = profileOrdersCache.find((item) => item.id === orderId);
             if (!order) return;
-            const url = new URL("https://dokumenty.strzelca.pl/");
-            url.hash = "#zwrot-reklamacja";
-            if (order.orderNumber) {
-              url.searchParams.set("returnOrder", String(order.orderNumber).trim());
-            }
-            const invoiceHint = String(
-              order.invoiceDocumentLabel ||
-                order.invoiceNumber ||
-                "Załączona do zamówienia",
-            ).trim();
-            if (invoiceHint) {
-              url.searchParams.set("returnInvoice", invoiceHint);
-            }
-            const opened = window.open(url.toString(), "_blank", "noopener");
-            if (!opened) {
-              window.location.href = url.toString();
-            }
+            openReturnClaimNewModal(order);
           };
 
           window.openOrderEditModal = function (orderId) {
@@ -4024,12 +4014,68 @@
             }
           };
 
+          function getOrCreatePaymentVerificationModal() {
+            let modal = document.getElementById("payment-verification-info-modal");
+            if (!modal) {
+              modal = document.createElement("div");
+              modal.id = "payment-verification-info-modal";
+              modal.className = "modal modal--stack-top";
+              modal.addEventListener("click", (event) => {
+                if (event.target !== modal) return;
+                const id = modal.dataset.returnOrderId;
+                if (id) window.closePaymentVerificationAndReturnToOrder(id);
+              });
+              document.body.appendChild(modal);
+            }
+            return modal;
+          }
+
+          function openPaymentVerificationModal(orderId, paymentUrl, popupBlocked) {
+            const modal = getOrCreatePaymentVerificationModal();
+            modal.dataset.returnOrderId = orderId;
+            const blockedHint = popupBlocked
+              ? `<p class="text-sm text-amber-200/90 mt-3">Przeglądarka mogła zablokować nowe okno. <a href="${escapeProfileHtml(paymentUrl)}" target="_blank" rel="noopener noreferrer" class="text-coyote underline font-semibold">Otwórz stronę płatności w nowej karcie</a></p>`
+              : "";
+            modal.innerHTML = `
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h3 class="text-xl font-bold coyote-text">Weryfikacja płatności</h3>
+                </div>
+                <div class="space-y-4">
+                  <p class="text-zinc-200 text-sm leading-relaxed">Weryfikacja płatności. Czas oczekiwania: do 3 dni.</p>
+                  ${blockedHint}
+                  <div class="flex justify-end pt-4 border-t border-zinc-700">
+                    <button type="button" class="payment-verification-ok-btn bg-sky-500 text-black px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition">Zrozumiałem</button>
+                  </div>
+                </div>
+              </div>
+            `;
+            const okBtn = modal.querySelector(".payment-verification-ok-btn");
+            if (okBtn) {
+              okBtn.addEventListener("click", () => {
+                window.closePaymentVerificationAndReturnToOrder(orderId);
+              });
+            }
+            modal.classList.add("show");
+            document.body.style.overflow = "hidden";
+          }
+
+          window.closePaymentVerificationAndReturnToOrder = function (returnOrderId) {
+            const modal = document.getElementById("payment-verification-info-modal");
+            if (modal) {
+              modal.classList.remove("show");
+              delete modal.dataset.returnOrderId;
+            }
+            window.openOrderDetailsModal(returnOrderId);
+          };
+
           window.payOrder = async function (orderId) {
             const order = profileOrdersCache.find((item) => item.id === orderId);
             if (!order?.paymentLinkUrl) {
               alert("Brak linku do płatności dla tego zamówienia.");
               return;
             }
+            const paymentUrl = order.paymentLinkUrl;
             try {
               const headers = await getProfileApiHeaders();
               const apiUrl = getStrzelcaApiUrl("/api/orders");
@@ -4047,10 +4093,8 @@
                 throw new Error(data?.error || "Nie udało się rozpocząć płatności.");
               }
               await loadMyOrders();
-              const opened = window.open(order.paymentLinkUrl, "_blank", "noopener");
-              if (!opened) {
-                window.location.href = order.paymentLinkUrl;
-              }
+              const opened = window.open(paymentUrl, "_blank", "noopener,noreferrer");
+              openPaymentVerificationModal(orderId, paymentUrl, !opened);
             } catch (error) {
               console.error("payOrder:", error);
               alert(error.message || "Nie udało się rozpocząć płatności.");
@@ -4420,6 +4464,231 @@
                 ? `Dodano ${returnClaimEditAttachments.length} z ${RETURN_ATTACHMENT_LIMIT} zdjęć.`
                 : "Możesz dodać maksymalnie 5 zdjęć. Zostaną automatycznie skompresowane.";
             }
+          }
+
+          function resetReturnClaimNewAttachmentsUi() {
+            const preview = document.getElementById("return-claim-new-attachments-preview");
+            const status = document.getElementById("return-claim-new-attachments-status");
+            if (preview) {
+              preview.innerHTML = returnClaimNewAttachments
+                .map(
+                  (item, index) => `
+                    <div class="rounded-xl border border-zinc-700 bg-zinc-950/80 p-2">
+                      <img src="data:${item.mimeType};base64,${item.dataBase64}" alt="Załącznik ${index + 1}" class="w-full h-24 object-cover rounded-lg mb-2" />
+                      <button type="button" onclick="removeReturnClaimNewAttachment(${index})" class="w-full text-[11px] font-semibold uppercase tracking-[0.18em] text-red-300 border border-red-500/40 rounded-lg px-2 py-1 hover:bg-red-500/10 transition">Usuń</button>
+                    </div>
+                  `,
+                )
+                .join("");
+            }
+            if (status) {
+              status.textContent = returnClaimNewAttachments.length
+                ? `Dodano ${returnClaimNewAttachments.length} z ${RETURN_ATTACHMENT_LIMIT} zdjęć.`
+                : "Możesz dodać maksymalnie 5 zdjęć. Zostaną automatycznie skompresowane.";
+            }
+          }
+
+          window.removeReturnClaimNewAttachment = function (index) {
+            returnClaimNewAttachments.splice(index, 1);
+            resetReturnClaimNewAttachmentsUi();
+          };
+
+          function getOrCreateReturnClaimNewModal() {
+            let modal = document.getElementById("return-claim-new-modal");
+            if (!modal) {
+              modal = document.createElement("div");
+              modal.id = "return-claim-new-modal";
+              modal.className = "modal modal--stack-top";
+              modal.addEventListener("click", (event) => {
+                if (event.target === modal) window.closeReturnClaimNewModal();
+              });
+              document.body.appendChild(modal);
+            }
+            return modal;
+          }
+
+          window.closeReturnClaimNewModal = function () {
+            const modal = document.getElementById("return-claim-new-modal");
+            if (modal) modal.classList.remove("show");
+            document.body.style.overflow = document.querySelector(".modal.show") ? "hidden" : "";
+          };
+
+          function syncReturnClaimNewTypeFields() {
+            const form = document.getElementById("return-claim-new-form");
+            if (!form) return;
+            const type =
+              form.querySelector('input[name="return-claim-new-type"]:checked')?.value || "zwrot";
+            const defectWrap = document.getElementById("return-claim-new-defect-wrap");
+            const returnWrap = document.getElementById("return-claim-new-return-wrap");
+            if (defectWrap) defectWrap.style.display = type === "reklamacja" ? "block" : "none";
+            if (returnWrap) returnWrap.style.display = type === "zwrot" ? "block" : "none";
+          }
+
+          async function submitReturnClaimNewFromOrder(event) {
+            event.preventDefault();
+            const form = document.getElementById("return-claim-new-form");
+            if (!form) return;
+            const type = form.querySelector('input[name="return-claim-new-type"]:checked')?.value || "zwrot";
+            const defectDescription = document.getElementById("return-claim-new-defect")?.value || "";
+            const returnReason = document.getElementById("return-claim-new-return-reason")?.value || "";
+            if (type === "reklamacja" && !String(defectDescription).trim()) {
+              alert("Podaj opis wady.");
+              return;
+            }
+            if (type === "zwrot" && !String(returnReason).trim()) {
+              alert("Podaj powód zwrotu.");
+              return;
+            }
+            try {
+              const headers = await getProfileApiHeaders();
+              const apiUrl = getStrzelcaApiUrl("/api/returns");
+              const response = await fetch(apiUrl, {
+                method: "POST",
+                headers,
+                credentials: apiUrl.startsWith("http") ? "include" : "same-origin",
+                body: JSON.stringify({
+                  type,
+                  firstName: document.getElementById("return-claim-new-first")?.value || "",
+                  lastName: document.getElementById("return-claim-new-last")?.value || "",
+                  phone: document.getElementById("return-claim-new-phone")?.value || "",
+                  street: document.getElementById("return-claim-new-street")?.value || "",
+                  buildingNumber: document.getElementById("return-claim-new-building")?.value || "",
+                  apartmentNumber: document.getElementById("return-claim-new-apartment")?.value || "",
+                  postalCode: document.getElementById("return-claim-new-postal")?.value || "",
+                  city: document.getElementById("return-claim-new-city")?.value || "",
+                  bankAccount: document.getElementById("return-claim-new-bank")?.value || "",
+                  orderNumber: document.getElementById("return-claim-new-order")?.value || "",
+                  invoiceNumber: document.getElementById("return-claim-new-invoice")?.value || "",
+                  requestKind: document.getElementById("return-claim-new-request-kind")?.value || "",
+                  defectDescription: type === "reklamacja" ? defectDescription : "",
+                  returnReason: type === "zwrot" ? returnReason : "",
+                  additionalInfo: document.getElementById("return-claim-new-additional")?.value || "",
+                  images: returnClaimNewAttachments,
+                }),
+              });
+              const data = await response.json().catch(() => null);
+              if (!response.ok || !data?.success) {
+                throw new Error(data?.error || "Nie udało się wysłać zgłoszenia.");
+              }
+              window.closeReturnClaimNewModal();
+              await loadMyReturns();
+              alert("Zgłoszenie zostało zapisane.");
+            } catch (error) {
+              console.error("submitReturnClaimNewFromOrder:", error);
+              alert(error.message || "Nie udało się wysłać zgłoszenia.");
+            }
+          }
+
+          function openReturnClaimNewModal(order) {
+            if (!order) return;
+            const pf = isViewingOwnProfile && userProfile ? userProfile : null;
+            const dec = (v) => b64DecodeUtf8(v || "");
+            const firstName = String(order.firstName || (pf ? pf.firstName || "" : "")).trim();
+            const lastName = String(order.lastName || (pf ? pf.lastName || "" : "")).trim();
+            const phone = String(order.phone || (pf ? dec(pf.phone) : "")).trim();
+            const street = String(order.address?.street || (pf ? dec(pf.address?.street) : "")).trim();
+            const buildingNumber = String(order.address?.buildingNumber || (pf ? dec(pf.address?.buildingNumber) : "")).trim();
+            const apartmentNumber = String(order.address?.apartmentNumber || "").trim();
+            const postalCode = String(order.address?.postalCode || (pf ? dec(pf.address?.postalCode) : "")).trim();
+            const city = String(order.address?.city || (pf ? dec(pf.address?.city) : "")).trim();
+            const invoiceHint = String(
+              order.invoiceDocumentLabel || order.invoiceNumber || "Załączona do zamówienia",
+            ).trim();
+            const email = String(currentUser?.email || "").trim();
+
+            returnClaimNewAttachments = [];
+            const modal = getOrCreateReturnClaimNewModal();
+            modal.innerHTML = `
+              <div class="modal-content modal-content--wide">
+                <div class="modal-header">
+                  <h3 class="text-xl font-bold coyote-text">Zwrot / reklamacja</h3>
+                  <button type="button" class="modal-close" onclick="closeReturnClaimNewModal()">&times;</button>
+                </div>
+                <form id="return-claim-new-form" class="space-y-4">
+                  <p class="text-sm text-zinc-400">Zamówienie: <strong class="text-zinc-200">${escapeProfileHtml(order.orderNumber || "—")}</strong></p>
+                  <div class="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 space-y-3">
+                    <div class="text-[10px] uppercase font-bold text-zinc-500 tracking-widest">Rodzaj zgłoszenia *</div>
+                    <label class="flex items-center gap-2 text-sm text-zinc-200 cursor-pointer">
+                      <input type="radio" name="return-claim-new-type" value="zwrot" checked class="accent-coyote" />
+                      Zwrot (odstąpienie od umowy)
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-zinc-200 cursor-pointer">
+                      <input type="radio" name="return-claim-new-type" value="reklamacja" class="accent-coyote" />
+                      Reklamacja
+                    </label>
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Imię *</label><input type="text" id="return-claim-new-first" required value="${escapeProfileHtml(firstName)}" /></div>
+                    <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Nazwisko *</label><input type="text" id="return-claim-new-last" required value="${escapeProfileHtml(lastName)}" /></div>
+                    <div class="md:col-span-2"><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">E-mail</label><input type="email" readonly value="${escapeProfileHtml(email)}" /></div>
+                    <div class="md:col-span-2"><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Telefon *</label><input type="text" id="return-claim-new-phone" required value="${escapeProfileHtml(phone)}" /></div>
+                    <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Ulica *</label><input type="text" id="return-claim-new-street" required value="${escapeProfileHtml(street)}" /></div>
+                    <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Budynek *</label><input type="text" id="return-claim-new-building" required value="${escapeProfileHtml(buildingNumber)}" /></div>
+                    <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Lokal</label><input type="text" id="return-claim-new-apartment" value="${escapeProfileHtml(apartmentNumber)}" /></div>
+                    <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Kod pocztowy *</label><input type="text" id="return-claim-new-postal" required placeholder="00-000" value="${escapeProfileHtml(postalCode)}" /></div>
+                    <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Miasto *</label><input type="text" id="return-claim-new-city" required value="${escapeProfileHtml(city)}" /></div>
+                    <div class="md:col-span-2"><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Numer konta / IBAN *</label><input type="text" id="return-claim-new-bank" required placeholder="26 cyfr lub PL…" value="" /></div>
+                    <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Numer zamówienia *</label><input type="text" id="return-claim-new-order" required readonly value="${escapeProfileHtml(order.orderNumber || "")}" /></div>
+                    <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Numer faktury / rachunku *</label><input type="text" id="return-claim-new-invoice" required value="${escapeProfileHtml(invoiceHint)}" /></div>
+                    <div class="md:col-span-2"><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Żądanie *</label>
+                      <select id="return-claim-new-request-kind" required class="w-full rounded-lg border border-zinc-700 bg-[#111] px-3 py-3 text-sm text-white">
+                        <option value="">— wybierz —</option>
+                        <option value="Wymiana">Wymiana</option>
+                        <option value="Naprawa">Naprawa</option>
+                        <option value="Zwrot środków">Zwrot środków</option>
+                        <option value="Obniżenie ceny">Obniżenie ceny</option>
+                        <option value="Odstąpienie od umowy">Odstąpienie od umowy</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div id="return-claim-new-defect-wrap" class="hidden">
+                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Opis wady *</label>
+                    <textarea id="return-claim-new-defect" rows="4"></textarea>
+                  </div>
+                  <div id="return-claim-new-return-wrap">
+                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Powód zwrotu *</label>
+                    <textarea id="return-claim-new-return-reason" rows="4"></textarea>
+                  </div>
+                  <div><label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Uwagi dodatkowe</label><textarea id="return-claim-new-additional" rows="3"></textarea></div>
+                  <div>
+                    <label class="text-[10px] uppercase font-bold text-zinc-500 ml-2 mb-2 block tracking-widest">Zdjęcia (opcjonalnie)</label>
+                    <input type="file" id="return-claim-new-attachments" accept="image/jpeg,image/png,image/webp" multiple />
+                    <p id="return-claim-new-attachments-status" class="text-xs text-zinc-500 mt-2"></p>
+                    <div id="return-claim-new-attachments-preview" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3"></div>
+                  </div>
+                  <div class="flex flex-wrap justify-end gap-4 pt-4 border-t border-zinc-700">
+                    <button type="button" onclick="closeReturnClaimNewModal()" class="bg-zinc-700 text-white px-6 py-3 rounded-lg hover:bg-zinc-600 transition">Anuluj</button>
+                    <button type="submit" class="btn-save">Wyślij zgłoszenie</button>
+                  </div>
+                </form>
+              </div>
+            `;
+            modal.classList.add("show");
+            document.body.style.overflow = "hidden";
+            const newFormEl = modal.querySelector("#return-claim-new-form");
+            syncReturnClaimNewTypeFields();
+            newFormEl?.querySelectorAll('input[name="return-claim-new-type"]').forEach((el) => {
+              el.addEventListener("change", syncReturnClaimNewTypeFields);
+            });
+            newFormEl?.addEventListener("submit", submitReturnClaimNewFromOrder);
+            modal.querySelector("#return-claim-new-attachments")?.addEventListener("change", async (changeEvent) => {
+              const files = Array.from(changeEvent.target.files || []);
+              changeEvent.target.value = "";
+              if (!files.length) return;
+              if (returnClaimNewAttachments.length + files.length > RETURN_ATTACHMENT_LIMIT) {
+                alert(`Możesz dodać maksymalnie ${RETURN_ATTACHMENT_LIMIT} zdjęć.`);
+                return;
+              }
+              try {
+                for (const file of files) {
+                  returnClaimNewAttachments.push(await compressReturnClaimAttachment(file));
+                }
+                resetReturnClaimNewAttachmentsUi();
+              } catch (error) {
+                alert(error.message || "Nie udało się przygotować zdjęcia.");
+              }
+            });
+            resetReturnClaimNewAttachmentsUi();
           }
 
           function loadImageFromFileProfile(file) {

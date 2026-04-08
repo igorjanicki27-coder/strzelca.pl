@@ -1,4 +1,8 @@
 (function () {
+  /**
+   * Parafka: nie ma pliku w repozytorium Git. Obraz jest trzymany wyłącznie w przeglądarce
+   * (localStorage pod SIGNATURE_STORAGE_KEY) oraz kopiowany do zapisanej faktury (sellerSignatureDataUrl w bazie).
+   */
   const API_URL = '/api/admin-invoices';
   const ORDERS_API_URL = '/api/orders?limit=2500';
   const SIGNATURE_STORAGE_KEY = 'adminInvoiceSignatureDataUrl';
@@ -334,50 +338,44 @@
     const correctionCount = state.invoices.filter((invoice) => invoice.kind === 'correction').length;
     const linkedCount = state.invoices.filter((invoice) => normalizeText(invoice.linkedOrder?.orderId)).length;
 
-    const statsEl = document.getElementById('invoice-stats-grid');
-    if (!statsEl) return;
+    const chipsEl = document.getElementById('invoice-filter-chips');
+    if (!chipsEl) return;
 
     const view = state.filters.view || 'all';
     const invoicesActive = view === 'all' || view === 'invoices';
     const correctionsActive = view === 'corrections';
     const linkedActive = view === 'linked';
 
-    statsEl.innerHTML = `
+    chipsEl.innerHTML = `
       <button
         type="button"
-        class="invoice-kpi-tile ${invoicesActive ? 'active' : ''}"
+        class="invoice-filter-chip ${invoicesActive ? 'active' : ''}"
         aria-pressed="${invoicesActive ? 'true' : 'false'}"
         onclick="setInvoiceKpiView('invoices')"
       >
-        <div class="invoice-kpi-tile-left">
-          <div class="invoice-kpi-tile-icon"><i class="fa-solid fa-file-invoice"></i></div>
-          <div class="invoice-kpi-tile-title">Faktury</div>
-        </div>
-        <div class="invoice-kpi-tile-value">${invoiceCount}</div>
+        <i class="fa-solid fa-file-invoice" aria-hidden="true"></i>
+        Wszystkie faktury
+        <span class="invoice-filter-chip-count">${invoiceCount}</span>
       </button>
       <button
         type="button"
-        class="invoice-kpi-tile ${correctionsActive ? 'active' : ''}"
+        class="invoice-filter-chip ${correctionsActive ? 'active' : ''}"
         aria-pressed="${correctionsActive ? 'true' : 'false'}"
         onclick="setInvoiceKpiView('corrections')"
       >
-        <div class="invoice-kpi-tile-left">
-          <div class="invoice-kpi-tile-icon"><i class="fa-solid fa-file-circle-plus"></i></div>
-          <div class="invoice-kpi-tile-title">Korekty</div>
-        </div>
-        <div class="invoice-kpi-tile-value">${correctionCount}</div>
+        <i class="fa-solid fa-file-circle-plus" aria-hidden="true"></i>
+        Z korektami
+        <span class="invoice-filter-chip-count">${correctionCount}</span>
       </button>
       <button
         type="button"
-        class="invoice-kpi-tile ${linkedActive ? 'active' : ''}"
+        class="invoice-filter-chip ${linkedActive ? 'active' : ''}"
         aria-pressed="${linkedActive ? 'true' : 'false'}"
         onclick="setInvoiceKpiView('linked')"
       >
-        <div class="invoice-kpi-tile-left">
-          <div class="invoice-kpi-tile-icon"><i class="fa-solid fa-link"></i></div>
-          <div class="invoice-kpi-tile-title">Powiązane z zamówieniami</div>
-        </div>
-        <div class="invoice-kpi-tile-value">${linkedCount}</div>
+        <i class="fa-solid fa-link" aria-hidden="true"></i>
+        Z zamówieniem
+        <span class="invoice-filter-chip-count">${linkedCount}</span>
       </button>
     `;
   }
@@ -411,45 +409,49 @@
         const latest = group.latest;
         const root = group.root;
         const correctionCount = group.invoices.filter((invoice) => invoice.kind === 'correction').length;
+        const metaParts = [
+          esc(latest?.buyer?.name || 'Brak nabywcy'),
+          latest?.linkedOrder?.label ? `Zam. ${esc(latest.linkedOrder.label)}` : '',
+          correctionCount > 0 ? `${correctionCount} korekt` : 'bez korekt',
+        ].filter(Boolean);
         return `
-          <article class="invoice-group-card">
-            <div class="invoice-group-head">
-              <div>
-                <div class="invoice-group-title">${esc(root?.invoiceNumber || latest?.invoiceNumber || 'Bez numeru')}</div>
-                <div class="invoice-group-subtitle">
-                  ${esc(latest?.buyer?.name || 'Brak nabywcy')}<br />
-                  ${latest?.linkedOrder?.label ? `Zamówienie: ${esc(latest.linkedOrder.label)}<br />` : ''}
-                  ${correctionCount > 0 ? `Korekty w grupie: ${correctionCount}` : 'Bez korekt'}
-                </div>
+          <article class="invoice-group-card invoice-group-card--hub">
+            <div class="invoice-group-head invoice-group-head--hub">
+              <div class="invoice-group-head-text">
+                <div class="invoice-group-primary">${esc(root?.invoiceNumber || latest?.invoiceNumber || 'Bez numeru')}</div>
+                <div class="invoice-group-meta-line">${metaParts.join(' · ')}</div>
               </div>
-              <span class="invoice-status-pill status-${esc(latest?.status || 'utworzona')}">${esc(
+              <span class="invoice-status-pill invoice-status-pill--head status-${esc(latest?.status || 'utworzona')}">${esc(
                 STATUS_LABELS[latest?.status] || latest?.status || 'Utworzona'
               )}</span>
             </div>
-            <div class="invoice-doc-list">
+            <div class="invoice-doc-list invoice-doc-list--hub">
               ${group.invoices
                 .map((invoice) => {
                   const activeClass = invoice.id === state.selectedInvoiceId ? 'active' : '';
+                  const kindLabel = invoice.kind === 'correction' ? 'Korekta' : 'Faktura';
+                  const kindIcon =
+                    invoice.kind === 'correction' ? 'fa-file-circle-plus' : 'fa-file-invoice';
+                  const subLine = [
+                    formatDate(invoice.issueDate),
+                    `${formatCurrencyFromCents(invoice.totals?.grossTotalCents || 0)} zł brutto`,
+                  ].join(' · ');
+                  const reason =
+                    invoice.kind === 'correction' && invoice.correctionReason
+                      ? `<div class="invoice-doc-row-reason">${esc(invoice.correctionReason)}</div>`
+                      : '';
                   return `
-                    <div class="invoice-doc-row ${activeClass}" onclick="selectAdminInvoice('${esc(invoice.id)}')">
-                      <div class="invoice-doc-row-top">
-                        <div class="invoice-doc-row-title">${esc(
-                          invoice.kind === 'correction' ? 'Faktura korygująca' : 'Faktura'
-                        )} • ${esc(invoice.invoiceNumber || '—')}</div>
-                        <span class="invoice-status-pill status-${esc(invoice.status || 'utworzona')}">${esc(
-                          STATUS_LABELS[invoice.status] || invoice.status || 'Utworzona'
-                        )}</span>
-                      </div>
-                      <div class="invoice-doc-row-meta">
-                        Data wystawienia: ${esc(formatDate(invoice.issueDate))}<br />
-                        Wartość brutto: ${esc(formatCurrencyFromCents(invoice.totals?.grossTotalCents || 0))} zł
-                        ${
-                          invoice.kind === 'correction' && invoice.correctionReason
-                            ? `<br />Powód korekty: ${esc(invoice.correctionReason)}`
-                            : ''
-                        }
-                      </div>
-                    </div>
+                    <button type="button" class="invoice-doc-row invoice-doc-row--hub ${activeClass}" onclick="selectAdminInvoice('${esc(invoice.id)}')">
+                      <span class="invoice-doc-row-kind" aria-hidden="true"><i class="fa-solid ${kindIcon}"></i></span>
+                      <span class="invoice-doc-row-body">
+                        <span class="invoice-doc-row-title">${esc(kindLabel)} <span class="invoice-doc-row-num">${esc(invoice.invoiceNumber || '—')}</span></span>
+                        <span class="invoice-doc-row-sub">${esc(subLine)}</span>
+                        ${reason}
+                      </span>
+                      <span class="invoice-status-pill invoice-status-pill--row status-${esc(invoice.status || 'utworzona')}">${esc(
+                        STATUS_LABELS[invoice.status] || invoice.status || 'Utworzona'
+                      )}</span>
+                    </button>
                   `;
                 })
                 .join('')}
@@ -468,7 +470,7 @@
       invoice.kind === 'correction' ? 'FAKTURA KORYGUJĄCA' : 'FAKTURA ZWOLNIONA Z VAT';
     const buyerTaxIdHtml = invoice.buyer?.taxId
       ? `NIP: ${esc(invoice.buyer.taxId)}`
-      : `<span class="line-through">NIP: —</span>`;
+      : `<span class="invoice-buyer-tax-placeholder">NIP: —</span>`;
     const invoiceRows = (Array.isArray(invoice.items) ? invoice.items : []).map((item, index) => {
       return `
         <tr>
@@ -496,9 +498,9 @@
         `
         : '';
 
-    const notesBlock = normalizeText(invoice.notes)
+    const notesHtml = normalizeText(invoice.notes)
       ? `
-        <div class="invoice-correction-banner">
+        <div class="invoice-notes-banner">
           <strong>Uwagi</strong><br />
           ${nl2br(invoice.notes)}
         </div>
@@ -582,24 +584,25 @@
           </table>
         </div>
 
-        <div class="invoice-summary">
-          <div class="invoice-summary-card">
-            <div class="invoice-summary-row">
-              <span>Wartość netto</span>
-              <strong>${esc(formatCurrencyFromCents(invoice.totals?.netTotalCents || 0))} zł</strong>
-            </div>
-            <div class="invoice-summary-row">
-              <span>Kwota VAT</span>
-              <strong>ZWOLNIONY</strong>
-            </div>
-            <div class="invoice-summary-row total">
-              <span>Wartość brutto</span>
-              <strong>${esc(formatCurrencyFromCents(invoice.totals?.grossTotalCents || 0))} zł</strong>
+        <div class="invoice-summary-notes-row">
+          <div class="invoice-notes-cell">${notesHtml}</div>
+          <div class="invoice-summary">
+            <div class="invoice-summary-card">
+              <div class="invoice-summary-row">
+                <span>Wartość netto</span>
+                <strong>${esc(formatCurrencyFromCents(invoice.totals?.netTotalCents || 0))} zł</strong>
+              </div>
+              <div class="invoice-summary-row">
+                <span>Kwota VAT</span>
+                <strong>ZWOLNIONY</strong>
+              </div>
+              <div class="invoice-summary-row total">
+                <span>Wartość brutto</span>
+                <strong>${esc(formatCurrencyFromCents(invoice.totals?.grossTotalCents || 0))} zł</strong>
+              </div>
             </div>
           </div>
         </div>
-
-        ${notesBlock}
 
         <section class="invoice-signature-grid">
           <div class="invoice-signature-box">
@@ -731,18 +734,24 @@
     if (!signatureEl) return;
     if (!state.signatureDataUrl) {
       signatureEl.innerHTML = `
-        <div class="text-sm text-zinc-400 leading-relaxed">
-          Brak domyślnej parafki. Po wgraniu będzie używana w podglądzie oraz wpisywana do nowych i edytowanych faktur przy zapisie.
+        <div class="invoice-sig-status invoice-sig-status--empty">
+          <i class="fa-solid fa-file-image invoice-sig-status-icon" aria-hidden="true"></i>
+          <div>
+            <strong class="invoice-sig-status-title">Nie wgrano obrazu</strong>
+            <p class="invoice-sig-status-text">Podgląd i PDF pokażą podpis dopiero po wgraniu pliku powyżej. Zapisane wcześniej faktury nadal mają własną kopię w bazie.</p>
+          </div>
         </div>
       `;
       return;
     }
     signatureEl.innerHTML = `
-      <div class="invoice-signature-session-preview">
-        <img src="${state.signatureDataUrl}" alt="Parafka sprzedawcy" />
-        <div class="text-sm text-zinc-300 leading-relaxed">
-          Ta parafka jest ustawiona jako domyślna w tej przeglądarce.<br />
-          Nowe i edytowane faktury zapiszą ją w dokumencie, a podgląd pokazuje ją od razu.
+      <div class="invoice-sig-status invoice-sig-status--ok">
+        <div class="invoice-signature-session-preview">
+          <img src="${state.signatureDataUrl}" alt="Podgląd parafki" />
+          <div>
+            <strong class="invoice-sig-status-title">Aktywna parafka</strong>
+            <p class="invoice-sig-status-text">Trzymana tylko w tej przeglądarce. Przy każdym <strong>Zapisz fakturę</strong> doklejana jest do dokumentu (również do PDF i druku).</p>
+          </div>
         </div>
       </div>
     `;
@@ -1193,7 +1202,7 @@
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
           <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
-          <link rel="stylesheet" href="/admin/invoices-admin.css?v=2026-03-25-2" />
+          <link rel="stylesheet" href="/admin/invoices-admin.css?v=2026-04-08-3" />
           <style>
             body { margin: 0; background: #fff; }
             .invoice-a4-frame { padding: 0; background: #fff; border: 0; }
@@ -1207,10 +1216,23 @@
       </html>
     `);
     popup.document.close();
-    popup.onload = () => {
-      popup.focus();
-      popup.print();
+
+    const runPrint = () => {
+      try {
+        popup.focus();
+        popup.print();
+      } catch (err) {
+        console.error('printInvoice:', err);
+      }
     };
+
+    const schedulePrint = () => setTimeout(runPrint, 350);
+
+    if (popup.document.fonts && typeof popup.document.fonts.ready?.then === 'function') {
+      popup.document.fonts.ready.then(schedulePrint).catch(schedulePrint);
+    } else {
+      schedulePrint();
+    }
   }
 
   window.selectAdminInvoice = function selectAdminInvoice(invoiceId) {
@@ -1468,7 +1490,7 @@
       renderSignatureSession();
       renderInvoicesTab();
       if (typeof showNotification === 'function') {
-        showNotification('Parafka została ustawiona jako domyślna dla faktur.', 'success');
+        showNotification('Obraz zapisany w tej przeglądarce — przy zapisie faktury trafi do dokumentu.', 'success');
       }
     } catch (error) {
       console.error('handleInvoiceSignatureUpload:', error);
@@ -1486,7 +1508,7 @@
     renderSignatureSession();
     renderInvoicesTab();
     if (typeof showNotification === 'function') {
-      showNotification('Domyślna parafka została usunięta.', 'success');
+      showNotification('Usunięto obraz z pamięci tej przeglądarki (nie z już zapisanych faktur).', 'success');
     }
   };
 

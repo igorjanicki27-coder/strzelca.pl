@@ -9,6 +9,7 @@ const {
   parseCookies,
   getCookieName,
   verifyLocalSessionJwt,
+  syncEmailVerifiedToProfileStores,
 } = require("./_sso-utils");
 const {
   getUserRoleProfile,
@@ -86,6 +87,8 @@ module.exports = async (req, res) => {
     // Pobierz informację o weryfikacji emaila z Firebase Auth
     const userRecord = await admin.auth().getUser(uid);
     const emailVerified = userRecord.emailVerified === true;
+
+    await syncEmailVerifiedToProfileStores(uid, emailVerified);
 
     res.status(200).json({
       success: true,

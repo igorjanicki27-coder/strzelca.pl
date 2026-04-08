@@ -20,6 +20,29 @@ const FIRESTORE_SMTP_SECRET_PATH = 'serverSecrets/smtpTransport';
 const SMTP_SECRET_CACHE_TTL_MS = 60 * 1000;
 let smtpSecretCache = { at: 0, value: null };
 
+/** Dwie próby mieszczą się w maxDuration 60s dla api/orders (Vercel). */
+const SMTP_SEND_MAX_ATTEMPTS = 2;
+/** Opóźnienie przed drugą próbą (ms). */
+const SMTP_RETRY_DELAY_MS = [1600];
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Błędy typu timeout / reset — warto ponowić; auth (535) itp. — nie.
+ */
+function isTransientSmtpError(err) {
+  if (!err) return false;
+  const code = String(err.code || '').toUpperCase();
+  const msg = String(err.message || err || '').toLowerCase();
+  if (['ETIMEDOUT', 'ECONNRESET', 'EPIPE', 'EAI_AGAIN', 'ESOCKET'].includes(code)) return true;
+  if (msg.includes('timeout') || msg.includes('timed out')) return true;
+  if (msg.includes('socket') && (msg.includes('close') || msg.includes('hang'))) return true;
+  if (msg.includes('connection') && msg.includes('lost')) return true;
+  return false;
+}
+
 function getSmtpEnvConfig() {
   const e = process.env;
   const hostRaw = e[SMTP_ENV.host];
@@ -153,9 +176,10 @@ function createTransporter(cfg) {
     host: cfg.host,
     port: cfg.port,
     secure: cfg.secure,
-    connectionTimeout: 25_000,
-    greetingTimeout: 20_000,
-    socketTimeout: 25_000,
+    // Dopasowane do maxDuration API (np. orders = 60s): krótsze pojedyncze próby + retry.
+    connectionTimeout: 22_000,
+    greetingTimeout: 22_000,
+    socketTimeout: 26_000,
     auth: {
       user: cfg.user,
       pass: cfg.password,
@@ -204,30 +228,47 @@ async function sendTransactionalEmail(opts) {
     throw new Error('sendTransactionalEmail: brak to, subject lub html');
   }
   const smtpCfg = await assertSmtpConfigured();
-  const transporter = createTransporter(smtpCfg);
   const smtpUser = smtpCfg.user;
   const name = String(fromDisplayName || 'Strzelca.pl').replace(/"/g, "'");
-  try {
-    await transporter.sendMail({
-      from: `"${name}" <${smtpUser}>`,
-      to,
-      replyTo: replyTo || undefined,
-      subject,
-      html,
-      attachments: Array.isArray(attachments) ? attachments : undefined,
-    });
-  } catch (err) {
-    if (!skipFailureLog) {
-      const { logEmailDeliveryFailure } = require('./_activity-email-log');
-      await logEmailDeliveryFailure({
-        category: logCategory || 'transactional_smtp',
-        to,
-        subject,
-        errorMessage: err.message || String(err),
-        meta: logMeta || {},
-      });
+  let lastErr = null;
+  for (let attempt = 0; attempt < SMTP_SEND_MAX_ATTEMPTS; attempt++) {
+    if (attempt > 0) {
+      if (!isTransientSmtpError(lastErr)) break;
+      const waitMs = SMTP_RETRY_DELAY_MS[attempt - 1] ?? 2000;
+      await sleep(waitMs);
     }
-    throw err;
+    const transporter = createTransporter(smtpCfg);
+    try {
+      await transporter.sendMail({
+        from: `"${name}" <${smtpUser}>`,
+        to,
+        replyTo: replyTo || undefined,
+        subject,
+        html,
+        attachments: Array.isArray(attachments) ? attachments : undefined,
+      });
+      return;
+    } catch (err) {
+      lastErr = err;
+      const willRetry =
+        attempt < SMTP_SEND_MAX_ATTEMPTS - 1 && isTransientSmtpError(err);
+      if (!willRetry) {
+        if (!skipFailureLog) {
+          const { logEmailDeliveryFailure } = require('./_activity-email-log');
+          await logEmailDeliveryFailure({
+            category: logCategory || 'transactional_smtp',
+            to,
+            subject,
+            errorMessage: err.message || String(err),
+            meta: {
+              ...(logMeta || {}),
+              smtpAttempts: String(attempt + 1),
+            },
+          });
+        }
+        throw err;
+      }
+    }
   }
 }
 

@@ -491,7 +491,7 @@ function ensureStyles() {
       border-radius: 18px;
       background: rgba(255,255,255,0.03);
       color: inherit;
-      cursor: pointer;
+      cursor: default;
       padding: 16px 18px;
       text-align: left;
       transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
@@ -533,6 +533,27 @@ function ensureStyles() {
     }
     .strzelca-auth-notification-body p {
       margin: 0.45em 0;
+    }
+    .strzelca-auth-notification-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 14px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(193,154,107,0.45);
+      background: rgba(193,154,107,0.12);
+      color: #f5e6d0;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+    .strzelca-auth-notification-link:hover {
+      background: rgba(193,154,107,0.22);
+      border-color: rgba(193,154,107,0.65);
+      color: #fffaf2;
     }
     .strzelca-auth-notification-footer {
       display: flex;
@@ -674,6 +695,17 @@ function escapeHtml(value) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+/** Zgadne z api/_notifications.js sanitizeLinkUrl — tylko http(s) lub ścieżka od / (bez //). */
+function notificationSafeHref(raw) {
+  const u = String(raw || "").trim();
+  if (!u) return "";
+  if (u.startsWith("//")) return "";
+  if (u.startsWith("/")) return u;
+  const head = u.slice(0, 8).toLowerCase();
+  if (head.startsWith("https://") || head.startsWith("http://")) return u;
+  return "";
 }
 
 function firstLetter(name) {
@@ -1416,15 +1448,26 @@ function closeModal(id) {
 }
 
 function renderNotificationCard(item) {
+  const safeHref = notificationSafeHref(item.linkUrl);
+  const linkLabel = String(item.linkLabel || "").trim() || "Otwórz link";
+  const linkAttrs =
+    safeHref && safeHref.startsWith("http")
+      ? `target="_blank" rel="noopener noreferrer"`
+      : "";
+  const linkBlock = safeHref
+    ? `<a class="strzelca-auth-notification-link" href="${escapeHtml(safeHref)}" ${linkAttrs}>${escapeHtml(linkLabel)}</a>`
+    : "";
+
   return `
-    <button class="strzelca-auth-notification-item ${item.isRead ? "" : "is-new"}" type="button" data-notification-id="${escapeHtml(item.id)}">
+    <div class="strzelca-auth-notification-item ${item.isRead ? "" : "is-new"}" data-notification-id="${escapeHtml(item.id)}">
       <div class="strzelca-auth-notification-meta">
         <span class="strzelca-auth-notification-category">${escapeHtml(mapNotificationCategory(item.category))}</span>
         <span>${escapeHtml(formatDate(item.createdAt))}</span>
       </div>
       <div class="strzelca-auth-notification-title">${escapeHtml(item.title || "Powiadomienie")}</div>
       <div class="strzelca-auth-notification-body">${item.bodyHtml || ""}</div>
-    </button>
+      ${linkBlock}
+    </div>
   `;
 }
 
@@ -1474,7 +1517,6 @@ function renderQuickNotificationsModal() {
       <button id="strzelca-notifications-show-all" class="strzelca-auth-secondary-btn" type="button">Pokaż wszystkie</button>
     </div>
   `;
-  bindNotificationClickTargets(container);
   const showAllButton = document.getElementById("strzelca-notifications-show-all");
   if (showAllButton) {
     showAllButton.addEventListener("click", async () => {
@@ -1515,7 +1557,6 @@ function renderAllNotificationsModal() {
   });
 
   container.innerHTML = renderNotificationGroups(filtered);
-  bindNotificationClickTargets(container);
 }
 
 function mapNotificationDoc(docSnap) {
@@ -1580,20 +1621,6 @@ async function markAllNotificationsAsRead() {
   } finally {
     notificationState.markReadInFlight = false;
   }
-}
-
-function bindNotificationClickTargets(container) {
-  container.querySelectorAll("[data-notification-id]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const id = button.getAttribute("data-notification-id");
-      const collection = notificationState.allNotificationsLoaded
-        ? notificationState.allNotifications
-        : notificationState.notifications;
-      const item = collection.find((entry) => entry.id === id) || notificationState.notifications.find((entry) => entry.id === id);
-      if (!item?.linkUrl) return;
-      window.location.href = item.linkUrl;
-    });
-  });
 }
 
 async function openAllNotificationsModal() {
