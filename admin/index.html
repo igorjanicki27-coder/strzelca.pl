@@ -1430,6 +1430,81 @@
         gap: 1rem;
       }
 
+      .admin-notifications-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
+        gap: 1.25rem;
+        align-items: start;
+      }
+
+      .admin-comm-switcher {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.65rem;
+      }
+
+      .admin-comm-switch-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.55rem;
+        padding: 0.75rem 0.95rem;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 244, 224, 0.11);
+        background: rgba(248, 245, 239, 0.04);
+        color: var(--text-secondary);
+        font-size: 0.88rem;
+        font-weight: 600;
+        transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+      }
+
+      .admin-comm-switch-btn:hover {
+        border-color: rgba(193, 154, 107, 0.34);
+      }
+
+      .admin-comm-switch-btn.is-active {
+        border-color: rgba(193, 154, 107, 0.48);
+        background: linear-gradient(135deg, rgba(193, 154, 107, 0.22), rgba(193, 154, 107, 0.08));
+        color: #fff6e8;
+      }
+
+      .admin-comm-pane {
+        display: none;
+      }
+
+      .admin-comm-pane.is-active {
+        display: block;
+      }
+
+      .admin-notification-side {
+        position: sticky;
+        top: 1rem;
+      }
+
+      .admin-history-grid {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .admin-history-item {
+        border-radius: 14px;
+        border: 1px solid rgba(255, 244, 224, 0.09);
+        background: rgba(22, 24, 30, 0.55);
+        padding: 0.95rem;
+      }
+
+      .admin-history-metrics {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.8rem;
+        text-align: right;
+      }
+
+      .admin-history-metric {
+        min-width: 78px;
+      }
+
       .admin-form-section {
         border: 1px solid rgba(255, 244, 224, 0.08);
         border-radius: 18px;
@@ -1506,6 +1581,22 @@
         margin-top: 1rem;
         padding-top: 1rem;
         border-top: 1px solid rgba(255, 244, 224, 0.08);
+      }
+
+      @media (max-width: 1279px) {
+        .admin-notifications-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .admin-notification-side {
+          position: static;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .admin-comm-switcher {
+          grid-template-columns: 1fr;
+        }
       }
 
       .recent-users-tile {
@@ -2983,9 +3074,21 @@
               Powiadomienia i Okna Informacji
             </h1>
 
-            <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)] gap-8">
-              <div class="space-y-8">
+            <div class="admin-notifications-layout">
+              <div class="space-y-4">
                 <div class="admin-card">
+                  <div class="admin-comm-switcher">
+                    <button type="button" class="admin-comm-switch-btn is-active" data-admin-comm-tab="notification" onclick="switchAdminCommunicationComposer('notification')">
+                      <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                      <span>Powiadomienie</span>
+                    </button>
+                    <button type="button" class="admin-comm-switch-btn" data-admin-comm-tab="info" onclick="switchAdminCommunicationComposer('info')">
+                      <i class="fa-solid fa-window-restore" aria-hidden="true"></i>
+                      <span>Okno informacji</span>
+                    </button>
+                  </div>
+                </div>
+                <div id="admin-comm-pane-notification" class="admin-card admin-comm-pane is-active">
                   <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between mb-6">
                     <div>
                       <h3 class="text-xl font-bold text-white">Powiadomienie do użytkowników</h3>
@@ -3129,7 +3232,7 @@
                   </form>
                 </div>
 
-                <div class="admin-card">
+                <div id="admin-comm-pane-info" class="admin-card admin-comm-pane">
                   <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between mb-6">
                     <div>
                       <h3 class="text-xl font-bold text-white">Okno informacji</h3>
@@ -3239,7 +3342,7 @@
                 </div>
               </div>
 
-              <div class="space-y-8">
+              <div class="space-y-4 admin-notification-side">
                 <div class="admin-card">
                   <div class="flex items-start justify-between gap-4 mb-4">
                     <div>
@@ -3250,7 +3353,7 @@
                       <i class="fa-solid fa-rotate text-base"></i>
                     </button>
                   </div>
-                  <div id="admin-notification-history" class="space-y-3 text-sm text-zinc-300">
+                  <div id="admin-notification-history" class="admin-history-grid text-sm text-zinc-300">
                     <div class="text-zinc-500">Ładowanie...</div>
                   </div>
                 </div>
@@ -3265,7 +3368,7 @@
                       <i class="fa-solid fa-rotate text-base"></i>
                     </button>
                   </div>
-                  <div id="admin-info-history" class="space-y-3 text-sm text-zinc-300">
+                  <div id="admin-info-history" class="admin-history-grid text-sm text-zinc-300">
                     <div class="text-zinc-500">Ładowanie...</div>
                   </div>
                 </div>
@@ -9289,13 +9392,29 @@
         }
       };
 
+      window.switchAdminCommunicationComposer = function(kind) {
+        const activeKind = kind === "info" ? "info" : "notification";
+        const panes = {
+          notification: document.getElementById("admin-comm-pane-notification"),
+          info: document.getElementById("admin-comm-pane-info"),
+        };
+        Object.entries(panes).forEach(([paneKind, pane]) => {
+          if (!pane) return;
+          pane.classList.toggle("is-active", paneKind === activeKind);
+        });
+        document.querySelectorAll("[data-admin-comm-tab]").forEach((button) => {
+          const isActive = button.getAttribute("data-admin-comm-tab") === activeKind;
+          button.classList.toggle("is-active", isActive);
+        });
+      };
+
       function renderAdminNotificationHistoryItems(items) {
         if (!items.length) {
           return '<div class="text-zinc-500">Brak wysłanych kampanii.</div>';
         }
         return items
           .map((item) => `
-            <div class="rounded-xl border border-zinc-700 bg-zinc-900/50 p-4">
+            <div class="admin-history-item">
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                   <div class="font-semibold text-white truncate">${escapeHtml(item.title || "Bez tytułu")}</div>
@@ -9306,9 +9425,11 @@
                     userIds: Array.isArray(item.targetUserIds) ? item.targetUserIds : [],
                   }))}</div>
                 </div>
-                <div class="shrink-0 text-right">
-                  <div class="text-coyote font-bold">${Number(item.deliveredCount || 0)}</div>
-                  <div class="text-[11px] text-zinc-500 uppercase tracking-wide">odbiorców</div>
+                <div class="admin-history-metrics shrink-0">
+                  <div class="admin-history-metric">
+                    <div class="text-coyote font-bold">${Number(item.deliveredCount || 0)}</div>
+                    <div class="text-[11px] text-zinc-500 uppercase tracking-wide">odbiorców</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -9322,7 +9443,7 @@
         }
         return items
           .map((item) => `
-            <div class="rounded-xl border border-zinc-700 bg-zinc-900/50 p-4">
+            <div class="admin-history-item">
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                   <div class="font-semibold text-white truncate">${escapeHtml(item.title || "Bez tytułu")}</div>
@@ -9332,6 +9453,7 @@
                     roles: Array.isArray(item.targetRoles) ? item.targetRoles : [],
                     userIds: Array.isArray(item.targetUserIds) ? item.targetUserIds : [],
                   }))}</div>
+                  <div class="text-xs text-zinc-500 mt-1">Zrozumiałem: <span class="text-coyote font-semibold">${Number(item.ackCount || 0)}</span></div>
                 </div>
                 <button
                   type="button"
@@ -9370,7 +9492,21 @@
           ]);
 
           const campaigns = campaignsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-          const infos = infoSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+          const infosRaw = infoSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+          const infos = await Promise.all(
+            infosRaw.map(async (item) => {
+              let ackCount = 0;
+              try {
+                const ackCountSnap = await getCountFromServer(
+                  query(collection(db, "userInfoAnnouncementAcks"), where("announcementId", "==", item.id)),
+                );
+                ackCount = Number(ackCountSnap?.data()?.count || 0);
+              } catch (error) {
+                console.warn("loadAdminNotificationsHistory ack count:", error);
+              }
+              return { ...item, ackCount };
+            }),
+          );
 
           if (notificationContainer) {
             notificationContainer.innerHTML = renderAdminNotificationHistoryItems(campaigns);
@@ -9390,6 +9526,7 @@
       };
 
       window.initializeAdminNotificationsTab = async function() {
+        switchAdminCommunicationComposer("notification");
         initAdminNotificationsQuill();
         await loadAdminNotificationsUserPool();
         await loadAdminNotificationsHistory();

@@ -568,6 +568,12 @@ function ensureStyles() {
       gap: 12px;
       margin-bottom: 18px;
     }
+    #strzelca-notifications-all-modal .strzelca-auth-modal-card {
+      width: min(760px, 100%);
+    }
+    #strzelca-notifications-all-modal .strzelca-auth-filters {
+      grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(170px, 1fr));
+    }
     .strzelca-auth-input,
     .strzelca-auth-select {
       width: 100%;
@@ -644,6 +650,9 @@ function ensureStyles() {
         padding-right: 16px;
       }
       .strzelca-auth-filters {
+        grid-template-columns: 1fr;
+      }
+      #strzelca-notifications-all-modal .strzelca-auth-filters {
         grid-template-columns: 1fr;
       }
     }
@@ -1313,7 +1322,6 @@ function renderLoggedIn(root, { avatarUrl, displayName, notificationsEnabled }) 
         <div class="strzelca-auth-modal-header">
           <div>
             <h2 class="strzelca-auth-modal-title">Powiadomienia</h2>
-            <p class="strzelca-auth-modal-subtitle">10 najnowszych. Nowe są wyróżnione i zawsze wyświetlane na górze.</p>
           </div>
           <button id="strzelca-notifications-close" class="strzelca-auth-modal-close" type="button" aria-label="Zamknij">✕</button>
         </div>
