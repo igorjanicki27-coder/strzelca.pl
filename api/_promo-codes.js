@@ -382,9 +382,7 @@ async function evaluatePromoCodeForOrder({
       application: 'training_access',
       discountAmount: Math.max(0, Number(basePrice) || 0),
       finalPrice: 0,
-      customerMessage: `Kupon: dostęp do szkolenia ${String(
-        data.targetTrainingTitle || '',
-      ).trim()} - dokończ składanie zamówienia i odśwież stronę, aby uzyskać dostęp.`,
+      customerMessage: `Dostęp do szkolenia ${String(data.targetTrainingTitle || '').trim()} - dokończ składanie zamówienia.`,
     };
   }
 

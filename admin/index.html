@@ -7971,6 +7971,71 @@
       }
 
       // Zarządzanie użytkownikami
+      function getAdminApiUrls(path) {
+        const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+        const productionUrl = `https://strzelca.pl${normalizedPath}`;
+        if (
+          window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1"
+        ) {
+          return [normalizedPath, productionUrl];
+        }
+        return [productionUrl, normalizedPath];
+      }
+
+      function getEffectiveEmailVerified(user, authEmailVerified) {
+        if (authEmailVerified === true) return true;
+        if (authEmailVerified === false) return false;
+        if (user?.emailVerified === true) return true;
+        return false;
+      }
+
+      async function fetchAuthEmailVerifiedForUid(uid) {
+        if (!uid) return null;
+        const urls = getAdminApiUrls(
+          `/api/user-email-verified?uid=${encodeURIComponent(uid)}`,
+        );
+        for (const url of urls) {
+          try {
+            const response = await fetch(url, { credentials: "include" });
+            if (!response.ok) continue;
+            const data = await response.json();
+            if (data.success === true || typeof data.emailVerified === "boolean") {
+              return data.emailVerified === true;
+            }
+          } catch (_) {
+            /* następny URL */
+          }
+        }
+        return null;
+      }
+
+      async function enrichUsersListEmailVerifiedFromAuth(users) {
+        if (!Array.isArray(users) || users.length === 0) return users;
+        const needCheck = users.filter((u) => u?.emailVerified !== true);
+        if (needCheck.length === 0) return users;
+
+        const CONCURRENCY = 12;
+        const authById = new Map();
+        for (let i = 0; i < needCheck.length; i += CONCURRENCY) {
+          const chunk = needCheck.slice(i, i + CONCURRENCY);
+          await Promise.all(
+            chunk.map(async (u) => {
+              const v = await fetchAuthEmailVerifiedForUid(u.id);
+              authById.set(u.id, v);
+            }),
+          );
+        }
+
+        return users.map((u) => {
+          if (u?.emailVerified === true) return u;
+          const authV = authById.get(u.id);
+          const emailVerified = getEffectiveEmailVerified(u, authV);
+          if (emailVerified === u.emailVerified) return u;
+          return { ...u, emailVerified };
+        });
+      }
+
       async function loadUsers() {
         try {
           // Najpierw automatycznie odblokuj wygasłe blokady
@@ -7982,6 +8047,8 @@
             ...doc.data(),
           }));
 
+          usersList = await enrichUsersListEmailVerifiedFromAuth(usersList);
+
           updateUsersMonitoringSummary(usersList);
           renderUsersList();
           // Załaduj najnowszych użytkowników
@@ -7992,31 +8059,12 @@
         }
       }
 
-      function getEffectiveEmailVerified(user, authEmailVerified) {
-        if (authEmailVerified === true) return true;
-        if (user?.emailVerified === true) return true;
-        if ((user?.status || "").toLowerCase() === "active") return true;
-        return false;
-      }
-
       function getDefaultAdminLoginMethodInfo() {
         return {
           loginMethod: "email",
           loginMethodLabel: "e-mail",
           providers: ["password"],
         };
-      }
-
-      function getAdminApiUrls(path) {
-        const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-        const productionUrl = `https://strzelca.pl${normalizedPath}`;
-        if (
-          window.location.hostname === "localhost" ||
-          window.location.hostname === "127.0.0.1"
-        ) {
-          return [normalizedPath, productionUrl];
-        }
-        return [productionUrl, normalizedPath];
       }
 
       async function fetchUserLoginMethodInfo(uid) {
@@ -8133,23 +8181,7 @@
           // Pobierz informacje o weryfikacji emaila dla użytkowników
           const usersWithEmailVerification = await Promise.all(
             recentUsers.map(async (user) => {
-              let authEmailVerified = null;
-              try {
-                // Spróbuj pobrać informację o weryfikacji emaila z API
-                const response = await fetch(`https://strzelca.pl/api/user-email-verified?uid=${user.id}`, {
-                  credentials: "include",
-                });
-                if (response.ok) {
-                  const data = await response.json();
-                  if (data.success === true || typeof data.emailVerified === "boolean") {
-                    authEmailVerified = data.emailVerified === true;
-                  }
-                } else {
-                  console.warn(`API zwróciło błąd dla użytkownika ${user.id}: ${response.status}`);
-                }
-              } catch (error) {
-                console.warn(`Nie udało się sprawdzić weryfikacji emaila dla użytkownika ${user.id}:`, error);
-              }
+              const authEmailVerified = await fetchAuthEmailVerifiedForUid(user.id);
 
               const emailVerified = getEffectiveEmailVerified(user, authEmailVerified);
               return {
@@ -9789,20 +9821,12 @@
         let loginMethodInfo = getDefaultAdminLoginMethodInfo();
         try {
           const [emailVerifiedResult, loginMethodResult] = await Promise.allSettled([
-            fetch(`https://strzelca.pl/api/user-email-verified?uid=${currentEditingUser.id}`, {
-              credentials: "include",
-            }),
+            fetchAuthEmailVerifiedForUid(currentEditingUser.id),
             fetchUserLoginMethodInfo(currentEditingUser.id),
           ]);
 
           if (emailVerifiedResult.status === "fulfilled") {
-            const response = emailVerifiedResult.value;
-            if (response.ok) {
-              const data = await response.json();
-              if (data.success === true || typeof data.emailVerified === "boolean") {
-                authEmailVerified = data.emailVerified === true;
-              }
-            }
+            authEmailVerified = emailVerifiedResult.value;
           } else {
             console.warn(
               `Nie udało się sprawdzić weryfikacji emaila dla użytkownika ${currentEditingUser.id}:`,

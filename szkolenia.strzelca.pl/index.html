@@ -539,6 +539,9 @@
                 updateDoc,
                 setDoc,
             } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+            import { redirectIfHubTileDisabled } from "https://strzelca.pl/hub-tile-subdomain-guard.mjs?v=2026-04-08-1";
+
+            await redirectIfHubTileDisabled("szkolenia");
 
             
       async function getFirebaseApiKey() {
@@ -1607,7 +1610,11 @@ const firebaseConfig = {
             window.addEventListener("strzelca-order-created", (event) => {
                 const orderContext = event?.detail?.context;
                 const orderItemId = String(event?.detail?.orderItemId || "").trim();
+                const promoApplication = String(event?.detail?.promoApplication || "").trim();
                 if (orderContext !== "training" || !orderItemId) return;
+                if (promoApplication === "training_access") {
+                    return;
+                }
                 trainingItems = trainingItems.map((item) =>
                     item.id === orderItemId ? { ...item, hasActiveOrder: true } : item
                 );

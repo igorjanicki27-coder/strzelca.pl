@@ -3643,9 +3643,18 @@
                     "bg-zinc-700 text-white px-4 py-2 rounded-lg hover:bg-zinc-600 transition",
                   pay: "bg-sky-500 text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition",
                 };
+            let actionButtonCount = 1;
+            if (canEdit) actionButtonCount += 2;
+            if (canAcceptQuote) actionButtonCount += 2;
+            if (canPay) actionButtonCount += 1;
+            const singleAction = actionButtonCount === 1;
             const containerClass = options.compact
-              ? "grid grid-cols-1 sm:grid-cols-2 gap-2"
-              : "flex flex-wrap gap-2";
+              ? singleAction
+                ? "grid grid-cols-1 gap-2 justify-items-center"
+                : "grid grid-cols-1 sm:grid-cols-2 gap-2"
+              : singleAction
+                ? "flex flex-wrap gap-2 justify-center"
+                : "flex flex-wrap gap-2";
             return `
               <div class="${containerClass}">
                 ${
@@ -3675,7 +3684,7 @@
                       </button>`
                     : ""
                 }
-                <button type="button" onclick="openOrderReturnClaim('${order.id}')" class="${classes.neutral}">
+                <button type="button" class="${classes.neutral} js-order-return-claim-btn" data-order-id="${escapeProfileHtml(order.id)}">
                   <i class="fa-solid fa-rotate-left mr-2"></i>Zwrot / reklamacja
                 </button>
               </div>
@@ -3783,7 +3792,7 @@
                     }
                     ${
                       order.status === "weryfikowanie_platnosci"
-                        ? `<p>Płatność jest obecnie sprawdzana przez administratora.</p>`
+                        ? `<p>Trwa weryfikacja płatności — proces może potrwać do 3 dni roboczych.</p>`
                         : ""
                     }
                   </div>`
@@ -3805,6 +3814,16 @@
             `;
             modal.classList.add("show");
             document.body.style.overflow = "hidden";
+            modal.querySelectorAll(".js-order-return-claim-btn").forEach((btn) => {
+              btn.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const id = btn.getAttribute("data-order-id");
+                if (id && typeof window.openOrderReturnClaim === "function") {
+                  window.openOrderReturnClaim(id);
+                }
+              });
+            });
           };
 
           window.loadMyOrders = async function () {
@@ -3864,7 +3883,11 @@
             }
             const order = profileOrdersCache.find((item) => item.id === orderId);
             if (!order) return;
-            openReturnClaimNewModal(order);
+            if (typeof window.openReturnClaimNewModal !== "function") {
+              alert("Nie udało się otworzyć formularza. Odśwież stronę (twarde odświeżenie: Ctrl+Shift+R).");
+              return;
+            }
+            window.openReturnClaimNewModal(order);
           };
 
           window.openOrderEditModal = function (orderId) {
@@ -4022,17 +4045,15 @@
               modal.className = "modal modal--stack-top";
               modal.addEventListener("click", (event) => {
                 if (event.target !== modal) return;
-                const id = modal.dataset.returnOrderId;
-                if (id) window.closePaymentVerificationAndReturnToOrder(id);
+                window.closePaymentVerificationModal();
               });
               document.body.appendChild(modal);
             }
             return modal;
           }
 
-          function openPaymentVerificationModal(orderId, paymentUrl, popupBlocked) {
+          function openPaymentVerificationModal(paymentUrl, popupBlocked) {
             const modal = getOrCreatePaymentVerificationModal();
-            modal.dataset.returnOrderId = orderId;
             const blockedHint = popupBlocked
               ? `<p class="text-sm text-amber-200/90 mt-3">Przeglądarka mogła zablokować nowe okno. <a href="${escapeProfileHtml(paymentUrl)}" target="_blank" rel="noopener noreferrer" class="text-coyote underline font-semibold">Otwórz stronę płatności w nowej karcie</a></p>`
               : "";
@@ -4042,31 +4063,30 @@
                   <h3 class="text-xl font-bold coyote-text">Weryfikacja płatności</h3>
                 </div>
                 <div class="space-y-4">
-                  <p class="text-zinc-200 text-sm leading-relaxed">Weryfikacja płatności. Czas oczekiwania: do 3 dni.</p>
+                  <p class="text-zinc-200 text-sm leading-relaxed">Trwa weryfikacja płatności — proces może potrwać do 3 dni roboczych.</p>
                   ${blockedHint}
                   <div class="flex justify-end pt-4 border-t border-zinc-700">
-                    <button type="button" class="payment-verification-ok-btn bg-sky-500 text-black px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition">Zrozumiałem</button>
+                    <button type="button" class="payment-verification-dismiss-btn bg-zinc-700 text-white px-6 py-3 rounded-lg font-semibold hover:bg-zinc-600 transition">Anuluj</button>
                   </div>
                 </div>
               </div>
             `;
-            const okBtn = modal.querySelector(".payment-verification-ok-btn");
-            if (okBtn) {
-              okBtn.addEventListener("click", () => {
-                window.closePaymentVerificationAndReturnToOrder(orderId);
+            const dismissBtn = modal.querySelector(".payment-verification-dismiss-btn");
+            if (dismissBtn) {
+              dismissBtn.addEventListener("click", () => {
+                window.closePaymentVerificationModal();
               });
             }
             modal.classList.add("show");
             document.body.style.overflow = "hidden";
           }
 
-          window.closePaymentVerificationAndReturnToOrder = function (returnOrderId) {
+          window.closePaymentVerificationModal = function () {
             const modal = document.getElementById("payment-verification-info-modal");
             if (modal) {
               modal.classList.remove("show");
-              delete modal.dataset.returnOrderId;
             }
-            window.openOrderDetailsModal(returnOrderId);
+            document.body.style.overflow = document.querySelector(".modal.show") ? "hidden" : "";
           };
 
           window.payOrder = async function (orderId) {
@@ -4076,6 +4096,17 @@
               return;
             }
             const paymentUrl = order.paymentLinkUrl;
+            const opened = window.open(paymentUrl, "_blank", "noopener,noreferrer");
+            openPaymentVerificationModal(paymentUrl, !opened);
+
+            const prevStatus = order.status;
+            order.status = "weryfikowanie_platnosci";
+            renderOrderCards(profileOrdersCache);
+            const detailsModal = document.getElementById("order-details-modal");
+            if (detailsModal?.classList.contains("show")) {
+              openOrderDetailsModal(orderId);
+            }
+
             try {
               const headers = await getProfileApiHeaders();
               const apiUrl = getStrzelcaApiUrl("/api/orders");
@@ -4092,11 +4123,23 @@
               if (!response.ok || !data?.success) {
                 throw new Error(data?.error || "Nie udało się rozpocząć płatności.");
               }
-              await loadMyOrders();
-              const opened = window.open(paymentUrl, "_blank", "noopener,noreferrer");
-              openPaymentVerificationModal(orderId, paymentUrl, !opened);
+              const idx = profileOrdersCache.findIndex((item) => item.id === orderId);
+              if (idx >= 0 && data.data) {
+                profileOrdersCache[idx] = { ...profileOrdersCache[idx], ...data.data, id: orderId };
+              }
+              renderOrderCards(profileOrdersCache);
+              if (document.getElementById("order-details-modal")?.classList.contains("show")) {
+                openOrderDetailsModal(orderId);
+              }
             } catch (error) {
               console.error("payOrder:", error);
+              const failIdx = profileOrdersCache.findIndex((item) => item.id === orderId);
+              if (failIdx >= 0) profileOrdersCache[failIdx].status = prevStatus;
+              window.closePaymentVerificationModal();
+              renderOrderCards(profileOrdersCache);
+              if (document.getElementById("order-details-modal")?.classList.contains("show")) {
+                openOrderDetailsModal(orderId);
+              }
               alert(error.message || "Nie udało się rozpocząć płatności.");
             }
           };
@@ -4690,6 +4733,8 @@
             });
             resetReturnClaimNewAttachmentsUi();
           }
+
+          window.openReturnClaimNewModal = openReturnClaimNewModal;
 
           function loadImageFromFileProfile(file) {
             return new Promise((resolve, reject) => {

@@ -262,11 +262,11 @@ function showUnappliedPromoConfirmModal() {
         "Masz niezatwierdzone zmiany w polu kody rabatowe. Aby je zastosować należy kliknąć przycisk +. Czy mimo to chcesz kontynuować?",
       )}</p>
       <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5">
-        <button type="button" class="strzelca-promo-unapplied-no px-4 py-2 rounded-lg border border-zinc-600 text-zinc-300 text-sm hover:bg-zinc-800 transition">
-          Nie
-        </button>
-        <button type="button" class="strzelca-promo-unapplied-tak px-4 py-2 rounded-lg bg-[#C19A6B] text-black text-sm font-bold hover:bg-[#b18a5f] transition">
+        <button type="button" class="strzelca-promo-unapplied-tak px-4 py-2 rounded-lg border border-zinc-600 text-zinc-300 text-sm hover:bg-zinc-800 transition">
           Tak
+        </button>
+        <button type="button" class="strzelca-promo-unapplied-no px-4 py-2 rounded-lg bg-[#C19A6B] text-black text-sm font-bold hover:bg-[#b18a5f] transition">
+          Nie
         </button>
       </div>
     </div>
@@ -1558,24 +1558,41 @@ function attachOrderInquiryGlobals() {
       closeUnderlyingDetailsModal();
       document.getElementById("strzelca-promo-notice-modal")?.classList.add("hidden");
       document.getElementById("strzelca-promo-notice-modal")?.classList.remove("flex");
+      const trainingAccessTitle =
+        String(p.appliedPromo?.trainingTitle || "").trim() ||
+        String(p.appliedPromo?.codeData?.targetTrainingTitle || "").trim() ||
+        rawTitleFromDisplayName(p.displayName, p.context);
       const successMessage =
-        p.appliedPromo?.application === "training_access" && p.appliedPromo?.customerMessage
-          ? p.appliedPromo.customerMessage
+        p.appliedPromo?.application === "training_access"
+          ? `Uzyskano dostęp do szkolenia: ${trainingAccessTitle}`.trim()
           : p.successMessage;
       logOrderActivity(p.db, user, p.displayName, p.context).catch((logError) => {
         console.error("Błąd podczas logowania aktywności zamówienia:", logError);
       });
+      const orderCreatedDetail = {
+        context: p.context,
+        orderItemId: p.itemId || "",
+        userId: user.uid,
+        promoApplication: p.appliedPromo?.application || "",
+      };
+
       pendingForm = null;
-      window.dispatchEvent(
-        new CustomEvent("strzelca-order-created", {
-          detail: {
-            context: p.context,
-            orderItemId: p.itemId || "",
-            userId: user.uid,
-          },
-        }),
-      );
+      window.dispatchEvent(new CustomEvent("strzelca-order-created", { detail: orderCreatedDetail }));
       alert(successMessage);
+      if (orderCreatedDetail.context === "training" && orderCreatedDetail.promoApplication === "training_access") {
+        void (async () => {
+          try {
+            await window.fetchAllTrainings?.();
+          } catch (e) {
+            console.error("fetchAllTrainings po kodzie dostępu:", e);
+          }
+          const detailsModal = document.getElementById("details-modal");
+          if (detailsModal && !detailsModal.classList.contains("hidden")) {
+            const oid = String(orderCreatedDetail.orderItemId || "").trim();
+            if (oid) void window.showTrainingDetails?.(oid);
+          }
+        })();
+      }
     } catch (error) {
       console.error("Error submitting order:", error);
       if (pendingForm) {

@@ -995,9 +995,9 @@ module.exports = async (req, res) => {
           }
           if (promoEvaluation?.application === 'training_access') {
             promoNotes.push(
-              `Kupon: dostęp do szkolenia ${String(
+              `Dostęp do szkolenia ${String(
                 promoEvaluation.codeData?.targetTrainingTitle || normalizedOrderItemTitle || '',
-              ).trim()}.`,
+              ).trim()} - dokończ składanie zamówienia.`,
             );
           }
 
