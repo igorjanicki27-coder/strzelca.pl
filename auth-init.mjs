@@ -5,9 +5,16 @@
  * - cache i optymalizacja requestów
  * 
  * Użycie:
- *   import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-03-21-1";
+ *   import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-04-11-1";
  *   const { auth, db } = await initAuth(firebaseConfig);
+ *
+ * OAuth (Google): getRedirectResult musi być przed ensureFirebaseSSO — inaczej cookie SSO
+ * może być puste przy już zalogowanym użytkowniku i sso-client wyloguje sesję.
  */
+
+const SSO_CLIENT_MOD = "https://strzelca.pl/sso-client.mjs?v=2026-03-29-4";
+const GOOGLE_PROVISION_MOD =
+  "https://strzelca.pl/google-account-provision.mjs?v=2026-04-11-1";
 
 export async function initAuth(firebaseConfig, options = {}) {
   const {
@@ -19,6 +26,7 @@ export async function initAuth(firebaseConfig, options = {}) {
     getAuth,
     setPersistence,
     browserLocalPersistence,
+    getRedirectResult,
   } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
 
   const {
@@ -44,6 +52,39 @@ export async function initAuth(firebaseConfig, options = {}) {
     await setPersistence(auth, persistence);
   } catch (error) {
     console.warn("Error setting auth persistence:", error);
+  }
+
+  /* Powrót z OAuth — przed authStateReady i przed ensureFirebaseSSO (jak auth-widget / logowanie). */
+  try {
+    if (typeof getRedirectResult === "function") {
+      const redirectResult = await getRedirectResult(auth);
+      if (redirectResult?.user) {
+        const { syncSessionCookieFromFirebaseUser } = await import(SSO_CLIENT_MOD);
+        let sync = await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 });
+        if (sync?.status !== "ok") {
+          await new Promise((r) => setTimeout(r, 200));
+          sync = await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 });
+        }
+        try {
+          const { ensureGoogleUserProfileIfNeeded } = await import(GOOGLE_PROVISION_MOD);
+          await ensureGoogleUserProfileIfNeeded(app, redirectResult.user);
+        } catch (provErr) {
+          console.warn("Google profile provision (initAuth):", provErr?.message || provErr);
+        }
+      }
+    }
+  } catch (e) {
+    const code = String(e?.code || "");
+    if (code === "auth/account-exists-with-different-credential") {
+      try {
+        sessionStorage.setItem(
+          "strzelca_oauth_redirect_error",
+          JSON.stringify({ code, t: Date.now() }),
+        );
+      } catch {}
+    } else if (code) {
+      console.warn("getRedirectResult (initAuth):", code, e?.message || e);
+    }
   }
 
   // OPTYMALIZACJA: Zawsze czekaj na authStateReady przed dalszymi operacjami
@@ -88,7 +129,7 @@ export async function initAuth(firebaseConfig, options = {}) {
   let ssoResult = null;
   if (options.skipSSO !== true) {
     try {
-      const { ensureFirebaseSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-03-29-4");
+      const { ensureFirebaseSSO } = await import(SSO_CLIENT_MOD);
       ssoResult = await ensureFirebaseSSO(auth);
       if (options.logSSO !== false) {
         console.log("SSO ensure result:", ssoResult);
