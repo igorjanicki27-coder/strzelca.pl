@@ -8,6 +8,7 @@
  * - This key is used by Firebase Web SDK in the browser (it is not a secret),
  *   but removing it from public source repos prevents automated leak scanners
  *   and allows quick rotation without touching many files.
+ * - Odpowiedź zawiera też authDomain (host strony strzelca.pl) pod redirect OAuth.
  * - Security: Endpoint checks both Origin (CORS) and Referer to ensure requests
  *   come from our domains. Direct browser access is blocked.
  */
@@ -95,13 +96,30 @@ module.exports = (req, res) => {
       return;
     }
 
+    /** Firebase redirect: authDomain = host strony (nie *.firebaseapp.com). Zob. firebase-config + vercel __/auth proxy. */
+    let authDomain = "strzelca-pl.firebaseapp.com";
+    if (originAllowed && origin) {
+      try {
+        const h = new URL(origin).hostname.toLowerCase().replace(/^www\./, "");
+        if (h === "strzelca.pl" || h.endsWith(".strzelca.pl")) authDomain = h;
+      } catch (_) {}
+    } else if (refererAllowed && referer) {
+      try {
+        const h = new URL(referer).hostname.toLowerCase().replace(/^www\./, "");
+        if (h === "strzelca.pl" || h.endsWith(".strzelca.pl")) authDomain = h;
+      } catch (_) {}
+    } else if (hostAllowed && host) {
+      const h = String(host).split(":")[0].toLowerCase().replace(/^www\./, "");
+      if (h === "strzelca.pl" || h.endsWith(".strzelca.pl")) authDomain = h;
+    }
+
     // Avoid caching a credential-bearing response (even if it's "public", treat it carefully).
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.statusCode = 200;
-    res.end(JSON.stringify({ apiKey }));
+    res.end(JSON.stringify({ apiKey, authDomain }));
   } catch (e) {
     res.statusCode = 500;
     res.setHeader("Content-Type", "application/json; charset=utf-8");

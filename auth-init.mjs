@@ -5,7 +5,7 @@
  * - cache i optymalizacja requestów
  * 
  * Użycie:
- *   import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-04-11-1";
+ *   import { initAuth } from "https://strzelca.pl/auth-init.mjs?v=2026-04-12-2";
  *   const { auth, db } = await initAuth(firebaseConfig);
  *
  * OAuth (Google): getRedirectResult musi być przed ensureFirebaseSSO — inaczej cookie SSO
@@ -46,18 +46,16 @@ export async function initAuth(firebaseConfig, options = {}) {
   // Inicjalizuj Auth
   const auth = getAuth(app);
 
-  // Ustaw persistence (domyślnie local, można zmienić w options)
-  const persistence = options.persistence || browserLocalPersistence;
-  try {
-    await setPersistence(auth, persistence);
-  } catch (error) {
-    console.warn("Error setting auth persistence:", error);
-  }
-
-  /* Powrót z OAuth — przed authStateReady i przed ensureFirebaseSSO (jak auth-widget / logowanie). */
+  /* Powrót z OAuth — przed setPersistence (Firebase: uniknąć utraty stanu redirect w nowych Chrome/Safari). */
   try {
     if (typeof getRedirectResult === "function") {
       const redirectResult = await getRedirectResult(auth);
+      if (options.logAuthReady !== false) {
+        console.log(
+          "[initAuth] getRedirectResult:",
+          redirectResult?.user?.uid || "(brak — nie było redirectu lub stan utracony)",
+        );
+      }
       if (redirectResult?.user) {
         const { syncSessionCookieFromFirebaseUser } = await import(SSO_CLIENT_MOD);
         let sync = await syncSessionCookieFromFirebaseUser(auth, { minIntervalMinutes: 0 });
@@ -82,9 +80,16 @@ export async function initAuth(firebaseConfig, options = {}) {
           JSON.stringify({ code, t: Date.now() }),
         );
       } catch {}
-    } else if (code) {
-      console.warn("getRedirectResult (initAuth):", code, e?.message || e);
     }
+    console.warn("getRedirectResult (initAuth):", code || "(no code)", e?.message || e);
+  }
+
+  // Ustaw persistence (domyślnie local, można zmienić w options)
+  const persistence = options.persistence || browserLocalPersistence;
+  try {
+    await setPersistence(auth, persistence);
+  } catch (error) {
+    console.warn("Error setting auth persistence:", error);
   }
 
   // OPTYMALIZACJA: Zawsze czekaj na authStateReady przed dalszymi operacjami

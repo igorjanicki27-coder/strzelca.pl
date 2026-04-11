@@ -27,7 +27,7 @@ export async function redirectIfHubTileDisabled(tileId) {
     );
 
     const base = {
-      authDomain: "strzelca-pl.firebaseapp.com",
+      authDomain: (() => { try { const h = window.location.hostname.toLowerCase().replace(/^www\./, ""); return h === "strzelca.pl" || h.endsWith(".strzelca.pl") ? h : "strzelca-pl.firebaseapp.com"; } catch (_) { return "strzelca-pl.firebaseapp.com"; } })(),
       projectId: "strzelca-pl",
       storageBucket: "strzelca-pl.appspot.com",
       messagingSenderId: "511362047688",
