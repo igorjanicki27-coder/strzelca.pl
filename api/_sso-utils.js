@@ -106,6 +106,27 @@ function base64urlDecodeToBuffer(str) {
   return Buffer.from(s + pad, "base64");
 }
 
+/**
+ * Klucz publiczny do weryfikacji cookie — czasem nie udaje się wygenerować przy initAdmin
+ * (format klucza, kolejność init), a podpisywanie dalej działa. Wtedy weryfikacja musi
+ * ponowić createPublicKey(private_key), inaczej /sso-session-exchange zwraca authenticated:false
+ * mimo ważnego cookie i ensureFirebaseSSO wylogowuje użytkownika (np. po Google OAuth).
+ */
+function ensurePublicKeyPemForVerify() {
+  if (__saPublicKeyPem) return __saPublicKeyPem;
+  if (!__saForSigning?.private_key) return null;
+  try {
+    __saPublicKeyPem = crypto.createPublicKey(__saForSigning.private_key).export({
+      type: "spki",
+      format: "pem",
+    });
+    return __saPublicKeyPem;
+  } catch (e) {
+    console.warn("[SSO Utils] ensurePublicKeyPemForVerify failed:", e?.message || e);
+    return null;
+  }
+}
+
 function signLocalSessionJwt(payload) {
   if (!__saForSigning?.private_key) {
     throw new Error("Missing service account private_key for signing");
@@ -123,9 +144,8 @@ function signLocalSessionJwt(payload) {
 }
 
 function verifyLocalSessionJwt(token) {
-  if (!__saPublicKeyPem) {
-    // Zwróć null zamiast rzucać błąd - system fallbackuje do Firebase Auth token verification
-    // To jest normalne gdy SSO nie jest skonfigurowane, więc nie traktujemy tego jako błąd
+  const pem = ensurePublicKeyPemForVerify();
+  if (!pem) {
     return null;
   }
   const parts = token.split(".");
@@ -137,7 +157,7 @@ function verifyLocalSessionJwt(token) {
   const verifier = crypto.createVerify("RSA-SHA256");
   verifier.update(data);
   verifier.end();
-  const ok = verifier.verify(__saPublicKeyPem, sig);
+  const ok = verifier.verify(pem, sig);
   if (!ok) throw new Error("Invalid signature");
 
   const payloadJson = base64urlDecodeToBuffer(p).toString("utf8");

@@ -108,22 +108,10 @@ function ensureStyles() {
       box-shadow: 0 12px 30px rgba(0,0,0,0.42);
       padding: 0;
       cursor: pointer;
-      transform: scale(1);
-      transform-origin: center;
-      transition: transform 0.2s ease, filter 0.2s ease;
-      will-change: transform;
-    }
-    .strzelca-auth-login-split:hover:not(:disabled) {
-      transform: scale(1.06);
-      filter: brightness(1.04);
     }
     .strzelca-auth-login-split:disabled {
       cursor: not-allowed;
       opacity: 0.88;
-    }
-    .strzelca-auth-login-split:disabled:hover {
-      transform: none;
-      filter: none;
     }
     .strzelca-auth-login-plain {
       border: none;
@@ -157,18 +145,20 @@ function ensureStyles() {
       align-items: center;
       justify-content: center;
       cursor: pointer;
+      transform: scale(1);
+      transition: transform 0.2s ease, filter 0.2s ease;
     }
     .strzelca-auth-login-main {
       z-index: 1;
-      /* Szerszy lewy klin — więcej miejsca na ZALOGUJ SIĘ */
-      clip-path: polygon(0 0, 63% 0, 54% 100%, 0 100%);
+      /* Szerszy lewy klin; lekkie nachodzenie na prawy klin zapobiega szczelinie przy scale */
+      clip-path: polygon(0 0, 63.8% 0, 55% 100%, 0 100%);
       background: rgba(193, 154, 107, 0.98);
       color: #0b0b0b;
       font-size: 11px;
       font-weight: 800;
       letter-spacing: 0.06em;
       text-transform: uppercase;
-      transform-origin: center;
+      transform-origin: 35% 50%;
       justify-content: center;
       align-items: center;
       padding-left: 10px;
@@ -176,14 +166,23 @@ function ensureStyles() {
     }
     .strzelca-auth-login-google {
       z-index: 2;
-      clip-path: polygon(63% 0, 100% 0, 100% 100%, 54% 100%);
+      clip-path: polygon(62.2% 0, 100% 0, 100% 100%, 53% 100%);
       background: #dc2626;
       color: #fff;
+      transform-origin: 78% 50%;
       /* Ikona G — wyśrodkowana w prawym klinie */
       justify-content: center;
       align-items: center;
       padding-left: 56%;
       padding-right: 10px;
+    }
+    .strzelca-auth-login-split:not(:disabled) .strzelca-auth-login-main:hover {
+      transform: scale(1.06);
+      filter: brightness(1.04);
+    }
+    .strzelca-auth-login-split:not(:disabled) .strzelca-auth-login-google:hover {
+      transform: scale(1.06);
+      filter: brightness(1.04);
     }
     .strzelca-auth-google-g {
       display: block;
