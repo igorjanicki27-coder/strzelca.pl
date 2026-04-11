@@ -434,7 +434,11 @@ async function main() {
   }
 
   function updateLauncherOffset() {
-    launcher.style.bottom = "88px";
+    if (currentUser) {
+      launcher.style.bottom = "88px";
+    } else {
+      launcher.style.removeProperty("bottom");
+    }
   }
 
   function visibleTypes() {

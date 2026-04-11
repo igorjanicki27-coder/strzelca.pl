@@ -536,13 +536,6 @@
             console.log("Kontynuacja bez ustawiania persistence");
           }
 
-          // SSO: jeśli użytkownik jest zalogowany w innej subdomenie, dologuj go tutaj z cookie
-          try {
-            await ensureFirebaseSSO(auth);
-          } catch (e) {
-            console.warn("SSO ensure failed (ignored):", e?.message || e);
-          }
-
           // Flagi, żeby nie przerywać logowania/przekierowania zanim ustawimy cookie SSO
           let isLoginFlowInProgress = false;
           let isNavigatingAway = false;
@@ -930,6 +923,87 @@
             }
           }
 
+          function showStatus(message, isError = false) {
+            const statusEl = document.getElementById("status-message");
+            statusEl.textContent = message;
+            statusEl.className = `mt-6 p-4 rounded-lg text-center text-sm ${
+              isError
+                ? "bg-red-900/50 text-red-300 border border-red-700"
+                : "bg-green-900/50 text-green-300 border border-green-700"
+            }`;
+            statusEl.style.display = "block";
+
+            setTimeout(() => {
+              statusEl.style.display = "none";
+            }, 5000);
+          }
+
+          // Powrót z Google OAuth: getRedirectResult przed ensureFirebaseSSO (spójnie z auth-widget.mjs).
+          // W przeciwnym razie SSO widzi brak cookie przy już ustawionym currentUser i może wylogować.
+          try {
+            if (isGoogleRedirectPending()) {
+              showStatus("Kończę logowanie kontem Google...");
+            } else if (getPendingGoogleLink()?.credential) {
+              showStatus(
+                "Zaloguj się hasłem do istniejącego konta, a dokończę podpięcie Google.",
+                true
+              );
+            }
+          } catch {}
+
+          try {
+            const redirectResult = await getRedirectResult(auth);
+            if (redirectResult?.user) {
+              setGoogleRedirectPending(false);
+              if (isGoogleProviderUser(redirectResult.user)) {
+                clearPendingGoogleLink();
+              }
+            }
+          } catch (redirectError) {
+            console.error("Google redirect result error:", redirectError);
+            setGoogleRedirectPending(false);
+
+            let redirectMessage = "Nie udało się dokończyć logowania Google.";
+            if (
+              redirectError?.code === "auth/account-exists-with-different-credential"
+            ) {
+              const pendingCredential =
+                GoogleAuthProvider.credentialFromError(redirectError);
+              let methods = [];
+              const conflictEmail = normalizeEmail(
+                redirectError?.customData?.email || ""
+              );
+              try {
+                methods = await fetchSignInMethodsForEmail(
+                  auth,
+                  conflictEmail
+                );
+              } catch {}
+              if (methods.includes("password") && pendingCredential?.toJSON) {
+                setPendingGoogleLink({
+                  email: conflictEmail,
+                  credential: pendingCredential.toJSON(),
+                });
+              } else {
+                clearPendingGoogleLink();
+              }
+              redirectMessage = methods.includes("password")
+                ? "To konto email już istnieje. Zaloguj się hasłem do istniejącego konta, a dokończę podpięcie Google."
+                : "To konto email jest już powiązane z inną metodą logowania. Zaloguj się poprzednią metodą.";
+            } else if (redirectError?.code) {
+              clearPendingGoogleLink();
+              redirectMessage = `Logowanie Google nie powiodło się (${redirectError.code}).`;
+            }
+
+            showStatus(redirectMessage, true);
+          }
+
+          try {
+            await ensureFirebaseSSO(auth);
+          } catch (e) {
+            console.warn("SSO ensure failed (ignored):", e?.message || e);
+          }
+
           // Sprawdź aktualnego użytkownika przed ustawieniem listenera
           const checkCurrentUser = async () => {
             const currentUser = auth.currentUser;
@@ -1150,79 +1224,6 @@
               isSigningOut = false;
             }
           });
-
-          function showStatus(message, isError = false) {
-            const statusEl = document.getElementById("status-message");
-            statusEl.textContent = message;
-            statusEl.className = `mt-6 p-4 rounded-lg text-center text-sm ${
-              isError
-                ? "bg-red-900/50 text-red-300 border border-red-700"
-                : "bg-green-900/50 text-green-300 border border-green-700"
-            }`;
-            statusEl.style.display = "block";
-
-            setTimeout(() => {
-              statusEl.style.display = "none";
-            }, 5000);
-          }
-
-          try {
-            if (isGoogleRedirectPending()) {
-              showStatus("Kończę logowanie kontem Google...");
-            } else if (getPendingGoogleLink()?.credential) {
-              showStatus(
-                "Zaloguj się hasłem do istniejącego konta, a dokończę podpięcie Google.",
-                true
-              );
-            }
-          } catch {}
-
-          try {
-            const redirectResult = await getRedirectResult(auth);
-            if (redirectResult?.user) {
-              setGoogleRedirectPending(false);
-              if (isGoogleProviderUser(redirectResult.user)) {
-                clearPendingGoogleLink();
-              }
-            }
-          } catch (redirectError) {
-            console.error("Google redirect result error:", redirectError);
-            setGoogleRedirectPending(false);
-
-            let redirectMessage = "Nie udało się dokończyć logowania Google.";
-            if (
-              redirectError?.code === "auth/account-exists-with-different-credential"
-            ) {
-              const pendingCredential =
-                GoogleAuthProvider.credentialFromError(redirectError);
-              let methods = [];
-              const conflictEmail = normalizeEmail(
-                redirectError?.customData?.email || ""
-              );
-              try {
-                methods = await fetchSignInMethodsForEmail(
-                  auth,
-                  conflictEmail
-                );
-              } catch {}
-              if (methods.includes("password") && pendingCredential?.toJSON) {
-                setPendingGoogleLink({
-                  email: conflictEmail,
-                  credential: pendingCredential.toJSON(),
-                });
-              } else {
-                clearPendingGoogleLink();
-              }
-              redirectMessage = methods.includes("password")
-                ? "To konto email już istnieje. Zaloguj się hasłem do istniejącego konta, a dokończę podpięcie Google."
-                : "To konto email jest już powiązane z inną metodą logowania. Zaloguj się poprzednią metodą.";
-            } else if (redirectError?.code) {
-              clearPendingGoogleLink();
-              redirectMessage = `Logowanie Google nie powiodło się (${redirectError.code}).`;
-            }
-
-            showStatus(redirectMessage, true);
-          }
 
           function showBlockedAccountModal(message) {
             // Zablokuj scrollowanie i nawigację
