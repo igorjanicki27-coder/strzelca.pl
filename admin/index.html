@@ -5367,7 +5367,7 @@
 
         firebaseConfig = {
           apiKey: apiKey,
-          authDomain: (() => { try { const h = window.location.hostname.toLowerCase().replace(/^www\./, ""); return h === "strzelca.pl" || h.endsWith(".strzelca.pl") ? h : "strzelca-pl.firebaseapp.com"; } catch (_) { return "strzelca-pl.firebaseapp.com"; } })(),
+          authDomain: (() => { try { const h = window.location.hostname.toLowerCase().replace(/^www\./, ""); return h === "strzelca.pl" || h.endsWith(".strzelca.pl") ? "strzelca.pl" : "strzelca-pl.firebaseapp.com"; } catch (_) { return "strzelca-pl.firebaseapp.com"; } })(),
           projectId: "strzelca-pl",
           storageBucket: "strzelca-pl.appspot.com",
           messagingSenderId: "511362047688",
@@ -6982,27 +6982,10 @@
             }
           }
 
-          // SSO: wyczyść cookie wspólnej sesji (ważne dla synchronizacji między subdomenami)
+          // Wyloguj z Firebase Auth i wyczyść stan SSO między subdomenami
           try {
-            await fetch("https://strzelca.pl/api/sso-session-logout", {
-              method: "POST",
-              credentials: "include",
-            });
-          } catch (e) {
-            console.warn("SSO logout failed (ignored):", e?.message || e);
-          }
-
-          // Wyczyść cache SSO
-          try {
-            const { clearSSOCache } = await import("https://strzelca.pl/sso-client.mjs?v=2026-03-29-4");
-            clearSSOCache();
-          } catch (e) {
-            // ignore
-          }
-
-          // Wyloguj z Firebase Auth (ignoruj błędy Firestore CORS)
-          try {
-            await signOut(auth);
+            const { logoutWithSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-04-12-3");
+            await logoutWithSSO(auth);
           } catch (error) {
             // Ignoruj błędy CORS z Firestore przy wylogowaniu
             if (error?.message && (
@@ -11841,7 +11824,7 @@
                     id="product-pos-preview-img-${index}"
                     src="${img.url}"
                     alt=""
-                    class="w-full h-full object-contain"
+                    class="w-full h-full object-cover"
                     style="background:rgba(8,8,8,0.55);object-position:${(typeof img.posX === 'number' ? img.posX : 50)}% ${(typeof img.posY === 'number' ? img.posY : 50)}%; transform:scale(${(typeof img.zoom === 'number' ? img.zoom : 1)}); transform-origin:${(typeof img.posX === 'number' ? img.posX : 50)}% ${(typeof img.posY === 'number' ? img.posY : 50)}%;"
                     onerror="this.style.opacity='0.6'"
                   />
@@ -14907,6 +14890,7 @@
           (location.hostname === "localhost" || location.hostname === "127.0.0.1")
             ? "/api/bazar"
             : "https://strzelca.pl/api/bazar";
+        window.BAZAR_API = BAZAR_API;
         let bazarAdminList = [];
         let bazarFilterDebounceTimer = null;
 
@@ -24337,13 +24321,81 @@
       const ORDER_MODAL_ROOT_CLASS =
         "fixed inset-0 hidden flex items-start justify-center overflow-y-auto px-4 pb-6 bg-black/95 backdrop-blur-xl";
 
-      function syncAdminModalTopInsetForQuickNav(modalEl) {
-        if (!modalEl) return;
+      const ADMIN_MODAL_BASE_Z_INDEX = 200;
+
+      function getAdminQuickNavTopInset() {
         const quickNavEl = document.getElementById("mobile-quicknav");
         const navH = quickNavEl ? Math.round(quickNavEl.getBoundingClientRect().height) : 0;
-        const pad = Math.max(16, navH + 12);
+        return Math.max(16, navH + 12);
+      }
+
+      function syncAdminModalTopInsetForQuickNav(modalEl) {
+        if (!modalEl) return;
+        const pad = getAdminQuickNavTopInset();
         modalEl.style.paddingTop = `max(${pad}px, env(safe-area-inset-top, 0px))`;
       }
+
+      function isAdminFullscreenModalCandidate(el) {
+        if (!(el instanceof HTMLElement)) return false;
+        if (el.id === "mobile-quicknav" || el.id === "mobile-sidebar") return false;
+        const id = (el.id || "").toLowerCase();
+        const className = typeof el.className === "string" ? el.className.toLowerCase() : "";
+        const role = (el.getAttribute("role") || "").toLowerCase();
+        const hasModalHint =
+          id.includes("modal") ||
+          className.includes("modal") ||
+          role === "dialog" ||
+          el.getAttribute("aria-modal") === "true";
+        if (!hasModalHint) return false;
+        const style = window.getComputedStyle(el);
+        if (style.position !== "fixed") return false;
+        return (
+          style.top === "0px" &&
+          style.right === "0px" &&
+          style.bottom === "0px" &&
+          style.left === "0px"
+        );
+      }
+
+      function syncAdminModalLayer(modalEl) {
+        if (!isAdminFullscreenModalCandidate(modalEl)) return;
+        modalEl.style.zIndex = String(ADMIN_MODAL_BASE_Z_INDEX);
+        syncAdminModalTopInsetForQuickNav(modalEl);
+      }
+
+      function syncVisibleAdminModalLayers(root = document) {
+        if (!root || typeof root.querySelectorAll !== "function") return;
+        root.querySelectorAll("[id], [role='dialog'], [aria-modal='true']").forEach((el) => {
+          if (isAdminFullscreenModalCandidate(el)) syncAdminModalLayer(el);
+        });
+        if (root instanceof HTMLElement && isAdminFullscreenModalCandidate(root)) {
+          syncAdminModalLayer(root);
+        }
+      }
+
+      const adminModalLayerObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === "childList") {
+            mutation.addedNodes.forEach((node) => {
+              if (node instanceof HTMLElement) syncVisibleAdminModalLayers(node);
+            });
+            return;
+          }
+          if (mutation.target instanceof HTMLElement) {
+            syncAdminModalLayer(mutation.target);
+          }
+        });
+      });
+
+      adminModalLayerObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["class", "style", "role", "aria-modal"],
+      });
+
+      window.addEventListener("resize", () => syncVisibleAdminModalLayers());
+      syncVisibleAdminModalLayers();
 
       function showOrderModal() {
         // Utworzę modal dynamicznie - będzie to duży formularz
@@ -27680,6 +27732,7 @@
     </script>
     <div id="invoice-modal" class="invoice-modal-backdrop"></div>
     <script src="/admin/invoices-admin.js?v=2026-04-08-3"></script>
+    <script src="/admin/bazar-commerce-admin.js?v=2026-04-12-1"></script>
     <!-- Bez auth-widget / messages-widget: na /admin/ inicjalizują Firestore przed initAuth
          i psują Safari (WebChannel „access control checks”). Panel ma własny UI i zakładkę wiadomości. -->
   </body>

@@ -7,7 +7,7 @@ import { resolveStrzelcaAuthDomain } from "https://strzelca.pl/strzelca-firebase
 const API_URL = "https://strzelca.pl/api/me";
 const PROFILE_URL = "https://konto.strzelca.pl/profil.html";
 const LOGOUT_URL = "https://strzelca.pl/api/sso-session-logout";
-const SSO_CLIENT_MOD = "https://strzelca.pl/sso-client.mjs?v=2026-03-29-4";
+const SSO_CLIENT_MOD = "https://strzelca.pl/sso-client.mjs?v=2026-04-12-3";
 const GOOGLE_PROVISION_MOD =
   "https://strzelca.pl/google-account-provision.mjs?v=2026-04-11-1";
 /** Po pierwszym nieudanym logowaniu hasłem pokaż „Zapomniałem hasła” (sesja karty). */
@@ -1841,17 +1841,8 @@ function bindAvatarMenu(root) {
 
 async function logoutCurrentUser() {
   try {
-    await fetch(LOGOUT_URL, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch {}
-
-  try {
-    if (notificationState.runtime?.authMod?.signOut && notificationState.runtime?.auth) {
-      await notificationState.runtime.authMod.signOut(notificationState.runtime.auth);
-    }
+    const { logoutWithSSO } = await import(SSO_CLIENT_MOD);
+    await logoutWithSSO(notificationState.runtime?.auth || null);
   } catch {}
 
   window.location.reload();

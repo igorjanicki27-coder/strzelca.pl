@@ -185,18 +185,8 @@ function showBlockedAccountModal(message, auth) {
   if (logoutButton) {
     logoutButton.addEventListener("click", async () => {
       try {
-        // Importuj moduły Firebase
-        const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-        await signOut(auth);
-        // Wyczyść cookie SSO
-        try {
-          await fetch("https://strzelca.pl/api/sso-session-logout", {
-            method: "POST",
-            credentials: "include",
-          });
-        } catch (e) {
-          console.warn("SSO logout failed (ignored):", e?.message || e);
-        }
+        const { logoutWithSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-04-12-3");
+        await logoutWithSSO(auth);
         // Zresetuj flagę przed przekierowaniem
         isBlockedModalShown = false;
         // Przekieruj do strony głównej

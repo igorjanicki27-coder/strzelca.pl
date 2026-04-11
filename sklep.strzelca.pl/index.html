@@ -106,7 +106,7 @@
         .coyote-text { color: var(--coyote); font-family: 'Orbitron', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
         .card-dark { background: #111; border: 1px solid #1f1f1f; border-radius: 12px; overflow: hidden; }
         
-        .product-img-container img { width: 100%; height: 100%; object-fit: contain; background: #080808; }
+        .product-img-container img { width: 100%; height: 100%; object-fit: cover; background: #080808; }
 
         .product-gallery { position: relative; width: 100%; height: 400px; background: #080808; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
         .product-gallery img { width: 100%; height: 100%; object-fit: contain; }
@@ -177,6 +177,7 @@
         .product-card {
             flex: 0 0 calc((100% - 40px) / 3);
             min-width: 0;
+            min-height: clamp(320px, 42vh, 390px);
         }
         .product-card.card-dark {
             background: rgba(17, 17, 17, 0.72);
@@ -189,7 +190,7 @@
             justify-content: center;
             text-align: center;
             cursor: default;
-            min-height: clamp(140px, 24vh, 220px);
+            min-height: clamp(112px, 19.2vh, 176px);
         }
         .product-card .product-img-container img {
             background: rgba(8, 8, 8, 0.55);
@@ -216,7 +217,8 @@
             cursor: not-allowed;
         }
         .product-card .product-img-container {
-            height: clamp(140px, 24vh, 220px);
+            height: clamp(112px, 19.2vh, 176px);
+            overflow: hidden;
         }
 
         @media (max-width: 1024px) {
@@ -379,7 +381,7 @@
         throw new Error("Nie udało się pobrać FIREBASE_WEB_API_KEY z /api/firebase-config");
       }
         const baseFirebaseConfig = {
-            authDomain: (() => { try { const h = window.location.hostname.toLowerCase().replace(/^www\./, ""); return h === "strzelca.pl" || h.endsWith(".strzelca.pl") ? h : "strzelca-pl.firebaseapp.com"; } catch (_) { return "strzelca-pl.firebaseapp.com"; } })(),
+            authDomain: (() => { try { const h = window.location.hostname.toLowerCase().replace(/^www\./, ""); return h === "strzelca.pl" || h.endsWith(".strzelca.pl") ? "strzelca.pl" : "strzelca-pl.firebaseapp.com"; } catch (_) { return "strzelca-pl.firebaseapp.com"; } })(),
             projectId: "strzelca-pl",
             storageBucket: "strzelca-pl.appspot.com",
             messagingSenderId: "511362047688",
@@ -591,18 +593,8 @@
         // Funkcja wylogowania
         window.logout = async () => {
             try {
-                // SSO: wyczyść cookie wspólnej sesji
-                try {
-                    await fetch("https://strzelca.pl/api/sso-session-logout", {
-                        method: "POST",
-                        credentials: "include",
-                    });
-                } catch (e) {
-                    console.warn("SSO logout failed (ignored):", e?.message || e);
-                }
-
-                const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-                await signOut(auth);
+                const { logoutWithSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-04-12-3");
+                await logoutWithSSO(auth);
                 // Zamknij menu po wylogowaniu
                 const userMenu = document.getElementById("user-menu");
                 if (userMenu) {
@@ -807,10 +799,10 @@
             return `
                 <article class="card-dark product-card flex flex-col h-full shadow-2xl transition hover:border-[#C19A6B]/50 cursor-pointer" role="button" tabindex="0" aria-label="Pokaż szczegóły produktu ${item.title}" onclick="window.showDetails('${item.id}')" onkeydown="if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); window.showDetails('${item.id}'); }">
                     <div class="product-img-container"><img src="${mainImage}" alt="${item.title}" loading="lazy" ${imgStyleAttr}></div>
-                    <div class="p-4 md:p-6 flex flex-col flex-grow text-center">
-                        <h3 class="text-xl md:text-2xl font-black uppercase mb-2 font-[Orbitron] text-white tracking-tight">${item.title}</h3>
+                    <div class="p-3 md:p-5 flex flex-col flex-grow text-center">
+                        <h3 class="text-xl md:text-2xl font-black uppercase mb-2 font-[Orbitron] text-white tracking-tight min-h-[2.8rem] md:min-h-[3.2rem] flex items-center justify-center">${item.title}</h3>
                         ${item.oldPrice ? `<p class="text-zinc-500 line-through text-sm mb-1">${item.oldPrice} PLN</p>` : ''}
-                        <p class="coyote-text font-bold text-lg md:text-xl mb-4 md:mb-5 min-w-0 w-full leading-tight whitespace-nowrap overflow-hidden text-ellipsis" aria-label="${priceAriaLabel}">${priceLabel}</p>
+                        <p class="coyote-text font-bold text-lg md:text-xl mb-3 md:mb-4 min-h-[1.6rem] min-w-0 w-full leading-tight whitespace-nowrap overflow-hidden text-ellipsis flex items-center justify-center" aria-label="${priceAriaLabel}">${priceLabel}</p>
                         <div class="mt-auto flex flex-col gap-2 md:gap-3">
                             ${item.hasActiveOrder
                                 ? `<button type="button" disabled aria-label="Produkt ${item.title} został już zamówiony" class="w-full py-3 md:py-4 bg-emerald-600 text-white text-[11px] md:text-xs uppercase font-black rounded tracking-[0.12em] flex items-center justify-center cursor-not-allowed opacity-95">Zamówiono</button>`
@@ -1317,7 +1309,7 @@
     </script>
     <script
       type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-04-12-2"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-04-12-3"
     ></script>
     <script
       type="module"

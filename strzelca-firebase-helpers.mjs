@@ -1,13 +1,13 @@
 /**
- * Dla signInWithRedirect na strzelca.pl (hosting poza firebaseapp.com):
- * authDomain musi być tą samą domeną co strona — inaczej przeglądarki blokują
- * dostęp do storage między strzelca.pl a *.firebaseapp.com (Firebase docs: redirect best practices).
+ * Używamy jednego kanonicznego authDomain dla całego ekosystemu strzelca.pl.
+ * Dzięki temu Google OAuth zawsze trafia w ten sam redirect URI
+ * (`https://strzelca.pl/__/auth/handler`) niezależnie od subdomeny startowej.
  */
 export function resolveStrzelcaAuthDomain() {
   if (typeof window === "undefined") return "strzelca-pl.firebaseapp.com";
   const h = String(window.location.hostname || "")
     .toLowerCase()
     .replace(/^www\./, "");
-  if (h === "strzelca.pl" || h.endsWith(".strzelca.pl")) return h;
+  if (h === "strzelca.pl" || h.endsWith(".strzelca.pl")) return "strzelca.pl";
   return "strzelca-pl.firebaseapp.com";
 }

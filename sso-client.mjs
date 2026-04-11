@@ -65,9 +65,61 @@ function clearCachedSSO() {
   }
 }
 
-// Eksportowana funkcja do czyszczenia cache (może być wywołana z dowolnej subdomeny)
-export function clearSSOCache() {
+function clearLocalSSOState({ preserveUnverifiedLock = false } = {}) {
   clearCachedSSO();
+
+  try {
+    localStorage.removeItem(LAST_SYNC_KEY);
+  } catch {
+    // ignore
+  }
+
+  if (!preserveUnverifiedLock) {
+    try {
+      sessionStorage.removeItem(UNVERIFIED_LOCK_KEY);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+// Eksportowana funkcja do czyszczenia cache (może być wywołana z dowolnej subdomeny)
+export function clearSSOCache(options = {}) {
+  clearLocalSSOState(options);
+}
+
+export async function logoutWithSSO(auth, options = {}) {
+  const { preserveUnverifiedLock = false } = options;
+  let signOutError = null;
+
+  clearLocalSSOState({ preserveUnverifiedLock });
+
+  try {
+    await apiFetch("/sso-session-logout", {
+      method: "POST",
+      body: "{}",
+      cache: "no-store",
+      keepalive: true,
+    });
+  } catch {
+    // ignore
+  }
+
+  if (auth) {
+    try {
+      const { signOut } = await import(
+        "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"
+      );
+      await signOut(auth);
+    } catch (error) {
+      signOutError = error;
+    }
+  }
+
+  clearLocalSSOState({ preserveUnverifiedLock });
+
+  if (signOutError) throw signOutError;
+  return { status: "signed-out" };
 }
 
 export async function ensureFirebaseSSO(auth, options = {}) {
@@ -265,4 +317,3 @@ export async function syncSessionCookieFromFirebaseUser(auth, { minIntervalMinut
 }
 
 // (usunięto) profileTargetUrl - logika weryfikacji emaila jest sprawdzana wyłącznie przy logowaniu
-

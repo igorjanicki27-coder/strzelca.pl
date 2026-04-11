@@ -1966,25 +1966,8 @@
       // Funkcja wylogowania
       window.logout = async () => {
         try {
-          // SSO: wyczyść cookie wspólnej sesji
-          try {
-            await fetch("https://strzelca.pl/api/sso-session-logout", {
-              method: "POST",
-              credentials: "include",
-            });
-          } catch (e) {
-            console.warn("SSO logout failed (ignored):", e?.message || e);
-          }
-          
-          // Wyczyść cache SSO (ważne dla synchronizacji między subdomenami)
-          try {
-            const { clearSSOCache } = await import("https://strzelca.pl/sso-client.mjs?v=2026-03-29-4");
-            clearSSOCache();
-          } catch (e) {
-            console.warn("SSO cache clear failed (ignored):", e?.message || e);
-          }
-          
-          await signOut(auth);
+          const { logoutWithSSO } = await import("https://strzelca.pl/sso-client.mjs?v=2026-04-12-3");
+          await logoutWithSSO(auth);
           // Zamknij menu po wylogowaniu
           const userMenu = document.getElementById("user-menu");
           if (userMenu) {
@@ -1997,7 +1980,7 @@
     </script>
     <script
       type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-04-12-2"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-04-12-3"
     ></script>
     <script
       type="module"

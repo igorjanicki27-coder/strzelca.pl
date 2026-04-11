@@ -96,21 +96,21 @@ module.exports = (req, res) => {
       return;
     }
 
-    /** Firebase redirect: authDomain = host strony (nie *.firebaseapp.com). Zob. firebase-config + vercel __/auth proxy. */
+    /** Firebase redirect: używamy jednego kanonicznego authDomain dla całego *.strzelca.pl. */
     let authDomain = "strzelca-pl.firebaseapp.com";
     if (originAllowed && origin) {
       try {
         const h = new URL(origin).hostname.toLowerCase().replace(/^www\./, "");
-        if (h === "strzelca.pl" || h.endsWith(".strzelca.pl")) authDomain = h;
+        if (h === "strzelca.pl" || h.endsWith(".strzelca.pl")) authDomain = "strzelca.pl";
       } catch (_) {}
     } else if (refererAllowed && referer) {
       try {
         const h = new URL(referer).hostname.toLowerCase().replace(/^www\./, "");
-        if (h === "strzelca.pl" || h.endsWith(".strzelca.pl")) authDomain = h;
+        if (h === "strzelca.pl" || h.endsWith(".strzelca.pl")) authDomain = "strzelca.pl";
       } catch (_) {}
     } else if (hostAllowed && host) {
       const h = String(host).split(":")[0].toLowerCase().replace(/^www\./, "");
-      if (h === "strzelca.pl" || h.endsWith(".strzelca.pl")) authDomain = h;
+      if (h === "strzelca.pl" || h.endsWith(".strzelca.pl")) authDomain = "strzelca.pl";
     }
 
     // Avoid caching a credential-bearing response (even if it's "public", treat it carefully).
@@ -126,4 +126,3 @@ module.exports = (req, res) => {
     res.end(JSON.stringify({ error: "firebase-config handler failed" }));
   }
 };
-
