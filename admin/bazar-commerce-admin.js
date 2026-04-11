@@ -88,6 +88,32 @@
           <div id="bazar-purchases-queue" class="space-y-3 text-sm text-zinc-300"></div>
         </section>
       </div>
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        <section class="admin-card">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold coyote-text">Webhooki Stripe</h2>
+          </div>
+          <div id="bazar-webhooks-queue" class="space-y-3 text-sm text-zinc-300"></div>
+        </section>
+        <section class="admin-card">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold coyote-text">Reczne akcje</h2>
+          </div>
+          <div class="space-y-4 text-sm text-zinc-300">
+            <div class="rounded-2xl border border-zinc-700 bg-zinc-900/40 p-4 space-y-3">
+              <div class="text-xs uppercase tracking-widest text-zinc-500">Manualne przyznanie tokenow</div>
+              <input id="bazar-manual-user-id" class="w-full" placeholder="UID uzytkownika" />
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input id="bazar-manual-tokens" class="w-full" type="number" min="1" value="1" placeholder="Liczba tokenow" />
+                <input id="bazar-manual-validity" class="w-full" type="number" min="1" value="365" placeholder="Waznosc (dni)" />
+              </div>
+              <input id="bazar-manual-package-label" class="w-full" placeholder="Etykieta np. Rekompensata supportowa" />
+              <textarea id="bazar-manual-note" class="w-full" rows="4" placeholder="Notatka dla historii tokenow"></textarea>
+              <button type="button" id="bazar-manual-grant-btn" class="btn-admin">Przyznaj tokeny</button>
+            </div>
+          </div>
+        </section>
+      </div>
     `;
     tab.appendChild(root);
   }
@@ -278,19 +304,75 @@
     });
   }
 
+  function renderWebhooks(webhooks) {
+    const el = document.getElementById('bazar-webhooks-queue');
+    if (!el) return;
+    if (!webhooks.length) {
+      el.innerHTML = '<div class="text-zinc-500">Brak zarejestrowanych webhookow.</div>';
+      return;
+    }
+    el.innerHTML = webhooks.map((item) => `
+      <article class="rounded-2xl border border-zinc-700 bg-zinc-900/40 p-4">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <div class="font-semibold text-white">${esc(item.type || item.eventId || 'Webhook Stripe')}</div>
+            <div class="text-xs text-zinc-500 mt-1">${esc(fmtDateTime(item.createdAt))} • purchaseId: ${esc(item.purchaseId || '—')}</div>
+            <div class="text-xs text-zinc-500 mt-1">Status: ${esc(item.status || 'received')}</div>
+            ${item.message ? `<div class="text-xs text-zinc-300 mt-2">${esc(item.message)}</div>` : ''}
+          </div>
+          <div class="text-[11px] text-zinc-500 uppercase tracking-widest">${esc(item.eventId || item.id)}</div>
+        </div>
+      </article>
+    `).join('');
+  }
+
+  function bindManualGrant() {
+    const btn = document.getElementById('bazar-manual-grant-btn');
+    if (!btn || btn.dataset.bound) return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', async () => {
+      const userId = document.getElementById('bazar-manual-user-id')?.value?.trim() || '';
+      const tokens = Number(document.getElementById('bazar-manual-tokens')?.value || 0);
+      const validityDays = Number(document.getElementById('bazar-manual-validity')?.value || 365);
+      const packageLabel = document.getElementById('bazar-manual-package-label')?.value?.trim() || '';
+      const note = document.getElementById('bazar-manual-note')?.value?.trim() || '';
+      if (!userId || tokens <= 0) {
+        window.showNotification?.('Podaj UID i liczbe tokenow.', 'error');
+        return;
+      }
+      try {
+        await apiJson('/admin/grant-tokens', 'POST', {
+          userId,
+          tokens,
+          validityDays,
+          packageLabel,
+          note,
+        });
+        window.showNotification?.('Tokeny zostaly przyznane.', 'success');
+        document.getElementById('bazar-manual-note').value = '';
+        await loadBazarCommerceAdmin();
+      } catch (error) {
+        window.showNotification?.(error.message || 'Nie udalo sie przyznac tokenow.', 'error');
+      }
+    });
+  }
+
   async function loadBazarCommerceAdmin() {
     ensureBazarBackofficeUi();
     try {
-      const [configData, companiesData, reportsData, purchasesData] = await Promise.all([
+      const [configData, companiesData, reportsData, purchasesData, webhooksData] = await Promise.all([
         apiGet('/admin/config'),
         apiGet('/admin/companies'),
         apiGet('/admin/reports'),
         apiGet('/admin/purchases'),
+        apiGet('/admin/webhooks'),
       ]);
       renderConfig(configData.config || {});
       renderCompanies(companiesData.companies || []);
       renderReports((reportsData.reports || []).filter((item) => item.status !== 'closed'));
       renderPurchases(purchasesData.purchases || []);
+      renderWebhooks(webhooksData.webhooks || []);
+      bindManualGrant();
     } catch (error) {
       console.error('loadBazarCommerceAdmin:', error);
     }

@@ -27,6 +27,7 @@ const {
   grantTokens,
   BAZAR_PURCHASES,
   BAZAR_REPORTS,
+  BAZAR_WEBHOOK_LOG,
   computePromotionState,
   isMajorOfferChange,
 } = require('./_bazar-commerce');
@@ -862,6 +863,13 @@ module.exports = async (req, res) => {
       const snap = await db.collection(BAZAR_PURCHASES).orderBy('createdAt', 'desc').limit(200).get();
       const purchases = snap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
       return res.json({ success: true, purchases });
+    }
+
+    if (req.method === 'GET' && action === 'admin' && subAction === 'webhooks') {
+      await requireAdminUser(req);
+      const snap = await db.collection(BAZAR_WEBHOOK_LOG).orderBy('createdAt', 'desc').limit(200).get();
+      const webhooks = snap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+      return res.json({ success: true, webhooks });
     }
 
     if (req.method === 'POST' && action === 'admin' && subAction === 'retry-purchase') {
