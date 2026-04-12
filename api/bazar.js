@@ -38,6 +38,13 @@ const {
   isMajorOfferChange,
 } = require('./_bazar-commerce');
 const { processCompletedBazarPurchase } = require('./_bazar-purchase-processor');
+const {
+  VOIVODESHIPS,
+  getLocationSuggestions,
+  getLocalityById,
+  validateCreateLocationSelection,
+  haversineKm,
+} = require('./_bazar-locations');
 
 const BAZAR_MAX_IMAGES = 5;
 const BAZAR_IMAGES_MAX_TOTAL_BYTES = 1048576;
@@ -45,12 +52,7 @@ const BAZAR_FIRST_OFFER_GUIDE_VERSION = 1;
 const CATEGORIES = ['PISTOLET', 'REWOLWER', 'KARABIN', 'BRON_GLADKOLUFOWA', 'BRON_CZARNOPROCHOWA', 'AMUNICJA', 'AKCESORIA', 'INNE'];
 const CONDITIONS = ['NOWY', 'UZYWANY'];
 const STATUSES = ['PENDING', 'ACTIVE', 'REJECTED', 'EXPIRED', 'SOLD'];
-const WOJEWODZTWA = [
-  'dolnoslaskie', 'kujawsko-pomorskie', 'lubelskie', 'lubuskie',
-  'lodzkie', 'malopolskie', 'mazowieckie', 'opolskie',
-  'podkarpackie', 'podlaskie', 'pomorskie', 'slaskie',
-  'swietokrzyskie', 'warminsko-mazurskie', 'wielkopolskie', 'zachodniopomorskie',
-];
+const WOJEWODZTWA = VOIVODESHIPS.map((item) => item.slug);
 
 function normalizeText(value, maxLen = 500) {
   return String(value || '').trim().slice(0, maxLen);
@@ -176,6 +178,10 @@ function buildOfferResponse(docSnap) {
     condition: data.condition,
     wojewodztwo: data.wojewodztwo,
     miejscowosc: data.miejscowosc,
+    location_id: data.location_id || '',
+    location_label: data.location_label || '',
+    location_lat: Number(data.location_lat || 0),
+    location_lng: Number(data.location_lng || 0),
     mainImage: (data.images && data.images[0]) || '',
     images: data.images || [],
     imageCount: (data.images || []).length,
@@ -241,6 +247,15 @@ async function spendTokensForAction(db, uid, cfg, actionKey, extra = {}) {
   });
 }
 
+function applyLocationSnapshot(target, locality) {
+  target.location_id = locality.id;
+  target.location_label = locality.label;
+  target.location_lat = Number(locality.lat || 0);
+  target.location_lng = Number(locality.lng || 0);
+  target.wojewodztwo = locality.wojewodztwo;
+  target.miejscowosc = locality.name;
+}
+
 function computeOfferExpiryDays(cfg) {
   return Math.max(1, parseInt(cfg.publicationDurationDays, 10) || 30);
 }
@@ -260,6 +275,14 @@ module.exports = async (req, res) => {
     const action = pathParts[0] || '';
     const subAction = pathParts[1] || '';
 
+    if (req.method === 'GET' && action === 'locations') {
+      const query = normalizeText(url.searchParams.get('q') || '', 120);
+      const scope = normalizeText(url.searchParams.get('scope') || 'search', 20) || 'search';
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit'), 10) || 12, 1), 20);
+      const result = getLocationSuggestions({ query, scope, limit });
+      return res.json({ success: true, ...result });
+    }
+
     if (req.method === 'GET' && !action) {
       if (url.searchParams.get('listVersionOnly') === '1') {
         const listVersion = await readBazarListVersion(db);
@@ -275,6 +298,9 @@ module.exports = async (req, res) => {
       const limit = Math.min(parseInt(url.searchParams.get('limit'), 10) || 50, 100);
       const pinnedOnly = url.searchParams.get('pinned') === 'true';
       const sellerType = normalizeText(url.searchParams.get('seller_type') || '', 16).toLowerCase();
+      const locationId = normalizeText(url.searchParams.get('location_id') || '', 32);
+      const radiusKm = Math.max(0, parseInt(url.searchParams.get('radius_km'), 10) || 0);
+      const locationFilter = getLocalityById(locationId);
 
       let q = db.collection('bazarOffers');
       if (pinnedOnly) {
@@ -314,6 +340,13 @@ module.exports = async (req, res) => {
         if (search) {
           const s = search.toLowerCase();
           if (!(data.title || '').toLowerCase().includes(s) && !(data.description || '').toLowerCase().includes(s)) return;
+        }
+        if (locationFilter && radiusKm > 0) {
+          const lat = Number(data.location_lat || 0);
+          const lng = Number(data.location_lng || 0);
+          if (!lat || !lng) return;
+          const distanceKm = haversineKm(locationFilter.lat, locationFilter.lng, lat, lng);
+          if (distanceKm > radiusKm) return;
         }
         const offer = buildOfferResponse(docSnap);
         if (data.pin_active && !offer.is_pinned && data.is_pinned !== true) {
@@ -641,13 +674,19 @@ module.exports = async (req, res) => {
       if (!user) return res.status(401).json({ success: false, error: 'Wymagane zalogowanie' });
 
       const body = await readJsonBody(req);
-      const { title, description, price, category, condition, wojewodztwo, miejscowosc, images } = body;
-      if (!title || !price || !category || !condition || !wojewodztwo || !miejscowosc) {
-        return res.status(400).json({ success: false, error: 'Brakujace pola: title, price, category, condition, wojewodztwo, miejscowosc' });
+      const { title, description, price, category, condition, images } = body;
+      let location;
+      try {
+        location = validateCreateLocationSelection(body || {});
+      } catch (error) {
+        return res.status(400).json({ success: false, error: error.message || 'Wybierz lokalizację z listy.' });
+      }
+      if (!title || !price || !category || !condition) {
+        return res.status(400).json({ success: false, error: 'Brakujące pola: title, price, category, condition, locationId' });
       }
       if (!ensureCategory(category)) return res.status(400).json({ success: false, error: 'Nieprawidlowa kategoria' });
       if (!ensureCondition(condition)) return res.status(400).json({ success: false, error: 'Nieprawidlowy stan' });
-      if (!ensureWoj(wojewodztwo)) return res.status(400).json({ success: false, error: 'Nieprawidlowe wojewodztwo' });
+      if (!ensureWoj(location.wojewodztwo)) return res.status(400).json({ success: false, error: 'Nieprawidłowa lokalizacja' });
 
       const imgCheck = validateBazarImages(images);
       if (!imgCheck.ok) return res.status(400).json({ success: false, error: imgCheck.error });
@@ -699,15 +738,13 @@ module.exports = async (req, res) => {
       }
 
       const docRef = db.collection('bazarOffers').doc();
-      const slug = generateSlug(title, wojewodztwo);
+      const slug = generateSlug(title, location.wojewodztwo);
       const offerData = {
         title: normalizeText(title, 200),
         description: normalizeText(description || '', 5000),
         price: parseFloat(price),
         category,
         condition,
-        wojewodztwo,
-        miejscowosc: normalizeText(miejscowosc, 100),
         images: imgCheck.list,
         seller_id: user.uid,
         ...sellerSnapshot,
@@ -726,6 +763,7 @@ module.exports = async (req, res) => {
         rejection_reason: null,
         paid_listing_action: tokenActionUsed || null,
       };
+      applyLocationSnapshot(offerData, location);
       await docRef.set(offerData);
       await syncBazarOfferInSearchIndex(db, docRef.id);
       if (status === 'ACTIVE') {
@@ -755,8 +793,15 @@ module.exports = async (req, res) => {
       if (body.price !== undefined) updates.price = parseFloat(body.price);
       if (body.category !== undefined && ensureCategory(body.category)) updates.category = body.category;
       if (body.condition !== undefined && ensureCondition(body.condition)) updates.condition = body.condition;
-      if (body.wojewodztwo !== undefined && ensureWoj(body.wojewodztwo)) updates.wojewodztwo = body.wojewodztwo;
-      if (body.miejscowosc !== undefined) updates.miejscowosc = normalizeText(body.miejscowosc, 100);
+      if (body.locationId !== undefined) {
+        let location;
+        try {
+          location = validateCreateLocationSelection(body || {});
+        } catch (error) {
+          return res.status(400).json({ success: false, error: error.message || 'Wybierz lokalizację z listy.' });
+        }
+        applyLocationSnapshot(updates, location);
+      }
       if (body.images !== undefined) {
         const imgCheck = validateBazarImages(body.images);
         if (!imgCheck.ok) return res.status(400).json({ success: false, error: imgCheck.error });

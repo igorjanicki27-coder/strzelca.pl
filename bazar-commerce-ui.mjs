@@ -640,17 +640,6 @@ function installRulesShortcut() {
     window.openRegulationModal = openBazarRulesModal;
     return;
   }
-
-  const filterBar = document.querySelector('.filter-bar');
-  if (!filterBar) return;
-  const actionsRow = filterBar.querySelector('.toolbar-actions') || filterBar;
-  const btn = document.createElement('button');
-  btn.id = 'bazar-rules-shortcut';
-  btn.type = 'button';
-  btn.className = 'toolbar-btn toolbar-btn--ghost';
-  btn.innerHTML = '<i class="fa-solid fa-scale-balanced"></i><span>Zasady</span>';
-  btn.addEventListener('click', openBazarRulesModal);
-  actionsRow.appendChild(btn);
   window.openRegulationModal = openBazarRulesModal;
 }
 
