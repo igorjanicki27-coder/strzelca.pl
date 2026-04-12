@@ -79,7 +79,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-24-2" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-04-12-1" />
     <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-29-4" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1" crossorigin />
@@ -222,24 +222,19 @@
             opacity: 0.95;
         }
         .modal-floating-social {
-            position: fixed;
-            left: 50%;
-            bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
-            transform: translateX(-50%);
-            z-index: 55;
             display: flex;
             flex-wrap: wrap;
             align-items: center;
             justify-content: center;
             gap: 10px;
-            padding: 9px 14px;
-            border-radius: 999px;
-            background: rgba(12, 12, 14, 0.92);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 10px 36px rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            max-width: calc(100vw - 2rem);
+            padding: 0.35rem 0 max(0.5rem, env(safe-area-inset-bottom, 0px));
+            width: 100%;
+            max-width: 48rem;
+            margin: 0 auto;
+            flex-shrink: 0;
+            background: transparent;
+            border: none;
+            box-shadow: none;
         }
         .modal-floating-social--off {
             display: none !important;
@@ -260,6 +255,20 @@
             border-color: rgba(255, 255, 255, 0.12);
             background: rgba(255, 255, 255, 0.04);
             color: #f4f4f5;
+        }
+        .blog-social-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.52;
+            pointer-events: none;
+        }
+        .blog-social-btn:disabled:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.04);
+            transform: none;
+        }
+        #event-post-like-btn.is-active i.fa-heart,
+        button[data-event-card-like].blog-social-btn.is-active i.fa-heart {
+            color: #f43f5e;
         }
         .event-card-like-fab {
             position: absolute;
@@ -1303,6 +1312,43 @@
             border-radius: 12px;
             overflow: hidden;
         }
+
+        /* CTA jak „CZYTAJ” na blogu / „Złóż zamówienie” w sklepie */
+        .shop-cta-btn {
+            box-sizing: border-box;
+            width: 100%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1rem;
+            margin: 0;
+            background-color: var(--coyote);
+            color: #0a0a0a;
+            font-size: 11px;
+            font-weight: 900;
+            line-height: 1.25;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            border-radius: 0.25rem;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.15s ease, color 0.15s ease;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .shop-cta-btn:hover {
+            background-color: #b18a5f;
+        }
+        .shop-cta-btn .event-participate-label {
+            color: inherit;
+        }
+        @media (min-width: 768px) {
+            .shop-cta-btn {
+                padding: 1rem 1rem;
+                font-size: 0.75rem;
+            }
+        }
+
         #arsenal {
             flex: 1;
             min-height: 0;
@@ -1416,17 +1462,12 @@
             border-top: 1px solid rgba(63, 63, 70, 0.5);
         }
         .event-carousel-card .event-card-action.event-card-action--carousel-bleed {
-            margin-left: -0.75rem;
-            margin-right: -0.75rem;
-            width: calc(100% + 1.5rem);
+            margin-left: 0;
+            margin-right: 0;
+            width: 100%;
             padding-left: 0;
             padding-right: 0;
             box-sizing: border-box;
-        }
-        .event-carousel-card .event-card-action.event-card-action--carousel-bleed .event-participate-btn {
-            border-radius: 0 0 11px 11px;
-            border-left: none;
-            border-right: none;
         }
 
         .event-modal-participate-row {
@@ -1738,9 +1779,8 @@
         </button>
 
         <!-- Event Detail Modal -->
-        <div id="event-modal" class="fixed inset-0 z-50 hidden event-detail-modal" onclick="if(!event.target.closest('#event-modal-panel') && !event.target.closest('#modal-floating-social')) closeEventModal()">
-            <div class="flex items-center justify-center min-h-screen p-2 md:p-4">
-                <div id="event-modal-panel" class="bg-zinc-950/90 backdrop-blur-md border border-white/10 rounded-xl md:rounded-2xl max-w-3xl w-full max-h-[95vh] md:max-h-[90vh] overflow-y-auto shadow-2xl ring-1 ring-white/5">
+        <div id="event-modal" class="fixed inset-0 z-50 hidden event-detail-modal flex flex-col items-center justify-center p-2 md:p-4 gap-3" onclick="if(!event.target.closest('#event-modal-panel') && !event.target.closest('#modal-floating-social')) closeEventModal()">
+                <div id="event-modal-panel" class="bg-zinc-950/90 backdrop-blur-md border border-white/10 rounded-xl md:rounded-2xl max-w-3xl w-full max-h-[min(88vh,calc(100dvh-7rem))] overflow-y-auto shadow-2xl ring-1 ring-white/5">
                     <div class="p-4 md:p-6 lg:p-8">
                         <div class="flex justify-between items-start mb-4 md:mb-6">
                             <div class="min-w-0 flex-1 pr-4">
@@ -1762,7 +1802,6 @@
                         <div id="modal-participate-wrap" class="hidden"></div>
                     </div>
                 </div>
-            </div>
             <div id="modal-floating-social" class="modal-floating-social modal-floating-social--off" role="toolbar" aria-label="Polubienia i komentarze" onclick="event.stopPropagation()">
                 <button type="button" id="event-post-like-btn" class="blog-social-btn" aria-label="Polub wydarzenie">
                     <span id="event-post-like-count">0</span>
@@ -2142,8 +2181,26 @@ const firebaseConfig = {
         let currentEventCommentLikes = new Set();
         let currentEventLiked = false;
         const eventLikedByUser = new Set();
-        let eventPostLikeInFlight = false;
+        const eventPostLikeInflightIds = new Set();
         const eventCommentLikeInflight = new Set();
+
+        function updateEventCardLikeShell(eventId, liked) {
+            const enc = encodeURIComponent(eventId);
+            document.querySelectorAll(`[data-event-card-like="${enc}"]`).forEach((btn) => {
+                btn.classList.toggle("is-active", liked);
+            });
+        }
+
+        function setEventPostLikePending(eventId, pending) {
+            const enc = encodeURIComponent(eventId);
+            document.querySelectorAll(`[data-event-card-like="${enc}"]`).forEach((btn) => {
+                btn.disabled = pending;
+            });
+            if (activeEventModalId === eventId) {
+                const floatBtn = document.getElementById("event-post-like-btn");
+                if (floatBtn) floatBtn.disabled = pending;
+            }
+        }
         let currentReplyToEventCommentId = '';
         let currentEditingEventCommentId = '';
         let eventCommentCooldownUntil = 0;
@@ -2161,6 +2218,7 @@ const firebaseConfig = {
             if (jumpBtn) {
                 jumpBtn.addEventListener("click", (e) => {
                     e.stopPropagation();
+                    if (jumpBtn.disabled || !currentUser) return;
                     const panel = document.getElementById("event-modal-panel");
                     const anchor = document.getElementById("event-comment-composer-anchor");
                     if (panel && anchor) {
@@ -2234,6 +2292,7 @@ const firebaseConfig = {
             track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
             window.requestAnimationFrame(updateEventsCarouselControls);
             syncEventCarouselDots();
+            eventPostLikeInflightIds.forEach((eid) => setEventPostLikePending(eid, true));
         };
 
         function getVisibleEventsCardsCount() {
@@ -3078,7 +3137,6 @@ const firebaseConfig = {
             const isPast = isEventCompleted(event, now);
             const isPinned = !!event.pinned;
             const actionState = getEventParticipateButtonState(event, now);
-            const buttonToneClass = getEventParticipateToneClass(actionState);
             const statusLinesHtml = renderEventStatusLinesHtml(event, now);
             const encEvId = encodeURIComponent(event.id);
             const cardLiked = currentUser && eventLikedByUser.has(event.id);
@@ -3100,7 +3158,7 @@ const firebaseConfig = {
                         </div>
                         <div class="mt-2 space-y-1" data-event-status-lines="${encEvId}">${statusLinesHtml}</div>
                         <div class="event-card-action event-card-action--carousel-bleed">
-                            <button type="button" data-details-event-id="${encEvId}" data-event-card-action-btn="${encEvId}" aria-label="Pokaż szczegóły wydarzenia ${safeTitle}" class="event-participate-btn event-participate-btn--tile w-full py-3 md:py-4 text-[11px] md:text-xs uppercase font-black tracking-[0.12em] flex items-center justify-center transition ${buttonToneClass.trim()}">
+                            <button type="button" data-details-event-id="${encEvId}" data-event-card-action-btn="${encEvId}" aria-label="Pokaż szczegóły wydarzenia ${safeTitle}" class="shop-cta-btn">
                                 <span class="event-participate-label">${escapeHtml(getEventCardActionButtonLabel(actionState))}</span>
                             </button>
                         </div>
@@ -3164,9 +3222,6 @@ const firebaseConfig = {
                 }
                 if (actionBtn) {
                     const state = getEventParticipateButtonState(ev, now);
-                    actionBtn.classList.remove('event-participate-btn--start', 'event-participate-btn--ending', 'event-participate-btn--locked');
-                    const toneClass = getEventParticipateToneClass(state).trim();
-                    if (toneClass) actionBtn.classList.add(toneClass);
                     const labelEl = actionBtn.querySelector('.event-participate-label');
                     if (labelEl) {
                         labelEl.textContent = getEventCardActionButtonLabel(state);
@@ -3585,6 +3640,16 @@ const firebaseConfig = {
                     btn.removeAttribute("title");
                 }
             });
+            const commentJumpBtn = document.getElementById("event-post-comment-jump-btn");
+            if (commentJumpBtn) {
+                commentJumpBtn.disabled = guestLikeLocked;
+                commentJumpBtn.classList.toggle("blog-social-btn--guest-locked", guestLikeLocked);
+                if (guestLikeLocked) {
+                    commentJumpBtn.title = "Zaloguj się, aby dodać komentarz";
+                } else {
+                    commentJumpBtn.removeAttribute("title");
+                }
+            }
         }
 
         async function refreshEventUserLikes() {
@@ -3843,6 +3908,7 @@ const firebaseConfig = {
                 if (likeBtn) likeBtn.classList.toggle("is-active", currentEventLiked);
                 if (likeCountEl) likeCountEl.textContent = String(evAfter?.likeCount ?? 0);
                 if (commentsCountEl) commentsCountEl.textContent = String(evAfter?.commentCount ?? 0);
+                updateEventCardLikeShell(eventId, currentEventLiked);
                 updateEventCommentComposerState();
             } catch (error) {
                 console.error("loadEventInteractions:", error);
@@ -3894,6 +3960,7 @@ const firebaseConfig = {
             void track.offsetHeight;
             track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
             window.requestAnimationFrame(updateEventsCarouselControls);
+            eventPostLikeInflightIds.forEach((eid) => setEventPostLikePending(eid, true));
         }
 
         // Calendar functions
@@ -4295,22 +4362,25 @@ const firebaseConfig = {
                 showNotification("Musisz być zalogowany, aby polubić wydarzenie.");
                 return;
             }
-            if (eventPostLikeInFlight) return;
-            const modalForEvent = activeEventModalId === eventId;
+            if (eventPostLikeInflightIds.has(eventId)) return;
+
+            const modalOpenForEvent = activeEventModalId === eventId;
             const likeBtn = document.getElementById("event-post-like-btn");
             const likeCount = document.getElementById("event-post-like-count");
             const ev = allEvents.find((e) => e.id === eventId);
-            const prevLiked = modalForEvent ? currentEventLiked : eventLikedByUser.has(eventId);
-            const prevCount = modalForEvent && likeCount
+            const prevLiked = eventLikedByUser.has(eventId);
+            const prevCount = modalOpenForEvent && likeCount
                 ? Number(likeCount.textContent || 0)
                 : Number(ev?.likeCount || 0);
             const nextLiked = !prevLiked;
             const nextCount = Math.max(0, prevCount + (nextLiked ? 1 : -1));
 
-            eventPostLikeInFlight = true;
+            eventPostLikeInflightIds.add(eventId);
+            setEventPostLikePending(eventId, true);
+
             if (nextLiked) eventLikedByUser.add(eventId);
             else eventLikedByUser.delete(eventId);
-            if (modalForEvent) {
+            if (modalOpenForEvent) {
                 currentEventLiked = nextLiked;
                 if (likeBtn) likeBtn.classList.toggle("is-active", nextLiked);
                 if (likeCount) likeCount.textContent = String(nextCount);
@@ -4324,7 +4394,7 @@ const firebaseConfig = {
                 });
                 if (result.liked) eventLikedByUser.add(eventId);
                 else eventLikedByUser.delete(eventId);
-                if (modalForEvent) {
+                if (modalOpenForEvent) {
                     currentEventLiked = !!result.liked;
                     if (likeBtn) likeBtn.classList.toggle("is-active", currentEventLiked);
                     if (likeCount) likeCount.textContent = String(result.likeCount || 0);
@@ -4333,7 +4403,7 @@ const firebaseConfig = {
             } catch (error) {
                 if (prevLiked) eventLikedByUser.add(eventId);
                 else eventLikedByUser.delete(eventId);
-                if (modalForEvent) {
+                if (modalOpenForEvent) {
                     currentEventLiked = prevLiked;
                     if (likeBtn) likeBtn.classList.toggle("is-active", prevLiked);
                     if (likeCount) likeCount.textContent = String(prevCount);
@@ -4341,7 +4411,8 @@ const firebaseConfig = {
                 updateEventStatsInLocalState(eventId, { likeCount: prevCount });
                 showNotification(error.message || "Nie udało się polubić wydarzenia.");
             } finally {
-                eventPostLikeInFlight = false;
+                eventPostLikeInflightIds.delete(eventId);
+                setEventPostLikePending(eventId, false);
             }
         };
 

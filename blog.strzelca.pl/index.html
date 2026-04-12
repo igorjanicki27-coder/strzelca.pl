@@ -68,7 +68,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Wspólne poprawki responsywności -->
-    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-24-2" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-04-12-1" />
     <link rel="modulepreload" href="https://strzelca.pl/sso-client.mjs?v=2026-03-29-4" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1" crossorigin />
     <link rel="modulepreload" href="https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1" crossorigin />
@@ -199,25 +199,21 @@
             pointer-events: none;
             opacity: 0.95;
         }
+        /* Pod oknem modala (nie nad treścią); bez wspólnej obwódki — obramowania zostają na .blog-social-btn */
         .modal-floating-social {
-            position: fixed;
-            left: 50%;
-            bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
-            transform: translateX(-50%);
-            z-index: 55;
             display: flex;
             flex-wrap: wrap;
             align-items: center;
             justify-content: center;
             gap: 10px;
-            padding: 9px 14px;
-            border-radius: 999px;
-            background: rgba(12, 12, 14, 0.92);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 10px 36px rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            max-width: calc(100vw - 2rem);
+            padding: 0.35rem 0 max(0.5rem, env(safe-area-inset-bottom, 0px));
+            width: 100%;
+            max-width: 48rem;
+            margin: 0 auto;
+            flex-shrink: 0;
+            background: transparent;
+            border: none;
+            box-shadow: none;
         }
         .modal-floating-social--off {
             display: none !important;
@@ -238,6 +234,21 @@
             border-color: rgba(255, 255, 255, 0.12);
             background: rgba(255, 255, 255, 0.04);
             color: #f4f4f5;
+        }
+        .blog-social-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.52;
+            pointer-events: none;
+        }
+        .blog-social-btn:disabled:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.04);
+            transform: none;
+        }
+        #blog-post-like-btn.is-active i.fa-heart,
+        .event-card-like-fab.blog-social-btn.is-active i.fa-heart,
+        [data-blog-card-like].blog-social-btn.is-active i.fa-heart {
+            color: #f43f5e;
         }
         .event-card-media {
             position: relative;
@@ -1691,9 +1702,8 @@
         </main>
 
         <!-- Event Detail Modal -->
-        <div id="event-modal" class="fixed inset-0 z-50 hidden event-detail-modal" onclick="if(!event.target.closest('#event-modal-panel') && !event.target.closest('#modal-floating-social')) closeEventModal()">
-            <div class="flex items-center justify-center min-h-screen p-2 md:p-4">
-                <div id="event-modal-panel" class="bg-zinc-950/90 backdrop-blur-md border border-white/10 rounded-xl md:rounded-2xl max-w-3xl w-full max-h-[95vh] md:max-h-[90vh] overflow-y-auto shadow-2xl ring-1 ring-white/5">
+        <div id="event-modal" class="fixed inset-0 z-50 hidden event-detail-modal flex flex-col items-center justify-center p-2 md:p-4 gap-3" onclick="if(!event.target.closest('#event-modal-panel') && !event.target.closest('#modal-floating-social')) closeEventModal()">
+                <div id="event-modal-panel" class="bg-zinc-950/90 backdrop-blur-md border border-white/10 rounded-xl md:rounded-2xl max-w-3xl w-full max-h-[min(88vh,calc(100dvh-7rem))] overflow-y-auto shadow-2xl ring-1 ring-white/5">
                     <div class="p-4 md:p-6 lg:p-8">
                         <div class="flex justify-between items-start mb-4 md:mb-6">
                             <div class="min-w-0 flex-1 pr-4">
@@ -1714,7 +1724,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
             <div id="modal-floating-social" class="modal-floating-social modal-floating-social--off" role="toolbar" aria-label="Polubienia i komentarze" onclick="event.stopPropagation()">
                 <button type="button" id="blog-post-like-btn" class="blog-social-btn" aria-label="Polub wpis">
                     <span id="blog-post-like-count">0</span>
@@ -2055,8 +2064,26 @@ const firebaseConfig = {
         let currentBlogCommentLikes = new Set();
         let currentBlogPostLiked = false;
         const blogPostLikedByUser = new Set();
-        let blogPostLikeInFlight = false;
+        const blogPostLikeInflightIds = new Set();
         const blogCommentLikeInflight = new Set();
+
+        function updateBlogCardLikeShell(postId, liked) {
+            const enc = encodeURIComponent(postId);
+            document.querySelectorAll(`[data-blog-card-like="${enc}"]`).forEach((btn) => {
+                btn.classList.toggle("is-active", liked);
+            });
+        }
+
+        function setBlogPostLikePending(postId, pending) {
+            const enc = encodeURIComponent(postId);
+            document.querySelectorAll(`[data-blog-card-like="${enc}"]`).forEach((btn) => {
+                btn.disabled = pending;
+            });
+            if (currentBlogDetailId === postId) {
+                const floatBtn = document.getElementById("blog-post-like-btn");
+                if (floatBtn) floatBtn.disabled = pending;
+            }
+        }
         let currentReplyToCommentId = "";
         let currentEditingCommentId = "";
         let blogCommentCooldownUntil = 0;
@@ -2074,6 +2101,7 @@ const firebaseConfig = {
             if (jumpBtn) {
                 jumpBtn.addEventListener("click", (e) => {
                     e.stopPropagation();
+                    if (jumpBtn.disabled || !getActiveAuthUser()) return;
                     const panel = document.getElementById("event-modal-panel");
                     const anchor = document.getElementById("blog-comment-composer-anchor");
                     if (panel && anchor) {
@@ -2418,6 +2446,9 @@ const firebaseConfig = {
             const commentTitle = !activeUser
                 ? (authPending ? "Sprawdzam sesję logowania…" : "Zaloguj się, aby polubić komentarz")
                 : "";
+            const jumpCommentsTitle = !activeUser
+                ? (authPending ? "Sprawdzam sesję logowania…" : "Zaloguj się, aby dodać komentarz")
+                : "";
 
             const postLikeBtn = document.getElementById("blog-post-like-btn");
             if (postLikeBtn) {
@@ -2450,6 +2481,17 @@ const firebaseConfig = {
                     btn.removeAttribute("title");
                 }
             });
+            const commentJumpBtn = document.getElementById("blog-post-comment-jump-btn");
+            if (commentJumpBtn) {
+                const lockJump = !activeUser;
+                commentJumpBtn.disabled = lockJump;
+                commentJumpBtn.classList.toggle("blog-social-btn--guest-locked", lockJump);
+                if (lockJump) {
+                    commentJumpBtn.title = jumpCommentsTitle;
+                } else {
+                    commentJumpBtn.removeAttribute("title");
+                }
+            }
         }
 
         async function refreshBlogPostUserLikes() {
@@ -2714,6 +2756,7 @@ const firebaseConfig = {
                 if (likeBtn) likeBtn.classList.toggle("is-active", currentBlogPostLiked);
                 if (likeCount) likeCount.textContent = String(post?.likeCount || 0);
                 if (commentCount) commentCount.textContent = String(post?.commentCount || 0);
+                updateBlogCardLikeShell(postId, currentBlogPostLiked);
 
                 renderBlogComments();
                 updateBlogCommentComposerState();
@@ -2787,6 +2830,7 @@ const firebaseConfig = {
             track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
             window.requestAnimationFrame(updateEventsCarouselControls);
             syncBlogCarouselDots();
+            blogPostLikeInflightIds.forEach((pid) => setBlogPostLikePending(pid, true));
         };
 
         function getVisibleEventsCardsCount() {
@@ -3476,6 +3520,7 @@ const firebaseConfig = {
             void track.offsetHeight;
             track.style.transition = `transform ${EVENT_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
             window.requestAnimationFrame(updateEventsCarouselControls);
+            blogPostLikeInflightIds.forEach((pid) => setBlogPostLikePending(pid, true));
         }
 
         // Calendar functions
@@ -3804,22 +3849,25 @@ const firebaseConfig = {
                 showNotification("Musisz być zalogowany, aby polubić wpis.");
                 return;
             }
-            if (blogPostLikeInFlight) return;
-            const modalForPost = currentBlogDetailId === postId;
+            if (blogPostLikeInflightIds.has(postId)) return;
+
+            const modalOpenForPost = currentBlogDetailId === postId;
             const likeBtn = document.getElementById("blog-post-like-btn");
             const likeCount = document.getElementById("blog-post-like-count");
             const post = allEvents.find((e) => e.id === postId);
-            const prevLiked = modalForPost ? currentBlogPostLiked : blogPostLikedByUser.has(postId);
-            const prevCount = modalForPost && likeCount
+            const prevLiked = blogPostLikedByUser.has(postId);
+            const prevCount = modalOpenForPost && likeCount
                 ? Number(likeCount.textContent || 0)
                 : Number(post?.likeCount || 0);
             const nextLiked = !prevLiked;
             const nextCount = Math.max(0, prevCount + (nextLiked ? 1 : -1));
 
-            blogPostLikeInFlight = true;
+            blogPostLikeInflightIds.add(postId);
+            setBlogPostLikePending(postId, true);
+
             if (nextLiked) blogPostLikedByUser.add(postId);
             else blogPostLikedByUser.delete(postId);
-            if (modalForPost) {
+            if (modalOpenForPost) {
                 currentBlogPostLiked = nextLiked;
                 if (likeBtn) likeBtn.classList.toggle("is-active", nextLiked);
                 if (likeCount) likeCount.textContent = String(nextCount);
@@ -3833,7 +3881,7 @@ const firebaseConfig = {
                 });
                 if (result.liked) blogPostLikedByUser.add(postId);
                 else blogPostLikedByUser.delete(postId);
-                if (modalForPost) {
+                if (modalOpenForPost) {
                     currentBlogPostLiked = !!result.liked;
                     if (likeBtn) likeBtn.classList.toggle("is-active", currentBlogPostLiked);
                     if (likeCount) likeCount.textContent = String(result.likeCount || 0);
@@ -3842,7 +3890,7 @@ const firebaseConfig = {
             } catch (error) {
                 if (prevLiked) blogPostLikedByUser.add(postId);
                 else blogPostLikedByUser.delete(postId);
-                if (modalForPost) {
+                if (modalOpenForPost) {
                     currentBlogPostLiked = prevLiked;
                     if (likeBtn) likeBtn.classList.toggle("is-active", prevLiked);
                     if (likeCount) likeCount.textContent = String(prevCount);
@@ -3850,7 +3898,8 @@ const firebaseConfig = {
                 updateBlogPostStatsInLocalState(postId, { likeCount: prevCount });
                 showNotification(error.message || "Nie udało się polubić wpisu.");
             } finally {
-                blogPostLikeInFlight = false;
+                blogPostLikeInflightIds.delete(postId);
+                setBlogPostLikePending(postId, false);
             }
         };
 
