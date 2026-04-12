@@ -168,25 +168,6 @@
             line-height: 1;
             font-weight: 700;
         }
-        .detail-meta-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-            gap: 10px;
-        }
-        .detail-meta-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            min-height: 44px;
-            padding: 10px 12px;
-            border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(255,255,255,0.02);
-        }
-        .detail-meta-item i {
-            width: 18px;
-            text-align: center;
-        }
         .blog-social-btn,
         .blog-comment-action {
             display: inline-flex;
@@ -217,6 +198,71 @@
             cursor: default;
             pointer-events: none;
             opacity: 0.95;
+        }
+        .modal-floating-social {
+            position: fixed;
+            left: 50%;
+            bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+            transform: translateX(-50%);
+            z-index: 55;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 9px 14px;
+            border-radius: 999px;
+            background: rgba(12, 12, 14, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 10px 36px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            max-width: calc(100vw - 2rem);
+        }
+        .modal-floating-social--off {
+            display: none !important;
+        }
+        .blog-social-btn.blog-social-btn--guest-locked,
+        .blog-comment-action.blog-comment-action--guest-locked {
+            cursor: not-allowed;
+            opacity: 0.52;
+        }
+        .blog-social-btn.blog-social-btn--guest-locked:hover,
+        .blog-comment-action.blog-comment-action--guest-locked:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.04);
+            transform: none;
+        }
+        .blog-social-btn.blog-social-btn--guest-locked.is-active,
+        .blog-comment-action.blog-comment-action--guest-locked.is-active {
+            border-color: rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.04);
+            color: #f4f4f5;
+        }
+        .event-card-media {
+            position: relative;
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+        .event-card-media .event-card-thumb {
+            margin-bottom: 0;
+        }
+        .event-card-like-fab {
+            position: absolute;
+            top: 0.45rem;
+            right: 0.45rem;
+            z-index: 2;
+            width: 2.35rem;
+            height: 2.35rem;
+            padding: 0;
+            justify-content: center;
+            gap: 0;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .event-card-like-fab i {
+            font-size: 1rem;
         }
         .blog-comments-section {
             margin-top: 1.75rem;
@@ -306,44 +352,86 @@
         }
         .blog-comment-guest-overlay {
             position: absolute;
-            left: 0;
-            top: 0;
-            right: 46px;
-            bottom: 46px;
+            inset: 0 46px 46px 0;
             z-index: 1;
-            border-radius: 12px;
-            padding: 12px 14px;
+            border-radius: 14px;
+            padding: 14px;
             display: flex;
             align-items: flex-start;
             box-sizing: border-box;
-            background: rgba(9, 9, 11, 0.92);
-            color: #a1a1aa;
-            font-size: 0.92rem;
-            line-height: 1.45;
+            background: linear-gradient(180deg, rgba(24, 24, 27, 0.88) 0%, rgba(17, 17, 19, 0.94) 100%);
+            border: 1px solid rgba(193, 154, 107, 0.16);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
             pointer-events: auto;
+        }
+        .blog-comment-guest-card {
+            width: 100%;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 14px 16px;
+            border-radius: 14px;
+            background: rgba(9, 9, 11, 0.4);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .blog-comment-guest-copy {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            min-width: 0;
+        }
+        .blog-comment-guest-icon {
+            width: 38px;
+            height: 38px;
+            flex: 0 0 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            color: #f5e6cf;
+            background: rgba(193,154,107,0.14);
+            border: 1px solid rgba(193,154,107,0.22);
         }
         .blog-comment-guest-overlay-text {
             margin: 0;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 0.35rem;
+            color: #e4e4e7;
+            font-size: 0.94rem;
+            line-height: 1.55;
+        }
+        .blog-comment-guest-overlay-text strong {
+            display: block;
+            font-size: 0.98rem;
+            font-weight: 700;
+            color: #fff7ed;
+            margin-bottom: 0.15rem;
         }
         .blog-comment-guest-login-link {
-            background: none;
-            border: none;
-            padding: 0;
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(193,154,107,0.26);
+            padding: 0.72rem 1rem;
             margin: 0;
+            border-radius: 999px;
             font: inherit;
-            line-height: inherit;
-            vertical-align: baseline;
-            color: var(--coyote, #c19a6b);
+            font-weight: 600;
+            line-height: 1;
+            color: #f3dfc5;
             cursor: pointer;
-            text-decoration: underline;
-            text-underline-offset: 2px;
+            background: rgba(193,154,107,0.12);
+            transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.2s;
         }
         .blog-comment-guest-login-link:hover {
-            color: #e9d3b7;
+            color: #fff7ed;
+            background: rgba(193,154,107,0.2);
+            border-color: rgba(193,154,107,0.4);
+            transform: translateY(-1px);
+        }
+        .blog-comment-guest-login-link:focus-visible {
+            outline: 2px solid rgba(233,211,183,0.75);
+            outline-offset: 2px;
         }
         .blog-comment-toolbar {
             display: flex;
@@ -356,6 +444,9 @@
         .blog-comment-note {
             font-size: 0.86rem;
             color: #a1a1aa;
+        }
+        .blog-comment-note.is-muted {
+            color: #71717a;
         }
         .blog-comment-banner {
             display: none;
@@ -372,6 +463,15 @@
         }
         .blog-comment-banner.is-visible {
             display: flex;
+        }
+        @media (max-width: 640px) {
+            .blog-comment-guest-card {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .blog-comment-guest-login-link {
+                width: 100%;
+            }
         }
         .blog-comment-list {
             display: flex;
@@ -503,7 +603,8 @@
         .blog-post-gallery img {
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            object-fit: cover;
+            object-position: center;
         }
         .blog-gallery-nav {
             position: absolute;
@@ -1290,6 +1391,51 @@
         .event-carousel-card--blog {
             padding: 0 0 0.9rem;
         }
+        .event-carousel-card--blog .event-card-body {
+            gap: 0.45rem;
+        }
+        /* Kafelek bloga: data w górnej „szpilce”, kategoria w środku (były tytuł), tytuł w dolnym slocie (była data). */
+        .event-carousel-card--blog .event-category-slot {
+            text-transform: none;
+            letter-spacing: 0.06em;
+            font-size: 0.74rem;
+            gap: 0.4rem;
+            color: #c8ccd6;
+        }
+        .event-carousel-card--blog .event-blog-card-category {
+            font-size: 1rem;
+            font-weight: 800;
+            line-height: 1.3;
+            color: #f6f7fb;
+            margin: 0;
+            text-align: center;
+            min-height: 2.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-wrap: balance;
+        }
+        .event-carousel-card.event-pinned .event-blog-card-category {
+            color: #f0d3a8;
+        }
+        .event-carousel-card.event-completed .event-blog-card-category {
+            color: #ffb1b1;
+        }
+        .event-carousel-card--blog .event-blog-card-headline {
+            font-size: 0.88rem;
+            font-weight: 700;
+            line-height: 1.38;
+            color: #d4d4d8;
+            margin: 0;
+            text-align: center;
+            text-wrap: balance;
+        }
+        .event-carousel-card.event-pinned .event-blog-card-headline {
+            color: #e8d4b8;
+        }
+        .event-carousel-card.event-completed .event-blog-card-headline {
+            color: #fecaca;
+        }
         .event-carousel-card.event-pinned {
             background: rgba(31, 24, 14, 0.82);
             border-color: rgba(193, 154, 107, 0.65);
@@ -1545,14 +1691,16 @@
         </main>
 
         <!-- Event Detail Modal -->
-        <div id="event-modal" class="fixed inset-0 z-50 hidden event-detail-modal" onclick="if(!event.target.closest('#event-modal-panel')) closeEventModal()">
+        <div id="event-modal" class="fixed inset-0 z-50 hidden event-detail-modal" onclick="if(!event.target.closest('#event-modal-panel') && !event.target.closest('#modal-floating-social')) closeEventModal()">
             <div class="flex items-center justify-center min-h-screen p-2 md:p-4">
                 <div id="event-modal-panel" class="bg-zinc-950/90 backdrop-blur-md border border-white/10 rounded-xl md:rounded-2xl max-w-3xl w-full max-h-[95vh] md:max-h-[90vh] overflow-y-auto shadow-2xl ring-1 ring-white/5">
                     <div class="p-4 md:p-6 lg:p-8">
                         <div class="flex justify-between items-start mb-4 md:mb-6">
                             <div class="min-w-0 flex-1 pr-4">
-                                <h2 id="modal-title" class="text-xl md:text-2xl lg:text-3xl font-bold coyote-text mb-3 break-words"></h2>
-                                <div id="modal-meta" class="text-sm md:text-base text-zinc-400 space-y-2"></div>
+                                <p id="modal-meta" class="text-xs md:text-sm text-zinc-400 mb-2 md:mb-3"></p>
+                                <div class="border-t border-white/10 pt-3 md:pt-4">
+                                    <h2 id="modal-title" class="text-xl md:text-2xl lg:text-3xl font-bold coyote-text mb-3 break-words"></h2>
+                                </div>
                             </div>
                             <button onclick="closeEventModal()" aria-label="Zamknij modal" class="text-white/80 hover:text-white text-xl md:text-2xl ml-3 flex-shrink-0 bg-black/40 hover:bg-black/60 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition border border-white/10 backdrop-blur">
                                 <i class="fa-solid fa-times"></i>
@@ -1566,6 +1714,17 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div id="modal-floating-social" class="modal-floating-social modal-floating-social--off" role="toolbar" aria-label="Polubienia i komentarze" onclick="event.stopPropagation()">
+                <button type="button" id="blog-post-like-btn" class="blog-social-btn" aria-label="Polub wpis">
+                    <span id="blog-post-like-count">0</span>
+                    <i class="fa-solid fa-heart" aria-hidden="true"></i>
+                </button>
+                <span class="blog-social-separator" aria-hidden="true">|</span>
+                <button type="button" id="blog-post-comment-jump-btn" class="blog-social-btn" aria-label="Przejdź do dodawania komentarza">
+                    <i class="fa-solid fa-comments" aria-hidden="true"></i>
+                    <span id="blog-post-comments-count">0</span>
+                </button>
             </div>
         </div>
 
@@ -1855,6 +2014,7 @@ const firebaseConfig = {
                     }
                 }, 0);
             }
+            void refreshBlogPostUserLikes();
         }
 
         // Funkcja wylogowania
@@ -1872,22 +2032,86 @@ const firebaseConfig = {
             }
         };
 
+        let blogAuthStateReady = false;
+        let blogAuthResyncPromise = null;
+
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
+            blogAuthStateReady = true;
             updateUserInterface(user);
+        });
+
+        window.addEventListener("focus", () => {
+            void resyncBlogAuthState();
+        });
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") {
+                void resyncBlogAuthState();
+            }
         });
 
         let currentBlogDetailId = null;
         let currentBlogComments = [];
         let currentBlogCommentLikes = new Set();
         let currentBlogPostLiked = false;
+        const blogPostLikedByUser = new Set();
+        let blogPostLikeInFlight = false;
+        const blogCommentLikeInflight = new Set();
         let currentReplyToCommentId = "";
         let currentEditingCommentId = "";
         let blogCommentCooldownUntil = 0;
         let blogCommentCooldownTimer = null;
 
+        (function wireBlogModalFloatingSocial() {
+            const likeBtn = document.getElementById("blog-post-like-btn");
+            if (likeBtn) {
+                likeBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    if (currentBlogDetailId) window.toggleBlogPostLike(currentBlogDetailId);
+                });
+            }
+            const jumpBtn = document.getElementById("blog-post-comment-jump-btn");
+            if (jumpBtn) {
+                jumpBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    const panel = document.getElementById("event-modal-panel");
+                    const anchor = document.getElementById("blog-comment-composer-anchor");
+                    if (panel && anchor) {
+                        const delta =
+                            anchor.getBoundingClientRect().top -
+                            panel.getBoundingClientRect().top +
+                            panel.scrollTop -
+                            20;
+                        panel.scrollTo({ top: Math.max(0, delta), behavior: "smooth" });
+                    }
+                    window.requestAnimationFrame(() => {
+                        document.getElementById("blog-comment-textarea")?.focus({ preventScroll: true });
+                    });
+                });
+            }
+        })();
+
         function getActiveAuthUser() {
             return currentUser || auth.currentUser || null;
+        }
+
+        async function resyncBlogAuthState() {
+            if (blogAuthResyncPromise) return blogAuthResyncPromise;
+            blogAuthResyncPromise = (async () => {
+                try {
+                    await ensureFirebaseSSO(auth);
+                } catch (error) {
+                    console.warn("Blog auth resync failed:", error?.message || error);
+                } finally {
+                    blogAuthStateReady = true;
+                    if (currentBlogDetailId) {
+                        if (currentBlogComments.length) renderBlogComments();
+                        updateBlogCommentComposerState();
+                    }
+                    blogAuthResyncPromise = null;
+                }
+            })();
+            return blogAuthResyncPromise;
         }
 
         async function fetchBlogInteractionsApi(payload) {
@@ -1895,7 +2119,7 @@ const firebaseConfig = {
             try {
                 const activeUser = getActiveAuthUser();
                 if (activeUser) {
-                    idToken = await activeUser.getIdToken();
+                    idToken = await activeUser.getIdToken(false);
                 }
             } catch (_) {}
 
@@ -2123,15 +2347,16 @@ const firebaseConfig = {
             const note = document.getElementById("blog-comment-note");
             const guestOverlay = document.getElementById("blog-comment-guest-overlay");
             const activeUser = getActiveAuthUser();
+            const authPending = !activeUser && !blogAuthStateReady;
             const requiresCooldown = !currentEditingCommentId;
             const remainingSeconds = requiresCooldown ? getRemainingBlogCommentSeconds() : 0;
             const cooldownActive = requiresCooldown && remainingSeconds > 0;
 
             if (textarea) {
                 textarea.disabled = !activeUser || cooldownActive;
-                textarea.classList.toggle("blog-comment-textarea--guest", !activeUser);
+                textarea.classList.toggle("blog-comment-textarea--guest", !activeUser && !authPending);
                 if (!activeUser) {
-                    textarea.placeholder = "";
+                    textarea.placeholder = authPending ? "Sprawdzam sesję..." : "";
                     textarea.setAttribute("aria-hidden", "true");
                 } else {
                     textarea.placeholder = "Napisz komentarz do wpisu...";
@@ -2139,13 +2364,17 @@ const firebaseConfig = {
                 }
             }
             if (guestOverlay) {
-                guestOverlay.classList.toggle("hidden", !!activeUser);
-                guestOverlay.setAttribute("aria-hidden", activeUser ? "true" : "false");
+                const showGuestOverlay = !activeUser && !authPending;
+                guestOverlay.classList.toggle("hidden", !showGuestOverlay);
+                guestOverlay.setAttribute("aria-hidden", showGuestOverlay ? "false" : "true");
             }
             if (submitBtn) submitBtn.disabled = !activeUser || cooldownActive;
 
             if (note) {
-                if (!activeUser) {
+                note.classList.toggle("is-muted", !activeUser || authPending);
+                if (authPending) {
+                    note.textContent = "Sprawdzam status logowania...";
+                } else if (!activeUser) {
                     note.textContent = "";
                 } else if (cooldownActive) {
                     note.textContent = `Kolejny komentarz w tym wpisie możesz dodać za ${remainingSeconds} s.`;
@@ -2175,6 +2404,73 @@ const firebaseConfig = {
             if (!cooldownActive) {
                 stopBlogCommentCooldownTimer();
             }
+
+            syncBlogGuestLikeControls();
+        }
+
+        function syncBlogGuestLikeControls() {
+            const activeUser = getActiveAuthUser();
+            const authPending = !activeUser && !blogAuthStateReady;
+            const guestLikeLocked = !activeUser;
+            const postTitle = !activeUser
+                ? (authPending ? "Sprawdzam sesję logowania…" : "Zaloguj się, aby polubić wpis")
+                : "";
+            const commentTitle = !activeUser
+                ? (authPending ? "Sprawdzam sesję logowania…" : "Zaloguj się, aby polubić komentarz")
+                : "";
+
+            const postLikeBtn = document.getElementById("blog-post-like-btn");
+            if (postLikeBtn) {
+                postLikeBtn.classList.toggle("blog-social-btn--guest-locked", guestLikeLocked);
+                if (guestLikeLocked) {
+                    postLikeBtn.setAttribute("aria-disabled", "true");
+                    postLikeBtn.title = postTitle;
+                } else {
+                    postLikeBtn.removeAttribute("aria-disabled");
+                    postLikeBtn.removeAttribute("title");
+                }
+            }
+            document.querySelectorAll("[data-comment-like]").forEach((btn) => {
+                btn.classList.toggle("blog-comment-action--guest-locked", guestLikeLocked);
+                if (guestLikeLocked) {
+                    btn.setAttribute("aria-disabled", "true");
+                    btn.title = commentTitle;
+                } else {
+                    btn.removeAttribute("aria-disabled");
+                    btn.removeAttribute("title");
+                }
+            });
+            document.querySelectorAll("[data-blog-card-like]").forEach((btn) => {
+                btn.classList.toggle("blog-social-btn--guest-locked", guestLikeLocked);
+                if (guestLikeLocked) {
+                    btn.setAttribute("aria-disabled", "true");
+                    btn.title = postTitle;
+                } else {
+                    btn.removeAttribute("aria-disabled");
+                    btn.removeAttribute("title");
+                }
+            });
+        }
+
+        async function refreshBlogPostUserLikes() {
+            blogPostLikedByUser.clear();
+            const activeUser = getActiveAuthUser();
+            if (!activeUser?.uid) {
+                renderEventsList();
+                syncBlogGuestLikeControls();
+                return;
+            }
+            try {
+                const snap = await getDocs(query(collection(db, "blogPostLikes"), where("userId", "==", activeUser.uid)));
+                snap.forEach((d) => {
+                    const pid = String(d.data()?.postId || "");
+                    if (pid) blogPostLikedByUser.add(pid);
+                });
+            } catch (err) {
+                console.warn("refreshBlogPostUserLikes:", err);
+            }
+            renderEventsList();
+            syncBlogGuestLikeControls();
         }
 
         function renderCommentHistoryModal(comment) {
@@ -2258,6 +2554,21 @@ const firebaseConfig = {
                         return;
                     }
                     const commentId = button.getAttribute("data-comment-like") || "";
+                    if (!commentId || blogCommentLikeInflight.has(commentId)) return;
+                    const comment = findBlogCommentById(commentId);
+                    if (!comment) return;
+
+                    const prevLiked = currentBlogCommentLikes.has(commentId);
+                    const prevCount = Number(comment.likeCount || 0);
+                    const nextLiked = !prevLiked;
+                    const nextCount = Math.max(0, prevCount + (nextLiked ? 1 : -1));
+
+                    blogCommentLikeInflight.add(commentId);
+                    if (nextLiked) currentBlogCommentLikes.add(commentId);
+                    else currentBlogCommentLikes.delete(commentId);
+                    comment.likeCount = nextCount;
+                    renderBlogComments();
+
                     try {
                         const result = await fetchBlogInteractionsApi({
                             action: "comment.toggleLike",
@@ -2265,11 +2576,16 @@ const firebaseConfig = {
                         });
                         if (result.liked) currentBlogCommentLikes.add(commentId);
                         else currentBlogCommentLikes.delete(commentId);
-                        const comment = findBlogCommentById(commentId);
-                        if (comment) comment.likeCount = result.likeCount;
+                        comment.likeCount = result.likeCount;
                         renderBlogComments();
                     } catch (error) {
+                        if (prevLiked) currentBlogCommentLikes.add(commentId);
+                        else currentBlogCommentLikes.delete(commentId);
+                        comment.likeCount = prevCount;
+                        renderBlogComments();
                         showNotification(error.message || "Nie udało się polubić komentarza.");
+                    } finally {
+                        blogCommentLikeInflight.delete(commentId);
                     }
                 });
             });
@@ -2345,10 +2661,12 @@ const firebaseConfig = {
             if (!list) return;
             if (!currentBlogComments.length) {
                 list.innerHTML = '<div class="text-zinc-500 text-sm py-6 text-center border border-dashed border-zinc-700 rounded-2xl">Brak komentarzy. Bądź pierwszy.</div>';
+                syncBlogGuestLikeControls();
                 return;
             }
             list.innerHTML = `<div class="blog-comment-list">${currentBlogComments.map((comment) => renderBlogCommentItem(comment)).join("")}</div>`;
             bindBlogCommentActions();
+            syncBlogGuestLikeControls();
         }
 
         async function loadBlogPostInteractions(postId) {
@@ -2380,9 +2698,12 @@ const firebaseConfig = {
                         getDocs(query(collection(db, "blogCommentLikes"), where("userId", "==", activeUser.uid), where("postId", "==", postId))),
                     ]);
                     currentBlogPostLiked = postLikeSnap.exists();
+                    if (currentBlogPostLiked) blogPostLikedByUser.add(postId);
+                    else blogPostLikedByUser.delete(postId);
                     currentBlogCommentLikes = new Set(commentLikesSnap.docs.map((docSnap) => String(docSnap.data()?.commentId || "")));
                 } else {
                     currentBlogPostLiked = false;
+                    blogPostLikedByUser.delete(postId);
                     currentBlogCommentLikes = new Set();
                 }
 
@@ -2921,6 +3242,7 @@ const firebaseConfig = {
                         allEvents.sort((a, b) => compareBlogPosts(a, b));
                         updateLastUpdate();
                         applyBlogSearch();
+                        void refreshBlogPostUserLikes();
                         if (!blogAutoOpenDone && blogAutoOpenId) {
                             blogAutoOpenDone = true;
                             showEventDetail(blogAutoOpenId);
@@ -3051,8 +3373,6 @@ const firebaseConfig = {
                 month: '2-digit',
                 year: 'numeric'
             });
-            const likeCount = Number(event.likeCount || 0);
-            const commentCount = Number(event.commentCount || 0);
 
             const cardThumb = getBlogPostImages(event)[0];
             const cardThumbObjectPosition =
@@ -3061,24 +3381,32 @@ const firebaseConfig = {
                     : null;
             const cardThumbObjectScale = cardThumb && typeof cardThumb.zoom === 'number' ? cardThumb.zoom : null;
             const cardThumbTransformOrigin = cardThumbObjectPosition || '50% 50%';
+            const encPostId = encodeURIComponent(event.id);
+            const thumbLiked = getActiveAuthUser() && blogPostLikedByUser.has(event.id);
+            const thumbWrap = cardThumb
+                ? `<div class="event-card-media">
+                        <img src="${cardThumb.url}" class="event-card-thumb" style="${cardThumbObjectPosition ? `object-position: ${cardThumbObjectPosition};` : ''}${cardThumbObjectScale != null ? `transform: scale(${cardThumbObjectScale}); transform-origin: ${cardThumbTransformOrigin};` : ''}" alt="">
+                        <button type="button" class="event-card-like-fab blog-social-btn ${thumbLiked ? "is-active" : ""}" data-blog-card-like="${encPostId}" aria-label="Polub wpis">
+                            <i class="fa-solid fa-heart" aria-hidden="true"></i>
+                        </button>
+                   </div>`
+                : "";
             return `
-                    <article class="card-dark event-carousel-card event-carousel-card--blog" data-event-id="${encodeURIComponent(event.id)}">
-                        ${cardThumb ? `<img src="${cardThumb.url}" class="event-card-thumb" style="${cardThumbObjectPosition ? `object-position: ${cardThumbObjectPosition};` : ''}${cardThumbObjectScale != null ? `transform: scale(${cardThumbObjectScale}); transform-origin: ${cardThumbTransformOrigin};` : ''}" alt="">` : ''}
+                    <article class="card-dark event-carousel-card event-carousel-card--blog" data-event-id="${encPostId}">
+                        ${thumbWrap}
                         <div class="event-card-body">
-                            <p class="event-category-slot" style="margin-top: 0.5rem;">${safeCategory}</p>
+                            <p class="event-category-slot">
+                                <i class="fa-solid fa-calendar-day text-coyote/80" aria-hidden="true"></i>
+                                <span>${dateLabel}</span>
+                            </p>
                             <div class="event-divider"></div>
-                            <h3 class="event-title">${safeTitle}</h3>
+                            <p class="event-blog-card-category">${safeCategory}</p>
                             <div class="event-divider"></div>
-                            <div class="event-data-slot" style="margin-top: 0.5rem;">
-                                <p class="event-meta-row"><i class="fa-solid fa-calendar-day text-coyote/80 mr-1"></i>${dateLabel}</p>
-                            </div>
-                            <div class="blog-card-stats">
-                                <span class="blog-card-stat"><span>${likeCount}</span><i class="fa-solid fa-heart text-coyote/80"></i></span>
-                                <span class="blog-card-separator" aria-hidden="true">|</span>
-                                <span class="blog-card-stat"><i class="fa-solid fa-comments text-coyote/80"></i><span>${commentCount}</span></span>
+                            <div class="event-data-slot">
+                                <h3 class="event-blog-card-headline">${safeTitle}</h3>
                             </div>
                             <div class="event-card-action">
-                                <button type="button" data-blog-read-id="${encodeURIComponent(event.id)}" aria-label="Czytaj wpis ${safeTitle}" class="shop-cta-btn">
+                                <button type="button" data-blog-read-id="${encPostId}" aria-label="Czytaj wpis ${safeTitle}" class="shop-cta-btn">
                                     CZYTAJ
                                 </button>
                             </div>
@@ -3101,6 +3429,14 @@ const firebaseConfig = {
                     if (eventId) showEventDetail(eventId);
                 });
             });
+            track.querySelectorAll("[data-blog-card-like]").forEach((btn) => {
+                btn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    const postId = decodeURIComponent(btn.getAttribute("data-blog-card-like") || "");
+                    if (postId) window.toggleBlogPostLike(postId);
+                });
+            });
+            syncBlogGuestLikeControls();
         }
 
         // Render events as a single carousel track in shop style
@@ -3310,15 +3646,13 @@ const firebaseConfig = {
 
             document.getElementById('modal-title').textContent = event.title;
 
-            const meta = [];
-            meta.push(`<div class="detail-meta-item"><i class="fa-solid fa-calendar text-coyote"></i><span>${getBlogPostDate(event).toLocaleString('pl-PL', {
+            const dateStr = getBlogPostDate(event).toLocaleString('pl-PL', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
-            })}</span></div>`);
-            meta.push(`<div class="detail-meta-item"><i class="fa-solid fa-tag text-coyote"></i><span>${getEventCategoryName(event.category)}</span></div>`);
-
-            document.getElementById('modal-meta').innerHTML = `<div class="detail-meta-grid">${meta.join('')}</div>`;
+            });
+            const categoryStr = getEventCategoryName(event.category);
+            document.getElementById('modal-meta').textContent = `${dateStr} | ${categoryStr}`;
 
             if (window.blogGalleryKeyHandler) {
                 document.removeEventListener('keydown', window.blogGalleryKeyHandler);
@@ -3379,22 +3713,11 @@ const firebaseConfig = {
 
             htmlContent += `<div class="blog-post-body">${formatBlogPostBody(event.content)}</div>`;
             htmlContent += `
-                <div class="blog-social-row">
-                    <button type="button" id="blog-post-like-btn" class="blog-social-btn ${currentBlogPostLiked ? 'is-active' : ''}">
-                        <span id="blog-post-like-count">${Number(event.likeCount || 0)}</span>
-                        <i class="fa-solid fa-heart"></i>
-                    </button>
-                    <span class="blog-social-separator" aria-hidden="true">|</span>
-                    <div class="blog-social-btn blog-social-btn--static">
-                        <i class="fa-solid fa-comments"></i>
-                        <span id="blog-post-comments-count">${Number(event.commentCount || 0)}</span>
-                    </div>
-                </div>
                 <section class="blog-comments-section">
                     <div class="blog-comments-title">
                         <h3 class="text-lg md:text-xl font-bold text-white">Komentarze</h3>
                     </div>
-                    <div class="blog-comment-form-card">
+                    <div id="blog-comment-composer-anchor" class="blog-comment-form-card">
                         <div id="blog-comment-banner" class="blog-comment-banner">
                             <span id="blog-comment-banner-text"></span>
                             <button type="button" class="text-zinc-300 hover:text-white" onclick="window.cancelBlogCommentMode()">
@@ -3404,10 +3727,18 @@ const firebaseConfig = {
                         <div class="blog-comment-field-wrap">
                             <textarea id="blog-comment-textarea" class="blog-comment-textarea" placeholder="Napisz komentarz do wpisu..."></textarea>
                             <div id="blog-comment-guest-overlay" class="blog-comment-guest-overlay hidden" aria-hidden="true">
-                                <p class="blog-comment-guest-overlay-text">
-                                    Komentować mogą tylko zalogowani użytkownicy.
+                                <div class="blog-comment-guest-card">
+                                    <div class="blog-comment-guest-copy">
+                                        <span class="blog-comment-guest-icon" aria-hidden="true">
+                                            <i class="fa-solid fa-user-lock"></i>
+                                        </span>
+                                        <p class="blog-comment-guest-overlay-text">
+                                            <strong>Komentarze są dostępne po zalogowaniu</strong>
+                                            Zaloguj się, żeby dodać komentarz i brać udział w dyskusji pod wpisem.
+                                        </p>
+                                    </div>
                                     <button type="button" data-open-login-modal class="blog-comment-guest-login-link">Zaloguj się</button>
-                                </p>
+                                </div>
                             </div>
                             <button
                                 type="button"
@@ -3428,20 +3759,26 @@ const firebaseConfig = {
             `;
 
             document.getElementById('modal-content').innerHTML = htmlContent;
-            const likeBtn = document.getElementById('blog-post-like-btn');
             const submitBtn = document.getElementById('blog-comment-submit');
-            if (likeBtn) {
-                likeBtn.addEventListener('click', () => window.toggleBlogPostLike(event.id));
-            }
             if (submitBtn) {
                 submitBtn.addEventListener('click', () => window.submitBlogComment(event.id));
             }
+            const floatBar = document.getElementById('modal-floating-social');
+            const likeCountEl = document.getElementById('blog-post-like-count');
+            const commentsCountEl = document.getElementById('blog-post-comments-count');
+            const floatLikeBtn = document.getElementById('blog-post-like-btn');
+            if (likeCountEl) likeCountEl.textContent = String(Number(event.likeCount || 0));
+            if (commentsCountEl) commentsCountEl.textContent = String(Number(event.commentCount || 0));
+            if (floatLikeBtn) floatLikeBtn.classList.remove('is-active');
+            floatBar?.classList.remove('modal-floating-social--off');
+            void resyncBlogAuthState();
             loadBlogPostInteractions(event.id);
 
             document.getElementById('event-modal').classList.remove('hidden');
         }
 
         function closeEventModal() {
+            document.getElementById('modal-floating-social')?.classList.add('modal-floating-social--off');
             document.getElementById('event-modal').classList.add('hidden');
             document.getElementById('comment-history-modal')?.classList.add('hidden');
             currentBlogDetailId = null;
@@ -3467,19 +3804,53 @@ const firebaseConfig = {
                 showNotification("Musisz być zalogowany, aby polubić wpis.");
                 return;
             }
+            if (blogPostLikeInFlight) return;
+            const modalForPost = currentBlogDetailId === postId;
+            const likeBtn = document.getElementById("blog-post-like-btn");
+            const likeCount = document.getElementById("blog-post-like-count");
+            const post = allEvents.find((e) => e.id === postId);
+            const prevLiked = modalForPost ? currentBlogPostLiked : blogPostLikedByUser.has(postId);
+            const prevCount = modalForPost && likeCount
+                ? Number(likeCount.textContent || 0)
+                : Number(post?.likeCount || 0);
+            const nextLiked = !prevLiked;
+            const nextCount = Math.max(0, prevCount + (nextLiked ? 1 : -1));
+
+            blogPostLikeInFlight = true;
+            if (nextLiked) blogPostLikedByUser.add(postId);
+            else blogPostLikedByUser.delete(postId);
+            if (modalForPost) {
+                currentBlogPostLiked = nextLiked;
+                if (likeBtn) likeBtn.classList.toggle("is-active", nextLiked);
+                if (likeCount) likeCount.textContent = String(nextCount);
+            }
+            updateBlogPostStatsInLocalState(postId, { likeCount: nextCount });
+
             try {
                 const result = await fetchBlogInteractionsApi({
                     action: "post.toggleLike",
                     postId,
                 });
-                currentBlogPostLiked = !!result.liked;
-                const likeBtn = document.getElementById("blog-post-like-btn");
-                const likeCount = document.getElementById("blog-post-like-count");
-                if (likeBtn) likeBtn.classList.toggle("is-active", currentBlogPostLiked);
-                if (likeCount) likeCount.textContent = String(result.likeCount || 0);
+                if (result.liked) blogPostLikedByUser.add(postId);
+                else blogPostLikedByUser.delete(postId);
+                if (modalForPost) {
+                    currentBlogPostLiked = !!result.liked;
+                    if (likeBtn) likeBtn.classList.toggle("is-active", currentBlogPostLiked);
+                    if (likeCount) likeCount.textContent = String(result.likeCount || 0);
+                }
                 updateBlogPostStatsInLocalState(postId, { likeCount: Number(result.likeCount || 0) });
             } catch (error) {
+                if (prevLiked) blogPostLikedByUser.add(postId);
+                else blogPostLikedByUser.delete(postId);
+                if (modalForPost) {
+                    currentBlogPostLiked = prevLiked;
+                    if (likeBtn) likeBtn.classList.toggle("is-active", prevLiked);
+                    if (likeCount) likeCount.textContent = String(prevCount);
+                }
+                updateBlogPostStatsInLocalState(postId, { likeCount: prevCount });
                 showNotification(error.message || "Nie udało się polubić wpisu.");
+            } finally {
+                blogPostLikeInFlight = false;
             }
         };
 
@@ -3528,7 +3899,7 @@ const firebaseConfig = {
     </script>
     <script
       type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-04-12-3"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-04-12-4"
     ></script>
     <script
       type="module"

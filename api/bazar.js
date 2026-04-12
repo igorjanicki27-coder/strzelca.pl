@@ -41,6 +41,7 @@ const { processCompletedBazarPurchase } = require('./_bazar-purchase-processor')
 
 const BAZAR_MAX_IMAGES = 5;
 const BAZAR_IMAGES_MAX_TOTAL_BYTES = 1048576;
+const BAZAR_FIRST_OFFER_GUIDE_VERSION = 1;
 const CATEGORIES = ['PISTOLET', 'REWOLWER', 'KARABIN', 'BRON_GLADKOLUFOWA', 'BRON_CZARNOPROCHOWA', 'AMUNICJA', 'AKCESORIA', 'INNE'];
 const CONDITIONS = ['NOWY', 'UZYWANY'];
 const STATUSES = ['PENDING', 'ACTIVE', 'REJECTED', 'EXPIRED', 'SOLD'];
@@ -147,6 +148,11 @@ async function countActiveOffersForUser(db, uid) {
   return snaps.reduce((sum, snap) => sum + snap.size, 0);
 }
 
+async function hasAnyOfferForUser(db, uid) {
+  const snap = await db.collection('bazarOffers').where('seller_id', '==', uid).limit(1).get();
+  return !snap.empty;
+}
+
 function buildSellerSnapshot(profile) {
   return {
     seller_name: profile.displayName || 'Uzytkownik',
@@ -183,9 +189,11 @@ function buildOfferResponse(docSnap) {
     status: data.status,
     is_pinned: promotion.pinActive,
     is_highlighted: promotion.highlightActive,
+    is_home_featured: promotion.promotedActive,
     is_admin_pinned: data.is_pinned === true,
     pin_until: data.pin_until || null,
     highlight_until: data.highlight_until || null,
+    promoted_until: data.promoted_until || null,
     slug: data.slug || docSnap.id,
     rejection_reason: data.rejection_reason || null,
     created_at: data.created_at || null,
@@ -357,9 +365,57 @@ module.exports = async (req, res) => {
           role: profile.role,
           companyVerificationStatus: profile.companyVerificationStatus,
           companyVerificationLabel: getCompanyVerificationLabel(profile.companyVerificationStatus),
+          bazarFirstOfferGuideCompletedAt: profile.bazarFirstOfferGuideCompletedAt || null,
+          bazarFirstOfferGuideVersion: profile.bazarFirstOfferGuideVersion || 0,
         },
         buyerPrefill: buildInvoiceBuyerSnapshot(profile),
       });
+    }
+
+    if (req.method === 'GET' && action === 'first-offer-guide-state') {
+      const user = await getSessionUser(req);
+      if (!user) return res.status(401).json({ success: false, error: 'Wymagane zalogowanie' });
+      const [profile, cfg, activeCount, anyOffer] = await Promise.all([
+        getDecodedUserProfile(db, user.uid),
+        getBazarCommerceConfig(db),
+        countActiveOffersForUser(db, user.uid),
+        hasAnyOfferForUser(db, user.uid),
+      ]);
+      const completedAt = profile.bazarFirstOfferGuideCompletedAt || null;
+      const shouldShowGuide = !anyOffer && !completedAt;
+      return res.json({
+        success: true,
+        guide: {
+          version: BAZAR_FIRST_OFFER_GUIDE_VERSION,
+          shouldShowGuide,
+          hasAnyOffer: anyOffer,
+          completedAt,
+          acceptedRulesAt: profile.bazarFirstOfferGuideAcceptedRulesAt || null,
+          role: profile.role || 'user',
+          companyVerificationStatus: profile.companyVerificationStatus || 'not_applicable',
+          companyVerificationLabel: getCompanyVerificationLabel(profile.companyVerificationStatus),
+          privateFreeActiveOffers: cfg.privateFreeActiveOffers,
+          activeOfferCount: activeCount,
+        },
+      });
+    }
+
+    if (req.method === 'POST' && action === 'first-offer-guide-complete') {
+      const user = await getSessionUser(req);
+      if (!user) return res.status(401).json({ success: false, error: 'Wymagane zalogowanie' });
+      const body = await readJsonBody(req);
+      if (body?.acceptedRules !== true) {
+        return res.status(400).json({ success: false, error: 'Aby ukończyć szkolenie, zaakceptuj zasady Bazaru.' });
+      }
+      await db.collection('userProfiles').doc(user.uid).set(
+        {
+          bazarFirstOfferGuideCompletedAt: admin.firestore.FieldValue.serverTimestamp(),
+          bazarFirstOfferGuideAcceptedRulesAt: admin.firestore.FieldValue.serverTimestamp(),
+          bazarFirstOfferGuideVersion: BAZAR_FIRST_OFFER_GUIDE_VERSION,
+        },
+        { merge: true },
+      );
+      return res.json({ success: true, completed: true, version: BAZAR_FIRST_OFFER_GUIDE_VERSION });
     }
 
     if (req.method === 'GET' && action === 'token-history') {
@@ -552,7 +608,15 @@ module.exports = async (req, res) => {
         const highlightUntil = admin.firestore.Timestamp.fromMillis(
           now.toMillis() + cfg.actions.highlight_offer.durationDays * 24 * 60 * 60 * 1000,
         );
-        await offerRef.update({ highlight_until: highlightUntil, highlight_active: true, last_promoted_at: now });
+        const promotedUntil = admin.firestore.Timestamp.fromMillis(
+          now.toMillis() + Math.max(1, parseInt(cfg.promotionDefaults?.highlightDays, 10) || 7) * 24 * 60 * 60 * 1000,
+        );
+        await offerRef.update({
+          highlight_until: highlightUntil,
+          promoted_until: promotedUntil,
+          highlight_active: true,
+          last_promoted_at: now,
+        });
       } else if (actionKey === 'refresh') {
         await spendTokensForAction(db, user.uid, cfg, 'early_refresh', { offerId: subAction });
         const newExpires = admin.firestore.Timestamp.fromMillis(
@@ -594,6 +658,14 @@ module.exports = async (req, res) => {
       ]);
       if (!profile.emailVerified) {
         return res.status(400).json({ success: false, error: 'Potwierdź adres e-mail przed wystawieniem ogłoszenia.' });
+      }
+      const isFirstOfferAttempt = !(await hasAnyOfferForUser(db, user.uid));
+      if (isFirstOfferAttempt && !profile.bazarFirstOfferGuideCompletedAt) {
+        return res.status(400).json({
+          success: false,
+          error: 'Przed dodaniem pierwszego ogłoszenia ukończ szkolenie Bazaru i zaakceptuj zasady.',
+          code: 'FIRST_OFFER_GUIDE_REQUIRED',
+        });
       }
 
       const sellerSnapshot = buildSellerSnapshot(profile);

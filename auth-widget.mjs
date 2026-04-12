@@ -1344,6 +1344,19 @@ async function bindLoginModal(root) {
       else if (code === "auth/user-disabled") message = "To konto zostało wyłączone.";
       else if (code === "auth/network-request-failed") {
         message = "Brak połączenia z siecią. Spróbuj ponownie.";
+      } else if (code === "permission-denied" || code === "PERMISSION_DENIED") {
+        try {
+          const rt = await tryGetFirebaseSession();
+          if (rt?.runtime?.auth?.currentUser) {
+            try {
+              await refreshWidgetAfterLogin(root);
+            } catch {}
+            closeLoginModal();
+            return;
+          }
+        } catch {}
+        message =
+          "Zalogowano, ale nie udało się załadować części interfejsu (ograniczenia dostępu). Odśwież stronę.";
       } else if (code) message = `Logowanie nie powiodło się (${code}).`;
       setLoginStatus(message, true);
       if (
@@ -1368,7 +1381,7 @@ async function bindLoginModal(root) {
 function renderLoggedIn(root, { avatarUrl, displayName, notificationsEnabled }) {
   const letter = firstLetter(displayName);
   const avatar = avatarUrl
-    ? `<span class="strzelca-auth-avatar"><img src="${avatarUrl}" alt="Avatar" /></span>`
+    ? `<span class="strzelca-auth-avatar"><img src="${avatarUrl}" alt="Avatar" referrerpolicy="no-referrer" loading="lazy" decoding="async" /></span>`
     : `<span class="strzelca-auth-avatar" aria-hidden="true">${letter}</span>`;
 
   root.innerHTML = `
@@ -1756,14 +1769,26 @@ async function maybeShowInfoAnnouncement() {
   const { collection, query, where, orderBy, limit, getDocs, doc, getDoc, setDoc, serverTimestamp } =
     notificationState.runtime.fsMod;
 
-  const snap = await getDocs(
-    query(
-      collection(notificationState.runtime.db, "infoAnnouncements"),
-      where("isActive", "==", true),
-      orderBy("createdAt", "desc"),
-      limit(12),
-    ),
-  );
+  let snap;
+  try {
+    snap = await getDocs(
+      query(
+        collection(notificationState.runtime.db, "infoAnnouncements"),
+        where("isActive", "==", true),
+        orderBy("createdAt", "desc"),
+        limit(12),
+      ),
+    );
+  } catch (e) {
+    /* Zapytanie listowe vs reguły (audience) — Firestore zwraca permission-denied, jeśli
+     * w zbiorze wyników są dokumenty niedostępne dla użytkownika. Nie może blokować logowania. */
+    const c = String(e?.code || "");
+    if (c === "permission-denied" || c === "PERMISSION_DENIED") {
+      console.warn("infoAnnouncements query skipped (permission-denied):", e?.message || e);
+      return;
+    }
+    throw e;
+  }
 
   const role = String(notificationState.profile?.role || "user").toLowerCase();
   let nextInfo = null;

@@ -80,6 +80,84 @@ function canModerateEventComments(roleProfile) {
   return isAdminRoleProfile(roleProfile) || isModeratorRoleProfile(roleProfile) || hasOperatorScope(roleProfile, 'events');
 }
 
+function canViewEventLikes(roleProfile) {
+  return isAdminRoleProfile(roleProfile) || isModeratorRoleProfile(roleProfile) || hasOperatorScope(roleProfile, 'events');
+}
+
+function createHttpError(message, status = 400) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
+async function fetchLikeUsers(db, collectionName, keyField, keyValue) {
+  let snapshot;
+  try {
+    snapshot = await db.collection(collectionName)
+      .where(keyField, '==', keyValue)
+      .orderBy('createdAt', 'desc')
+      .get();
+  } catch (error) {
+    if (error?.code === 9 || error?.code === 'failed-precondition') {
+      snapshot = await db.collection(collectionName)
+        .where(keyField, '==', keyValue)
+        .get();
+    } else {
+      throw error;
+    }
+  }
+
+  const likes = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+  likes.sort((a, b) => {
+    const aMs = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime() || 0;
+    const bMs = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime() || 0;
+    return bMs - aMs;
+  });
+
+  const uniqueUserIds = [...new Set(
+    likes
+      .map((item) => cleanString(item.userId || '', 128))
+      .filter(Boolean)
+  )];
+
+  const profileMap = new Map();
+  for (let i = 0; i < uniqueUserIds.length; i += 100) {
+    const chunk = uniqueUserIds.slice(i, i + 100);
+    const refs = chunk.map((uid) => db.collection('userProfiles').doc(uid));
+    const snaps = refs.length ? await db.getAll(...refs) : [];
+    snaps.forEach((profileSnap, index) => {
+      const uid = chunk[index];
+      const data = profileSnap.exists ? profileSnap.data() || {} : {};
+      profileMap.set(uid, {
+        uid,
+        displayName: cleanString(data.displayName || data.email || 'Użytkownik', 120) || 'Użytkownik',
+        email: cleanString(data.email || '', 200),
+        avatar: cleanString(data.avatar || '', 4096),
+        role: cleanString(data.role || 'user', 30).toLowerCase() || 'user',
+      });
+    });
+  }
+
+  return likes.map((item) => {
+    const uid = cleanString(item.userId || '', 128);
+    const profile = profileMap.get(uid) || {
+      uid,
+      displayName: 'Użytkownik',
+      email: '',
+      avatar: '',
+      role: 'user',
+    };
+    return {
+      userId: uid,
+      displayName: profile.displayName,
+      email: profile.email,
+      avatar: profile.avatar,
+      role: profile.role,
+      likedAt: item.createdAt || null,
+    };
+  });
+}
+
 async function handleCreateComment(db, actor, body) {
   const eventId = cleanString(body.eventId, 128);
   const parentId = cleanString(body.parentId, 128);
@@ -358,6 +436,26 @@ async function handleToggleCommentLike(db, actor, body) {
   return result;
 }
 
+async function handleListEventLikes(db, actorRoleProfile, body) {
+  if (!canViewEventLikes(actorRoleProfile)) {
+    throw createHttpError('Brak uprawnień do podglądu polubień wydarzeń.', 403);
+  }
+
+  const eventId = cleanString(body.eventId, 128);
+  if (!eventId) throw new Error('Brak eventId.');
+
+  const eventSnap = await db.collection('events').doc(eventId).get();
+  if (!eventSnap.exists) {
+    throw new Error('Wydarzenie nie istnieje.');
+  }
+
+  const likes = await fetchLikeUsers(db, 'eventLikes', 'eventId', eventId);
+  return {
+    likes,
+    likeCount: likes.length,
+  };
+}
+
 module.exports = async (req, res) => {
   setCors(req, res, { methods: 'POST, OPTIONS' });
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -393,6 +491,9 @@ module.exports = async (req, res) => {
       case 'comment.toggleLike':
         data = await handleToggleCommentLike(db, actor, body);
         break;
+      case 'event.likes.list':
+        data = await handleListEventLikes(db, actorRoleProfile, body);
+        break;
       default:
         return res.status(400).json({ success: false, error: 'Nieznana akcja.' });
     }
@@ -400,7 +501,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({ success: true, data });
   } catch (error) {
     console.error('event-interactions:', error);
-    const status = error?.code === 'comment_cooldown' ? 429 : 400;
+    const status = error?.status || (error?.code === 'comment_cooldown' ? 429 : 400);
     return res.status(status).json({
       success: false,
       error: error?.message || 'Błąd wydarzeń',

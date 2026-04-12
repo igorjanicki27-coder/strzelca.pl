@@ -12873,6 +12873,12 @@
                     })}
                   </div>
                   ${event.location ? `<div class="text-sm text-zinc-400 mb-1"><i class="fa-solid fa-location-dot mr-1"></i>${event.location}</div>` : ""}
+                  <div class="text-xs text-zinc-500 mt-2">
+                    <button type="button" onclick="openEventLikesModal('${event.id}')" class="inline-flex items-center gap-2 hover:text-white transition">
+                      <i class="fa-solid fa-heart text-red-400"></i>
+                      <span>Polubienia: ${Number(event.likeCount || 0)}</span>
+                    </button>
+                  </div>
                   ${event.description ? `<div class="text-sm text-zinc-500 mt-2 line-clamp-2">${eventDescriptionPlainPreview(event.description)}</div>` : ""}
                 </div>
                 <div class="flex space-x-2 ml-4">
@@ -19459,6 +19465,111 @@
         throw lastError || new Error("Nie udało się połączyć z API komentarzy wydarzeń.");
       }
 
+      function getAdminRoleLabel(role) {
+        const labels = {
+          admin: "Administrator",
+          moderator: "Moderator",
+          operator: "Operator",
+          company: "Firma",
+          user: "Użytkownik",
+        };
+        return labels[String(role || "").toLowerCase()] || "Użytkownik";
+      }
+
+      function closeAdminLikesModal() {
+        document.getElementById("admin-likes-modal")?.remove();
+      }
+      window.closeAdminLikesModal = closeAdminLikesModal;
+
+      function renderAdminLikesList(items) {
+        if (!Array.isArray(items) || !items.length) {
+          return '<div class="rounded-xl border border-zinc-700 bg-zinc-900/60 p-5 text-sm text-zinc-400">Brak polubień dla tego elementu.</div>';
+        }
+
+        return items
+          .map((item) => `
+            <div class="rounded-xl border border-zinc-700 bg-zinc-900/60 p-4">
+              <div class="flex items-start gap-3">
+                <div class="w-11 h-11 rounded-full overflow-hidden bg-zinc-800 border border-zinc-700 shrink-0 flex items-center justify-center">
+                  ${item.avatar ? `<img src="${escapeHtml(item.avatar)}" alt="${escapeHtml(item.displayName || "Użytkownik")}" class="w-full h-full object-cover" />` : '<i class="fa-solid fa-user text-zinc-500"></i>'}
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <div class="font-semibold text-white">${escapeHtml(item.displayName || "Użytkownik")}</div>
+                    <span class="text-xs px-2 py-1 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">${escapeHtml(getAdminRoleLabel(item.role))}</span>
+                  </div>
+                  ${item.email ? `<div class="text-sm text-zinc-400 break-all">${escapeHtml(item.email)}</div>` : ""}
+                  <div class="text-xs text-zinc-500 mt-1">Polubiono: ${escapeHtml(formatAdminDateTime(item.likedAt))}</div>
+                  <div class="text-xs text-zinc-600 mt-1">UID: ${escapeHtml(item.userId || "-")}</div>
+                </div>
+              </div>
+            </div>
+          `)
+          .join("");
+      }
+
+      async function openAdminLikesModal({ title, fetcher }) {
+        closeAdminLikesModal();
+        const modalHtml = `
+          <div id="admin-likes-modal" class="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm" onclick="if(event.target.id === 'admin-likes-modal') closeAdminLikesModal()">
+            <div class="admin-card max-w-3xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+              <div class="flex items-center justify-between gap-4 px-6 py-5 border-b border-zinc-700">
+                <div>
+                  <h2 class="text-xl font-bold text-white">Polubienia</h2>
+                  <p class="text-sm text-zinc-400 mt-1">${escapeHtml(title || "Post")}</p>
+                </div>
+                <button type="button" onclick="closeAdminLikesModal()" class="text-zinc-400 hover:text-white transition-colors">
+                  <i class="fa-solid fa-times text-xl"></i>
+                </button>
+              </div>
+              <div id="admin-likes-modal-body" class="p-6">
+                <div class="text-zinc-400">Ładowanie listy polubień...</div>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+        const bodyEl = document.getElementById("admin-likes-modal-body");
+        try {
+          const result = await fetcher();
+          const likes = Array.isArray(result?.likes) ? result.likes : [];
+          if (bodyEl) {
+            bodyEl.innerHTML = `
+              <div class="text-sm text-zinc-400 mb-4">Liczba polubień: <span class="text-white font-semibold">${Number(result?.likeCount || likes.length || 0)}</span></div>
+              <div class="space-y-3">${renderAdminLikesList(likes)}</div>
+            `;
+          }
+        } catch (error) {
+          console.error("openAdminLikesModal:", error);
+          if (bodyEl) {
+            bodyEl.innerHTML = `<div class="text-red-400">Nie udało się wczytać listy polubień. ${escapeHtml(error.message || "")}</div>`;
+          }
+        }
+      }
+
+      window.openBlogPostLikesModal = async (postId) => {
+        const post = blogPostsList.find((item) => item.id === postId);
+        await openAdminLikesModal({
+          title: post?.title || "Wpis bloga",
+          fetcher: () => fetchBlogInteractionsAdminApi({
+            action: "post.likes.list",
+            postId,
+          }),
+        });
+      };
+
+      window.openEventLikesModal = async (eventId) => {
+        const event = eventsList.find((item) => item.id === eventId);
+        await openAdminLikesModal({
+          title: event?.title || "Wydarzenie",
+          fetcher: () => fetchEventInteractionsAdminApi({
+            action: "event.likes.list",
+            eventId,
+          }),
+        });
+      };
+
       window.loadBlogCommentsModeration = async () => {
         const container = document.getElementById("blog-comments-moderation-list");
         if (!container) return;
@@ -19671,6 +19782,12 @@
                     month: "long",
                     day: "numeric",
                   })}
+                </div>
+                <div class="text-xs text-zinc-500 mt-2">
+                  <button type="button" onclick="openBlogPostLikesModal('${post.id}')" class="inline-flex items-center gap-2 hover:text-white transition">
+                    <i class="fa-solid fa-heart text-red-400"></i>
+                    <span>Polubienia: ${Number(post.likeCount || 0)}</span>
+                  </button>
                 </div>
               </div>
               <div class="flex flex-shrink-0 items-center space-x-2 ml-4">

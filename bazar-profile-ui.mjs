@@ -895,9 +895,9 @@ function bindOfferModalActions(modal) {
       const action = btn.getAttribute('data-bazar-offer-action');
       const offerId = btn.getAttribute('data-offer-id');
       const actionLabelMap = {
-        refresh: 'odświeżyć lub aktywować ponownie',
-        highlight: 'wyróżnić',
-        pin: 'przypiąć',
+        refresh: 'odświeżyć lub aktywować ponownie i podbić na górę listy',
+        highlight: 'wyróżnić na 30 dni i pokazać w karuzeli strony głównej przez 7 dni',
+        pin: 'przypiąć na górze listy przez 7 dni',
         sold: 'oznaczyć jako sprzedane',
         delete: 'usunąć',
       };

@@ -73,6 +73,17 @@ function getBuyerProfile() {
   return window.__bazarBuyerProfile || {};
 }
 
+function getBuyerAddressFields() {
+  const buyer = getBuyerPrefill();
+  const fields = buyer.addressFields || {};
+  return {
+    street: String(fields.street || '').trim(),
+    buildingNumber: String(fields.buildingNumber || '').trim(),
+    postalCode: String(fields.postalCode || '').trim(),
+    city: String(fields.city || '').trim(),
+  };
+}
+
 function ensureJetonChip() {
   let chip = document.getElementById('bazar-token-chip');
   if (chip) return chip;
@@ -100,7 +111,7 @@ function installTopControls() {
   const addOfferBtn = document.getElementById('btn-add-offer');
   if (addOfferBtn) {
     addOfferBtn.className =
-      'absolute right-[9.5rem] md:right-[10.75rem] top-1/2 -translate-y-1/2 bg-[#C19A6B] text-black px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-[0.14em] hover:bg-white transition hidden';
+      'absolute right-[9.5rem] md:right-[10.75rem] top-1/2 -translate-y-1/2 bg-[#C19A6B] text-black h-10 px-3.5 rounded-xl text-xs font-black uppercase tracking-[0.14em] hover:bg-white transition hidden flex items-center justify-center';
     addOfferBtn.innerHTML = '<i class="fa-solid fa-plus mr-1.5"></i>OGŁOSZENIE';
   }
 }
@@ -113,16 +124,23 @@ function closeJetonPackagesModal() {
 function collectBuyerInput(modal) {
   const profile = getBuyerProfile();
   if (profile.role === 'company') return {};
+  const addressFields = {
+    street: modal.querySelector('#bazar-buyer-street')?.value?.trim() || '',
+    buildingNumber: modal.querySelector('#bazar-buyer-building-number')?.value?.trim() || '',
+    postalCode: modal.querySelector('#bazar-buyer-postal-code')?.value?.trim() || '',
+    city: modal.querySelector('#bazar-buyer-city')?.value?.trim() || '',
+  };
   return {
     name: modal.querySelector('#bazar-buyer-name')?.value?.trim() || '',
     email: modal.querySelector('#bazar-buyer-email')?.value?.trim() || '',
-    address: modal.querySelector('#bazar-buyer-address')?.value?.trim() || '',
+    addressFields,
   };
 }
 
 function buildBuyerFieldsMarkup() {
   const buyer = getBuyerPrefill();
   const profile = getBuyerProfile();
+  const addressFields = getBuyerAddressFields();
   if (profile.role === 'company') {
     return `
       <div class="rounded-3xl border border-sky-500/20 bg-sky-500/10 p-5 text-sm text-zinc-100">
@@ -131,10 +149,17 @@ function buildBuyerFieldsMarkup() {
     `;
   }
   return `
-    <div class="rounded-3xl border border-zinc-700 bg-zinc-900/60 p-5 space-y-4">
+    <div class="rounded-3xl border border-zinc-700 bg-zinc-900/60 p-5 md:p-6 space-y-5">
       <div>
-        <div class="text-sm font-semibold text-white">Dane do dokumentu sprzedaży</div>
-        <div class="text-xs text-zinc-500 mt-1">Możesz wpisać je jednorazowo tylko do tego zakupu.</div>
+        <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <div class="text-sm font-semibold text-white">Dane do dokumentu sprzedaży</div>
+            <div class="text-xs text-zinc-500 mt-1">Możesz wpisać je jednorazowo tylko do tego zakupu.</div>
+          </div>
+          <div class="rounded-2xl border border-[#C19A6B]/20 bg-[#C19A6B]/8 px-3 py-2 text-[11px] leading-5 text-zinc-300">
+            Pola są zgodne z profilem, więc system może je automatycznie uzupełnić.
+          </div>
+        </div>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <label class="block">
@@ -146,10 +171,29 @@ function buildBuyerFieldsMarkup() {
           <input id="bazar-buyer-email" type="email" class="filter-input w-full" maxlength="180" value="${escapeHtml(buyer.email || '')}" placeholder="mail@adres.pl">
         </label>
       </div>
-      <label class="block">
-        <span class="block text-xs uppercase tracking-[0.18em] text-zinc-500 mb-2">Adres</span>
-        <textarea id="bazar-buyer-address" class="filter-input w-full" rows="3" maxlength="320" placeholder="ul. Przykładowa 1/2, 00-001 Warszawa">${escapeHtml(buyer.address || '')}</textarea>
-      </label>
+      <div class="rounded-2xl border border-white/5 bg-black/15 p-4 space-y-4">
+        <div class="text-xs uppercase tracking-[0.18em] text-zinc-500">Adres do dokumentu</div>
+        <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1.2fr),minmax(180px,0.8fr)] gap-4">
+          <label class="block">
+            <span class="block text-xs uppercase tracking-[0.18em] text-zinc-500 mb-2">Ulica</span>
+            <input id="bazar-buyer-street" type="text" class="filter-input w-full" maxlength="120" value="${escapeHtml(addressFields.street)}" placeholder="np. Nowowiejska">
+          </label>
+          <label class="block">
+            <span class="block text-xs uppercase tracking-[0.18em] text-zinc-500 mb-2">Numer budynku / lokalu</span>
+            <input id="bazar-buyer-building-number" type="text" class="filter-input w-full" maxlength="60" value="${escapeHtml(addressFields.buildingNumber)}" placeholder="np. 12/3">
+          </label>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label class="block">
+            <span class="block text-xs uppercase tracking-[0.18em] text-zinc-500 mb-2">Kod pocztowy</span>
+            <input id="bazar-buyer-postal-code" type="text" class="filter-input w-full" maxlength="40" value="${escapeHtml(addressFields.postalCode)}" placeholder="00-000">
+          </label>
+          <label class="block">
+            <span class="block text-xs uppercase tracking-[0.18em] text-zinc-500 mb-2">Miejscowość</span>
+            <input id="bazar-buyer-city" type="text" class="filter-input w-full" maxlength="120" value="${escapeHtml(addressFields.city)}" placeholder="Warszawa">
+          </label>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -262,8 +306,8 @@ function renderJetonModal(modal, packages) {
       </div>
       <div class="p-5 md:p-7 space-y-5 bg-[#0d0d0f]">
         ${buildPromoResultMarkup(state)}
-        <div class="grid grid-cols-1 xl:grid-cols-[1.35fr,0.95fr] gap-5">
-          <section class="space-y-5">
+        <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr),minmax(360px,0.88fr)] gap-5 items-start">
+          <section class="space-y-5 min-w-0">
             <div class="rounded-3xl border border-zinc-700 bg-zinc-900/55 p-5">
               <div class="flex flex-col md:flex-row md:items-end gap-4">
                 <div class="flex-1">
@@ -281,7 +325,7 @@ function renderJetonModal(modal, packages) {
               ${buildPackageCardsMarkup(packages, getPromoState())}
             </div>
           </section>
-          <section class="space-y-5">
+          <section class="space-y-5 xl:sticky xl:top-4">
             ${buildBuyerFieldsMarkup()}
             <label class="flex items-start gap-3 rounded-3xl border border-zinc-700 bg-zinc-900/55 p-5 cursor-pointer">
               <input id="bazar-jeton-truth-confirm" type="checkbox" class="mt-1 accent-[#C19A6B]" />
@@ -496,10 +540,10 @@ async function showMyOffersEnhanced() {
       const action = btn.getAttribute('data-action');
       const label =
         action === 'refresh'
-          ? 'Zużyć 1 żeton na odświeżenie oferty?'
+          ? 'Zużyć 1 żeton na natychmiastowe odświeżenie oferty i podbicie jej na górę listy?'
           : action === 'highlight'
-            ? 'Zużyć 1 żeton na wyróżnienie oferty?'
-            : 'Zużyć 1 żeton na przypięcie oferty?';
+            ? 'Zużyć 1 żeton na wyróżnienie oferty na 30 dni i pokazanie jej w karuzeli strony głównej przez 7 dni?'
+            : 'Zużyć 1 żeton na przypięcie oferty na górze listy przez 7 dni?';
       btn.addEventListener('click', () => openPremiumAction(offerId, action, label));
     });
   } catch (error) {
@@ -588,16 +632,25 @@ async function openBazarRulesModal() {
 }
 
 function installRulesShortcut() {
-  if (document.getElementById('bazar-rules-shortcut')) return;
-  const filterBar = document.querySelector('.filter-bar .flex.flex-wrap.items-center.gap-3.mb-3');
+  const existingBtn = document.getElementById('bazar-rules-shortcut');
+  if (existingBtn) {
+    if (existingBtn.dataset.ready === '1') return;
+    existingBtn.dataset.ready = '1';
+    existingBtn.addEventListener('click', openBazarRulesModal);
+    window.openRegulationModal = openBazarRulesModal;
+    return;
+  }
+
+  const filterBar = document.querySelector('.filter-bar');
   if (!filterBar) return;
+  const actionsRow = filterBar.querySelector('.toolbar-actions') || filterBar;
   const btn = document.createElement('button');
   btn.id = 'bazar-rules-shortcut';
   btn.type = 'button';
-  btn.className = 'text-zinc-400 hover:text-[#C19A6B] transition text-sm px-3 py-2 border border-zinc-700 rounded-lg';
-  btn.innerHTML = '<i class="fa-solid fa-scale-balanced mr-1"></i>Zasady Bazaru';
+  btn.className = 'toolbar-btn toolbar-btn--ghost';
+  btn.innerHTML = '<i class="fa-solid fa-scale-balanced"></i><span>Zasady</span>';
   btn.addEventListener('click', openBazarRulesModal);
-  filterBar.appendChild(btn);
+  actionsRow.appendChild(btn);
   window.openRegulationModal = openBazarRulesModal;
 }
 

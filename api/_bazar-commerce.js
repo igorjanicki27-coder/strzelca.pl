@@ -50,7 +50,7 @@ const DEFAULT_BAZAR_COMMERCE_CONFIG = {
       label: 'Wyroznienie oferty',
       tokenCost: 1,
       active: true,
-      durationDays: 7,
+      durationDays: 30,
     },
     early_refresh: {
       label: 'Wcześniejsze odświeżenie oferty',
@@ -82,6 +82,22 @@ function clone(value) {
 
 function normalizeText(value, maxLen = 500) {
   return String(value || '').trim().slice(0, maxLen);
+}
+
+function normalizeAddressFields(raw) {
+  const row = raw && typeof raw === 'object' ? raw : {};
+  return {
+    street: normalizeText(row.street || '', 120),
+    buildingNumber: normalizeText(row.buildingNumber || '', 60),
+    postalCode: normalizeText(row.postalCode || '', 40),
+    city: normalizeText(row.city || '', 120),
+  };
+}
+
+function formatAddressFromFields(raw) {
+  const fields = normalizeAddressFields(raw);
+  const streetLine = [fields.street, fields.buildingNumber].filter(Boolean).join(' ').trim();
+  return [streetLine, fields.postalCode, fields.city].filter(Boolean).join(', ');
 }
 
 function decodeMaybeB64(value) {
@@ -328,6 +344,9 @@ async function getDecodedUserProfile(db, uid) {
     companyVerificationReason: normalizeText(user.companyVerificationReason || '', 600),
     companyVerificationReviewedAt: user.companyVerificationReviewedAt || null,
     companyVerificationReviewedBy: normalizeText(user.companyVerificationReviewedBy || '', 120),
+    bazarFirstOfferGuideCompletedAt: user.bazarFirstOfferGuideCompletedAt || null,
+    bazarFirstOfferGuideAcceptedRulesAt: user.bazarFirstOfferGuideAcceptedRulesAt || null,
+    bazarFirstOfferGuideVersion: Math.max(0, parseInt(user.bazarFirstOfferGuideVersion, 10) || 0),
   };
 }
 
@@ -367,28 +386,25 @@ function buildInvoiceBuyerSnapshot(profile) {
         [profile?.displayName].filter(Boolean).join(' ').trim() || profile?.email || 'Uzytkownik',
         240,
       );
-  const address = [
-    normalizeText(profile?.address?.street, 120),
-    normalizeText(profile?.address?.buildingNumber, 60),
-    normalizeText(profile?.address?.postalCode, 40),
-    normalizeText(profile?.address?.city, 120),
-  ]
-    .filter(Boolean)
-    .join(', ');
+  const addressFields = normalizeAddressFields(profile?.address);
+  const address = formatAddressFromFields(addressFields);
   return {
     name,
     taxId: isCompany ? normalizeText(profile.nip, 20).replace(/\D/g, '').slice(0, 10) : '',
     address,
+    addressFields,
     email: normalizeText(profile?.email || '', 180),
   };
 }
 
 function normalizeManualBuyerInput(raw) {
   const row = raw && typeof raw === 'object' ? raw : {};
+  const addressFields = normalizeAddressFields(row.addressFields || row.address || row);
   return {
     name: normalizeText(row.name || '', 240),
     taxId: normalizeText(row.taxId || '', 20).replace(/\D/g, '').slice(0, 10),
-    address: normalizeText(row.address || '', 320),
+    address: formatAddressFromFields(addressFields) || normalizeText(row.address || '', 320),
+    addressFields,
     email: normalizeText(row.email || '', 180),
   };
 }
@@ -407,6 +423,10 @@ function resolveInvoiceBuyerSnapshot(profile, rawBuyerInput) {
     name: manual.name || base.name,
     taxId: manual.taxId || '',
     address: manual.address || base.address,
+    addressFields: {
+      ...normalizeAddressFields(base.addressFields),
+      ...normalizeAddressFields(manual.addressFields),
+    },
     email: manual.email || base.email,
   };
   if (!buyer.name || !buyer.address) {
@@ -910,9 +930,6 @@ async function createTokenPurchaseCheckoutSession(db, payload) {
     ],
     billing_address_collection: 'required',
     allow_promotion_codes: false,
-    consent_collection: {
-      terms_of_service: 'required',
-    },
   });
 
   await purchaseRef.set(
@@ -979,9 +996,17 @@ function computePromotionState(data, nowMs = Date.now()) {
       : data?.highlight_until?.toMillis
         ? data.highlight_until.toMillis()
         : new Date(data?.highlight_until || 0).getTime();
+  const promotedUntilMs = data?.promoted_until?._seconds
+    ? data.promoted_until._seconds * 1000
+    : data?.promoted_until?.seconds
+      ? data.promoted_until.seconds * 1000
+      : data?.promoted_until?.toMillis
+        ? data.promoted_until.toMillis()
+        : new Date(data?.promoted_until || 0).getTime();
   return {
     pinActive: Boolean(data?.is_pinned) || (Number.isFinite(pinUntilMs) && pinUntilMs > nowMs),
     highlightActive: Number.isFinite(highlightUntilMs) && highlightUntilMs > nowMs,
+    promotedActive: Number.isFinite(promotedUntilMs) && promotedUntilMs > nowMs,
   };
 }
 

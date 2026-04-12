@@ -162,22 +162,33 @@
         }
         .detail-meta-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 10px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 6px;
+            font-size: 0.8125rem;
+            line-height: 1.35;
+        }
+        @media (min-width: 768px) {
+            .detail-meta-grid {
+                font-size: 0.875rem;
+            }
         }
         .detail-meta-item {
             display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            min-height: 44px;
-            padding: 10px 12px;
-            border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(255,255,255,0.02);
+            align-items: flex-start;
+            gap: 7px;
+            min-height: 0;
+            padding: 5px 9px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.07);
+            background: rgba(255,255,255,0.025);
         }
         .detail-meta-item i {
-            width: 18px;
+            width: 14px;
+            flex-shrink: 0;
             text-align: center;
+            font-size: 0.8em;
+            margin-top: 0.2em;
+            opacity: 0.92;
         }
         .blog-social-btn,
         .blog-comment-action {
@@ -209,6 +220,63 @@
             cursor: default;
             pointer-events: none;
             opacity: 0.95;
+        }
+        .modal-floating-social {
+            position: fixed;
+            left: 50%;
+            bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+            transform: translateX(-50%);
+            z-index: 55;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 9px 14px;
+            border-radius: 999px;
+            background: rgba(12, 12, 14, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 10px 36px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            max-width: calc(100vw - 2rem);
+        }
+        .modal-floating-social--off {
+            display: none !important;
+        }
+        .blog-social-btn.blog-social-btn--guest-locked,
+        .blog-comment-action.blog-comment-action--guest-locked {
+            cursor: not-allowed;
+            opacity: 0.52;
+        }
+        .blog-social-btn.blog-social-btn--guest-locked:hover,
+        .blog-comment-action.blog-comment-action--guest-locked:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.04);
+            transform: none;
+        }
+        .blog-social-btn.blog-social-btn--guest-locked.is-active,
+        .blog-comment-action.blog-comment-action--guest-locked.is-active {
+            border-color: rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.04);
+            color: #f4f4f5;
+        }
+        .event-card-like-fab {
+            position: absolute;
+            top: 0.45rem;
+            right: 0.45rem;
+            z-index: 3;
+            width: 2.35rem;
+            height: 2.35rem;
+            padding: 0;
+            justify-content: center;
+            gap: 0;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .event-card-like-fab i {
+            font-size: 1rem;
         }
         .blog-comments-section {
             margin-top: 1.75rem;
@@ -1287,6 +1355,7 @@
             backdrop-filter: blur(6px);
             -webkit-backdrop-filter: blur(6px);
             border: 1px solid #1f1f1f;
+            position: relative;
         }
         .event-carousel-card.event-pinned {
             background: rgba(31, 24, 14, 0.82);
@@ -1307,6 +1376,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            padding-right: 2.65rem;
         }
         .event-divider {
             width: 100%;
@@ -1345,6 +1415,28 @@
             padding-top: 0.75rem;
             border-top: 1px solid rgba(63, 63, 70, 0.5);
         }
+        .event-carousel-card .event-card-action.event-card-action--carousel-bleed {
+            margin-left: -0.75rem;
+            margin-right: -0.75rem;
+            width: calc(100% + 1.5rem);
+            padding-left: 0;
+            padding-right: 0;
+            box-sizing: border-box;
+        }
+        .event-carousel-card .event-card-action.event-card-action--carousel-bleed .event-participate-btn {
+            border-radius: 0 0 11px 11px;
+            border-left: none;
+            border-right: none;
+        }
+
+        .event-modal-participate-row {
+            width: 100%;
+            margin-top: 0.65rem;
+        }
+        .event-modal-participate-row .event-participate-btn {
+            width: 100%;
+            box-sizing: border-box;
+        }
         .event-meta-section-label {
             margin: 0.1rem 0 0;
             font-size: 0.66rem;
@@ -1355,7 +1447,7 @@
             text-align: center;
         }
         .event-meta-section-label--location {
-            /* Większy odstęp od końca bloku "Termin" */
+            /* Większy odstęp od końca bloku daty/godzin */
             margin-top: 0.22rem;
         }
         .event-meta-row {
@@ -1646,14 +1738,14 @@
         </button>
 
         <!-- Event Detail Modal -->
-        <div id="event-modal" class="fixed inset-0 z-50 hidden event-detail-modal" onclick="if(!event.target.closest('#event-modal-panel')) closeEventModal()">
+        <div id="event-modal" class="fixed inset-0 z-50 hidden event-detail-modal" onclick="if(!event.target.closest('#event-modal-panel') && !event.target.closest('#modal-floating-social')) closeEventModal()">
             <div class="flex items-center justify-center min-h-screen p-2 md:p-4">
                 <div id="event-modal-panel" class="bg-zinc-950/90 backdrop-blur-md border border-white/10 rounded-xl md:rounded-2xl max-w-3xl w-full max-h-[95vh] md:max-h-[90vh] overflow-y-auto shadow-2xl ring-1 ring-white/5">
                     <div class="p-4 md:p-6 lg:p-8">
                         <div class="flex justify-between items-start mb-4 md:mb-6">
                             <div class="min-w-0 flex-1 pr-4">
                                 <h2 id="modal-title" class="text-xl md:text-2xl lg:text-3xl font-bold coyote-text mb-3 break-words"></h2>
-                                <div id="modal-meta" class="text-sm md:text-base text-zinc-400 space-y-2"></div>
+                                <div id="modal-meta" class="text-zinc-400"></div>
                                 <div id="modal-statuses" class="mt-4 space-y-2"></div>
                             </div>
                             <button onclick="closeEventModal()" aria-label="Zamknij modal" class="text-white/80 hover:text-white text-xl md:text-2xl ml-3 flex-shrink-0 bg-black/40 hover:bg-black/60 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition border border-white/10 backdrop-blur">
@@ -1670,6 +1762,17 @@
                         <div id="modal-participate-wrap" class="hidden"></div>
                     </div>
                 </div>
+            </div>
+            <div id="modal-floating-social" class="modal-floating-social modal-floating-social--off" role="toolbar" aria-label="Polubienia i komentarze" onclick="event.stopPropagation()">
+                <button type="button" id="event-post-like-btn" class="blog-social-btn" aria-label="Polub wydarzenie">
+                    <span id="event-post-like-count">0</span>
+                    <i class="fa-solid fa-heart" aria-hidden="true"></i>
+                </button>
+                <span class="blog-social-separator" aria-hidden="true">|</span>
+                <button type="button" id="event-post-comment-jump-btn" class="blog-social-btn" aria-label="Przejdź do dodawania komentarza">
+                    <i class="fa-solid fa-comments" aria-hidden="true"></i>
+                    <span id="event-post-comments-count">0</span>
+                </button>
             </div>
         </div>
 
@@ -1991,6 +2094,7 @@ const firebaseConfig = {
                     }
                 }, 0);
             }
+            void refreshEventUserLikes();
         }
 
         // Funkcja wylogowania
@@ -2037,10 +2141,42 @@ const firebaseConfig = {
         let currentEventComments = [];
         let currentEventCommentLikes = new Set();
         let currentEventLiked = false;
+        const eventLikedByUser = new Set();
+        let eventPostLikeInFlight = false;
+        const eventCommentLikeInflight = new Set();
         let currentReplyToEventCommentId = '';
         let currentEditingEventCommentId = '';
         let eventCommentCooldownUntil = 0;
         let eventCommentCooldownTimer = null;
+
+        (function wireEventModalFloatingSocial() {
+            const likeBtn = document.getElementById("event-post-like-btn");
+            if (likeBtn) {
+                likeBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    if (activeEventModalId) window.toggleEventPostLike(activeEventModalId);
+                });
+            }
+            const jumpBtn = document.getElementById("event-post-comment-jump-btn");
+            if (jumpBtn) {
+                jumpBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    const panel = document.getElementById("event-modal-panel");
+                    const anchor = document.getElementById("event-comment-composer-anchor");
+                    if (panel && anchor) {
+                        const delta =
+                            anchor.getBoundingClientRect().top -
+                            panel.getBoundingClientRect().top +
+                            panel.scrollTop -
+                            20;
+                        panel.scrollTo({ top: Math.max(0, delta), behavior: "smooth" });
+                    }
+                    window.requestAnimationFrame(() => {
+                        document.getElementById("event-comment-textarea")?.focus({ preventScroll: true });
+                    });
+                });
+            }
+        })();
 
         const EVENT_CAROUSEL_DURATION_MS = 180;
         let eventLoopEnabled = false;
@@ -2650,6 +2786,7 @@ const firebaseConfig = {
                         });
                         updateLastUpdate();
                         applyFilters();
+                        void refreshEventUserLikes();
                         if (!eventAutoOpenDone && eventAutoOpenId) {
                             eventAutoOpenDone = true;
                             showEventDetail(eventAutoOpenId);
@@ -2929,7 +3066,6 @@ const firebaseConfig = {
                             </p>
                         `
                 : `
-                            <p class="event-meta-section-label">Termin</p>
                             <p class="event-meta-date">${startDateLabel}</p>
                             <p class="event-meta-time-range">
                                 <i class="fa-solid fa-play event-meta-icon" aria-hidden="true"></i>
@@ -2944,9 +3080,14 @@ const firebaseConfig = {
             const actionState = getEventParticipateButtonState(event, now);
             const buttonToneClass = getEventParticipateToneClass(actionState);
             const statusLinesHtml = renderEventStatusLinesHtml(event, now);
+            const encEvId = encodeURIComponent(event.id);
+            const cardLiked = currentUser && eventLikedByUser.has(event.id);
 
             return `
-                    <article class="card-dark event-carousel-card ${isPinned ? 'event-pinned' : ''} ${isPast ? 'event-completed opacity-70' : ''}" data-event-id="${encodeURIComponent(event.id)}">
+                    <article class="card-dark event-carousel-card ${isPinned ? 'event-pinned' : ''} ${isPast ? 'event-completed opacity-70' : ''}" data-event-id="${encEvId}">
+                        <button type="button" class="event-card-like-fab blog-social-btn ${cardLiked ? "is-active" : ""}" data-event-card-like="${encEvId}" aria-label="Polub wydarzenie">
+                            <i class="fa-solid fa-heart" aria-hidden="true"></i>
+                        </button>
                         <p class="event-category-slot">${safeCategory}</p>
                         <div class="event-divider"></div>
                         <h3 class="event-title">${safeTitle}</h3>
@@ -2957,20 +3098,9 @@ const firebaseConfig = {
                                 ? `<p class="event-meta-section-label event-meta-section-label--location">Lokalizacja</p><p class="event-meta-row event-meta-row--location"><i class="fa-solid fa-location-dot event-meta-icon" aria-hidden="true"></i><span class="event-meta-value">${safeLocation}</span></p>`
                                 : ''}
                         </div>
-                        <div class="mt-2 space-y-1" data-event-status-lines="${encodeURIComponent(event.id)}">${statusLinesHtml}</div>
-                        <div class="blog-card-stats">
-                            <span class="blog-card-stat">
-                                <span>${Number(event.likeCount || 0)}</span>
-                                <i class="fa-solid fa-heart text-coyote/90"></i>
-                            </span>
-                            <span class="blog-card-separator" aria-hidden="true">|</span>
-                            <span class="blog-card-stat">
-                                <i class="fa-solid fa-comments text-coyote/90"></i>
-                                <span>${Number(event.commentCount || 0)}</span>
-                            </span>
-                        </div>
-                        <div class="event-card-action">
-                            <button type="button" data-details-event-id="${encodeURIComponent(event.id)}" data-event-card-action-btn="${encodeURIComponent(event.id)}" aria-label="Pokaż szczegóły wydarzenia ${safeTitle}" class="event-participate-btn event-participate-btn--tile w-full py-3 md:py-4 text-[11px] md:text-xs uppercase font-black rounded tracking-[0.12em] flex items-center justify-center transition ${buttonToneClass.trim()}">
+                        <div class="mt-2 space-y-1" data-event-status-lines="${encEvId}">${statusLinesHtml}</div>
+                        <div class="event-card-action event-card-action--carousel-bleed">
+                            <button type="button" data-details-event-id="${encEvId}" data-event-card-action-btn="${encEvId}" aria-label="Pokaż szczegóły wydarzenia ${safeTitle}" class="event-participate-btn event-participate-btn--tile w-full py-3 md:py-4 text-[11px] md:text-xs uppercase font-black tracking-[0.12em] flex items-center justify-center transition ${buttonToneClass.trim()}">
                                 <span class="event-participate-label">${escapeHtml(getEventCardActionButtonLabel(actionState))}</span>
                             </button>
                         </div>
@@ -2993,6 +3123,14 @@ const firebaseConfig = {
                     if (id) showEventDetail(id);
                 });
             });
+            track.querySelectorAll("[data-event-card-like]").forEach((btn) => {
+                btn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    const id = decodeURIComponent(btn.getAttribute("data-event-card-like") || "");
+                    if (id) window.toggleEventPostLike(id);
+                });
+            });
+            syncEventGuestLikeControls();
         }
 
         function refreshVisibleEventCards() {
@@ -3094,7 +3232,7 @@ const firebaseConfig = {
             let authToken = null;
             try {
                 if (auth?.currentUser) {
-                    authToken = await auth.currentUser.getIdToken();
+                    authToken = await auth.currentUser.getIdToken(false);
                 }
             } catch (_) {}
 
@@ -3409,6 +3547,64 @@ const firebaseConfig = {
             if (!cooldownActive) {
                 stopEventCommentCooldownTimer();
             }
+
+            syncEventGuestLikeControls();
+        }
+
+        function syncEventGuestLikeControls() {
+            const guestLikeLocked = !currentUser;
+
+            const postLikeBtn = document.getElementById("event-post-like-btn");
+            if (postLikeBtn) {
+                postLikeBtn.classList.toggle("blog-social-btn--guest-locked", guestLikeLocked);
+                if (guestLikeLocked) {
+                    postLikeBtn.setAttribute("aria-disabled", "true");
+                    postLikeBtn.title = "Zaloguj się, aby polubić wydarzenie";
+                } else {
+                    postLikeBtn.removeAttribute("aria-disabled");
+                    postLikeBtn.removeAttribute("title");
+                }
+            }
+            document.querySelectorAll("[data-comment-like]").forEach((btn) => {
+                btn.classList.toggle("blog-comment-action--guest-locked", guestLikeLocked);
+                if (guestLikeLocked) {
+                    btn.setAttribute("aria-disabled", "true");
+                    btn.title = "Zaloguj się, aby polubić komentarz";
+                } else {
+                    btn.removeAttribute("aria-disabled");
+                    btn.removeAttribute("title");
+                }
+            });
+            document.querySelectorAll("[data-event-card-like]").forEach((btn) => {
+                btn.classList.toggle("blog-social-btn--guest-locked", guestLikeLocked);
+                if (guestLikeLocked) {
+                    btn.setAttribute("aria-disabled", "true");
+                    btn.title = "Zaloguj się, aby polubić wydarzenie";
+                } else {
+                    btn.removeAttribute("aria-disabled");
+                    btn.removeAttribute("title");
+                }
+            });
+        }
+
+        async function refreshEventUserLikes() {
+            eventLikedByUser.clear();
+            if (!currentUser?.uid) {
+                renderEventsList();
+                syncEventGuestLikeControls();
+                return;
+            }
+            try {
+                const snap = await getDocs(query(collection(db, "eventLikes"), where("userId", "==", currentUser.uid)));
+                snap.forEach((d) => {
+                    const eid = String(d.data()?.eventId || "");
+                    if (eid) eventLikedByUser.add(eid);
+                });
+            } catch (err) {
+                console.warn("refreshEventUserLikes:", err);
+            }
+            renderEventsList();
+            syncEventGuestLikeControls();
         }
 
         function renderEventCommentHistoryModal(comment) {
@@ -3492,6 +3688,21 @@ const firebaseConfig = {
                         return;
                     }
                     const commentId = button.getAttribute("data-comment-like") || "";
+                    if (!commentId || eventCommentLikeInflight.has(commentId)) return;
+                    const comment = findEventCommentById(commentId);
+                    if (!comment) return;
+
+                    const prevLiked = currentEventCommentLikes.has(commentId);
+                    const prevCount = Number(comment.likeCount || 0);
+                    const nextLiked = !prevLiked;
+                    const nextCount = Math.max(0, prevCount + (nextLiked ? 1 : -1));
+
+                    eventCommentLikeInflight.add(commentId);
+                    if (nextLiked) currentEventCommentLikes.add(commentId);
+                    else currentEventCommentLikes.delete(commentId);
+                    comment.likeCount = nextCount;
+                    renderEventComments();
+
                     try {
                         const result = await fetchEventInteractionsApi({
                             action: "comment.toggleLike",
@@ -3499,11 +3710,16 @@ const firebaseConfig = {
                         });
                         if (result.liked) currentEventCommentLikes.add(commentId);
                         else currentEventCommentLikes.delete(commentId);
-                        const comment = findEventCommentById(commentId);
-                        if (comment) comment.likeCount = result.likeCount;
+                        comment.likeCount = result.likeCount;
                         renderEventComments();
                     } catch (error) {
+                        if (prevLiked) currentEventCommentLikes.add(commentId);
+                        else currentEventCommentLikes.delete(commentId);
+                        comment.likeCount = prevCount;
+                        renderEventComments();
                         showNotification(error.message || "Nie udało się polubić komentarza.");
+                    } finally {
+                        eventCommentLikeInflight.delete(commentId);
                     }
                 });
             });
@@ -3579,10 +3795,12 @@ const firebaseConfig = {
             if (!list) return;
             if (!currentEventComments.length) {
                 list.innerHTML = '<div class="text-zinc-500 text-sm py-6 text-center border border-dashed border-zinc-700 rounded-2xl">Brak komentarzy. Bądź pierwszy.</div>';
+                syncEventGuestLikeControls();
                 return;
             }
             list.innerHTML = `<div class="blog-comment-list">${currentEventComments.map((comment) => renderEventCommentItem(comment)).join("")}</div>`;
             bindEventCommentActions();
+            syncEventGuestLikeControls();
         }
 
         async function loadEventInteractions(eventId) {
@@ -3612,12 +3830,19 @@ const firebaseConfig = {
                         getDocs(query(collection(db, "eventCommentLikes"), where("userId", "==", currentUser.uid), where("eventId", "==", eventId))),
                     ]);
                     currentEventLiked = eventLikeSnap.exists();
+                    if (currentEventLiked) eventLikedByUser.add(eventId);
+                    else eventLikedByUser.delete(eventId);
                     currentEventCommentLikes = new Set(commentLikesSnap.docs.map((docSnap) => String(docSnap.data()?.commentId || docSnap.id.split("_")[0] || "")));
                 }
 
                 renderEventComments();
+                const evAfter = allEvents.find((entry) => entry.id === eventId);
                 const likeBtn = document.getElementById("event-post-like-btn");
+                const likeCountEl = document.getElementById("event-post-like-count");
+                const commentsCountEl = document.getElementById("event-post-comments-count");
                 if (likeBtn) likeBtn.classList.toggle("is-active", currentEventLiked);
+                if (likeCountEl) likeCountEl.textContent = String(evAfter?.likeCount ?? 0);
+                if (commentsCountEl) commentsCountEl.textContent = String(evAfter?.commentCount ?? 0);
                 updateEventCommentComposerState();
             } catch (error) {
                 console.error("loadEventInteractions:", error);
@@ -3973,30 +4198,20 @@ const firebaseConfig = {
             const part = getEventParticipateButtonState(event, new Date());
             const toneClass = getEventParticipateToneClass(part);
             const dis = part.disabled ? ' disabled aria-disabled="true"' : '';
-            const participateControlHtml = part?.label
-                ? `<button type="button" id="event-post-participate-btn" class="event-participate-btn font-bold text-sm tracking-[0.12em] py-2.5 px-6 rounded-lg uppercase inline-flex items-center justify-center gap-2 transition-all duration-300${toneClass}"${dis}>
+            const participateBlockHtml = part?.label
+                ? `<div class="event-modal-participate-row"><button type="button" id="event-post-participate-btn" class="event-participate-btn font-bold text-sm tracking-[0.12em] py-3 px-4 rounded-lg uppercase flex items-center justify-center gap-2 transition-all duration-300${toneClass}"${dis}>
                         <span class="event-participate-label transition-colors">${escapeHtml(part.label)}</span>
-                    </button>`
-                : `<span class="blog-social-separator" aria-hidden="true">|</span>`;
+                    </button></div>`
+                : '';
 
             let htmlContent = `<div class="custom-render">${formatEventDescriptionForModal(event.description)}</div>`;
             htmlContent += `
-                <div class="blog-social-row">
-                    <button type="button" id="event-post-like-btn" class="blog-social-btn ${currentEventLiked ? 'is-active' : ''}">
-                        <span id="event-post-like-count">${Number(event.likeCount || 0)}</span>
-                        <i class="fa-solid fa-heart"></i>
-                    </button>
-                    ${participateControlHtml}
-                    <div class="blog-social-btn blog-social-btn--static">
-                        <i class="fa-solid fa-comments"></i>
-                        <span id="event-post-comments-count">${Number(event.commentCount || 0)}</span>
-                    </div>
-                </div>
+                ${participateBlockHtml}
                 <section class="blog-comments-section">
                     <div class="blog-comments-title">
                         <h3 class="text-lg md:text-xl font-bold text-white">Komentarze</h3>
                     </div>
-                    <div class="blog-comment-form-card">
+                    <div id="event-comment-composer-anchor" class="blog-comment-form-card">
                         <div id="event-comment-banner" class="blog-comment-banner">
                             <span id="event-comment-banner-text"></span>
                             <button type="button" class="text-zinc-300 hover:text-white" onclick="window.cancelEventCommentMode()">
@@ -4030,11 +4245,15 @@ const firebaseConfig = {
             `;
 
             document.getElementById('modal-content').innerHTML = htmlContent;
-            const likeBtn = document.getElementById('event-post-like-btn');
+            const floatBar = document.getElementById('modal-floating-social');
+            const likeCountEl = document.getElementById('event-post-like-count');
+            const commentsCountEl = document.getElementById('event-post-comments-count');
+            const floatLikeBtn = document.getElementById('event-post-like-btn');
+            if (likeCountEl) likeCountEl.textContent = String(Number(event.likeCount || 0));
+            if (commentsCountEl) commentsCountEl.textContent = String(Number(event.commentCount || 0));
+            if (floatLikeBtn) floatLikeBtn.classList.remove('is-active');
+            floatBar?.classList.remove('modal-floating-social--off');
             const submitBtn = document.getElementById('event-comment-submit');
-            if (likeBtn) {
-                likeBtn.addEventListener('click', () => window.toggleEventPostLike(event.id));
-            }
             const participateBtn = document.getElementById('event-post-participate-btn');
             if (participateBtn && !part.disabled) {
                 participateBtn.addEventListener('click', (e) => {
@@ -4052,6 +4271,7 @@ const firebaseConfig = {
 
         function closeEventModal() {
             activeEventModalId = null;
+            document.getElementById('modal-floating-social')?.classList.add('modal-floating-social--off');
             document.getElementById('event-modal').classList.add('hidden');
             document.getElementById('comment-history-modal')?.classList.add('hidden');
             currentEventComments = [];
@@ -4075,19 +4295,53 @@ const firebaseConfig = {
                 showNotification("Musisz być zalogowany, aby polubić wydarzenie.");
                 return;
             }
+            if (eventPostLikeInFlight) return;
+            const modalForEvent = activeEventModalId === eventId;
+            const likeBtn = document.getElementById("event-post-like-btn");
+            const likeCount = document.getElementById("event-post-like-count");
+            const ev = allEvents.find((e) => e.id === eventId);
+            const prevLiked = modalForEvent ? currentEventLiked : eventLikedByUser.has(eventId);
+            const prevCount = modalForEvent && likeCount
+                ? Number(likeCount.textContent || 0)
+                : Number(ev?.likeCount || 0);
+            const nextLiked = !prevLiked;
+            const nextCount = Math.max(0, prevCount + (nextLiked ? 1 : -1));
+
+            eventPostLikeInFlight = true;
+            if (nextLiked) eventLikedByUser.add(eventId);
+            else eventLikedByUser.delete(eventId);
+            if (modalForEvent) {
+                currentEventLiked = nextLiked;
+                if (likeBtn) likeBtn.classList.toggle("is-active", nextLiked);
+                if (likeCount) likeCount.textContent = String(nextCount);
+            }
+            updateEventStatsInLocalState(eventId, { likeCount: nextCount });
+
             try {
                 const result = await fetchEventInteractionsApi({
                     action: "event.toggleLike",
                     eventId,
                 });
-                currentEventLiked = !!result.liked;
-                const likeBtn = document.getElementById("event-post-like-btn");
-                const likeCount = document.getElementById("event-post-like-count");
-                if (likeBtn) likeBtn.classList.toggle("is-active", currentEventLiked);
-                if (likeCount) likeCount.textContent = String(result.likeCount || 0);
+                if (result.liked) eventLikedByUser.add(eventId);
+                else eventLikedByUser.delete(eventId);
+                if (modalForEvent) {
+                    currentEventLiked = !!result.liked;
+                    if (likeBtn) likeBtn.classList.toggle("is-active", currentEventLiked);
+                    if (likeCount) likeCount.textContent = String(result.likeCount || 0);
+                }
                 updateEventStatsInLocalState(eventId, { likeCount: Number(result.likeCount || 0) });
             } catch (error) {
+                if (prevLiked) eventLikedByUser.add(eventId);
+                else eventLikedByUser.delete(eventId);
+                if (modalForEvent) {
+                    currentEventLiked = prevLiked;
+                    if (likeBtn) likeBtn.classList.toggle("is-active", prevLiked);
+                    if (likeCount) likeCount.textContent = String(prevCount);
+                }
+                updateEventStatsInLocalState(eventId, { likeCount: prevCount });
                 showNotification(error.message || "Nie udało się polubić wydarzenia.");
+            } finally {
+                eventPostLikeInFlight = false;
             }
         };
 
@@ -4138,7 +4392,7 @@ const firebaseConfig = {
     </script>
     <script
       type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-04-12-3"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-04-12-4"
     ></script>
     <script
       type="module"
