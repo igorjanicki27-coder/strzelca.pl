@@ -7,6 +7,8 @@ const BAZAR_TOKEN_WALLETS = 'bazarTokenWallets';
 const BAZAR_PURCHASES = 'bazarTokenPurchases';
 const BAZAR_REPORTS = 'bazarOfferReports';
 const BAZAR_WEBHOOK_LOG = 'bazarStripeWebhookLog';
+const BAZAR_PROMO_CODES = 'bazarPromoCodes';
+const BAZAR_PROMO_CLAIMS = 'bazarPromoClaims';
 
 const DEFAULT_BAZAR_COMMERCE_CONFIG = {
   version: 1,
@@ -20,10 +22,10 @@ const DEFAULT_BAZAR_COMMERCE_CONFIG = {
     highlightDays: 7,
   },
   packages: [
-    { id: 'tokens_1', label: '1 token', tokens: 1, priceCents: 500, active: true },
-    { id: 'tokens_10', label: '10 tokenow', tokens: 10, priceCents: 4000, active: true },
-    { id: 'tokens_50', label: '50 tokenow', tokens: 50, priceCents: 15000, active: true },
-    { id: 'tokens_100', label: '100 tokenow', tokens: 100, priceCents: 20000, active: true },
+    { id: 'tokens_1', label: '1 żeton', tokens: 1, priceCents: 500, active: true },
+    { id: 'tokens_10', label: '10 żetonów', tokens: 10, priceCents: 4000, active: true },
+    { id: 'tokens_50', label: '50 żetonów', tokens: 50, priceCents: 15000, active: true },
+    { id: 'tokens_100', label: '100 żetonów', tokens: 100, priceCents: 20000, active: true },
   ],
   actions: {
     private_extra_listing: {
@@ -51,7 +53,7 @@ const DEFAULT_BAZAR_COMMERCE_CONFIG = {
       durationDays: 7,
     },
     early_refresh: {
-      label: 'Wczesniejsze odswiezenie oferty',
+      label: 'Wcześniejsze odświeżenie oferty',
       tokenCost: 1,
       active: true,
       durationDays: 30,
@@ -65,11 +67,11 @@ const DEFAULT_BAZAR_COMMERCE_CONFIG = {
   },
   reportingReasons: [
     'Podejrzenie oszustwa',
-    'Duplikat ogloszenia',
+    'Duplikat ogłoszenia',
     'Przedmiot niedozwolony',
-    'Nielegalna czesc lub akcesorium',
+    'Nielegalna część lub akcesorium',
     'Naruszenie regulaminu',
-    'Falszywa firma',
+    'Fałszywa firma',
     'Inne',
   ],
 };
@@ -119,6 +121,70 @@ function normalizeAction(actionKey, row, fallback) {
     tokenCost: Math.max(1, parseInt(src.tokenCost, 10) || fallback?.tokenCost || 1),
     active: src.active !== false,
     durationDays: Math.max(1, parseInt(src.durationDays, 10) || fallback?.durationDays || 7),
+  };
+}
+
+function normalizePromoCode(raw) {
+  const row = raw && typeof raw === 'object' ? raw : {};
+  const kind = normalizeText(row.kind || 'discount', 24).toLowerCase();
+  return {
+    code: normalizeText(row.code || '', 64).toUpperCase(),
+    label: normalizeText(row.label || '', 160),
+    kind: kind === 'grant' ? 'grant' : 'discount',
+    active: row.active !== false,
+    discountPercent: Math.max(0, Math.min(100, parseInt(row.discountPercent, 10) || 0)),
+    grantTokens: Math.max(0, parseInt(row.grantTokens, 10) || 0),
+    maxTotalUses: Math.max(0, parseInt(row.maxTotalUses, 10) || 0),
+    maxUsesPerUser: Math.max(1, parseInt(row.maxUsesPerUser, 10) || 1),
+    startsAt: row.startsAt || null,
+    expiresAt: row.expiresAt || null,
+    note: normalizeText(row.note || '', 400),
+    createdAt: row.createdAt || null,
+    updatedAt: row.updatedAt || null,
+    createdBy: normalizeText(row.createdBy || '', 120),
+    usageCount: Math.max(0, parseInt(row.usageCount, 10) || 0),
+  };
+}
+
+function getPromoClaimDocId(code, uid) {
+  return `${normalizeText(code || '', 64).toUpperCase()}__${normalizeText(uid || '', 120)}`;
+}
+
+function isPromoCodeTimeActive(code, nowMs = Date.now()) {
+  const startsAtMs = code?.startsAt?._seconds
+    ? code.startsAt._seconds * 1000
+    : code?.startsAt?.seconds
+      ? code.startsAt.seconds * 1000
+      : code?.startsAt?.toMillis
+        ? code.startsAt.toMillis()
+        : new Date(code?.startsAt || 0).getTime();
+  const expiresAtMs = code?.expiresAt?._seconds
+    ? code.expiresAt._seconds * 1000
+    : code?.expiresAt?.seconds
+      ? code.expiresAt.seconds * 1000
+      : code?.expiresAt?.toMillis
+        ? code.expiresAt.toMillis()
+        : new Date(code?.expiresAt || 0).getTime();
+  if (Number.isFinite(startsAtMs) && startsAtMs > 0 && startsAtMs > nowMs) return false;
+  if (Number.isFinite(expiresAtMs) && expiresAtMs > 0 && expiresAtMs < nowMs) return false;
+  return true;
+}
+
+function buildPackagePreview(pkg, discountPercent = 0) {
+  const basePriceCents = Math.max(0, parseInt(pkg?.priceCents, 10) || 0);
+  const tokens = Math.max(1, parseInt(pkg?.tokens, 10) || 1);
+  const normalizedPercent = Math.max(0, Math.min(100, parseInt(discountPercent, 10) || 0));
+  const discountedPriceCents = Math.max(0, Math.round(basePriceCents * (100 - normalizedPercent) / 100));
+  const pricePerTokenCents = Math.max(0, Math.round(discountedPriceCents / tokens));
+  return {
+    id: normalizeText(pkg?.id || '', 80),
+    label: normalizeText(pkg?.label || '', 160),
+    tokens,
+    priceCents: basePriceCents,
+    effectivePriceCents: discountedPriceCents,
+    pricePerTokenCents,
+    discountPercent: normalizedPercent,
+    active: pkg?.active !== false,
   };
 }
 
@@ -177,6 +243,59 @@ async function saveBazarCommerceConfig(db, cfg, meta = {}) {
   return normalized;
 }
 
+async function getPromoCodeByCode(db, codeRaw) {
+  const code = normalizeText(codeRaw || '', 64).toUpperCase();
+  if (!code) return null;
+  const snap = await db.collection(BAZAR_PROMO_CODES).doc(code).get();
+  if (!snap.exists) return null;
+  return normalizePromoCode({ code: snap.id, ...(snap.data() || {}) });
+}
+
+async function listPromoCodes(db, limitCount = 200) {
+  const snap = await db
+    .collection(BAZAR_PROMO_CODES)
+    .orderBy('updatedAt', 'desc')
+    .limit(Math.max(1, Math.min(parseInt(limitCount, 10) || 200, 300)))
+    .get();
+  return snap.docs.map((docSnap) => normalizePromoCode({ code: docSnap.id, ...(docSnap.data() || {}) }));
+}
+
+async function savePromoCode(db, rawCode, meta = {}) {
+  const normalized = normalizePromoCode(rawCode);
+  if (!normalized.code) throw new Error('Kod promocyjny jest wymagany.');
+  if (normalized.kind === 'discount' && normalized.discountPercent <= 0) {
+    throw new Error('Kod rabatowy musi mieć procent zniżki większy od zera.');
+  }
+  if (normalized.kind === 'grant' && normalized.grantTokens <= 0) {
+    throw new Error('Kod gratisowy musi przyznawać co najmniej 1 żeton.');
+  }
+  await db.collection(BAZAR_PROMO_CODES).doc(normalized.code).set(
+    {
+      ...normalized,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: normalized.createdAt || admin.firestore.FieldValue.serverTimestamp(),
+      createdBy: normalizeText(meta.createdBy || normalized.createdBy || '', 120),
+    },
+    { merge: true },
+  );
+  return normalized;
+}
+
+async function setPromoCodeStatus(db, codeRaw, updates, meta = {}) {
+  const code = normalizeText(codeRaw || '', 64).toUpperCase();
+  if (!code) throw new Error('Brak kodu promocyjnego.');
+  const patch = updates && typeof updates === 'object' ? updates : {};
+  await db.collection(BAZAR_PROMO_CODES).doc(code).set(
+    {
+      active: patch.active !== false,
+      note: normalizeText(patch.note || '', 400),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedBy: normalizeText(meta.updatedBy || '', 120),
+    },
+    { merge: true },
+  );
+}
+
 async function getDecodedUserProfile(db, uid) {
   const [userSnap, publicSnap] = await Promise.all([
     db.collection('userProfiles').doc(uid).get(),
@@ -228,14 +347,14 @@ function getCompanyVerificationLabel(status) {
 function assertProfileReadyForTokenPurchase(profile) {
   if (!profile) throw new Error('Nie znaleziono profilu.');
   if (!profile.emailVerified) {
-    throw new Error('Zakup tokenow jest dostepny dopiero po potwierdzeniu adresu e-mail.');
+    throw new Error('Zakup żetonów jest dostępny dopiero po potwierdzeniu adresu e-mail.');
   }
   if (profile.role === 'company') {
     if (!profile.companyName || !profile.nip || !profile.address?.street || !profile.address?.city) {
-      throw new Error('Uzupelnij dane firmy w profilu przed zakupem tokenow.');
+      throw new Error('Uzupełnij dane firmy w profilu przed zakupem żetonów.');
     }
     if (profile.companyVerificationStatus !== 'verified') {
-      throw new Error('Konto firmowe jest jeszcze w trakcie weryfikacji i nie moze kupowac tokenow.');
+      throw new Error('Konto firmowe jest jeszcze w trakcie weryfikacji i nie może kupować żetonów.');
     }
   }
 }
@@ -262,6 +381,175 @@ function buildInvoiceBuyerSnapshot(profile) {
     address,
     email: normalizeText(profile?.email || '', 180),
   };
+}
+
+function normalizeManualBuyerInput(raw) {
+  const row = raw && typeof raw === 'object' ? raw : {};
+  return {
+    name: normalizeText(row.name || '', 240),
+    taxId: normalizeText(row.taxId || '', 20).replace(/\D/g, '').slice(0, 10),
+    address: normalizeText(row.address || '', 320),
+    email: normalizeText(row.email || '', 180),
+  };
+}
+
+function resolveInvoiceBuyerSnapshot(profile, rawBuyerInput) {
+  const base = buildInvoiceBuyerSnapshot(profile);
+  if (profile?.role === 'company') {
+    if (!base.name || !base.address) {
+      throw new Error('Uzupełnij dane firmy w profilu przed zakupem żetonów.');
+    }
+    return base;
+  }
+
+  const manual = normalizeManualBuyerInput(rawBuyerInput);
+  const buyer = {
+    name: manual.name || base.name,
+    taxId: manual.taxId || '',
+    address: manual.address || base.address,
+    email: manual.email || base.email,
+  };
+  if (!buyer.name || !buyer.address) {
+    throw new Error('Podaj imię i nazwisko oraz adres do dokumentu sprzedaży.');
+  }
+  return buyer;
+}
+
+async function getPromoCodeUsageForUser(db, code, uid) {
+  const claimSnap = await db.collection(BAZAR_PROMO_CLAIMS).doc(getPromoClaimDocId(code, uid)).get();
+  const row = claimSnap.exists ? claimSnap.data() || {} : {};
+  return {
+    count: Math.max(0, parseInt(row.count, 10) || 0),
+    redemptions: Array.isArray(row.redemptions) ? row.redemptions : [],
+    claimSnap,
+  };
+}
+
+async function validatePromoCodeForUser(db, codeRaw, uid, options = {}) {
+  const code = await getPromoCodeByCode(db, codeRaw);
+  if (!code) {
+    throw new Error('Podany kod promocyjny nie istnieje.');
+  }
+  if (code.active === false) {
+    throw new Error('Ten kod promocyjny jest nieaktywny.');
+  }
+  if (!isPromoCodeTimeActive(code)) {
+    throw new Error('Ten kod promocyjny nie jest aktualnie aktywny.');
+  }
+  if (code.maxTotalUses > 0 && Number(code.usageCount || 0) >= code.maxTotalUses) {
+    throw new Error('Limit użyć tego kodu został wyczerpany.');
+  }
+  const usage = await getPromoCodeUsageForUser(db, code.code, uid);
+  if (code.maxUsesPerUser > 0 && usage.count >= code.maxUsesPerUser) {
+    throw new Error('Ten kod został już wykorzystany na tym koncie.');
+  }
+
+  const cfg = options.config || await getBazarCommerceConfig(db);
+  const packages = cfg.packages.filter((pkg) => pkg.active !== false);
+  const packagePreviews = packages.map((pkg) => buildPackagePreview(pkg, code.kind === 'discount' ? code.discountPercent : 0));
+  const matchedPackage = options.packageId
+    ? packagePreviews.find((pkg) => pkg.id === options.packageId)
+    : null;
+  if (options.packageId && !matchedPackage) {
+    throw new Error('Wybrany pakiet żetonów nie istnieje lub jest wyłączony.');
+  }
+  return {
+    code,
+    usage,
+    packages: packagePreviews,
+    packagePreview: matchedPackage,
+  };
+}
+
+async function finalizePromoCodeUsage(db, payload) {
+  const code = await getPromoCodeByCode(db, payload.code);
+  if (!code) return null;
+  const claimRef = db.collection(BAZAR_PROMO_CLAIMS).doc(getPromoClaimDocId(code.code, payload.userId));
+  const codeRef = db.collection(BAZAR_PROMO_CODES).doc(code.code);
+  const redemption = {
+    kind: code.kind,
+    usedAt: admin.firestore.Timestamp.now(),
+    purchaseId: normalizeText(payload.purchaseId || '', 120),
+    amountCents: Math.max(0, parseInt(payload.amountCents, 10) || 0),
+    grantTokens: Math.max(0, parseInt(payload.grantTokens, 10) || 0),
+  };
+  await db.runTransaction(async (tx) => {
+    const [claimSnap, codeSnap] = await Promise.all([tx.get(claimRef), tx.get(codeRef)]);
+    const claim = claimSnap.exists ? claimSnap.data() || {} : {};
+    const currentCode = codeSnap.exists ? codeSnap.data() || {} : {};
+    tx.set(claimRef, {
+      code: code.code,
+      userId: normalizeText(payload.userId || '', 120),
+      count: Math.max(0, parseInt(claim.count, 10) || 0) + 1,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      redemptions: [...(Array.isArray(claim.redemptions) ? claim.redemptions.slice(-19) : []), redemption],
+    }, { merge: true });
+    tx.set(codeRef, {
+      usageCount: Math.max(0, parseInt(currentCode.usageCount, 10) || 0) + 1,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+  return code;
+}
+
+async function redeemGrantPromoCode(db, payload) {
+  const uid = normalizeText(payload.userId || '', 120);
+  const validated = await validatePromoCodeForUser(db, payload.code, uid, payload);
+  const code = validated.code;
+  if (code.kind !== 'grant') {
+    throw new Error('Ten kod działa tylko jako rabat przy zakupie pakietu.');
+  }
+  const claimRef = db.collection(BAZAR_PROMO_CLAIMS).doc(getPromoClaimDocId(code.code, uid));
+  const codeRef = db.collection(BAZAR_PROMO_CODES).doc(code.code);
+  const now = admin.firestore.Timestamp.now();
+  await db.runTransaction(async (tx) => {
+    const [claimSnap, codeSnap] = await Promise.all([tx.get(claimRef), tx.get(codeRef)]);
+    const claim = claimSnap.exists ? claimSnap.data() || {} : {};
+    const currentCount = Math.max(0, parseInt(claim.count, 10) || 0);
+    if (code.maxUsesPerUser > 0 && currentCount >= code.maxUsesPerUser) {
+      throw new Error('Ten kod został już wykorzystany na tym koncie.');
+    }
+    const currentCode = codeSnap.exists ? codeSnap.data() || {} : {};
+    const totalUsage = Math.max(0, parseInt(currentCode.usageCount, 10) || 0);
+    if (code.maxTotalUses > 0 && totalUsage >= code.maxTotalUses) {
+      throw new Error('Limit użyć tego kodu został wyczerpany.');
+    }
+    tx.set(claimRef, {
+      code: code.code,
+      userId: uid,
+      count: currentCount + 1,
+      updatedAt: now,
+      redemptions: [
+        ...(Array.isArray(claim.redemptions) ? claim.redemptions.slice(-19) : []),
+        {
+          kind: 'grant',
+          usedAt: now,
+          grantTokens: code.grantTokens,
+        },
+      ],
+    }, { merge: true });
+    tx.set(codeRef, {
+      usageCount: totalUsage + 1,
+      updatedAt: now,
+    }, { merge: true });
+  });
+
+  const result = await grantTokens(db, {
+    userId: uid,
+    tokens: code.grantTokens,
+    packageId: `promo_${code.code.toLowerCase()}`,
+    packageLabel: `Kod promocyjny ${code.code}`,
+    source: 'promo_grant',
+    amountCents: 0,
+    currency: 'pln',
+    createdBy: normalizeText(payload.createdBy || uid, 120),
+    validityDays: Math.max(1, parseInt(payload.validityDays, 10) || 365),
+    reasonKey: 'promo_code_grant',
+    reasonLabel: `Kod promocyjny: ${code.code}`,
+    note: normalizeText(code.note || '', 400),
+    extendActiveGrants: true,
+  });
+  return { code, grantResult: result };
 }
 
 async function listActiveTokenGrants(db, uid, nowTs) {
@@ -298,6 +586,19 @@ async function getUserTokenSummary(db, uid) {
     lastGrantedAt: wallet.lastGrantedAt || null,
     lastUsedAt: wallet.lastUsedAt || null,
     activeGrantCount: activeGrants.length,
+    activeGrants: activeGrants.map((docSnap) => {
+      const row = docSnap.data() || {};
+      return {
+        id: docSnap.id,
+        packageId: normalizeText(row.packageId || '', 80),
+        packageLabel: normalizeText(row.packageLabel || '', 160),
+        remainingTokens: Number(row.remainingTokens || 0),
+        totalTokens: Number(row.totalTokens || 0),
+        expiresAt: row.expiresAt || null,
+        purchaseId: normalizeText(row.purchaseId || '', 120),
+        source: normalizeText(row.source || '', 40),
+      };
+    }),
   };
 }
 
@@ -316,9 +617,30 @@ async function grantTokens(db, payload) {
   const tokens = Math.max(1, parseInt(payload.tokens, 10) || 1);
   const grantRef = db.collection(BAZAR_TOKEN_GRANTS).doc();
   const walletRef = db.collection(BAZAR_TOKEN_WALLETS).doc(payload.userId);
+  const extendActiveGrants = payload.extendActiveGrants === true || normalizeText(payload.source || '', 40) === 'purchase';
+  const activeGrantsQuery = db
+    .collection(BAZAR_TOKEN_GRANTS)
+    .where('userId', '==', payload.userId)
+    .where('expiresAt', '>=', now)
+    .orderBy('expiresAt', 'asc')
+    .limit(200);
   await db.runTransaction(async (tx) => {
-    const walletSnap = await tx.get(walletRef);
+    const [walletSnap, activeGrantSnap] = await Promise.all([
+      tx.get(walletRef),
+      extendActiveGrants ? tx.get(activeGrantsQuery) : Promise.resolve(null),
+    ]);
     const wallet = walletSnap.exists ? walletSnap.data() || {} : {};
+    if (extendActiveGrants && activeGrantSnap) {
+      activeGrantSnap.docs.forEach((docSnap) => {
+        const row = docSnap.data() || {};
+        if (Number(row.remainingTokens || 0) > 0) {
+          tx.update(docSnap.ref, {
+            expiresAt,
+            updatedAt: now,
+          });
+        }
+      });
+    }
     tx.set(grantRef, {
       userId: payload.userId,
       totalTokens: tokens,
@@ -353,7 +675,7 @@ async function grantTokens(db, payload) {
     type: 'grant',
     tokensDelta: tokens,
     reasonKey: normalizeText(payload.reasonKey || 'token_purchase', 80),
-    reasonLabel: normalizeText(payload.reasonLabel || 'Zakup tokenow', 200),
+    reasonLabel: normalizeText(payload.reasonLabel || 'Zakup żetonów', 200),
     purchaseId: normalizeText(payload.purchaseId || '', 120),
     packageId: normalizeText(payload.packageId || '', 80),
     grantId: grantRef.id,
@@ -370,7 +692,7 @@ async function consumeTokens(db, payload) {
   const uid = normalizeText(payload.userId || '', 120);
   const tokensNeeded = Math.max(1, parseInt(payload.tokens || 1, 10));
   const reasonKey = normalizeText(payload.reasonKey || 'token_spend', 80);
-  const reasonLabel = normalizeText(payload.reasonLabel || 'Zuzycie tokenow', 200);
+  const reasonLabel = normalizeText(payload.reasonLabel || 'Zużycie żetonów', 200);
   const nowTs = admin.firestore.Timestamp.now();
   const query = db
     .collection(BAZAR_TOKEN_GRANTS)
@@ -401,7 +723,7 @@ async function consumeTokens(db, payload) {
       });
     });
     if (remaining > 0) {
-      throw new Error('Brak wystarczajacej liczby tokenow.');
+      throw new Error('Brak wystarczającej liczby żetonów.');
     }
     consumption.forEach((row) => {
       tx.update(row.grantRef, {
@@ -503,15 +825,26 @@ async function createTokenPurchaseCheckoutSession(db, payload) {
   const cfg = await getBazarCommerceConfig(db);
   const pkg = cfg.packages.find((item) => item.id === payload.packageId && item.active !== false);
   if (!pkg) {
-    throw new Error('Wybrany pakiet tokenow nie istnieje lub jest wylaczony.');
+    throw new Error('Wybrany pakiet żetonów nie istnieje lub jest wyłączony.');
   }
   if (payload.truthConfirmed !== true) {
-    throw new Error('Potwierdz prawdziwosc danych do dokumentu sprzedazy.');
+    throw new Error('Potwierdź prawdziwość danych do dokumentu sprzedaży.');
   }
 
-  const buyer = buildInvoiceBuyerSnapshot(profile);
-  if (!buyer.name || !buyer.address) {
-    throw new Error('Uzupelnij dane nabywcy w profilu przed zakupem tokenow.');
+  const buyer = resolveInvoiceBuyerSnapshot(profile, payload.buyerInput);
+  const promoCodeRaw = normalizeText(payload.promoCode || '', 64).toUpperCase();
+  let promoCodeData = null;
+  let effectivePriceCents = pkg.priceCents;
+  if (promoCodeRaw) {
+    const promoValidation = await validatePromoCodeForUser(db, promoCodeRaw, payload.userId, {
+      packageId: pkg.id,
+      config: cfg,
+    });
+    if (promoValidation.code.kind !== 'discount') {
+      throw new Error('Ten kod nie obniża ceny pakietu. Użyj go jako kodu gratisowego do odbioru żetonów.');
+    }
+    promoCodeData = promoValidation.code;
+    effectivePriceCents = promoValidation.packagePreview?.effectivePriceCents ?? pkg.priceCents;
   }
 
   const purchaseRef = db.collection(BAZAR_PURCHASES).doc();
@@ -522,7 +855,8 @@ async function createTokenPurchaseCheckoutSession(db, payload) {
     packageId: pkg.id,
     packageLabel: pkg.label,
     tokens: pkg.tokens,
-    amountCents: pkg.priceCents,
+    amountCents: effectivePriceCents,
+    baseAmountCents: pkg.priceCents,
     currency: cfg.currency,
     roleSnapshot: profile.role,
     companyVerificationStatus: profile.companyVerificationStatus,
@@ -533,6 +867,14 @@ async function createTokenPurchaseCheckoutSession(db, payload) {
     invoiceStatus: 'pending',
     emailStatus: 'pending',
     truthConfirmed: true,
+    promoCode: promoCodeData
+      ? {
+          code: promoCodeData.code,
+          kind: promoCodeData.kind,
+          discountPercent: promoCodeData.discountPercent,
+          note: promoCodeData.note,
+        }
+      : null,
   };
   await purchaseRef.set(record);
 
@@ -549,16 +891,19 @@ async function createTokenPurchaseCheckoutSession(db, payload) {
       packageId: pkg.id,
       tokens: String(pkg.tokens),
       userId: payload.userId,
+      promoCode: promoCodeData?.code || '',
     },
     line_items: [
       {
         quantity: 1,
         price_data: {
           currency: cfg.currency,
-          unit_amount: pkg.priceCents,
+          unit_amount: effectivePriceCents,
           product_data: {
-            name: `Tokeny Bazaru: ${pkg.label}`,
-            description,
+            name: `Żetony Bazaru: ${pkg.label}`,
+            description: promoCodeData
+              ? `${description} • kod ${promoCodeData.code} (-${promoCodeData.discountPercent}%)`
+              : description,
           },
         },
       },
@@ -648,6 +993,8 @@ module.exports = {
   BAZAR_PURCHASES,
   BAZAR_REPORTS,
   BAZAR_WEBHOOK_LOG,
+  BAZAR_PROMO_CODES,
+  BAZAR_PROMO_CLAIMS,
   DEFAULT_BAZAR_COMMERCE_CONFIG,
   normalizeCommerceConfig,
   getBazarCommerceConfig,
@@ -655,7 +1002,14 @@ module.exports = {
   getDecodedUserProfile,
   getCompanyVerificationLabel,
   buildInvoiceBuyerSnapshot,
+  resolveInvoiceBuyerSnapshot,
   assertProfileReadyForTokenPurchase,
+  validatePromoCodeForUser,
+  redeemGrantPromoCode,
+  listPromoCodes,
+  savePromoCode,
+  setPromoCodeStatus,
+  finalizePromoCodeUsage,
   getUserTokenSummary,
   listTokenHistory,
   grantTokens,

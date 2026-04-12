@@ -20,7 +20,13 @@ const {
   saveBazarCommerceConfig,
   getDecodedUserProfile,
   getCompanyVerificationLabel,
+  buildInvoiceBuyerSnapshot,
   createTokenPurchaseCheckoutSession,
+  validatePromoCodeForUser,
+  redeemGrantPromoCode,
+  listPromoCodes,
+  savePromoCode,
+  setPromoCodeStatus,
   getUserTokenSummary,
   listTokenHistory,
   consumeTokens,
@@ -215,7 +221,7 @@ function ensureWoj(value) {
 async function spendTokensForAction(db, uid, cfg, actionKey, extra = {}) {
   const action = cfg.actions?.[actionKey];
   if (!action || action.active === false) {
-    throw new Error('Ta akcja tokenowa jest obecnie niedostepna.');
+    throw new Error('Ta akcja żetonowa jest obecnie niedostępna.');
   }
   return consumeTokens(db, {
     userId: uid,
@@ -352,6 +358,7 @@ module.exports = async (req, res) => {
           companyVerificationStatus: profile.companyVerificationStatus,
           companyVerificationLabel: getCompanyVerificationLabel(profile.companyVerificationStatus),
         },
+        buyerPrefill: buildInvoiceBuyerSnapshot(profile),
       });
     }
 
@@ -360,6 +367,50 @@ module.exports = async (req, res) => {
       if (!user) return res.status(401).json({ success: false, error: 'Wymagane zalogowanie' });
       const history = await listTokenHistory(db, user.uid, 100);
       return res.json({ success: true, history });
+    }
+
+    if (req.method === 'GET' && action === 'promo-code-preview') {
+      const user = await getSessionUser(req);
+      if (!user) return res.status(401).json({ success: false, error: 'Wymagane zalogowanie' });
+      const code = normalizeText(url.searchParams.get('code') || '', 64);
+      const packageId = normalizeText(url.searchParams.get('packageId') || '', 80);
+      if (!code) return res.status(400).json({ success: false, error: 'Podaj kod promocyjny.' });
+      const validated = await validatePromoCodeForUser(db, code, user.uid, { packageId });
+      return res.json({
+        success: true,
+        promoCode: {
+          code: validated.code.code,
+          kind: validated.code.kind,
+          label: validated.code.label,
+          discountPercent: validated.code.discountPercent,
+          grantTokens: validated.code.grantTokens,
+          note: validated.code.note,
+        },
+        packages: validated.packages,
+        packagePreview: validated.packagePreview || null,
+      });
+    }
+
+    if (req.method === 'POST' && action === 'promo-code-redeem') {
+      const user = await getSessionUser(req);
+      if (!user) return res.status(401).json({ success: false, error: 'Wymagane zalogowanie' });
+      const body = await readJsonBody(req);
+      const code = normalizeText(body.code || '', 64);
+      if (!code) return res.status(400).json({ success: false, error: 'Podaj kod promocyjny.' });
+      const result = await redeemGrantPromoCode(db, {
+        code,
+        userId: user.uid,
+        createdBy: user.uid,
+      });
+      return res.json({
+        success: true,
+        redeemed: true,
+        promoCode: {
+          code: result.code.code,
+          kind: result.code.kind,
+          grantTokens: result.code.grantTokens,
+        },
+      });
     }
 
     if (req.method === 'GET' && action === 'company-status') {
@@ -383,6 +434,7 @@ module.exports = async (req, res) => {
         userId: user.uid,
         packageId: normalizeText(body.packageId || '', 80),
         truthConfirmed: body.truthConfirmed === true,
+        buyerInput: body.buyerInput || {},
       });
       return res.json({ success: true, ...result });
     }
@@ -459,7 +511,7 @@ module.exports = async (req, res) => {
         .limit(1)
         .get();
       if (!existing.empty) {
-        return res.status(400).json({ success: false, error: 'To ogloszenie jest juz przez Ciebie zgloszone.' });
+        return res.status(400).json({ success: false, error: 'To ogłoszenie jest już przez Ciebie zgłoszone.' });
       }
       await db.collection(BAZAR_REPORTS).add({
         offerId: subAction,
@@ -513,7 +565,7 @@ module.exports = async (req, res) => {
           expiry_warning_sent_at: null,
         });
       } else {
-        return res.status(400).json({ success: false, error: 'Nieobslugiwana akcja tokenowa.' });
+        return res.status(400).json({ success: false, error: 'Nieobsługiwana akcja żetonowa.' });
       }
       await bumpBazarPublicListVersion(db);
       await syncBazarOfferInSearchIndex(db, subAction);
@@ -541,7 +593,7 @@ module.exports = async (req, res) => {
         getBazarCommerceConfig(db),
       ]);
       if (!profile.emailVerified) {
-        return res.status(400).json({ success: false, error: 'Potwierdz adres e-mail przed wystawieniem ogloszenia.' });
+        return res.status(400).json({ success: false, error: 'Potwierdź adres e-mail przed wystawieniem ogłoszenia.' });
       }
 
       const sellerSnapshot = buildSellerSnapshot(profile);
@@ -556,7 +608,7 @@ module.exports = async (req, res) => {
 
       if (profile.role === 'company') {
         if (profile.companyVerificationStatus !== 'verified') {
-          return res.status(400).json({ success: false, error: 'Konto firmowe jest w trakcie weryfikacji i nie moze jeszcze publikowac ogloszen.' });
+          return res.status(400).json({ success: false, error: 'Konto firmowe jest w trakcie weryfikacji i nie może jeszcze publikować ogłoszeń.' });
         }
         await spendTokensForAction(db, user.uid, cfg, 'company_listing', {
           note: `Publikacja oferty firmowej: ${normalizeText(title, 120)}`,
@@ -872,6 +924,28 @@ module.exports = async (req, res) => {
       return res.json({ success: true, webhooks });
     }
 
+    if (req.method === 'GET' && action === 'admin' && subAction === 'promo-codes') {
+      await requireAdminUser(req);
+      const promoCodes = await listPromoCodes(db, 200);
+      return res.json({ success: true, promoCodes });
+    }
+
+    if (req.method === 'POST' && action === 'admin' && subAction === 'promo-codes') {
+      const user = await requireAdminUser(req);
+      const body = await readJsonBody(req);
+      const promoCode = await savePromoCode(db, body, { createdBy: user.uid });
+      return res.json({ success: true, promoCode });
+    }
+
+    if (req.method === 'POST' && action === 'admin' && subAction === 'promo-code-status') {
+      const user = await requireAdminUser(req);
+      const code = normalizeText(pathParts[2] || '', 64);
+      if (!code) return res.status(400).json({ success: false, error: 'Brak kodu promocyjnego.' });
+      const body = await readJsonBody(req);
+      await setPromoCodeStatus(db, code, body, { updatedBy: user.uid });
+      return res.json({ success: true });
+    }
+
     if (req.method === 'POST' && action === 'admin' && subAction === 'retry-purchase') {
       await requireAdminUser(req);
       const purchaseId = pathParts[2];
@@ -890,14 +964,14 @@ module.exports = async (req, res) => {
         userId: targetUid,
         tokens,
         packageId: normalizeText(body.packageId || 'manual_adjustment', 80),
-        packageLabel: normalizeText(body.packageLabel || `Manualne przyznanie ${tokens} tokenow`, 160),
+        packageLabel: normalizeText(body.packageLabel || `Manualne przyznanie ${tokens} żetonów`, 160),
         source: 'admin_manual',
         amountCents: 0,
         currency: 'pln',
         createdBy: user.uid,
         validityDays: Math.max(1, parseInt(body.validityDays, 10) || 365),
         reasonKey: 'admin_manual_grant',
-        reasonLabel: 'Manualne przyznanie tokenow',
+        reasonLabel: 'Manualne przyznanie żetonów',
         note: normalizeText(body.note || '', 400),
       });
       return res.json({ success: true, result });

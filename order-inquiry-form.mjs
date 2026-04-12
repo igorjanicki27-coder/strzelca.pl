@@ -366,7 +366,7 @@ async function fetchRegulaminPlainText() {
 
 async function fetchRegulaminRichHtml() {
   if (regulaminRichHtmlCache != null) return regulaminRichHtmlCache;
-  const { renderRegulaminTxtToHtml } = await import("https://strzelca.pl/regulamin-txt-render.mjs?v=2026-03-22-4");
+  const { renderRegulaminTxtToHtml } = await import("https://strzelca.pl/regulamin-txt-render.mjs?v=2026-04-12-1");
   const text = await fetchRegulaminPlainText();
   regulaminRichHtmlCache = renderRegulaminTxtToHtml(text, { includeFooter: true });
   return regulaminRichHtmlCache;

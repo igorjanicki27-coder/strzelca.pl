@@ -395,24 +395,63 @@
     <!-- Wspólne poprawki responsywności -->
     <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-03-24-2" />
     <style>
-      /* Strona główna: po shared.css — bez „pustki” pod kafelkami, ciaśniejszy grid */
+      /* Strona główna (mobile): kafelki wypełniają widok — bez pionowego scrolla (100dvh + grid 4×2) */
       @media (max-width: 768px) {
-        .home-hub {
+        .home-hub.main-wrapper {
+          height: 100dvh;
+          max-height: 100dvh;
+          min-height: 100dvh;
+          overflow: hidden;
           justify-content: flex-start !important;
           /* Tło: postać po prawej w pliku — wyższy % poziomo „wciąga” ją w lewo na ekranie; mniejsza wysokość = oddalenie */
           background-size: cover, cover, auto 72% !important;
           background-position: center center, top center, 82% top !important;
         }
         .home-hub > header {
-          padding-bottom: clamp(1.25rem, 5.5vmin, 2.75rem);
+          flex-shrink: 0;
+          padding-top: max(4.25rem, calc(env(safe-area-inset-top, 0px) + 2.65rem));
+          padding-bottom: clamp(0.35rem, 2vmin, 1rem);
         }
         .home-hub > main {
-          flex-grow: 0 !important;
-          align-items: flex-start !important;
-          padding-top: 0.35rem;
+          flex: 1 1 auto !important;
+          min-height: 0 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: stretch !important;
+          padding-top: 0.2rem !important;
+          padding-bottom: max(0.65rem, env(safe-area-inset-bottom, 0px)) !important;
+        }
+        .home-hub > main > .w-full {
+          flex: 1 1 auto;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
         }
         .home-hub .hub-grid {
-          align-content: start;
+          flex: 1 1 auto;
+          min-height: 0;
+          width: 100%;
+          height: 100%;
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          grid-template-rows: repeat(4, minmax(0, 1fr)) !important;
+          gap: clamp(5px, 1.4vmin, 10px) !important;
+          align-content: stretch;
+        }
+        .home-hub .hub-button {
+          aspect-ratio: auto !important;
+          height: 100%;
+          min-height: 0;
+          padding: clamp(0.3rem, 1vmin, 0.55rem) !important;
+        }
+        .home-hub .hub-button svg {
+          width: clamp(1.35rem, 6vmin, 2.15rem);
+          height: clamp(1.35rem, 6vmin, 2.15rem);
+          margin-bottom: clamp(0.05rem, 0.35vmin, 0.3rem) !important;
+        }
+        .home-hub .hub-button span {
+          font-size: clamp(0.58rem, 2.4vmin, 0.7rem) !important;
+          letter-spacing: 0.04em !important;
         }
         .home-hub > header h1 {
           display: inline-block;
@@ -424,6 +463,16 @@
         .home-hub > header h1 {
           font-size: 1.65rem;
           line-height: 1.05;
+        }
+      }
+      @media (max-width: 768px) and (max-height: 520px) {
+        .home-hub > header {
+          padding-top: max(3.5rem, calc(env(safe-area-inset-top, 0px) + 2.1rem));
+          padding-bottom: 0.2rem;
+        }
+        .home-hub > header h1 {
+          font-size: 1.35rem;
+          line-height: 1.02;
         }
       }
     </style>

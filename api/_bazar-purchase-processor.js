@@ -3,6 +3,7 @@ const { sendTransactionalEmail } = require('./_transactional-mail');
 const {
   BAZAR_PURCHASES,
   grantTokens,
+  finalizePromoCodeUsage,
 } = require('./_bazar-commerce');
 const {
   createBazarInvoiceDocument,
@@ -22,29 +23,29 @@ function formatCurrencyFromCents(cents) {
 }
 
 function buildPurchaseThankYouHtml(purchase, invoiceId) {
-  const packageLabel = normalizeText(purchase.packageLabel || `${purchase.tokens || 0} tokenow`, 120);
-  const total = `${formatCurrencyFromCents(purchase.amountCents || 0)} zl`;
+  const packageLabel = normalizeText(purchase.packageLabel || `${purchase.tokens || 0} żetonów`, 120);
+  const total = `${formatCurrencyFromCents(purchase.amountCents || 0)} zł`;
   const invoiceUrl = invoiceId
     ? `https://strzelca.pl/api/bazar-invoice-download?invoiceId=${encodeURIComponent(invoiceId)}`
     : '';
   return `<!doctype html>
 <html lang="pl">
   <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #27272a;">
-    <h2 style="color:#c19a6b;">Dziekujemy za zakup tokenow Bazaru</h2>
-    <p>Zakup zostal poprawnie zaksiegowany.</p>
+    <h2 style="color:#c19a6b;">Dziękujemy za zakup żetonów Bazaru</h2>
+    <p>Zakup został poprawnie zaksięgowany.</p>
     <ul>
       <li><strong>Pakiet:</strong> ${packageLabel}</li>
-      <li><strong>Liczba tokenow:</strong> ${purchase.tokens || 0}</li>
+      <li><strong>Liczba żetonów:</strong> ${purchase.tokens || 0}</li>
       <li><strong>Kwota:</strong> ${total}</li>
     </ul>
-    <p>Tokeny sa juz dostepne na Twoim koncie i mozesz wykorzystac je do publikacji ogloszen oraz uslug premium Bazaru.</p>
+    <p>Żetony są już dostępne na Twoim koncie i możesz wykorzystać je do publikacji ogłoszeń oraz usług premium Bazaru.</p>
     ${
       invoiceUrl
-        ? `<p><a href="${invoiceUrl}" style="color:#c19a6b;">Pobierz dokument sprzedazy</a></p>`
+        ? `<p><a href="${invoiceUrl}" style="color:#c19a6b;">Pobierz dokument sprzedaży</a></p>`
         : ''
     }
-    <p>Dokument zostal wystawiony jako <strong>faktura zwolniona z VAT</strong>.</p>
-    <p>Pozdrawiamy,<br />Zespol STRZELCA.PL</p>
+    <p>Dokument został wystawiony jako <strong>faktura zwolniona z VAT</strong>.</p>
+    <p>Pozdrawiamy,<br />Zespół STRZELCA.PL</p>
   </body>
 </html>`;
 }
@@ -53,11 +54,11 @@ async function processCompletedBazarPurchase({ db, purchaseId }) {
   const purchaseRef = db.collection(BAZAR_PURCHASES).doc(purchaseId);
   const purchaseSnap = await purchaseRef.get();
   if (!purchaseSnap.exists) {
-    throw new Error('Zakup tokenow nie istnieje.');
+    throw new Error('Zakup żetonów nie istnieje.');
   }
   const purchase = { id: purchaseSnap.id, ...(purchaseSnap.data() || {}) };
   if (purchase.status !== 'paid') {
-    throw new Error('Zakup nie jest jeszcze oznaczony jako oplacony.');
+    throw new Error('Zakup nie jest jeszcze oznaczony jako opłacony.');
   }
   if (purchase.processingStatus === 'completed') {
     return {
@@ -93,14 +94,25 @@ async function processCompletedBazarPurchase({ db, purchaseId }) {
         createdBy: 'stripe_webhook',
         validityDays: purchase.roleSnapshot === 'company' ? 365 : 365,
         reasonKey: 'token_purchase',
-        reasonLabel: 'Zakup tokenow Bazaru',
+        reasonLabel: 'Zakup żetonów Bazaru',
         note: `Stripe checkout: ${normalizeText(purchase.stripeSessionId || '', 120)}`,
       });
       granted = true;
+      if (purchase.promoCode?.code && !purchase.promoCodeAppliedAt) {
+        await finalizePromoCodeUsage(db, {
+          code: purchase.promoCode.code,
+          userId: purchase.userId,
+          purchaseId: purchase.id,
+          amountCents: purchase.amountCents,
+        });
+      }
       await purchaseRef.set(
         {
           tokensGrantedAt: admin.firestore.FieldValue.serverTimestamp(),
           tokenGrantStatus: 'granted',
+          promoCodeAppliedAt: purchase.promoCode?.code
+            ? admin.firestore.FieldValue.serverTimestamp()
+            : purchase.promoCodeAppliedAt || null,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         },
         { merge: true },
@@ -132,7 +144,7 @@ async function processCompletedBazarPurchase({ db, purchaseId }) {
       if (buyerEmail) {
         await sendTransactionalEmail({
           to: buyerEmail,
-          subject: `Tokeny Bazaru: ${normalizeText(purchase.packageLabel || '', 120)} - strzelca.pl`,
+          subject: `Żetony Bazaru: ${normalizeText(purchase.packageLabel || '', 120)} - strzelca.pl`,
           html: buildPurchaseThankYouHtml(purchase, invoiceId),
           attachments:
             invoicePdfBuffer && invoiceId
