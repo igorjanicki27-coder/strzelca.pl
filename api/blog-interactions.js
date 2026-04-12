@@ -15,7 +15,7 @@ const { createUserNotification, cleanString } = require('./_notifications');
 
 const COMMENT_MIN_LENGTH = 3;
 const COMMENT_MAX_LENGTH = 3000;
-const COMMENT_COOLDOWN_MS = 5 * 60 * 1000;
+const COMMENT_COOLDOWN_MS = 30 * 1000;
 const DELETE_REASON_MIN_LENGTH = 5;
 const DELETE_REASON_MAX_LENGTH = 500;
 
