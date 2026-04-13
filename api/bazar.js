@@ -11,6 +11,7 @@ const {
   syncEntryFromSource,
   deleteIndexEntry,
 } = require('./_search-index');
+const { getBazarDemoOfferTemplates } = require('./_bazar-demo-seed-data');
 const {
   getUserRoleProfile,
   canAccessBackofficeScope,
@@ -902,6 +903,94 @@ module.exports = async (req, res) => {
       await bumpBazarPublicListVersion(db);
       await syncBazarOfferInSearchIndex(db, offerId);
       return res.json({ success: true });
+    }
+
+    if (req.method === 'POST' && action === 'admin' && subAction === 'seed-demo-offers') {
+      const user = await requireAdminUser(req);
+      const profile = await getDecodedUserProfile(db, user.uid);
+      const cfg = await getBazarCommerceConfig(db);
+      const nowTs = admin.firestore.Timestamp.now();
+      const expiresAt = admin.firestore.Timestamp.fromMillis(
+        nowTs.toMillis() + computeOfferExpiryDays(cfg) * 24 * 60 * 60 * 1000,
+      );
+      const sellerSnapshot = buildSellerSnapshot(profile);
+
+      const metaRef = db.collection('internalBazarDemoSeed').doc(user.uid);
+      const metaSnap = await metaRef.get();
+      const oldIds = metaSnap.exists ? metaSnap.data()?.offerIds || [] : [];
+      for (const oldId of oldIds) {
+        if (!oldId) continue;
+        try {
+          const ref = db.collection('bazarOffers').doc(String(oldId));
+          const s = await ref.get();
+          if (s.exists && s.data()?.is_demo_seed === true) {
+            await ref.delete();
+            await deleteIndexEntry(db, TYPE_BAZAR, String(oldId));
+          }
+        } catch (e) {
+          console.warn('seed-demo-offers cleanup', oldId, e?.message || e);
+        }
+      }
+
+      const templates = getBazarDemoOfferTemplates();
+      const newIds = [];
+      for (const row of templates) {
+        if (!ensureCategory(row.category) || !ensureCondition(row.condition)) {
+          return res.status(500).json({ success: false, error: 'Nieprawidłowy szablon demo (kategoria/stan).' });
+        }
+        let location;
+        try {
+          location = validateCreateLocationSelection({ locationId: row.locationId });
+        } catch (err) {
+          return res.status(500).json({ success: false, error: err.message || 'Błąd lokalizacji w szablonie demo.' });
+        }
+        const imgCheck = validateBazarImages(row.images);
+        if (!imgCheck.ok) {
+          return res.status(500).json({ success: false, error: imgCheck.error || 'Błąd zdjęć w szablonie demo.' });
+        }
+        const docRef = db.collection('bazarOffers').doc();
+        const slug = generateSlug(row.title, location.wojewodztwo);
+        const offerData = {
+          title: normalizeText(row.title, 200),
+          description: normalizeText(row.description || '', 5000),
+          price: parseFloat(row.price),
+          category: row.category,
+          condition: row.condition,
+          images: imgCheck.list,
+          seller_id: user.uid,
+          ...sellerSnapshot,
+          status: 'ACTIVE',
+          is_pinned: false,
+          pin_active: false,
+          highlight_active: false,
+          promoted_until: null,
+          pin_until: null,
+          highlight_until: null,
+          slug,
+          created_at: nowTs,
+          approved_at: nowTs,
+          expires_at: expiresAt,
+          last_refreshed_at: nowTs,
+          rejection_reason: null,
+          paid_listing_action: null,
+          is_demo_seed: true,
+          demo_seed_version: 1,
+        };
+        applyLocationSnapshot(offerData, location);
+        await docRef.set(offerData);
+        newIds.push(docRef.id);
+        await syncBazarOfferInSearchIndex(db, docRef.id);
+      }
+
+      await metaRef.set(
+        {
+          offerIds: newIds,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+      await bumpBazarPublicListVersion(db);
+      return res.json({ success: true, count: newIds.length, offerIds: newIds });
     }
 
     if (req.method === 'POST' && action === 'admin' && subAction === 'pin') {

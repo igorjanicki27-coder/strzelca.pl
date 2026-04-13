@@ -114,20 +114,25 @@ function makeStyles() {
       width: 56px;
       height: 56px;
       border-radius: 999px;
-      border: 1px solid rgba(193,154,107,0.45);
+      border: none;
       background: rgba(10,10,10,0.78);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      box-shadow: 0 14px 40px rgba(0,0,0,0.45);
+      box-shadow:
+        0 0 0 1px rgba(193,154,107,0.45),
+        0 14px 40px rgba(0,0,0,0.45);
       display: inline-flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       color: rgba(193,154,107,0.95);
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      transition: box-shadow 0.2s ease, color 0.2s ease;
     }
     .launcher:hover {
-      border-color: rgba(193,154,107,0.8);
+      box-shadow:
+        0 0 0 1px rgba(193,154,107,0.8),
+        0 14px 40px rgba(0,0,0,0.45);
       color: #fff;
     }
     .overlay {

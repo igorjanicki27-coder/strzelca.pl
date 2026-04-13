@@ -30,7 +30,7 @@
     <script src="https://cdn.jsdelivr.net/npm/quill-image-resize-module@3.0.0/image-resize.min.js"></script>
     <!-- Wspólne poprawki responsywności -->
     <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-04-12-1" />
-    <link rel="stylesheet" href="/admin/invoices-admin.css?v=2026-04-08-3" />
+    <link rel="stylesheet" href="/admin/invoices-admin.css?v=2026-04-13-1" />
     <style>
       :root {
         --coyote: #c19a6b;
@@ -196,6 +196,32 @@
       }
       select#blog-status option[value="archived"] {
         color: #a1a1aa !important;
+      }
+
+      /* Pływające zamknięcie edycji (widoczne bez scrolla do góry) */
+      .admin-form-floating-close {
+        position: fixed;
+        top: max(0.75rem, env(safe-area-inset-top, 0px));
+        right: max(0.75rem, env(safe-area-inset-right, 0px));
+        z-index: 62;
+        width: 2.75rem;
+        height: 2.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9999px;
+        background: rgba(24, 24, 27, 0.94);
+        border: 1px solid rgba(63, 63, 70, 0.95);
+        color: #a1a1aa;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+        cursor: pointer;
+        transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+      }
+      .admin-form-floating-close:hover {
+        color: #fff;
+        background: rgba(39, 39, 42, 0.98);
+        border-color: rgba(193, 154, 107, 0.5);
+        transform: scale(1.04);
       }
 
       .btn-admin {
@@ -1645,18 +1671,23 @@
         }
       }
 
+      .recent-users-section {
+        padding: 16px 18px;
+        border-radius: 20px;
+      }
+
       .recent-users-tile {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 1rem;
-        border-radius: 22px;
+        gap: 0.65rem;
+        border-radius: 14px;
         border: 1px solid rgba(255, 244, 224, 0.12);
         background:
-          radial-gradient(circle at top right, rgba(193, 154, 107, 0.18), transparent 32%),
+          radial-gradient(circle at top right, rgba(193, 154, 107, 0.14), transparent 28%),
           linear-gradient(180deg, rgba(255, 248, 235, 0.05), rgba(255, 248, 235, 0.02)),
           rgba(248, 245, 239, 0.04);
-        padding: 1.2rem;
+        padding: 0.55rem 0.75rem;
         transition: 0.2s ease;
       }
 
@@ -1665,16 +1696,42 @@
         transform: translateY(-1px);
       }
 
+      .recent-users-tile-main {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.6rem;
+        min-width: 0;
+        flex: 1;
+      }
+
       .recent-users-tile-meta {
         min-width: 0;
       }
 
       .recent-users-count {
         font-family: "Orbitron", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        font-size: 1.7rem;
-        line-height: 1;
+        font-size: 1.1rem;
+        line-height: 1.25;
         color: #fff7e8;
-        margin-bottom: 0.45rem;
+        flex-shrink: 0;
+        min-width: 1.25ch;
+        padding-top: 0.12rem;
+      }
+
+      .recent-users-tile .btn-admin {
+        padding: 8px 14px;
+        font-size: 0.68rem;
+        letter-spacing: 0.05em;
+        border-radius: 6px;
+      }
+
+      .recent-users-tile .btn-admin:hover {
+        transform: scale(1.03);
+      }
+
+      .recent-users-tile-btn-icon {
+        font-size: 0.72em;
+        margin-right: 0.4em;
       }
 
       .mobile-overlay {
@@ -2600,9 +2657,9 @@
           </div>
 
           <!-- Sekcja najnowszych użytkowników -->
-          <div class="admin-card mb-8">
-            <h3 class="text-xl font-bold mb-4">Najnowsi użytkownicy</h3>
-            <div id="recent-users" class="space-y-3">
+          <div class="admin-card recent-users-section mb-5">
+            <h3 class="text-lg font-bold mb-2">Najnowsi użytkownicy</h3>
+            <div id="recent-users" class="space-y-2">
               <div class="text-center text-zinc-500 py-4">
                 <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-zinc-600"></i>
                 <p class="text-sm">Ładowanie najnowszych użytkowników...</p>
@@ -3625,8 +3682,8 @@
                 <div class="invoice-page-header-text">
                   <h1 class="invoice-page-title coyote-text">Faktury</h1>
                   <p class="invoice-page-lead">
-                    Po lewej: parafka (tylko lokalnie w tej przeglądarce), filtry i lista dokumentów. Po prawej: podgląd jak na wydruku.
-                    Parafka <strong>nie jest w repozytorium Git</strong> — wgrywasz ją sam; przy zapisie faktury trafia do bazy razem z dokumentem.
+                    Lista dokumentów po lewej, podgląd i akcje po prawej. Podsumowanie przychodu liczone jest od
+                    <strong>daty wystawienia</strong> faktury pierwotnej (bez anulowanych i bez osobnych wpisów korekt).
                   </p>
                 </div>
                 <div class="invoice-page-actions">
@@ -3639,47 +3696,60 @@
                 </div>
               </header>
 
+              <section class="invoice-summary-section" aria-labelledby="invoice-summary-heading">
+                <div class="invoice-summary-section-head">
+                  <h2 id="invoice-summary-heading" class="invoice-summary-section-title">Podsumowanie przychodu</h2>
+                  <p class="invoice-summary-section-hint" id="invoice-summary-hint"></p>
+                </div>
+                <div id="invoice-summary-grid" class="order-monitor-grid invoice-summary-grid"></div>
+              </section>
+
               <div class="invoice-hub">
-                <aside class="invoice-hub-aside" aria-label="Lista i ustawienia">
-                  <section class="invoice-surface invoice-surface--sig" aria-labelledby="invoice-sig-heading">
-                    <p class="invoice-step-badge" id="invoice-sig-heading">Krok 1 — Parafka</p>
-                    <h2 class="invoice-surface-title">Podpis na fakturze</h2>
-                    <p class="invoice-surface-desc">
-                      Obraz zapisuje się w <strong>pamięci przeglądarki</strong> (localStorage), nie w plikach projektu. Na GitHubie nie ma żadnej parafki do podmiany.
-                    </p>
-                    <ol class="invoice-sig-steps">
-                      <li>Kliknij <em>Wgraj obraz</em> i wybierz PNG, JPG lub WebP.</li>
-                      <li>Podgląd i nowe faktury od razu pokazują podpis w polu sprzedawcy.</li>
-                      <li>Po <strong>Zapisz fakturę</strong> kopia obrazu jest zapisywana w dokumencie w bazie (PDF / druk / wysyłka).</li>
-                    </ol>
-                    <div class="invoice-signature-toolbar">
-                      <label class="invoice-secondary-button cursor-pointer">
-                        <input
-                          type="file"
-                          id="invoice-signature-input"
-                          accept="image/png,image/webp,image/jpeg"
-                          class="hidden"
-                          onchange="handleInvoiceSignatureUpload(event)"
-                        />
-                        <i class="fa-solid fa-image"></i> Wgraj obraz
-                      </label>
-                      <button type="button" class="invoice-secondary-button" onclick="clearSessionInvoiceSignature()">
-                        <i class="fa-solid fa-trash"></i> Wyczyść
-                      </button>
+                <aside class="invoice-hub-aside" aria-label="Lista i parafka">
+                  <details class="invoice-surface invoice-surface--sig invoice-sig-details" open>
+                    <summary class="invoice-sig-summary">
+                      <span class="invoice-step-badge invoice-step-badge--inline">Parafka</span>
+                      <span class="invoice-sig-summary-title">Obraz podpisu na dokumencie</span>
+                      <span class="invoice-sig-summary-chevron" aria-hidden="true"><i class="fa-solid fa-chevron-down"></i></span>
+                    </summary>
+                    <div class="invoice-sig-details-body">
+                      <p class="invoice-surface-desc invoice-surface-desc--tight">
+                        Plik jest tylko w <strong>tej przeglądarce</strong> (localStorage), nie w repozytorium. Po
+                        <strong>Zapisz fakturę</strong> kopia trafia do dokumentu w bazie.
+                      </p>
+                      <ol class="invoice-sig-steps">
+                        <li><em>Wgraj obraz</em> — PNG, JPG lub WebP.</li>
+                        <li>Nowy podgląd i zapis użyją tej parafki (chyba że faktura ma już własną kopię w bazie).</li>
+                      </ol>
+                      <div class="invoice-signature-toolbar">
+                        <label class="invoice-secondary-button cursor-pointer">
+                          <input
+                            type="file"
+                            id="invoice-signature-input"
+                            accept="image/png,image/webp,image/jpeg"
+                            class="hidden"
+                            onchange="handleInvoiceSignatureUpload(event)"
+                          />
+                          <i class="fa-solid fa-image"></i> Wgraj obraz
+                        </label>
+                        <button type="button" class="invoice-secondary-button" onclick="clearSessionInvoiceSignature()">
+                          <i class="fa-solid fa-trash"></i> Wyczyść
+                        </button>
+                      </div>
+                      <div id="invoice-signature-session" class="invoice-signature-session-slot"></div>
                     </div>
-                    <div id="invoice-signature-session" class="invoice-signature-session-slot"></div>
-                  </section>
+                  </details>
 
                   <section class="invoice-surface" aria-labelledby="invoice-list-heading">
-                    <p class="invoice-step-badge" id="invoice-list-heading">Krok 2 — Wybór dokumentu</p>
-                    <h2 class="invoice-surface-title">Twoje faktury</h2>
+                    <p class="invoice-step-badge" id="invoice-list-heading">Dokumenty</p>
+                    <h2 class="invoice-surface-title">Lista faktur</h2>
                     <p class="invoice-surface-desc">
-                      Szukaj po numerze, nabywcy lub zamówieniu. Korekty są w tej samej grupie co faktura pierwotna.
+                      Wyszukaj po numerze, nabywcy lub zamówieniu. W jednej grupie widać fakturę pierwotną i ewentualne korekty.
                     </p>
 
                     <div class="invoice-filter-stack">
                       <div class="invoice-filter-stack-field">
-                        <label class="block text-sm font-medium mb-2 text-zinc-300">Szukaj</label>
+                        <label class="block text-sm font-medium mb-2 text-zinc-300" for="invoice-search-input">Szukaj</label>
                         <input
                           type="text"
                           id="invoice-search-input"
@@ -3689,9 +3759,11 @@
                       </div>
                       <div class="invoice-filter-stack-field invoice-filter-stack-field--row">
                         <div class="invoice-filter-stack-grow">
-                          <label class="block text-sm font-medium mb-2 text-zinc-300">Status (ostatni w grupie)</label>
+                          <label class="block text-sm font-medium mb-2 text-zinc-300" for="invoice-status-filter"
+                            >Status (najnowszy dokument w grupie)</label
+                          >
                           <select id="invoice-status-filter">
-                            <option value="all">Wszystkie</option>
+                            <option value="all">Dowolny</option>
                             <option value="utworzona">Utworzona</option>
                             <option value="wyslana">Wysłana</option>
                             <option value="anulowana">Anulowana</option>
@@ -3700,22 +3772,22 @@
                       </div>
                       <label class="invoice-filter-archive inline-flex items-center gap-2 text-sm text-zinc-400 cursor-pointer select-none">
                         <input type="checkbox" id="invoice-include-archived" />
-                        Pokaż wysłane i anulowane
+                        Pokaż grupy zakończone (wysłane lub anulowane)
                       </label>
                     </div>
 
-                    <div id="invoice-filter-chips" class="invoice-filter-chips" role="group" aria-label="Szybki filtr widoku"></div>
+                    <div id="invoice-filter-chips" class="invoice-filter-chips" role="group" aria-label="Filtr typu grup"></div>
 
                     <div id="invoice-groups-list" class="invoice-groups-list"></div>
                   </section>
                 </aside>
 
-                <main class="invoice-hub-main" aria-label="Podgląd">
+                <main class="invoice-hub-main" aria-label="Podgląd dokumentu">
                   <section class="invoice-surface invoice-surface--preview">
-                    <p class="invoice-step-badge">Krok 3 — Podgląd</p>
-                    <h2 class="invoice-surface-title">Dokument A4</h2>
+                    <p class="invoice-step-badge">Podgląd</p>
+                    <h2 class="invoice-surface-title">Wybrany dokument (A4)</h2>
                     <p class="invoice-surface-desc invoice-surface-desc--tight">
-                      Akcje (edycja, PDF, druk) są pod nagłówkiem wybranej faktury.
+                      Edycja, PDF, druk i zmiana statusu — poniżej, po wybraniu pozycji z listy.
                     </p>
                     <div id="invoice-preview-meta" class="invoice-preview-meta-slot"></div>
                     <div id="invoice-preview-document" class="invoice-preview-document-slot"></div>
@@ -3822,14 +3894,26 @@
               Zarządzanie Bazarem
             </h1>
 
-            <div class="flex justify-between items-center mb-8">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-8">
               <p class="text-zinc-400">
                 Zarządzaj ofertami na bazarze. Zatwierdzaj nowe oferty i moderuj
                 istniejące.
               </p>
-              <button onclick="refreshBazar()" class="text-zinc-400 hover:text-coyote transition-colors p-2" id="refresh-bazar-btn">
-                <i class="fa-solid fa-sync-alt text-lg" id="refresh-bazar-icon"></i>
-              </button>
+              <div class="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onclick="seedBazarDemoOffers()"
+                  class="text-zinc-400 hover:text-coyote transition-colors px-3 py-2 rounded-lg border border-zinc-700 hover:border-coyote/50 text-sm"
+                  id="seed-bazar-demo-btn"
+                  title="Tworzy 24 aktywne ogłoszenia testowe na Twoje konto administratora (zastępuje poprzedni zestaw demo z tego panelu)"
+                >
+                  <i class="fa-solid fa-flask" aria-hidden="true"></i>
+                  <span class="hidden sm:inline ml-1">Demo ogłoszenia</span>
+                </button>
+                <button onclick="refreshBazar()" class="text-zinc-400 hover:text-coyote transition-colors p-2" id="refresh-bazar-btn">
+                  <i class="fa-solid fa-sync-alt text-lg" id="refresh-bazar-icon"></i>
+                </button>
+              </div>
             </div>
 
             <!-- Filtry i wyszukiwanie -->
@@ -8314,15 +8398,17 @@
 
         container.innerHTML = `
           <button type="button" onclick="showRecentUsersDialog()" class="recent-users-tile w-full text-left">
-            <div class="recent-users-tile-meta">
+            <div class="recent-users-tile-main">
               <div class="recent-users-count">${users.length}</div>
-              <div class="text-white font-semibold">Otwórz listę najnowszych użytkowników</div>
-              <div class="text-sm text-zinc-400 mt-2">
-                Kliknięcie otwiera modal z pełną listą. Najnowsze konto pojawiło się: ${firstCreatedAtFormatted}.
+              <div class="recent-users-tile-meta">
+                <div class="text-white font-semibold text-sm leading-snug">Otwórz listę najnowszych użytkowników</div>
+                <div class="text-xs text-zinc-400 mt-1 leading-relaxed">
+                  Kliknięcie otwiera modal z pełną listą. Najnowsze konto: ${firstCreatedAtFormatted}.
+                </div>
               </div>
             </div>
-            <span class="btn-admin shrink-0">
-              <i class="fa-solid fa-users mr-2"></i>Pokaż listę
+            <span class="btn-admin shrink-0 inline-flex items-center">
+              <i class="fa-solid fa-users recent-users-tile-btn-icon"></i>Pokaż listę
             </span>
           </button>
         `;
@@ -11896,12 +11982,40 @@
         }
       };
 
+      function updateProductImagesSummary() {
+        const el = document.getElementById("product-images-summary");
+        if (!el) return;
+        const n = productImages.length;
+        if (n === 0) {
+          el.innerHTML =
+            '<span class="text-sm text-zinc-500">Brak zdjęć — dodaj w oknie „Zdjęcia produktu”.</span>';
+          return;
+        }
+        const thumbs = productImages
+          .slice(0, 3)
+          .map(
+            (img) =>
+              `<img src="${img.url}" alt="" class="w-10 h-10 rounded object-cover border border-zinc-600 shrink-0 bg-zinc-900" loading="lazy">`,
+          )
+          .join("");
+        el.innerHTML = `<div class="flex items-center gap-2 min-w-0 flex-wrap">${thumbs}<span class="text-sm text-zinc-300">${n} zdj.</span></div>`;
+      }
+
+      window.openProductImagesNestedModal = () => {
+        document.getElementById("product-images-nested-modal")?.classList.remove("hidden");
+      };
+
+      window.closeProductImagesNestedModal = () => {
+        document.getElementById("product-images-nested-modal")?.classList.add("hidden");
+      };
+
       function renderProductImages() {
         const container = document.getElementById("product-images-container");
         if (!container) return;
 
         if (productImages.length === 0) {
           container.innerHTML = '<p class="text-sm text-zinc-500 text-center py-4">Brak zdjęć. Kliknij "Dodaj zdjęcie" aby dodać pierwsze zdjęcie.</p>';
+          updateProductImagesSummary();
           return;
         }
 
@@ -11996,6 +12110,7 @@
             </div>
           </div>
         `).join('');
+        updateProductImagesSummary();
       }
 
       // Podgląd kafelka: synchronizacja stylu object-position bez ponownego renderowania listy
@@ -13358,6 +13473,26 @@
         }
       }
 
+      function updateEventCardImagesSummary() {
+        const el = document.getElementById("event-card-images-summary");
+        if (!el) return;
+        if (eventCardImages.length === 0) {
+          el.innerHTML =
+            '<span class="text-zinc-500">Brak miniatury — ustaw w oknie „Zdjęcie kafelka” (opcjonalnie).</span>';
+          return;
+        }
+        const img = eventCardImages[0];
+        el.innerHTML = `<div class="flex items-center gap-3"><img src="${img.url}" alt="" class="w-12 h-12 rounded object-cover border border-coyote shrink-0 bg-zinc-900" loading="lazy"><span class="text-zinc-300">Ustawiono zdjęcie kafelka</span></div>`;
+      }
+
+      window.openEventCardImagesNestedModal = () => {
+        document.getElementById("event-card-images-nested-modal")?.classList.remove("hidden");
+      };
+
+      window.closeEventCardImagesNestedModal = () => {
+        document.getElementById("event-card-images-nested-modal")?.classList.add("hidden");
+      };
+
       function renderEventCardImages() {
         const container = document.getElementById("event-card-images-container");
         if (!container) return;
@@ -13371,6 +13506,7 @@
         if (eventCardImages.length === 0) {
           container.innerHTML =
             '<p class="text-sm text-zinc-500 text-center py-3">Brak zdjęcia — kafelek na liście bez miniaturki (jak wcześniej). Dodaj jedno zdjęcie, aby ujednolicić wygląd z blogiem.</p>';
+          updateEventCardImagesSummary();
           return;
         }
         const img = eventCardImages[0];
@@ -13421,6 +13557,7 @@
             </div>
             <button type="button" onclick="removeEventCardImage()" class="px-2 py-1 text-xs border border-red-600 text-red-400 rounded hover:bg-red-900/20 transition self-start" title="Usuń zdjęcie z kafelka"><i class="fa-solid fa-trash"></i></button>
           </div>`;
+        updateEventCardImagesSummary();
       }
 
       window.handleEventCardImageUpload = async (event) => {
@@ -13524,16 +13661,16 @@
         const normalizedCategory = event ? normalizeEventCategory(event.category) : "inne";
 
         const modalHtml = `
-          <div id="event-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-6xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
-              <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold coyote-text">${event ? "Edytuj wydarzenie" : "Dodaj nowe wydarzenie"}</h2>
-                <button onclick="closeEventFormModal()" class="text-zinc-400 hover:text-white transition-colors">
-                  <i class="fa-solid fa-times text-xl"></i>
-                </button>
+          <div id="event-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm relative">
+            <button type="button" onclick="closeEventFormModal()" class="admin-form-floating-close" aria-label="Zamknij edycję wydarzenia">
+              <i class="fa-solid fa-times text-xl" aria-hidden="true"></i>
+            </button>
+            <div class="bg-zinc-900 rounded-2xl border border-zinc-700 max-w-6xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl relative z-10" onclick="event.stopPropagation()">
+              <div class="shrink-0 px-6 pt-5 pb-3 border-b border-zinc-800">
+                <h2 class="text-2xl font-bold coyote-text pr-2">${event ? "Edytuj wydarzenie" : "Dodaj nowe wydarzenie"}</h2>
               </div>
 
-              <form id="event-form" class="space-y-4">
+              <form id="event-form" class="flex-1 overflow-y-auto min-h-0 px-6 py-5 space-y-4">
                 <input type="hidden" id="event-id" value="${event ? event.id : ""}" />
 
                 <div class="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-4">
@@ -13708,22 +13845,12 @@
 
                 <div>
                   <label class="block text-sm font-medium mb-2">Zdjęcie na kafelku listy (opcjonalne)</label>
-                  <div class="border border-zinc-700 rounded-lg p-4">
-                    <div id="event-card-images-container" class="space-y-3 mb-3"></div>
-                    <label class="w-full py-2 border border-zinc-600 rounded text-sm hover:bg-zinc-800 transition cursor-pointer flex items-center justify-center text-zinc-200">
-                      <input
-                        type="file"
-                        id="event-card-image-input"
-                        accept="image/*"
-                        class="hidden"
-                        onchange="handleEventCardImageUpload(event)"
-                      />
-                      <i class="fa-solid fa-image mr-2"></i>
-                      Wybierz zdjęcie (jak okładka bloga)
-                    </label>
-                    <p class="text-xs text-zinc-500 mt-2">
-                      Bez zdjęcia kafelek wygląda jak dotychczas. Z kadrowaniem i zoomem — ten sam układ co wpisy na blog.strzelca.pl.
-                    </p>
+                  <div class="border border-zinc-700 rounded-lg p-3 flex flex-wrap items-center justify-between gap-3">
+                    <div id="event-card-images-summary" class="min-w-0 flex-1 text-sm"></div>
+                    <button type="button" onclick="openEventCardImagesNestedModal()" class="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2 border border-zinc-600 rounded-lg text-sm text-zinc-200 hover:bg-zinc-800 transition">
+                      <i class="fa-solid fa-image"></i>
+                      Zdjęcie kafelka
+                    </button>
                   </div>
                 </div>
 
@@ -13772,6 +13899,32 @@
                   </button>
                 </div>
               </form>
+            </div>
+            <div id="event-card-images-nested-modal" class="absolute inset-0 z-[70] hidden flex items-center justify-center p-4 bg-black/88 backdrop-blur-md" onclick="if(event.target===this)closeEventCardImagesNestedModal()">
+              <div class="bg-zinc-900 rounded-2xl border border-zinc-700 max-w-2xl w-full max-h-[85vh] overflow-y-auto p-5 shadow-2xl" onclick="event.stopPropagation()">
+                <div class="flex justify-between items-center gap-3 mb-4">
+                  <h3 class="text-lg font-semibold coyote-text">Zdjęcie na kafelku</h3>
+                  <button type="button" onclick="closeEventCardImagesNestedModal()" class="text-zinc-400 hover:text-white p-2 rounded-lg hover:bg-zinc-800 transition" aria-label="Zamknij">
+                    <i class="fa-solid fa-times text-lg" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <div id="event-card-images-container" class="space-y-3 mb-3"></div>
+                <label class="w-full py-2 border border-zinc-600 rounded text-sm hover:bg-zinc-800 transition cursor-pointer flex items-center justify-center text-zinc-200">
+                  <input
+                    type="file"
+                    id="event-card-image-input"
+                    accept="image/*"
+                    class="hidden"
+                    onchange="handleEventCardImageUpload(event)"
+                  />
+                  <i class="fa-solid fa-image mr-2"></i>
+                  Wybierz zdjęcie (jak okładka bloga)
+                </label>
+                <p class="text-xs text-zinc-500 mt-2 mb-4">
+                  Bez zdjęcia kafelek wygląda jak dotychczas. Z kadrowaniem i zoomem — ten sam układ co wpisy na blog.strzelca.pl.
+                </p>
+                <button type="button" onclick="closeEventCardImagesNestedModal()" class="w-full btn-admin">Gotowe</button>
+              </div>
             </div>
           </div>
         `;
@@ -13922,10 +14075,15 @@
 
         // Dodaj obsługę klawisza ESC
         const handleEscape = (e) => {
-          if (e.key === "Escape") {
-            closeEventFormModal();
-            document.removeEventListener("keydown", handleEscape);
+          if (e.key !== "Escape") return;
+          const nested = document.getElementById("event-card-images-nested-modal");
+          if (nested && !nested.classList.contains("hidden")) {
+            e.preventDefault();
+            closeEventCardImagesNestedModal();
+            return;
           }
+          closeEventFormModal();
+          document.removeEventListener("keydown", handleEscape);
         };
         document.addEventListener("keydown", handleEscape);
       }
@@ -14481,16 +14639,16 @@
         charityImages = charity ? [...(charity.images || (charity.image ? [{url: charity.image, order: 0}] : []))] : [];
 
         const modalHtml = `
-          <div id="charity-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
-              <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold coyote-text">${charity ? "Edytuj akcję charytatywną" : "Dodaj nową akcję charytatywną"}</h2>
-                <button onclick="closeCharityFormModal()" class="text-zinc-400 hover:text-white transition-colors">
-                  <i class="fa-solid fa-times text-xl"></i>
-                </button>
+          <div id="charity-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm relative">
+            <button type="button" onclick="closeCharityFormModal()" class="admin-form-floating-close" aria-label="Zamknij edycję akcji">
+              <i class="fa-solid fa-times text-xl" aria-hidden="true"></i>
+            </button>
+            <div class="bg-zinc-900 rounded-2xl border border-zinc-700 max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl relative z-10" onclick="event.stopPropagation()">
+              <div class="shrink-0 px-6 pt-5 pb-3 border-b border-zinc-800">
+                <h2 class="text-2xl font-bold coyote-text pr-2">${charity ? "Edytuj akcję charytatywną" : "Dodaj nową akcję charytatywną"}</h2>
               </div>
 
-              <form id="charity-form" class="space-y-4">
+              <form id="charity-form" class="flex-1 overflow-y-auto min-h-0 px-6 py-5 space-y-4">
                 <input type="hidden" id="charity-id" value="${charity ? charity.id : ""}" />
 
                 <div>
@@ -14557,14 +14715,12 @@
 
                 <div>
                   <label class="block text-sm font-medium mb-2">Zdjęcia akcji charytatywnej</label>
-                  <div class="mb-2">
-                    <label class="cursor-pointer bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm text-center block transition">
-                      <i class="fa-solid fa-upload mr-2"></i>Wybierz zdjęcia z dysku
-                      <input type="file" multiple accept="image/*" class="hidden" onchange="handleCharityImageUpload(event)">
-                    </label>
-                  </div>
-                  <div id="charity-images-container" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                    <!-- Zdjęcia będą renderowane w JS -->
+                  <div class="border border-zinc-700 rounded-lg p-3 flex flex-wrap items-center justify-between gap-3">
+                    <div id="charity-images-summary" class="min-w-0 flex-1"></div>
+                    <button type="button" onclick="openCharityImagesNestedModal()" class="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2 border border-zinc-600 rounded-lg text-sm text-zinc-200 hover:bg-zinc-800 transition">
+                      <i class="fa-solid fa-images"></i>
+                      Zdjęcia akcji
+                    </button>
                   </div>
                 </div>
 
@@ -14592,6 +14748,23 @@
                   </button>
                 </div>
               </form>
+            </div>
+            <div id="charity-images-nested-modal" class="absolute inset-0 z-[70] hidden flex items-center justify-center p-4 bg-black/88 backdrop-blur-md" onclick="if(event.target===this)closeCharityImagesNestedModal()">
+              <div class="bg-zinc-900 rounded-2xl border border-zinc-700 max-w-2xl w-full max-h-[85vh] overflow-y-auto p-5 shadow-2xl" onclick="event.stopPropagation()">
+                <div class="flex justify-between items-center gap-3 mb-4">
+                  <h3 class="text-lg font-semibold coyote-text">Zdjęcia akcji</h3>
+                  <button type="button" onclick="closeCharityImagesNestedModal()" class="text-zinc-400 hover:text-white p-2 rounded-lg hover:bg-zinc-800 transition" aria-label="Zamknij">
+                    <i class="fa-solid fa-times text-lg" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <label class="cursor-pointer bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm text-center block transition mb-4">
+                  <i class="fa-solid fa-upload mr-2"></i>Wybierz zdjęcia z dysku
+                  <input type="file" id="charity-image-input" multiple accept="image/*" class="hidden" onchange="handleCharityImageUpload(event)">
+                </label>
+                <div id="charity-images-container" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                </div>
+                <button type="button" onclick="closeCharityImagesNestedModal()" class="w-full btn-admin mt-5">Gotowe</button>
+              </div>
             </div>
           </div>
         `;
@@ -14641,15 +14814,21 @@
 
         // Dodaj obsługę klawisza ESC
         const handleEscape = (e) => {
-          if (e.key === "Escape") {
-            closeCharityFormModal();
-            document.removeEventListener("keydown", handleEscape);
+          if (e.key !== "Escape") return;
+          const nested = document.getElementById("charity-images-nested-modal");
+          if (nested && !nested.classList.contains("hidden")) {
+            e.preventDefault();
+            closeCharityImagesNestedModal();
+            return;
           }
+          closeCharityFormModal();
+          document.removeEventListener("keydown", handleEscape);
         };
         document.addEventListener("keydown", handleEscape);
       }
 
       window.closeCharityFormModal = () => {
+        closeCharityImagesNestedModal();
         destroyCharityActionQuill();
         const modal = document.getElementById("charity-form-modal");
         if (modal) {
@@ -14723,12 +14902,40 @@
         }
       };
 
+      function updateCharityImagesSummary() {
+        const el = document.getElementById("charity-images-summary");
+        if (!el) return;
+        const n = charityImages.length;
+        if (n === 0) {
+          el.innerHTML =
+            '<span class="text-sm text-zinc-500">Brak zdjęć — dodaj w oknie „Zdjęcia akcji”.</span>';
+          return;
+        }
+        const thumbs = charityImages
+          .slice(0, 3)
+          .map(
+            (img) =>
+              `<img src="${img.url}" alt="" class="w-10 h-10 rounded object-cover border border-zinc-600 shrink-0 bg-zinc-900" loading="lazy">`,
+          )
+          .join("");
+        el.innerHTML = `<div class="flex items-center gap-2 min-w-0 flex-wrap">${thumbs}<span class="text-sm text-zinc-300">${n} zdj.</span></div>`;
+      }
+
+      window.openCharityImagesNestedModal = () => {
+        document.getElementById("charity-images-nested-modal")?.classList.remove("hidden");
+      };
+
+      window.closeCharityImagesNestedModal = () => {
+        document.getElementById("charity-images-nested-modal")?.classList.add("hidden");
+      };
+
       function renderCharityImages() {
         const container = document.getElementById("charity-images-container");
         if (!container) return;
 
         if (charityImages.length === 0) {
           container.innerHTML = '<div class="col-span-full py-6 text-center text-zinc-500 bg-zinc-800/50 rounded-lg border border-zinc-700/50">Brak dodanych zdjęć</div>';
+          updateCharityImagesSummary();
           return;
         }
 
@@ -14755,6 +14962,7 @@
             </div>
           </div>
         `).join("");
+        updateCharityImagesSummary();
       }
 
       async function handleCharityFormSubmit(e) {
@@ -14936,55 +15144,197 @@
         }
       };
 
+      function updatePinnedDonationImagesSummary() {
+        const el = document.getElementById("pinned-donations-images-summary");
+        if (!el) return;
+        const n = pinnedDonationImages.length;
+        if (n === 0) {
+          el.innerHTML =
+            '<span class="text-sm text-zinc-500">Brak zdjęć — dodaj w oknie „Zdjęcia kafelka” (jak przy produkcie w sklepie).</span>';
+          return;
+        }
+        const thumbs = pinnedDonationImages
+          .slice(0, 3)
+          .map(
+            (img) =>
+              `<img src="${img.url}" alt="" class="w-10 h-10 rounded object-cover border border-zinc-600 shrink-0 bg-zinc-900" loading="lazy">`,
+          )
+          .join("");
+        el.innerHTML = `<div class="flex items-center gap-2 min-w-0 flex-wrap">${thumbs}<span class="text-sm text-zinc-300">${n} zdj.</span></div>`;
+      }
+
+      window.openPinnedDonationsImagesNestedModal = () => {
+        document.getElementById("pinned-donations-images-nested-modal")?.classList.remove("hidden");
+      };
+
+      window.closePinnedDonationsImagesNestedModal = () => {
+        document.getElementById("pinned-donations-images-nested-modal")?.classList.add("hidden");
+      };
+
       function renderPinnedDonationImages() {
         const container = document.getElementById("pinned-donations-images-container");
         if (!container) return;
 
         if (pinnedDonationImages.length === 0) {
           container.innerHTML =
-            '<div class="col-span-full py-6 text-center text-zinc-500 bg-zinc-800/50 rounded-lg border border-zinc-700/50">Brak dodanych zdjęć</div>';
+            '<p class="text-sm text-zinc-500 text-center py-4">Brak zdjęć. Wgraj pliki — ta sama kompresja co przy produktach w sklepie.</p>';
+          updatePinnedDonationImagesSummary();
           return;
         }
 
         container.innerHTML = pinnedDonationImages
-          .map(
-            (img, index) => `
-          <div class="relative group bg-zinc-800 rounded-lg overflow-hidden border border-zinc-700">
-            <div class="aspect-square relative flex items-center justify-center bg-black">
-              <img src="${img.url}" alt="Zdjęcie ${index + 1}" class="w-full h-full object-cover">
-              ${index === 0 ? '<div class="absolute top-2 left-2 bg-coyote text-black text-[10px] font-bold px-2 py-1 rounded">Okładka</div>' : ""}
-              <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                <button type="button" onclick="movePinnedDonationImageUp(${index})" class="p-2 bg-zinc-900 rounded-full hover:bg-coyote hover:text-black transition ${index === 0 ? "opacity-50 cursor-not-allowed" : ""}" ${index === 0 ? "disabled" : ""}>
-                  <i class="fa-solid fa-arrow-left"></i>
-                </button>
-                <button type="button" onclick="removePinnedDonationImage(${index})" class="p-2 bg-red-900/80 rounded-full hover:bg-red-500 transition text-white">
-                  <i class="fa-solid fa-trash"></i>
-                </button>
-                <button type="button" onclick="movePinnedDonationImageDown(${index})" class="p-2 bg-zinc-900 rounded-full hover:bg-coyote hover:text-black transition ${index === pinnedDonationImages.length - 1 ? "opacity-50 cursor-not-allowed" : ""}" ${index === pinnedDonationImages.length - 1 ? "disabled" : ""}>
-                  <i class="fa-solid fa-arrow-right"></i>
-                </button>
+          .map((img, index) => {
+            const isData = typeof img.url === "string" && img.url.startsWith("data:");
+            const lineLabel = isData ? "Zdjęcie z dysku (skompresowane)" : String(img.url || "").slice(0, 80);
+            return `
+          <div class="flex items-center gap-3 p-3 bg-zinc-800 rounded-lg border ${index === 0 ? "border-coyote" : "border-zinc-700"}">
+            <div class="flex-shrink-0 w-20 h-20 bg-zinc-900 rounded overflow-hidden">
+              <img
+                id="pinned-d-pos-preview-img-${index}"
+                src="${img.url}"
+                alt="Zdjęcie ${index + 1}"
+                class="w-full h-full object-cover"
+                style="object-position:${typeof img.posX === "number" ? img.posX : 50}% ${typeof img.posY === "number" ? img.posY : 50}%; transform:scale(${typeof img.zoom === "number" ? img.zoom : 1}); transform-origin:${typeof img.posX === "number" ? img.posX : 50}% ${typeof img.posY === "number" ? img.posY : 50}%;"
+                onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\'%3E%3Crect fill=\\'%23333\\' width=\\'100\\' height=\\'100\\'/%3E%3C/svg%3E';"
+              >
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-xs text-zinc-400 mb-1">Kolejność: ${index + 1}${index === 0 ? ' <span class="text-coyote font-bold">(okładka kafelka)</span>' : ""}</div>
+              <div class="text-xs text-zinc-500 truncate" title="${isData ? "Okładka wgrana z dysku" : String(img.url || "").replace(/"/g, "&quot;")}">${lineLabel}</div>
+              <div class="mt-3">
+                <div class="text-[11px] text-zinc-400 mb-2 text-center">Podgląd jak na karcie na pomoc.strzelca.pl</div>
+                <div class="w-full max-w-xl h-[140px] bg-zinc-900 rounded-t-xl overflow-hidden border border-zinc-700 mb-2 mx-auto">
+                  <img
+                    id="pinned-d-pos-preview-big-img-${index}"
+                    src="${img.url}"
+                    alt=""
+                    class="w-full h-full object-cover"
+                    style="border-top-left-radius:12px;border-top-right-radius:12px;object-position:${typeof img.posX === "number" ? img.posX : 50}% ${typeof img.posY === "number" ? img.posY : 50}%; transform:scale(${typeof img.zoom === "number" ? img.zoom : 1}); transform-origin:${typeof img.posX === "number" ? img.posX : 50}% ${typeof img.posY === "number" ? img.posY : 50}%;"
+                  >
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-[11px] text-zinc-500 w-6 text-right">X</span>
+                  <input type="range" min="0" max="100" step="1" value="${typeof img.posX === "number" ? img.posX : 50}" oninput="window.updatePinnedDonationImagePosX(${index}, this.value)" class="w-full" />
+                  <span class="text-[11px] text-zinc-400 w-12 text-right tabular-nums">${typeof img.posX === "number" ? img.posX : 50}%</span>
+                </div>
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="text-[11px] text-zinc-500 w-6 text-right">Y</span>
+                  <input type="range" min="0" max="100" step="1" value="${typeof img.posY === "number" ? img.posY : 50}" oninput="window.updatePinnedDonationImagePosY(${index}, this.value)" class="w-full" />
+                  <span class="text-[11px] text-zinc-400 w-12 text-right tabular-nums">${typeof img.posY === "number" ? img.posY : 50}%</span>
+                </div>
+                <div class="flex items-center gap-2 mt-2">
+                  <span class="text-[11px] text-zinc-500 w-6 text-right">Zoom</span>
+                  <input type="range" min="50" max="250" step="1" value="${Math.round((typeof img.zoom === "number" ? img.zoom : 1) * 100)}" oninput="window.updatePinnedDonationImageZoom(${index}, this.value)" class="w-full" />
+                  <span class="text-[11px] text-zinc-400 w-12 text-right tabular-nums">${Math.round((typeof img.zoom === "number" ? img.zoom : 1) * 100)}%</span>
+                </div>
               </div>
             </div>
-          </div>
-        `
-          )
+            <div class="flex flex-col gap-1">
+              <button type="button" onclick="movePinnedDonationImageUp(${index})" class="px-2 py-1 text-xs border border-zinc-600 rounded hover:bg-zinc-700 transition ${index === 0 ? "opacity-50 cursor-not-allowed" : ""}" ${index === 0 ? "disabled" : ""} title="Wyżej"><i class="fa-solid fa-arrow-up"></i></button>
+              <button type="button" onclick="movePinnedDonationImageDown(${index})" class="px-2 py-1 text-xs border border-zinc-600 rounded hover:bg-zinc-700 transition ${index === pinnedDonationImages.length - 1 ? "opacity-50 cursor-not-allowed" : ""}" ${index === pinnedDonationImages.length - 1 ? "disabled" : ""} title="Niżej"><i class="fa-solid fa-arrow-down"></i></button>
+              <button type="button" onclick="removePinnedDonationImage(${index})" class="px-2 py-1 text-xs border border-red-600 text-red-400 rounded hover:bg-red-900/20 transition" title="Usuń"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </div>`;
+          })
           .join("");
+        updatePinnedDonationImagesSummary();
       }
+
+      window.updatePinnedDonationImagePosX = (index, value) => {
+        const img = pinnedDonationImages[index];
+        if (!img) return;
+        const x = Number(value);
+        if (!Number.isFinite(x)) return;
+        img.posX = x;
+        const y = typeof img.posY === "number" ? img.posY : 50;
+        const zoom = typeof img.zoom === "number" ? img.zoom : 1;
+        const previewThumb = document.getElementById(`pinned-d-pos-preview-img-${index}`);
+        const previewBig = document.getElementById(`pinned-d-pos-preview-big-img-${index}`);
+        if (previewThumb) {
+          previewThumb.style.objectPosition = `${x}% ${y}%`;
+          previewThumb.style.transformOrigin = `${x}% ${y}%`;
+          previewThumb.style.transform = `scale(${zoom})`;
+        }
+        if (previewBig) {
+          previewBig.style.objectPosition = `${x}% ${y}%`;
+          previewBig.style.transformOrigin = `${x}% ${y}%`;
+          previewBig.style.transform = `scale(${zoom})`;
+        }
+      };
+
+      window.updatePinnedDonationImagePosY = (index, value) => {
+        const img = pinnedDonationImages[index];
+        if (!img) return;
+        const y = Number(value);
+        if (!Number.isFinite(y)) return;
+        img.posY = y;
+        const x = typeof img.posX === "number" ? img.posX : 50;
+        const zoom = typeof img.zoom === "number" ? img.zoom : 1;
+        const previewThumb = document.getElementById(`pinned-d-pos-preview-img-${index}`);
+        const previewBig = document.getElementById(`pinned-d-pos-preview-big-img-${index}`);
+        if (previewThumb) {
+          previewThumb.style.objectPosition = `${x}% ${y}%`;
+          previewThumb.style.transformOrigin = `${x}% ${y}%`;
+          previewThumb.style.transform = `scale(${zoom})`;
+        }
+        if (previewBig) {
+          previewBig.style.objectPosition = `${x}% ${y}%`;
+          previewBig.style.transformOrigin = `${x}% ${y}%`;
+          previewBig.style.transform = `scale(${zoom})`;
+        }
+      };
+
+      window.updatePinnedDonationImageZoom = (index, value) => {
+        const img = pinnedDonationImages[index];
+        if (!img) return;
+        const percent = Number(value);
+        if (!Number.isFinite(percent)) return;
+        const zoom = Math.max(0.1, Math.min(5, percent / 100));
+        img.zoom = zoom;
+        const x = typeof img.posX === "number" ? img.posX : 50;
+        const y = typeof img.posY === "number" ? img.posY : 50;
+        const previewThumb = document.getElementById(`pinned-d-pos-preview-img-${index}`);
+        const previewBig = document.getElementById(`pinned-d-pos-preview-big-img-${index}`);
+        if (previewThumb) {
+          previewThumb.style.transform = `scale(${zoom})`;
+          previewThumb.style.transformOrigin = `${x}% ${y}%`;
+        }
+        if (previewBig) {
+          previewBig.style.transform = `scale(${zoom})`;
+          previewBig.style.transformOrigin = `${x}% ${y}%`;
+        }
+      };
 
       window.handlePinnedDonationImageUpload = async (event) => {
         const files = event.target.files;
         if (!files || files.length === 0) return;
+        const input = event.target;
+        const container = document.getElementById("pinned-donations-images-container");
+        const loadingHtml = container ? container.innerHTML : "";
+        if (container) {
+          container.innerHTML =
+            '<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin text-coyote text-xl mb-2"></i><p class="text-sm text-zinc-400">Przetwarzanie zdjęć…</p></div>';
+        }
         try {
           const processPromises = Array.from(files).map((file) => processProductImage(file));
           const base64Images = await Promise.all(processPromises);
           base64Images.forEach((base64) => {
-            pinnedDonationImages.push({ url: base64, order: pinnedDonationImages.length });
+            pinnedDonationImages.push({
+              url: base64,
+              order: pinnedDonationImages.length,
+              posX: 50,
+              posY: 50,
+              zoom: 1,
+            });
           });
           renderPinnedDonationImages();
           showNotification(`Dodano ${base64Images.length} zdjęć.`, "success");
         } catch (error) {
           console.error("Błąd przesyłania zdjęć (kafelek wpłat):", error);
           showNotification("Błąd podczas wgrywania zdjęć.", "error");
+          if (container) container.innerHTML = loadingHtml;
+        } finally {
+          input.value = "";
         }
       };
 
@@ -15019,6 +15369,7 @@
       };
 
       window.closePinnedDonationsModal = () => {
+        closePinnedDonationsImagesNestedModal();
         destroyPinnedDonationsQuill();
         const modal = document.getElementById("pinned-donations-form-modal");
         if (modal) modal.remove();
@@ -15032,7 +15383,13 @@
         const description = pinnedDonationsQuill ? pinnedDonationsQuill.root.innerHTML.trim() : "";
 
         try {
-          const finalImages = [...pinnedDonationImages];
+          const finalImages = pinnedDonationImages.map((img, idx) => ({
+            url: img.url,
+            order: idx,
+            posX: typeof img.posX === "number" ? img.posX : 50,
+            posY: typeof img.posY === "number" ? img.posY : 50,
+            zoom: typeof img.zoom === "number" ? img.zoom : 1,
+          }));
           const finalImageUrl = finalImages.length > 0 ? finalImages[0].url : "";
 
           await setDoc(
@@ -15076,23 +15433,36 @@
 
       window.openPinnedDonationsEditor = () => {
         const rec = pinnedDonationsRecord;
-        pinnedDonationImages = rec
+        const rawList = rec
           ? [...(rec.images || (rec.image ? [{ url: rec.image, order: 0 }] : []))]
           : [];
+        pinnedDonationImages = rawList
+          .map((img, idx) => ({
+            url: typeof img === "string" ? img : img?.url,
+            order: typeof img === "string" ? idx : (img.order !== undefined ? img.order : idx),
+            posX: typeof img === "object" && typeof img?.posX === "number" ? img.posX : 50,
+            posY: typeof img === "object" && typeof img?.posY === "number" ? img.posY : 50,
+            zoom: typeof img === "object" && typeof img?.zoom === "number" ? img.zoom : 1,
+          }))
+          .filter((x) => x.url)
+          .sort((a, b) => a.order - b.order);
+        pinnedDonationImages.forEach((img, i) => {
+          img.order = i;
+        });
 
         const existing = document.getElementById("pinned-donations-form-modal");
         if (existing) existing.remove();
 
         const modalHtml = `
-          <div id="pinned-donations-form-modal" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
-              <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold coyote-text">Stały kafelek: dobrowolne wpłaty</h2>
-                <button type="button" onclick="closePinnedDonationsModal()" class="text-zinc-400 hover:text-white transition-colors">
-                  <i class="fa-solid fa-times text-xl"></i>
-                </button>
+          <div id="pinned-donations-form-modal" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm relative">
+            <button type="button" onclick="closePinnedDonationsModal()" class="admin-form-floating-close" aria-label="Zamknij edycję kafelka wpłat">
+              <i class="fa-solid fa-times text-xl" aria-hidden="true"></i>
+            </button>
+            <div class="bg-zinc-900 rounded-2xl border border-zinc-700 max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl relative z-10" onclick="event.stopPropagation()">
+              <div class="shrink-0 px-6 pt-5 pb-3 border-b border-zinc-800">
+                <h2 class="text-2xl font-bold coyote-text pr-2">Stały kafelek: dobrowolne wpłaty</h2>
               </div>
-              <form id="pinned-donations-form" class="space-y-4">
+              <form id="pinned-donations-form" class="flex-1 overflow-y-auto min-h-0 px-6 py-5 space-y-4">
                 <div>
                   <label class="block text-sm font-medium mb-2">Tytuł na kafelku *</label>
                   <input type="text" id="pinned-donations-title" required
@@ -15114,11 +15484,14 @@
                 </div>
                 <div>
                   <label class="block text-sm font-medium mb-2">Zdjęcia kafelka</label>
-                  <label class="cursor-pointer bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm text-center block transition">
-                    <i class="fa-solid fa-upload mr-2"></i>Wybierz zdjęcia z dysku
-                    <input type="file" multiple accept="image/*" class="hidden" onchange="handlePinnedDonationImageUpload(event)">
-                  </label>
-                  <div id="pinned-donations-images-container" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4"></div>
+                  <div class="border border-zinc-700 rounded-lg p-3 flex flex-wrap items-center justify-between gap-3">
+                    <div id="pinned-donations-images-summary" class="min-w-0 flex-1"></div>
+                    <button type="button" onclick="openPinnedDonationsImagesNestedModal()" class="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2 border border-zinc-600 rounded-lg text-sm text-zinc-200 hover:bg-zinc-800 transition">
+                      <i class="fa-solid fa-images"></i>
+                      Zdjęcia kafelka
+                    </button>
+                  </div>
+                  <p class="text-xs text-zinc-500 mt-2">W osobnym oknie: wgrywanie wielu zdjęć, kolejność i kadrowanie jak przy produkcie w sklepie.</p>
                 </div>
                 <div class="flex space-x-4 pt-4">
                   <button type="submit" class="btn-admin flex-1">
@@ -15129,6 +15502,22 @@
                   </button>
                 </div>
               </form>
+            </div>
+            <div id="pinned-donations-images-nested-modal" class="absolute inset-0 z-[70] hidden flex items-center justify-center p-4 bg-black/88 backdrop-blur-md" onclick="if(event.target===this)closePinnedDonationsImagesNestedModal()">
+              <div class="bg-zinc-900 rounded-2xl border border-zinc-700 max-w-3xl w-full max-h-[85vh] overflow-y-auto p-5 shadow-2xl" onclick="event.stopPropagation()">
+                <div class="flex justify-between items-center gap-3 mb-4">
+                  <h3 class="text-lg font-semibold coyote-text">Zdjęcia kafelka (jak przy produkcie)</h3>
+                  <button type="button" onclick="closePinnedDonationsImagesNestedModal()" class="text-zinc-400 hover:text-white p-2 rounded-lg hover:bg-zinc-800 transition" aria-label="Zamknij">
+                    <i class="fa-solid fa-times text-lg" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <div id="pinned-donations-images-container" class="space-y-3 mb-3"></div>
+                <label class="w-full py-2 border border-zinc-600 rounded text-sm hover:bg-zinc-800 transition cursor-pointer flex items-center justify-center text-zinc-200">
+                  <input type="file" id="pinned-donation-image-input" multiple accept="image/*" class="hidden" onchange="handlePinnedDonationImageUpload(event)">
+                  <i class="fa-solid fa-plus mr-2"></i>Dodaj zdjęcia
+                </label>
+                <button type="button" onclick="closePinnedDonationsImagesNestedModal()" class="w-full btn-admin mt-4">Gotowe</button>
+              </div>
             </div>
           </div>
         `;
@@ -15156,10 +15545,15 @@
         });
 
         const handleEscape = (ev) => {
-          if (ev.key === "Escape") {
-            closePinnedDonationsModal();
-            document.removeEventListener("keydown", handleEscape);
+          if (ev.key !== "Escape") return;
+          const nested = document.getElementById("pinned-donations-images-nested-modal");
+          if (nested && !nested.classList.contains("hidden")) {
+            ev.preventDefault();
+            closePinnedDonationsImagesNestedModal();
+            return;
           }
+          closePinnedDonationsModal();
+          document.removeEventListener("keydown", handleEscape);
         };
         document.addEventListener("keydown", handleEscape);
       };
@@ -15205,6 +15599,48 @@
             if (refreshBtn) {
               refreshBtn.disabled = false;
               refreshBtn.innerHTML = '<i class="fa-solid fa-sync-alt text-lg" id="refresh-bazar-icon"></i>';
+            }
+          }
+        };
+
+        window.seedBazarDemoOffers = async () => {
+          if (
+            !confirm(
+              "Utworzyć zestaw 24 aktywnych ogłoszeń DEMO na Twoje konto administratora?\n\nPoprzedni zestaw demo utworzony tym przyciskiem zostanie usunięty.\n\nObrazy ładują się z picsum.photos (wymagany internet w przeglądarce użytkowników).",
+            )
+          ) {
+            return;
+          }
+          const btn = document.getElementById("seed-bazar-demo-btn");
+          const idle = btn ? btn.innerHTML : "";
+          if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>';
+          }
+          try {
+            if (!auth?.currentUser) throw new Error("Zaloguj się ponownie.");
+            const token = await auth.currentUser.getIdToken(true);
+            const res = await fetch(`${BAZAR_API}/admin/seed-demo-offers`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              credentials: "include",
+              body: "{}",
+            });
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data?.success) {
+              throw new Error(data?.error || "Nie udało się utworzyć ogłoszeń demo.");
+            }
+            alert(`Utworzono ${data.count} ogłoszeń demo. Odświeżam listę.`);
+            await loadBazar();
+          } catch (e) {
+            alert(e.message || String(e));
+          } finally {
+            if (btn) {
+              btn.disabled = false;
+              btn.innerHTML = idle;
             }
           }
         };
@@ -17991,11 +18427,30 @@
         }
       }
 
+      let productFormEscapeHandler = null;
+
       window.openProductForm = (productId = null) => {
         const modal = document.getElementById("product-form-modal");
         const title = document.getElementById("product-form-title");
 
         modal.classList.remove("hidden");
+
+        if (productFormEscapeHandler) {
+          document.removeEventListener("keydown", productFormEscapeHandler);
+          productFormEscapeHandler = null;
+        }
+        productFormEscapeHandler = (e) => {
+          if (e.key !== "Escape") return;
+          if (!modal || modal.classList.contains("hidden")) return;
+          const nested = document.getElementById("product-images-nested-modal");
+          if (nested && !nested.classList.contains("hidden")) {
+            e.preventDefault();
+            closeProductImagesNestedModal();
+            return;
+          }
+          closeProductForm();
+        };
+        document.addEventListener("keydown", productFormEscapeHandler);
 
         // Inicjalizuj Quill po otwarciu modala (element musi być widoczny)
         setTimeout(() => {
@@ -18016,6 +18471,11 @@
       };
 
       window.closeProductForm = () => {
+        closeProductImagesNestedModal();
+        if (productFormEscapeHandler) {
+          document.removeEventListener("keydown", productFormEscapeHandler);
+          productFormEscapeHandler = null;
+        }
         const modal = document.getElementById("product-form-modal");
         modal.classList.add("hidden");
         clearProductForm();
@@ -19616,6 +20076,33 @@
         }
       };
 
+      function updateBlogImagesSummary() {
+        const el = document.getElementById("blog-images-summary");
+        if (!el) return;
+        const n = blogPostImages.length;
+        if (n === 0) {
+          el.innerHTML =
+            '<span class="text-sm text-zinc-500">Brak zdjęć — dodaj w oknie „Zdjęcia wpisu”.</span>';
+          return;
+        }
+        const thumbs = blogPostImages
+          .slice(0, 3)
+          .map(
+            (img) =>
+              `<img src="${img.url}" alt="" class="w-10 h-10 rounded object-cover border border-zinc-600 shrink-0 bg-zinc-900" loading="lazy">`,
+          )
+          .join("");
+        el.innerHTML = `<div class="flex items-center gap-2 min-w-0 flex-wrap">${thumbs}<span class="text-sm text-zinc-300">${n} zdj.</span></div>`;
+      }
+
+      window.openBlogImagesNestedModal = () => {
+        document.getElementById("blog-images-nested-modal")?.classList.remove("hidden");
+      };
+
+      window.closeBlogImagesNestedModal = () => {
+        document.getElementById("blog-images-nested-modal")?.classList.add("hidden");
+      };
+
       function renderBlogImages() {
         const container = document.getElementById("blog-images-container");
         if (!container) return;
@@ -19623,6 +20110,7 @@
         if (blogPostImages.length === 0) {
           container.innerHTML =
             '<p class="text-sm text-zinc-500 text-center py-4">Brak okładki. Kliknij „Dodaj zdjęcie”, tak jak przy produkcie w sklepie.</p>';
+          updateBlogImagesSummary();
           return;
         }
 
@@ -19705,6 +20193,7 @@
           </div>`;
           })
           .join("");
+        updateBlogImagesSummary();
       }
 
       function normalizeBlogCreatedAt(value) {
@@ -20306,16 +20795,16 @@
         syncBlogPostImagesFromPost(post);
 
         const modalHtml = `
-          <div id="blog-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
-              <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold coyote-text">${modalTitle}</h2>
-                <button type="button" onclick="closeBlogModal()" class="text-zinc-400 hover:text-white transition-colors">
-                  <i class="fa-solid fa-times text-xl"></i>
-                </button>
+          <div id="blog-form-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm relative">
+            <button type="button" onclick="closeBlogModal()" class="admin-form-floating-close" aria-label="Zamknij edycję wpisu">
+              <i class="fa-solid fa-times text-xl" aria-hidden="true"></i>
+            </button>
+            <div class="bg-zinc-900 rounded-2xl border border-zinc-700 max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl relative z-10" onclick="event.stopPropagation()">
+              <div class="shrink-0 px-6 pt-5 pb-3 border-b border-zinc-800">
+                <h2 class="text-2xl font-bold coyote-text pr-2">${modalTitle}</h2>
               </div>
 
-              <form id="blog-form" class="space-y-4">
+              <form id="blog-form" class="flex-1 overflow-y-auto min-h-0 px-6 py-5 space-y-4">
                 <input type="hidden" id="blog-id" value="${escBlogAttr(idVal)}" />
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -20345,24 +20834,12 @@
                 </div>
                 <div>
                   <label class="block text-sm font-medium mb-2">Zdjęcia wpisu</label>
-                  <div class="border border-zinc-700 rounded-lg p-4">
-                    <div id="blog-images-container" class="space-y-3 mb-3"></div>
-                    <label class="w-full py-2 border border-zinc-600 rounded text-sm hover:bg-zinc-800 transition cursor-pointer flex items-center justify-center text-zinc-200">
-                      <input
-                        type="file"
-                        id="blog-image-input"
-                        accept="image/*"
-                        multiple
-                        class="hidden"
-                        onchange="handleBlogImageUpload(event)"
-                      />
-                      <i class="fa-solid fa-plus mr-2"></i>
-                      Dodaj zdjęcia
-                    </label>
-                    <p class="text-xs text-zinc-500 mt-2">
-                      Możesz dodać kilka zdjęć z dysku (jak przy produkcie). Strzałkami zmieniasz kolejność —
-                      pierwsze jest miniaturą na liście wpisów; wszystkie wyświetlą się w karuzeli po wejściu w post (jak w sklepie).
-                    </p>
+                  <div class="border border-zinc-700 rounded-lg p-3 flex flex-wrap items-center justify-between gap-3">
+                    <div id="blog-images-summary" class="min-w-0 flex-1"></div>
+                    <button type="button" onclick="openBlogImagesNestedModal()" class="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2 border border-zinc-600 rounded-lg text-sm text-zinc-200 hover:bg-zinc-800 transition">
+                      <i class="fa-solid fa-images"></i>
+                      Zdjęcia wpisu
+                    </button>
                   </div>
                 </div>
                 <div>
@@ -20379,6 +20856,34 @@
                   </button>
                 </div>
               </form>
+            </div>
+            <div id="blog-images-nested-modal" class="absolute inset-0 z-[70] hidden flex items-center justify-center p-4 bg-black/88 backdrop-blur-md" onclick="if(event.target===this)closeBlogImagesNestedModal()">
+              <div class="bg-zinc-900 rounded-2xl border border-zinc-700 max-w-3xl w-full max-h-[85vh] overflow-y-auto p-5 shadow-2xl" onclick="event.stopPropagation()">
+                <div class="flex justify-between items-center gap-3 mb-4">
+                  <h3 class="text-lg font-semibold coyote-text">Zdjęcia wpisu</h3>
+                  <button type="button" onclick="closeBlogImagesNestedModal()" class="text-zinc-400 hover:text-white p-2 rounded-lg hover:bg-zinc-800 transition" aria-label="Zamknij">
+                    <i class="fa-solid fa-times text-lg" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <div id="blog-images-container" class="space-y-3 mb-3"></div>
+                <label class="w-full py-2 border border-zinc-600 rounded text-sm hover:bg-zinc-800 transition cursor-pointer flex items-center justify-center text-zinc-200">
+                  <input
+                    type="file"
+                    id="blog-image-input"
+                    accept="image/*"
+                    multiple
+                    class="hidden"
+                    onchange="handleBlogImageUpload(event)"
+                  />
+                  <i class="fa-solid fa-plus mr-2"></i>
+                  Dodaj zdjęcia
+                </label>
+                <p class="text-xs text-zinc-500 mt-2 mb-4">
+                  Możesz dodać kilka zdjęć z dysku (jak przy produkcie). Strzałkami zmieniasz kolejność —
+                  pierwsze jest miniaturą na liście wpisów; wszystkie wyświetlą się w karuzeli po wejściu w post (jak w sklepie).
+                </p>
+                <button type="button" onclick="closeBlogImagesNestedModal()" class="w-full btn-admin">Gotowe</button>
+              </div>
             </div>
           </div>
         `;
@@ -20418,10 +20923,15 @@
         }
 
         const onEsc = (e) => {
-          if (e.key === "Escape") {
-            closeBlogModal();
-            document.removeEventListener("keydown", onEsc);
+          if (e.key !== "Escape") return;
+          const nested = document.getElementById("blog-images-nested-modal");
+          if (nested && !nested.classList.contains("hidden")) {
+            e.preventDefault();
+            closeBlogImagesNestedModal();
+            return;
           }
+          closeBlogModal();
+          document.removeEventListener("keydown", onEsc);
         };
         document.addEventListener("keydown", onEsc);
       }
@@ -20521,6 +21031,7 @@
       }
 
       window.closeBlogModal = () => {
+        closeBlogImagesNestedModal();
         const modal = document.getElementById("blog-form-modal");
         if (modal) modal.remove();
         currentBlogPostId = null;
@@ -27862,16 +28373,21 @@
     </div>
 
     <!-- Modal formularza produktu -->
-    <div id="product-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
-      <div class="admin-card max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
-        <div class="flex justify-between items-center mb-6">
-          <h2 class="text-2xl font-bold coyote-text" id="product-form-title">Dodaj produkt</h2>
-          <button onclick="closeProductForm()" class="text-zinc-400 hover:text-white">
-            <i class="fa-solid fa-times text-xl"></i>
-          </button>
+    <div id="product-form-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl relative">
+      <button
+        type="button"
+        onclick="closeProductForm()"
+        class="admin-form-floating-close"
+        aria-label="Zamknij edycję produktu"
+      >
+        <i class="fa-solid fa-times text-xl" aria-hidden="true"></i>
+      </button>
+      <div class="admin-card relative z-10 max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
+        <div class="shrink-0 border-b border-zinc-700/80 pb-4 mb-4">
+          <h2 class="text-2xl font-bold coyote-text pr-14" id="product-form-title">Dodaj produkt</h2>
         </div>
 
-        <form id="product-form" class="flex-1 overflow-y-auto space-y-4 pr-2">
+        <form id="product-form" class="flex-1 min-h-0 overflow-y-auto space-y-4 pr-2">
           <input type="hidden" id="product-id" />
 
           <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] lg:gap-6">
@@ -27912,25 +28428,16 @@
 
           <div>
             <label class="block text-sm font-medium mb-2">Zdjęcia produktu</label>
-            <div class="border border-zinc-700 rounded-lg p-4">
-              <div id="product-images-container" class="space-y-3 mb-3">
-                <!-- Zdjęcia będą dodawane dynamicznie -->
-              </div>
-              <label class="w-full py-2 border border-zinc-600 rounded text-sm hover:bg-zinc-800 transition cursor-pointer flex items-center justify-center">
-                <input
-                  type="file"
-                  id="product-image-input"
-                  accept="image/*"
-                  multiple
-                  class="hidden"
-                  onchange="handleProductImageUpload(event)"
-                />
-                <i class="fa-solid fa-plus mr-2"></i>
-                Dodaj zdjęcie
-              </label>
-              <p class="text-xs text-zinc-500 mt-2">
-                Pierwsze zdjęcie na liście będzie zdjęciem głównym (widocznym w sklepie)
-              </p>
+            <div class="border border-zinc-700 rounded-lg p-3 flex flex-wrap items-center justify-between gap-3">
+              <div id="product-images-summary" class="min-w-0 flex-1"></div>
+              <button
+                type="button"
+                onclick="openProductImagesNestedModal()"
+                class="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2 border border-zinc-600 rounded-lg text-sm text-zinc-200 hover:bg-zinc-800 transition"
+              >
+                <i class="fa-solid fa-images"></i>
+                Zdjęcia produktu
+              </button>
             </div>
           </div>
 
@@ -27952,6 +28459,52 @@
             </button>
           </div>
         </form>
+      </div>
+
+      <div
+        id="product-images-nested-modal"
+        class="absolute inset-0 z-[70] hidden flex items-center justify-center p-4 bg-black/88 backdrop-blur-md"
+        onclick="if (event.target === this) closeProductImagesNestedModal()"
+      >
+        <div
+          class="admin-card max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+          onclick="event.stopPropagation()"
+        >
+          <div class="flex justify-between items-center gap-3 shrink-0 border-b border-zinc-700/80 pb-4 mb-4">
+            <h3 class="text-lg font-semibold coyote-text">Zdjęcia produktu</h3>
+            <button
+              type="button"
+              onclick="closeProductImagesNestedModal()"
+              class="text-zinc-400 hover:text-white p-2 rounded-lg hover:bg-zinc-800 transition"
+              aria-label="Zamknij okno zdjęć"
+            >
+              <i class="fa-solid fa-times text-lg" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+            <div id="product-images-container" class="space-y-3 mb-1">
+              <!-- Zdjęcia — renderuje JS -->
+            </div>
+            <label class="w-full py-2 border border-zinc-600 rounded text-sm hover:bg-zinc-800 transition cursor-pointer flex items-center justify-center">
+              <input
+                type="file"
+                id="product-image-input"
+                accept="image/*"
+                multiple
+                class="hidden"
+                onchange="handleProductImageUpload(event)"
+              />
+              <i class="fa-solid fa-plus mr-2"></i>
+              Dodaj zdjęcie
+            </label>
+            <p class="text-xs text-zinc-500 pb-2">
+              Pierwsze zdjęcie na liście będzie zdjęciem głównym (widocznym w sklepie).
+            </p>
+          </div>
+          <button type="button" onclick="closeProductImagesNestedModal()" class="btn-admin w-full shrink-0 mt-4">
+            Gotowe
+          </button>
+        </div>
       </div>
     </div>
 
@@ -28379,7 +28932,7 @@
       };
     </script>
     <div id="invoice-modal" class="invoice-modal-backdrop"></div>
-    <script src="/admin/invoices-admin.js?v=2026-04-08-3"></script>
+    <script src="/admin/invoices-admin.js?v=2026-04-13-1"></script>
     <script src="/admin/bazar-commerce-admin.js?v=2026-04-12-2"></script>
     <!-- Bez auth-widget / messages-widget: na /admin/ inicjalizują Firestore przed initAuth
          i psują Safari (WebChannel „access control checks”). Panel ma własny UI i zakładkę wiadomości. -->

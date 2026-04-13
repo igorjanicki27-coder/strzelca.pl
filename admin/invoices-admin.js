@@ -126,6 +126,160 @@
     return 0;
   }
 
+  /** Znacznik czasu wg daty wystawienia (dla statystyk okresów); fallback: data utworzenia. */
+  function getInvoiceIssueTimestamp(invoice) {
+    if (!invoice) return NaN;
+    const raw = invoice.issueDate;
+    if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      const d = new Date(`${raw}T00:00:00`);
+      if (Number.isFinite(d.getTime())) return d.getTime();
+    }
+    return getInvoiceSortValue(invoice);
+  }
+
+  function isPrimaryInvoiceForRevenue(invoice) {
+    if (!invoice) return false;
+    if ((invoice.kind || 'invoice') === 'correction') return false;
+    if (invoice.status === 'anulowana') return false;
+    return true;
+  }
+
+  function startOfMonth(d) {
+    return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+  }
+
+  function endOfMonthExclusive(d) {
+    return new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime();
+  }
+
+  function startOfQuarter(d) {
+    const q = Math.floor(d.getMonth() / 3);
+    return new Date(d.getFullYear(), q * 3, 1).getTime();
+  }
+
+  function endOfQuarterExclusive(d) {
+    const q = Math.floor(d.getMonth() / 3);
+    return new Date(d.getFullYear(), q * 3 + 3, 1).getTime();
+  }
+
+  function startOfYear(d) {
+    return new Date(d.getFullYear(), 0, 1).getTime();
+  }
+
+  function endOfYearExclusive(d) {
+    return new Date(d.getFullYear() + 1, 0, 1).getTime();
+  }
+
+  function quarterLabel(d) {
+    const q = Math.floor(d.getMonth() / 3) + 1;
+    const roman = ['I', 'II', 'III', 'IV'][q - 1] || String(q);
+    return `${roman} kw. ${d.getFullYear()}`;
+  }
+
+  function monthTitle(d) {
+    return d.toLocaleDateString('pl-PL', { month: 'long', year: 'numeric' });
+  }
+
+  function aggregateInvoicePeriodStats(invoices, nowDate) {
+    const now = nowDate instanceof Date ? nowDate : new Date();
+    const periods = [
+      {
+        key: 'month',
+        title: 'Ten miesiąc',
+        sub: monthTitle(now),
+        start: startOfMonth(now),
+        end: endOfMonthExclusive(now),
+      },
+      {
+        key: 'quarter',
+        title: 'Ten kwartał',
+        sub: quarterLabel(now),
+        start: startOfQuarter(now),
+        end: endOfQuarterExclusive(now),
+      },
+      {
+        key: 'year',
+        title: 'Ten rok',
+        sub: String(now.getFullYear()),
+        start: startOfYear(now),
+        end: endOfYearExclusive(now),
+      },
+      {
+        key: 'all',
+        title: 'Łącznie',
+        sub: 'Wszystkie wczytane dokumenty',
+        start: null,
+        end: null,
+      },
+    ];
+
+    const primary = (Array.isArray(invoices) ? invoices : []).filter(isPrimaryInvoiceForRevenue);
+
+    return periods.map((p) => {
+      let count = 0;
+      let grossCents = 0;
+      for (const inv of primary) {
+        const t = getInvoiceIssueTimestamp(inv);
+        if (!Number.isFinite(t) || t <= 0) continue;
+        if (p.start != null && t < p.start) continue;
+        if (p.end != null && t >= p.end) continue;
+        count += 1;
+        grossCents += Math.max(0, Number(inv.totals?.grossTotalCents) || 0);
+      }
+      return { ...p, count, grossCents };
+    });
+  }
+
+  function renderInvoiceSummaryStrip() {
+    const grid = document.getElementById('invoice-summary-grid');
+    const hintEl = document.getElementById('invoice-summary-hint');
+    if (!grid) return;
+
+    const stats = aggregateInvoicePeriodStats(state.invoices, new Date());
+    const loaded = state.invoices.length;
+    const limitNote =
+      loaded >= 1500
+        ? ' Statystyki mogą być niepełne — wczytano maks. 1500 dokumentów z API.'
+        : '';
+
+    if (hintEl) {
+      hintEl.textContent = `Faktury pierwotne, status inny niż „anulowana”, wg daty wystawienia.${limitNote}`;
+    }
+
+    if (state.loading) {
+      grid.innerHTML = `
+        <div class="order-monitor-card invoice-summary-card invoice-summary-card--loading">
+          <div class="order-monitor-title">Ładowanie</div>
+          <div class="order-monitor-value"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></div>
+          <div class="order-monitor-subtext">Pobieranie danych z serwera…</div>
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = stats
+      .map((row) => {
+        const revenue = `${formatCurrencyFromCents(row.grossCents)} zł`;
+        return `
+          <div class="order-monitor-card invoice-summary-card" data-period="${esc(row.key)}">
+            <div class="order-monitor-title">${esc(row.title)}</div>
+            <div class="invoice-summary-period-sub">${esc(row.sub)}</div>
+            <div class="invoice-summary-metrics">
+              <div class="invoice-summary-metric">
+                <span class="invoice-summary-metric-label">Faktury</span>
+                <span class="invoice-summary-metric-value">${esc(row.count)}</span>
+              </div>
+              <div class="invoice-summary-metric">
+                <span class="invoice-summary-metric-label">Przychód brutto</span>
+                <span class="invoice-summary-metric-value invoice-summary-metric-value--money">${esc(revenue)}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+  }
+
   function deepClone(value) {
     return JSON.parse(JSON.stringify(value));
   }
@@ -307,10 +461,7 @@
       }
       if (status !== 'all' && group.latest?.status !== status) return false;
 
-      if (view === 'invoices') {
-        const hasInvoice = (group.invoices || []).some((inv) => inv.kind !== 'correction');
-        if (!hasInvoice) return false;
-      } else if (view === 'corrections') {
+      if (view === 'corrections') {
         const hasCorrection = (group.invoices || []).some((inv) => inv.kind === 'correction');
         if (!hasCorrection) return false;
       } else if (view === 'linked') {
@@ -333,29 +484,31 @@
     if (!exists) state.selectedInvoiceId = groups[0]?.latest?.id || '';
   }
 
-  function renderInvoiceStats(groups) {
-    const invoiceCount = state.invoices.filter((invoice) => invoice.kind !== 'correction').length;
-    const correctionCount = state.invoices.filter((invoice) => invoice.kind === 'correction').length;
-    const linkedCount = state.invoices.filter((invoice) => normalizeText(invoice.linkedOrder?.orderId)).length;
+  function renderInvoiceStats() {
+    const allGroups = state.groups.length ? state.groups : groupInvoices(state.invoices);
+    const withCorrections = allGroups.filter((g) =>
+      (g.invoices || []).some((inv) => inv.kind === 'correction')
+    ).length;
+    const withOrder = allGroups.filter((g) => normalizeText(g.latest?.linkedOrder?.orderId)).length;
 
     const chipsEl = document.getElementById('invoice-filter-chips');
     if (!chipsEl) return;
 
     const view = state.filters.view || 'all';
-    const invoicesActive = view === 'all' || view === 'invoices';
+    const allActive = view === 'all';
     const correctionsActive = view === 'corrections';
     const linkedActive = view === 'linked';
 
     chipsEl.innerHTML = `
       <button
         type="button"
-        class="invoice-filter-chip ${invoicesActive ? 'active' : ''}"
-        aria-pressed="${invoicesActive ? 'true' : 'false'}"
-        onclick="setInvoiceKpiView('invoices')"
+        class="invoice-filter-chip ${allActive ? 'active' : ''}"
+        aria-pressed="${allActive ? 'true' : 'false'}"
+        onclick="setInvoiceKpiView('all')"
       >
-        <i class="fa-solid fa-file-invoice" aria-hidden="true"></i>
-        Wszystkie faktury
-        <span class="invoice-filter-chip-count">${invoiceCount}</span>
+        <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+        Wszystkie grupy
+        <span class="invoice-filter-chip-count">${allGroups.length}</span>
       </button>
       <button
         type="button"
@@ -364,8 +517,8 @@
         onclick="setInvoiceKpiView('corrections')"
       >
         <i class="fa-solid fa-file-circle-plus" aria-hidden="true"></i>
-        Z korektami
-        <span class="invoice-filter-chip-count">${correctionCount}</span>
+        Z korektą
+        <span class="invoice-filter-chip-count">${withCorrections}</span>
       </button>
       <button
         type="button"
@@ -375,7 +528,7 @@
       >
         <i class="fa-solid fa-link" aria-hidden="true"></i>
         Z zamówieniem
-        <span class="invoice-filter-chip-count">${linkedCount}</span>
+        <span class="invoice-filter-chip-count">${withOrder}</span>
       </button>
     `;
   }
@@ -409,9 +562,15 @@
         const latest = group.latest;
         const root = group.root;
         const correctionCount = group.invoices.filter((invoice) => invoice.kind === 'correction').length;
+        const rootBrutto = formatCurrencyFromCents(root?.totals?.grossTotalCents || 0);
         const metaParts = [
           esc(latest?.buyer?.name || 'Brak nabywcy'),
-          latest?.linkedOrder?.label ? `Zam. ${esc(latest.linkedOrder.label)}` : '',
+          `${esc(rootBrutto)} zł brutto (pierwotna)`,
+          latest?.linkedOrder?.orderNumber
+            ? `Zam. ${esc(latest.linkedOrder.orderNumber)}`
+            : latest?.linkedOrder?.label
+              ? `Zam. ${esc(latest.linkedOrder.label)}`
+              : '',
           correctionCount > 0 ? `${correctionCount} korekt` : 'bez korekt',
         ].filter(Boolean);
         return `
@@ -762,7 +921,8 @@
     if (!tab) return;
     const groups = getFilteredGroups();
     ensureSelectionVisible(groups);
-    renderInvoiceStats(groups);
+    renderInvoiceSummaryStrip();
+    renderInvoiceStats();
     renderInvoiceList(groups);
     renderPreview(getSelectedInvoice());
     renderSignatureSession();
@@ -1245,8 +1405,8 @@
   };
 
   window.setInvoiceKpiView = function setInvoiceKpiView(view) {
-    const current = state.filters.view || 'all';
-    state.filters.view = current === view ? 'all' : view;
+    const allowed = new Set(['all', 'corrections', 'linked']);
+    state.filters.view = allowed.has(view) ? view : 'all';
     renderInvoicesTab();
   };
 

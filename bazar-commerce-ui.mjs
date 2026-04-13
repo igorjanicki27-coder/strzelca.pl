@@ -87,16 +87,16 @@ function getBuyerAddressFields() {
 function ensureJetonChip() {
   let chip = document.getElementById('bazar-token-chip');
   if (chip) return chip;
-  const nav = document.querySelector('nav');
-  if (!nav) return null;
+  const cluster = document.getElementById('bazar-nav-user-cluster');
+  if (!cluster) return null;
   chip = document.createElement('button');
   chip.id = 'bazar-token-chip';
   chip.type = 'button';
   chip.className =
-    'absolute right-[4.75rem] md:right-[5.5rem] top-1/2 -translate-y-1/2 border border-[#C19A6B]/40 bg-black/70 text-[#C19A6B] h-10 min-w-[52px] px-3 rounded-xl text-sm font-black tracking-wide hidden flex items-center justify-center gap-2 hover:border-[#C19A6B] hover:bg-black/85 transition';
+    'shrink-0 border border-[#C19A6B]/40 bg-black/70 text-[#C19A6B] h-10 min-w-[48px] px-2.5 rounded-xl text-sm font-black tracking-wide hidden items-center justify-center gap-1.5 hover:border-[#C19A6B] hover:bg-black/85 transition';
   chip.innerHTML = '<i class="fa-solid fa-coins"></i><span>…</span>';
   chip.addEventListener('click', () => openJetonPackagesModal(window.__bazarJetonPackages || []));
-  nav.appendChild(chip);
+  cluster.insertBefore(chip, cluster.firstChild);
   return chip;
 }
 
@@ -104,14 +104,13 @@ function renderJetonChip(summary) {
   const chip = ensureJetonChip();
   if (!chip) return;
   chip.classList.remove('hidden');
+  chip.classList.add('flex');
   chip.innerHTML = `<i class="fa-solid fa-coins"></i><span>${escapeHtml(summary.balance || 0)}</span>`;
 }
 
 function installTopControls() {
   const addOfferBtn = document.getElementById('btn-add-offer');
   if (addOfferBtn) {
-    addOfferBtn.className =
-      'absolute right-[9.5rem] md:right-[10.75rem] top-1/2 -translate-y-1/2 bg-[#C19A6B] text-black h-10 px-3.5 rounded-xl text-xs font-black uppercase tracking-[0.14em] hover:bg-white transition hidden flex items-center justify-center';
     addOfferBtn.innerHTML = '<i class="fa-solid fa-plus mr-1.5"></i>OGŁOSZENIE';
   }
 }
@@ -119,20 +118,23 @@ function installTopControls() {
 function closeJetonPackagesModal() {
   document.getElementById('bazar-jeton-modal')?.remove();
   document.body.style.overflow = '';
+  closeBazarJetonBuyerModal();
+  closeBazarJetonVatModal();
 }
 
-function collectBuyerInput(modal) {
+function collectBuyerInput() {
   const profile = getBuyerProfile();
   if (profile.role === 'company') return {};
+  const root = document.getElementById('bazar-jeton-buyer-modal');
   const addressFields = {
-    street: modal.querySelector('#bazar-buyer-street')?.value?.trim() || '',
-    buildingNumber: modal.querySelector('#bazar-buyer-building-number')?.value?.trim() || '',
-    postalCode: modal.querySelector('#bazar-buyer-postal-code')?.value?.trim() || '',
-    city: modal.querySelector('#bazar-buyer-city')?.value?.trim() || '',
+    street: root?.querySelector('#bazar-buyer-street')?.value?.trim() || '',
+    buildingNumber: root?.querySelector('#bazar-buyer-building-number')?.value?.trim() || '',
+    postalCode: root?.querySelector('#bazar-buyer-postal-code')?.value?.trim() || '',
+    city: root?.querySelector('#bazar-buyer-city')?.value?.trim() || '',
   };
   return {
-    name: modal.querySelector('#bazar-buyer-name')?.value?.trim() || '',
-    email: modal.querySelector('#bazar-buyer-email')?.value?.trim() || '',
+    name: root?.querySelector('#bazar-buyer-name')?.value?.trim() || '',
+    email: root?.querySelector('#bazar-buyer-email')?.value?.trim() || '',
     addressFields,
   };
 }
@@ -196,6 +198,198 @@ function buildBuyerFieldsMarkup() {
       </div>
     </div>
   `;
+}
+
+function buildJetonBuyerCtaMarkup() {
+  const profile = getBuyerProfile();
+  if (profile.role === 'company') {
+    return `
+      <div class="rounded-3xl border border-sky-500/20 bg-sky-500/10 p-4 text-sm text-zinc-200 leading-relaxed">
+        Dane do dokumentu dla konta firmowego pobieramy z profilu i statusu weryfikacji firmy.
+      </div>
+    `;
+  }
+  return `
+    <button type="button" id="bazar-jeton-open-buyer" class="w-full rounded-2xl border border-[#C19A6B]/45 bg-[#C19A6B]/10 px-5 py-3.5 text-sm font-black uppercase tracking-[0.14em] text-[#C19A6B] hover:bg-[#C19A6B]/20 transition">
+      Dane do dokumentu sprzedaży
+    </button>
+  `;
+}
+
+function buildJetonVatInfoHtml() {
+  return `
+    <p class="text-sm text-zinc-300 leading-relaxed">
+      <strong class="text-white">Faktura zwolniona z VAT</strong> to dokument sprzedaży wystawiany, gdy sprzedawca korzysta ze zwolnienia z podatku VAT
+      (m.in. na podstawie art. 113 ustawy o VAT). Na takim dokumencie nie ma podziałki netto / VAT — płacisz wyłącznie kwotę brutto widoczną przy zakupie.
+    </p>
+    <p class="text-sm text-zinc-300 leading-relaxed mt-4">
+      <strong class="text-white">Klient prywatny:</strong> nadal otrzymujesz normalny dowód zakupu do reklamacji i kontaktu z obsługą.
+      Dla zakupów na własny użytek <strong class="text-white">nic „ekstra” z tego tytułu się nie zmienia</strong> — po prostu nie ma na dokumencie VAT do odliczenia.
+    </p>
+    <p class="text-sm text-zinc-300 leading-relaxed mt-4">
+      <strong class="text-white">Firma:</strong> nie jest to faktura VAT z podatkiem do odliczenia w rozliczeniu firmy.
+      Jeśli potrzebujecie pełnej faktury VAT od podatnika VAT, musicie ustalić to bezpośrednio ze sprzedawcą (inna ścieżka dokumentowa) — ta ścieżka zakupu żetonów jest na zwolnieniu.
+    </p>
+  `;
+}
+
+function injectBazarJetonModalStyles() {
+  if (document.getElementById('bazar-jeton-modal-ui-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'bazar-jeton-modal-ui-styles';
+  style.textContent = `
+.bazar-jeton-package-card--selected {
+  box-shadow: 0 0 0 2px rgba(193, 154, 107, 0.5), 0 0 26px rgba(193, 154, 107, 0.22);
+  animation: bazar-jeton-pkg-pulse 2.2s ease-in-out infinite;
+}
+@keyframes bazar-jeton-pkg-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(193, 154, 107, 0.45), 0 0 20px rgba(193, 154, 107, 0.16); }
+  50% { box-shadow: 0 0 0 3px rgba(193, 154, 107, 0.85), 0 0 38px rgba(193, 154, 107, 0.38); }
+}
+.bazar-jeton-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 16px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(193,154,107,0.2), rgba(96,165,250,0.22), rgba(193,154,107,0.28));
+  outline: none;
+}
+.bazar-jeton-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #fffef5, #e8cfa3 40%, #c19a6b 72%, #4a3d2a);
+  box-shadow: 0 0 0 3px rgba(193, 154, 107, 0.55), 0 8px 22px rgba(0,0,0,0.5);
+  cursor: grab;
+}
+.bazar-jeton-range:active::-webkit-slider-thumb { cursor: grabbing; }
+.bazar-jeton-range::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: radial-gradient(circle at 32% 28%, #fffef5, #e8cfa3 40%, #c19a6b 72%, #4a3d2a);
+  box-shadow: 0 0 0 3px rgba(193, 154, 107, 0.55), 0 8px 22px rgba(0,0,0,0.5);
+}
+.bazar-jeton-checkout-btn {
+  background: linear-gradient(118deg, #c19a6b, #f3e3c8, #c19a6b, #9d7a4f, #c19a6b);
+  background-size: 320% 100%;
+  animation: bazar-jeton-checkout-bg 3.4s ease-in-out infinite;
+  box-shadow: 0 0 26px rgba(193, 154, 107, 0.42);
+}
+.bazar-jeton-checkout-btn:hover { filter: brightness(1.07); }
+.bazar-jeton-checkout-btn:disabled { animation: none; opacity: 0.65; filter: grayscale(0.15); }
+@keyframes bazar-jeton-checkout-bg {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.bazar-jeton-checkout-btn::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,0.45), transparent);
+  background-size: 220% 100%;
+  animation: bazar-jeton-checkout-shine 2.2s linear infinite;
+  opacity: 0.5;
+  z-index: 0;
+  pointer-events: none;
+}
+@keyframes bazar-jeton-checkout-shine {
+  0% { background-position: -80% 0; }
+  100% { background-position: 180% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bazar-jeton-package-card--selected { animation: none !important; }
+  .bazar-jeton-checkout-btn,
+  .bazar-jeton-checkout-btn::before { animation: none !important; }
+}
+`;
+  document.head.appendChild(style);
+}
+
+function ensureBazarJetonAuxiliaryModals() {
+  injectBazarJetonModalStyles();
+  if (!document.getElementById('bazar-jeton-buyer-modal')) {
+    const buyer = document.createElement('div');
+    buyer.id = 'bazar-jeton-buyer-modal';
+    buyer.className = 'fixed inset-0 z-[12050] hidden items-center justify-center p-4 bg-black/85 backdrop-blur-md';
+    buyer.innerHTML = `
+      <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-[26px] border border-zinc-700 bg-[#0d0d0f] p-6 shadow-2xl text-zinc-100" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h4 class="text-lg font-bold text-white">Dane do dokumentu sprzedaży</h4>
+          <button type="button" id="bazar-jeton-buyer-close" class="text-zinc-400 hover:text-white text-xl" aria-label="Zamknij"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <div id="bazar-jeton-buyer-inner"></div>
+      </div>
+    `;
+    buyer.addEventListener('click', () => closeBazarJetonBuyerModal());
+    document.body.appendChild(buyer);
+    buyer.querySelector('#bazar-jeton-buyer-close')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeBazarJetonBuyerModal();
+    });
+  }
+  if (!document.getElementById('bazar-jeton-vat-modal')) {
+    const vat = document.createElement('div');
+    vat.id = 'bazar-jeton-vat-modal';
+    vat.className = 'fixed inset-0 z-[12060] hidden items-center justify-center p-4 bg-black/85 backdrop-blur-md';
+    vat.innerHTML = `
+      <div class="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-[26px] border border-zinc-700 bg-[#0d0d0f] p-6 shadow-2xl text-zinc-100" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h4 class="text-lg font-bold text-white">Faktura zwolniona z VAT</h4>
+          <button type="button" id="bazar-jeton-vat-close" class="text-zinc-400 hover:text-white text-xl" aria-label="Zamknij"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <div id="bazar-jeton-vat-inner">${buildJetonVatInfoHtml()}</div>
+        <button type="button" id="bazar-jeton-vat-ok" class="mt-6 w-full rounded-2xl bg-[#C19A6B] px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-black hover:bg-white transition">Rozumiem</button>
+      </div>
+    `;
+    vat.addEventListener('click', () => closeBazarJetonVatModal());
+    document.body.appendChild(vat);
+    vat.querySelector('#bazar-jeton-vat-close')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeBazarJetonVatModal();
+    });
+    vat.querySelector('#bazar-jeton-vat-ok')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeBazarJetonVatModal();
+    });
+  }
+}
+
+function openBazarJetonBuyerModal() {
+  ensureBazarJetonAuxiliaryModals();
+  const inner = document.getElementById('bazar-jeton-buyer-inner');
+  if (inner) inner.innerHTML = buildBuyerFieldsMarkup();
+  const el = document.getElementById('bazar-jeton-buyer-modal');
+  if (el) {
+    el.classList.remove('hidden');
+    el.classList.add('flex');
+  }
+}
+
+function closeBazarJetonBuyerModal() {
+  const el = document.getElementById('bazar-jeton-buyer-modal');
+  el?.classList.add('hidden');
+  el?.classList.remove('flex');
+}
+
+function openBazarJetonVatModal() {
+  ensureBazarJetonAuxiliaryModals();
+  const inner = document.getElementById('bazar-jeton-vat-inner');
+  if (inner) inner.innerHTML = buildJetonVatInfoHtml();
+  const el = document.getElementById('bazar-jeton-vat-modal');
+  if (el) {
+    el.classList.remove('hidden');
+    el.classList.add('flex');
+  }
+}
+
+function closeBazarJetonVatModal() {
+  const el = document.getElementById('bazar-jeton-vat-modal');
+  el?.classList.add('hidden');
+  el?.classList.remove('flex');
 }
 
 function getPromoState() {
@@ -263,26 +457,28 @@ function resolveSelectedTokenPackage(packages, state = getPromoState()) {
 function buildCustomQuantityMarkup(state = getPromoState()) {
   const cfg = getTokenPricingConfig();
   const customTokens = String(state.customTokens || '');
+  const maxQ = cfg.maxPurchaseQuantity || 10000;
+  const qtyRaw = Math.max(0, parseInt(customTokens, 10) || 0);
+  const sliderVal = qtyRaw > 0 ? Math.min(qtyRaw, maxQ) : Math.min(250, maxQ);
   return `
-    <div class="rounded-3xl border border-zinc-700 bg-zinc-900/55 p-5 space-y-3">
-      <div class="flex items-center justify-between gap-4">
-        <div>
-          <div class="text-xs uppercase tracking-[0.18em] text-zinc-500 mb-2">Własna liczba żetonów</div>
-          <div class="text-sm text-zinc-300">Wpisz dowolną ilość od 1 do ${escapeHtml(cfg.maxPurchaseQuantity || 10000)}. Zniżka liczy się automatycznie.</div>
+    <div id="bazar-custom-token-block" class="rounded-2xl border border-zinc-700 bg-zinc-900/55 p-4 space-y-3">
+      <div class="relative rounded-2xl border border-[#C19A6B]/35 bg-[linear-gradient(90deg,rgba(193,154,107,0.12),rgba(59,130,246,0.08),rgba(193,154,107,0.1))] p-3 shadow-[0_0_28px_rgba(193,154,107,0.12)]">
+        <div class="flex items-center justify-between gap-3 mb-2">
+          <span class="text-xs font-bold uppercase tracking-[0.2em] text-[#C19A6B]">Wybierz na suwaku</span>
+          <span id="bazar-custom-slider-bubble" class="tabular-nums text-lg font-black text-white">${escapeHtml(sliderVal)}</span>
         </div>
+        <input id="bazar-custom-token-slider" type="range" min="1" max="${escapeHtml(maxQ)}" step="1" value="${escapeHtml(sliderVal)}" class="bazar-jeton-range w-full" aria-label="Liczba żetonów">
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr),auto] gap-4 items-end">
+      <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr),auto] gap-3 items-end">
         <label class="block">
-          <span class="block text-xs uppercase tracking-[0.18em] text-zinc-500 mb-2">Ilość żetonów</span>
-          <input id="bazar-custom-token-quantity" type="number" min="1" max="${escapeHtml(cfg.maxPurchaseQuantity || 10000)}" class="filter-input w-full" value="${escapeHtml(customTokens)}" placeholder="np. 275">
+          <span class="block text-xs uppercase tracking-[0.18em] text-zinc-500 mb-1.5">Albo wpisz ręcznie</span>
+          <input id="bazar-custom-token-quantity" type="number" min="1" max="${escapeHtml(maxQ)}" class="filter-input w-full" value="${escapeHtml(customTokens)}" placeholder="np. 275">
         </label>
         <button type="button" id="bazar-custom-token-clear" class="px-4 py-3 rounded-2xl border border-zinc-700 text-zinc-300 text-sm font-black uppercase tracking-[0.12em] hover:border-[#C19A6B] hover:text-white transition">
           Wyczyść
         </button>
       </div>
-      <div class="text-xs text-zinc-500">
-        Progi rabatowe: 0-49 bez zniżki, 50-99: 2%, 100-999: 5%, 1000-9999: 10%, dokładnie 10000: 15%.
-      </div>
+      <div class="text-xs text-zinc-500 leading-snug">Rabat zależy od ilości zakupionych żetonów.</div>
     </div>
   `;
 }
@@ -295,28 +491,31 @@ function buildPackageCardsMarkup(packages, promoState) {
         effectivePriceCents: Number(pkg.priceCents || 0),
         pricePerTokenCents: Math.round(Number(pkg.priceCents || 0) / Math.max(1, Number(pkg.tokens || 1))),
       }));
+  const defaultId = promoState.selectedPackageId || packages[0]?.id || '';
   return previews.map((pkg) => {
-    const isSelected = promoState.selectedPackageId === pkg.id;
+    const customOn = Math.max(0, parseInt(promoState.customTokens, 10) || 0) > 0;
+    const isSelected = !customOn && defaultId === pkg.id;
     const basePrice = Number(pkg.priceCents || 0);
     const effectivePrice = Number(pkg.effectivePriceCents ?? basePrice);
-    const pricePerJeton = Number(pkg.pricePerTokenCents ?? Math.round(effectivePrice / Math.max(1, Number(pkg.tokens || 1))));
+    const tok = Math.max(1, Number(pkg.tokens || 1));
+    const pricePerJeton = Math.round(effectivePrice / tok);
     const hasDiscount = effectivePrice < basePrice;
     return `
       <button
         type="button"
-        class="text-left rounded-[26px] border ${isSelected ? 'border-[#C19A6B] bg-[#C19A6B]/10' : 'border-zinc-700 bg-zinc-900/50'} p-5 hover:border-[#C19A6B] transition"
+        class="bazar-jeton-package-card text-left rounded-2xl border ${isSelected ? 'bazar-jeton-package-card--selected border-[#C19A6B] bg-[#C19A6B]/10' : 'border-zinc-700 bg-zinc-900/50'} p-4 hover:border-[#C19A6B] transition"
         data-package-id="${escapeHtml(pkg.id)}"
       >
         <div class="flex items-start justify-between gap-4">
           <div>
-            <div class="text-2xl font-black text-white">${escapeHtml(buildPackageDisplayLabel(pkg))}</div>
-            <div class="text-sm text-zinc-500 mt-2">${formatMoneyCents(pricePerJeton)} zł / żeton</div>
+            <div class="text-xl font-black text-white">${escapeHtml(buildPackageDisplayLabel(pkg))}</div>
+            <div class="text-sm text-zinc-500 mt-1.5">${formatMoneyCents(pricePerJeton)} zł / żeton</div>
           </div>
           ${hasDiscount ? `<span class="px-2 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[11px] font-bold text-emerald-300">-${escapeHtml(pkg.discountPercent || 0)}%</span>` : ''}
         </div>
-        <div class="mt-5">
+        <div class="mt-3">
           ${hasDiscount ? `<div class="text-xs text-zinc-500 line-through">${formatMoneyCents(basePrice)} zł</div>` : ''}
-          <div class="text-3xl font-black text-[#C19A6B]">${formatMoneyCents(effectivePrice)} zł</div>
+          <div class="text-2xl font-black text-[#C19A6B]">${formatMoneyCents(effectivePrice)} zł</div>
         </div>
       </button>
     `;
@@ -328,7 +527,7 @@ function buildPromoResultMarkup(state) {
   if (!applied) return '';
   if (applied.kind === 'grant') {
     return `
-      <div class="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-sm text-zinc-100">
+      <div class="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-zinc-100">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div class="text-xs uppercase tracking-[0.18em] text-emerald-300 mb-2">Kod gratisowy</div>
@@ -343,7 +542,7 @@ function buildPromoResultMarkup(state) {
     `;
   }
   return `
-    <div class="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-sm text-zinc-100">
+    <div class="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-zinc-100">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div class="text-xs uppercase tracking-[0.18em] text-emerald-300 mb-2">Kod rabatowy aktywny</div>
@@ -358,61 +557,108 @@ function buildPromoResultMarkup(state) {
   `;
 }
 
+function enterBazarJetonCustomFromUi(modal, packages) {
+  const st = getPromoState();
+  if (Math.max(0, parseInt(st.customTokens, 10) || 0) > 0) {
+    setPromoState({ selectedPackageId: '' });
+    syncBazarJetonSelectionVisuals(modal, packages);
+    return;
+  }
+  const maxQ = getTokenPricingConfig().maxPurchaseQuantity || 10000;
+  const s = modal.querySelector('#bazar-custom-token-slider');
+  const v = Math.max(1, Math.min(parseInt(s?.value, 10) || 1, maxQ));
+  setPromoState({ customTokens: String(v), selectedPackageId: '' });
+  syncBazarJetonSelectionVisuals(modal, packages);
+}
+
+function syncBazarJetonSelectionVisuals(modal, packages) {
+  if (!modal) return;
+  const st = getPromoState();
+  const defaultId = st.selectedPackageId || packages[0]?.id || '';
+  const customOn = Math.max(0, parseInt(st.customTokens, 10) || 0) > 0;
+  modal.querySelectorAll('[data-package-id]').forEach((btn) => {
+    const pid = btn.getAttribute('data-package-id');
+    const isSelected = !customOn && defaultId === pid;
+    btn.classList.toggle('bazar-jeton-package-card--selected', isSelected);
+    btn.classList.toggle('border-[#C19A6B]', isSelected);
+    btn.classList.toggle('bg-[#C19A6B]/10', isSelected);
+    btn.classList.toggle('border-zinc-700', !isSelected);
+    btn.classList.toggle('bg-zinc-900/50', !isSelected);
+  });
+  const selectedPkg = resolveSelectedTokenPackage(packages, st);
+  const t = Math.max(0, Number(selectedPkg?.tokens || 0));
+  const e = Math.max(0, Number(selectedPkg?.effectivePriceCents || 0));
+  const line = modal.querySelector('#bazar-selected-package');
+  if (line) line.textContent = t ? `${t} ${pluralizeŻetony(t)} — ${formatMoneyCents(e)} zł` : '—';
+  const maxQ = getTokenPricingConfig().maxPurchaseQuantity || 10000;
+  const bubble = modal.querySelector('#bazar-custom-slider-bubble');
+  const slider = modal.querySelector('#bazar-custom-token-slider');
+  const qtyInput = modal.querySelector('#bazar-custom-token-quantity');
+  if (customOn) {
+    const v = Math.min(Math.max(1, parseInt(st.customTokens, 10) || 1), maxQ);
+    if (bubble) bubble.textContent = String(v);
+    if (slider) slider.value = String(v);
+    if (qtyInput && document.activeElement !== qtyInput) qtyInput.value = String(v);
+  } else {
+    const hint = Math.min(250, maxQ);
+    if (bubble) bubble.textContent = String(hint);
+    if (slider) slider.value = String(hint);
+    if (qtyInput && !qtyInput.value) qtyInput.value = '';
+  }
+}
+
 function renderJetonModal(modal, packages) {
   const state = getPromoState();
   const selectedPackageId = state.selectedPackageId || packages[0]?.id || '';
   setPromoState({ selectedPackageId });
-  const selectedPkg = resolveSelectedTokenPackage(packages, getPromoState());
   modal.innerHTML = `
-    <div class="modal-panel max-w-5xl overflow-hidden" onclick="event.stopPropagation()">
-      <div class="relative overflow-hidden">
-        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(193,154,107,0.18),transparent_28%),radial-gradient(circle_at_left_center,rgba(59,130,246,0.12),transparent_32%),linear-gradient(180deg,rgba(18,18,18,0.98),rgba(10,10,10,0.96))]"></div>
-        <div class="relative p-5 md:p-7 border-b border-zinc-800">
-          <div class="flex items-center justify-between gap-4">
-            <div>
-              <div class="text-xs uppercase tracking-[0.24em] text-zinc-500 mb-2">Zakup żetonów</div>
-              <h3 class="text-3xl font-black text-white">Pakiety żetonów Bazaru</h3>
-              <p class="text-sm text-zinc-400 mt-3 max-w-2xl">Kupujesz wyłącznie żetony. Potem wykorzystujesz je na publikację ponad limit, wyróżnienie, przypięcie i odświeżenie ofert.</p>
-            </div>
-            <button type="button" class="text-zinc-400 hover:text-white text-2xl" id="bazar-jeton-close"><i class="fa-solid fa-times"></i></button>
+    <div class="modal-panel max-w-5xl w-full max-h-[min(92dvh,880px)] flex flex-col overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
+      <div class="relative shrink-0 overflow-hidden border-b border-zinc-800">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(193,154,107,0.14),transparent_30%),radial-gradient(circle_at_left_center,rgba(59,130,246,0.1),transparent_34%),linear-gradient(180deg,rgba(18,18,18,0.98),rgba(10,10,10,0.96))]"></div>
+        <div class="relative flex items-start justify-between gap-3 px-4 py-3 md:px-5 md:py-3.5">
+          <div class="min-w-0 pr-2">
+            <h3 class="text-lg md:text-xl font-black text-white leading-tight tracking-tight">Doładowanie żetonów</h3>
+            <p class="text-xs md:text-sm text-zinc-400 mt-1.5 leading-snug max-w-2xl">Żetonami możesz opłacić produkt w sklepie, ogłoszenie w bazarze, a także rezerwacje strzelnicy.</p>
           </div>
+          <button type="button" class="text-zinc-400 hover:text-white text-xl shrink-0 mt-0.5 leading-none" id="bazar-jeton-close" aria-label="Zamknij"><i class="fa-solid fa-times"></i></button>
         </div>
       </div>
-      <div class="p-5 md:p-7 space-y-5 bg-[#0d0d0f]">
+      <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-[#0d0d0f] p-4 md:p-5 space-y-4">
         ${buildPromoResultMarkup(state)}
-        <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr),minmax(360px,0.88fr)] gap-5 items-start">
-          <section class="space-y-5 min-w-0">
-            <div class="rounded-3xl border border-zinc-700 bg-zinc-900/55 p-5">
-              <div class="flex flex-col md:flex-row md:items-end gap-4">
-                <div class="flex-1">
-                  <div class="text-xs uppercase tracking-[0.18em] text-zinc-500 mb-2">Voucher / kod żetonów</div>
-                  <input id="bazar-promo-code-input" type="text" class="filter-input w-full" maxlength="64" value="${escapeHtml(state.code || '')}" placeholder="Wpisz kod na darmowe żetony">
-                </div>
-                <div class="flex gap-3">
-                  <button type="button" id="bazar-promo-apply" class="px-4 py-3 rounded-2xl border border-[#C19A6B]/40 text-[#C19A6B] text-sm font-black uppercase tracking-[0.12em] hover:bg-[#C19A6B]/10 transition">
-                    Sprawdź
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr),minmax(280px,0.88fr)] gap-4 items-start">
+          <section class="space-y-4 min-w-0">
+            <div class="text-[11px] uppercase tracking-[0.18em] text-zinc-500">Pakiety</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               ${buildPackageCardsMarkup(packages, getPromoState())}
             </div>
             ${buildCustomQuantityMarkup(getPromoState())}
           </section>
-          <section class="space-y-5 xl:sticky xl:top-4">
-            ${buildBuyerFieldsMarkup()}
-            <label class="flex items-start gap-3 rounded-3xl border border-zinc-700 bg-zinc-900/55 p-5 cursor-pointer">
-              <input id="bazar-jeton-truth-confirm" type="checkbox" class="mt-1 accent-[#C19A6B]" />
-              <span class="text-sm text-zinc-300">
-                Potwierdzam, że dane do dokumentu sprzedaży są prawdziwe. Dokument zostanie wystawiony jako <strong>faktura zwolniona z VAT</strong>.
-              </span>
-            </label>
-            <div class="rounded-3xl border border-zinc-700 bg-zinc-900/55 p-5">
-              <div class="text-xs uppercase tracking-[0.18em] text-zinc-500 mb-2">Wybrany pakiet</div>
-              <div id="bazar-selected-package" class="text-white"></div>
-              <button type="button" id="bazar-jeton-checkout" class="mt-5 w-full bg-[#C19A6B] text-black px-5 py-3.5 rounded-2xl text-sm font-black uppercase tracking-[0.14em] hover:bg-white transition">
-                Przejdź do płatności
+          <section class="space-y-4 xl:sticky xl:top-0 min-w-0 self-start">
+            ${buildJetonBuyerCtaMarkup()}
+            <div class="rounded-2xl border border-zinc-700 bg-zinc-900/55 p-4">
+              <div class="text-xs uppercase tracking-[0.18em] text-zinc-500 mb-2">Kod promocyjny</div>
+              <div class="flex flex-col sm:flex-row sm:items-end gap-3">
+                <input id="bazar-promo-code-input" type="text" class="filter-input w-full flex-1 min-w-0" maxlength="64" value="${escapeHtml(state.code || '')}" placeholder="Wpisz kod promocyjny">
+                <button type="button" id="bazar-promo-apply" class="px-4 py-3 rounded-2xl border border-[#C19A6B]/40 text-[#C19A6B] text-sm font-black uppercase tracking-[0.12em] hover:bg-[#C19A6B]/10 transition shrink-0">
+                  Sprawdź
+                </button>
+              </div>
+            </div>
+            <div class="flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-900/55 p-3.5 md:p-4">
+              <input id="bazar-jeton-truth-confirm" type="checkbox" class="mt-0.5 accent-[#C19A6B] shrink-0" />
+              <div class="text-sm text-zinc-300 leading-relaxed">
+                <label for="bazar-jeton-truth-confirm" class="cursor-pointer">
+                  Potwierdzam, że dane kupującego, potrzebne do wystawienia dokumentu sprzedaży są prawdziwe. Dokument zostanie wystawiony jako
+                </label>
+                <button type="button" id="bazar-jeton-vat-link" class="text-[#C19A6B] font-semibold underline underline-offset-2 hover:text-white transition px-0 py-0 bg-transparent border-0 cursor-pointer text-sm leading-relaxed align-baseline">faktura zwolniona z VAT</button>
+                <label for="bazar-jeton-truth-confirm" class="cursor-pointer">.</label>
+              </div>
+            </div>
+            <div class="rounded-2xl border border-zinc-700 bg-zinc-900/55 p-4 space-y-3">
+              <div class="text-xs uppercase tracking-[0.18em] text-zinc-500">Podsumowanie</div>
+              <div id="bazar-selected-package" class="text-lg font-black text-white tabular-nums"></div>
+              <button type="button" id="bazar-jeton-checkout" class="bazar-jeton-checkout-btn relative isolate w-full overflow-hidden rounded-2xl px-5 py-3.5 text-sm font-black uppercase tracking-[0.14em] text-black shadow-lg">
+                <span class="relative z-[1]">DOŁADUJ ŻETONY</span>
               </button>
             </div>
           </section>
@@ -422,18 +668,44 @@ function renderJetonModal(modal, packages) {
   `;
 
   modal.querySelector('#bazar-jeton-close')?.addEventListener('click', closeJetonPackagesModal);
+  modal.querySelector('#bazar-jeton-open-buyer')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openBazarJetonBuyerModal();
+  });
+  modal.querySelector('#bazar-jeton-vat-link')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openBazarJetonVatModal();
+  });
   modal.querySelectorAll('[data-package-id]').forEach((btn) => {
     btn.addEventListener('click', () => {
       setPromoState({ selectedPackageId: btn.getAttribute('data-package-id') || '', customTokens: '' });
       renderJetonModal(modal, packages);
     });
   });
+  modal.querySelector('#bazar-custom-token-slider')?.addEventListener('pointerdown', () => {
+    enterBazarJetonCustomFromUi(modal, packages);
+  });
+  modal.querySelector('#bazar-custom-token-block')?.addEventListener('focusin', (ev) => {
+    if (ev.target?.closest?.('#bazar-custom-token-clear')) return;
+    enterBazarJetonCustomFromUi(modal, packages);
+  });
+  modal.querySelector('#bazar-custom-token-slider')?.addEventListener('input', (event) => {
+    const maxQ = getTokenPricingConfig().maxPurchaseQuantity || 10000;
+    const v = Math.max(1, Math.min(parseInt(event.target?.value, 10) || 1, maxQ));
+    setPromoState({ customTokens: String(v), selectedPackageId: '' });
+    syncBazarJetonSelectionVisuals(modal, packages);
+  });
   modal.querySelector('#bazar-custom-token-quantity')?.addEventListener('input', (event) => {
     const maxQuantity = getTokenPricingConfig().maxPurchaseQuantity || 10000;
     const raw = Math.max(0, parseInt(event.target?.value, 10) || 0);
     const nextValue = raw > 0 ? String(Math.min(raw, maxQuantity)) : '';
     setPromoState({ customTokens: nextValue, selectedPackageId: '' });
-    renderJetonModal(modal, packages);
+    if (nextValue) {
+      syncBazarJetonSelectionVisuals(modal, packages);
+    } else {
+      renderJetonModal(modal, packages);
+    }
   });
   modal.querySelector('#bazar-custom-token-clear')?.addEventListener('click', () => {
     setPromoState({ customTokens: '', selectedPackageId: packages[0]?.id || '' });
@@ -498,7 +770,7 @@ function renderJetonModal(modal, packages) {
         packageId: selectedPackage.isCustom ? '' : selectedPackage.id,
         tokens: selectedPackage.tokens,
         truthConfirmed,
-        buyerInput: collectBuyerInput(modal),
+        buyerInput: collectBuyerInput(),
         promoCode: applied?.code || '',
       });
       if (data.url) window.location.href = data.url;
@@ -508,26 +780,16 @@ function renderJetonModal(modal, packages) {
     }
   });
 
-  const selectedTarget = modal.querySelector('#bazar-selected-package');
-  if (selectedTarget) {
-    selectedTarget.innerHTML = `
-      <div class="text-lg font-bold">${escapeHtml(buildPackageDisplayLabel(selectedPkg || {}))}</div>
-      <div class="text-sm text-zinc-500 mt-1">${formatMoneyCents(Math.round(Number(selectedPkg?.pricePerTokenCents || 0)))} zł / żeton</div>
-      <div class="text-2xl font-black text-[#C19A6B] mt-3">${formatMoneyCents(Number(selectedPkg?.effectivePriceCents || 0))} zł</div>
-      <div class="text-xs text-zinc-500 mt-2">
-        ${Number(selectedPkg?.discountPercent || 0) > 0
-          ? `Rabat ilościowy: -${escapeHtml(selectedPkg?.discountPercent || 0)}%`
-          : 'Bez rabatu ilościowego'}
-      </div>
-    `;
-  }
+  syncBazarJetonSelectionVisuals(modal, packages);
 }
 
 function openJetonPackagesModal(packages) {
+  ensureBazarJetonAuxiliaryModals();
   closeJetonPackagesModal();
   const modal = document.createElement('div');
   modal.id = 'bazar-jeton-modal';
-  modal.className = 'modal-overlay';
+  modal.className = 'modal-overlay py-4 md:py-6';
+  modal.style.alignItems = 'center';
   modal.onclick = (event) => {
     if (event.target === modal) closeJetonPackagesModal();
   };

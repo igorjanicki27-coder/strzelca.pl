@@ -22,6 +22,11 @@ const {
   isAdminRoleProfile,
   canAccessBackofficeScope,
 } = require('./_moderation');
+const {
+  getBazarCommerceConfig,
+  consumeTokens,
+  DEFAULT_BAZAR_COMMERCE_CONFIG,
+} = require('./_bazar-commerce');
 
 let dbManager = null;
 const USER_EDITABLE_ORDER_STATUS = 'zlozone';
@@ -32,6 +37,8 @@ const USER_PAYMENT_RETRYABLE_ORDER_STATUSES = new Set([
 ]);
 const ORDER_REOPENABLE_STATUSES = new Set(['zakonczone', 'anulowane']);
 const ORDER_ADMIN_NOTIFICATION_EMAIL = 'kontakt@strzelca.pl';
+const SHOP_ORDER_TOKEN_REASON_KEY = 'shop_order_payment';
+const SHOP_ORDER_TOKEN_PAY_LOCKS = 'shopOrderTokenPayLocks';
 const ORDER_STATUSES = [
   'zlozone',
   'wycena_zlozona',
@@ -193,6 +200,118 @@ function normalizeOptionalUrl(value) {
 
 function normalizeMoney(value) {
   return Math.round((Math.max(0, Number(value) || 0) + Number.EPSILON) * 100) / 100;
+}
+
+function computeShopOrderTokenCost(totalPln, tokenPriceCents) {
+  const cents = Math.max(
+    1,
+    parseInt(tokenPriceCents, 10) || DEFAULT_BAZAR_COMMERCE_CONFIG.tokenPricing.tokenPriceCents,
+  );
+  const total = normalizeMoney(totalPln);
+  if (total <= 0) return 0;
+  const totalCents = Math.round(total * 100);
+  return Math.max(1, Math.ceil(totalCents / cents));
+}
+
+async function findShopOrderTokenLedgerEntry(db, orderId) {
+  const snap = await db
+    .collection('bazarTokenLedger')
+    .where('purchaseId', '==', orderId)
+    .limit(25)
+    .get();
+  return (
+    snap.docs.find((docSnap) => {
+      const row = docSnap.data() || {};
+      return row.type === 'consume' && row.reasonKey === SHOP_ORDER_TOKEN_REASON_KEY;
+    }) || null
+  );
+}
+
+async function releaseShopTokenPayLock(db, orderId) {
+  await db.collection(SHOP_ORDER_TOKEN_PAY_LOCKS).doc(orderId).delete().catch(() => null);
+}
+
+async function healShopOrderAfterTokenLedgerIfNeeded(db, orderRef, orderId, uid) {
+  const ledgerDoc = await findShopOrderTokenLedgerEntry(db, orderId);
+  if (!ledgerDoc) return null;
+  const row = ledgerDoc.data() || {};
+  if (normalizeOrderText(row.userId) !== normalizeOrderText(uid)) {
+    return { error: 'Nieprawidłowy stan płatności żetonami.', status: 409 };
+  }
+  const tokenCost = Math.abs(parseInt(row.tokensDelta, 10) || 0);
+  const snap = await orderRef.get();
+  const ord = snap.data() || {};
+  if (ord.status === 'realizacja' && ord.paymentVerificationMethod === 'tokens') {
+    return { orderSnap: snap, alreadyDone: true };
+  }
+  if (!USER_PAYMENT_RETRYABLE_ORDER_STATUSES.has(ord.status)) {
+    return { error: 'Zamówienie nie oczekuje już na płatność żetonami.', status: 409 };
+  }
+  const oldStatus = ord.status;
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  await orderRef.update({
+    status: 'realizacja',
+    paymentPaidAt: now,
+    paymentVerifiedAt: now,
+    paymentVerificationMethod: 'tokens',
+    shopTokenCost: tokenCost,
+    updatedAt: now,
+    updatedByUser: uid,
+    paymentVerificationStartedAt: admin.firestore.FieldValue.delete(),
+    paymentVerificationFailedAt: admin.firestore.FieldValue.delete(),
+  });
+  await releaseShopTokenPayLock(db, orderId);
+  const updatedSnap = await orderRef.get();
+  return { orderSnap: updatedSnap, healed: true, oldStatus };
+}
+
+async function acquireShopTokenPayLock(db, orderRef, orderId, uid) {
+  const lockRef = db.collection(SHOP_ORDER_TOKEN_PAY_LOCKS).doc(orderId);
+  await db.runTransaction(async (tx) => {
+    const [ordSnap, lockSnap] = await Promise.all([tx.get(orderRef), tx.get(lockRef)]);
+    if (!ordSnap.exists) {
+      const err = new Error('Nie znaleziono zamówienia.');
+      err.status = 404;
+      throw err;
+    }
+    const o = ordSnap.data() || {};
+    if (normalizeOrderText(o.userId) !== normalizeOrderText(uid)) {
+      const err = new Error('Forbidden');
+      err.status = 403;
+      throw err;
+    }
+    const ctx = o.orderContext === 'training' ? 'training' : 'shop';
+    if (ctx !== 'shop') {
+      const err = new Error('Płatność żetonami jest dostępna tylko dla zamówień ze sklepu.');
+      err.status = 400;
+      throw err;
+    }
+    if (o.status === 'realizacja' && o.paymentVerificationMethod === 'tokens') {
+      const err = new Error('ALREADY_DONE');
+      err.code = 'ALREADY_DONE';
+      throw err;
+    }
+    if (!USER_PAYMENT_RETRYABLE_ORDER_STATUSES.has(o.status)) {
+      const err = new Error('Zamówienie nie oczekuje na płatność.');
+      err.status = 409;
+      throw err;
+    }
+    const total = normalizeMoney(o.total);
+    if (total <= 0) {
+      const err = new Error('Brak kwoty do pokrycia żetonami.');
+      err.status = 400;
+      throw err;
+    }
+    if (lockSnap.exists) {
+      const err = new Error('Płatność żetonami jest już przetwarzana. Odśwież stronę za chwilę.');
+      err.status = 409;
+      throw err;
+    }
+    tx.set(lockRef, {
+      userId: uid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
 }
 
 function blankPlainAddress() {
@@ -441,6 +560,13 @@ function getOrderAdminFallbackTemplate(kind) {
     };
   }
 
+  if (kind === 'payment_tokens_completed') {
+    return {
+      subject: 'Zamówienie {{orderNumber}} opłacone żetonami',
+      html: `<html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;"><h2 style="color:#16a34a;">Płatność żetonami</h2><p>Klient opłacił zamówienie sklepowe <strong>{{orderNumber}}</strong> żetonami z Bazaru.</p><ul><li><strong>Klient:</strong> {{customerName}}</li><li><strong>E-mail:</strong> {{customerEmail}}</li><li><strong>Kwota zamówienia:</strong> {{total}} zł</li><li><strong>Pobrane żetony:</strong> {{shopTokenCost}}</li></ul><p>Status ustawiono na <strong>W realizacji</strong> — możesz kontynuować obsługę zamówienia.</p></body></html>`,
+    };
+  }
+
   return null;
 }
 
@@ -565,6 +691,10 @@ async function sendOrderAdminNotification(order, kind) {
       customerName: customer.customerName || 'Brak nazwy',
       customerEmail: customer.customerEmail || '',
       quoteRejectedReason: order.quoteRejectedReason || '',
+      shopTokenCost:
+        order.shopTokenCost !== undefined && order.shopTokenCost !== null
+          ? String(order.shopTokenCost)
+          : '',
     };
     const subject = replaceTemplateVariables(template.subject || '', variables);
     const html = replaceTemplateVariables(template.html || '', variables);
@@ -1331,6 +1461,153 @@ module.exports = async (req, res) => {
           });
           sendOrderAdminNotification(orderDataWithId, 'payment_started').catch((err) => {
             console.error('Error sending admin payment started email:', err);
+          });
+
+          res.status(200).json({ success: true, data: orderDataWithId });
+          return;
+        }
+
+        if (mode === 'user_pay_with_tokens') {
+          const healResult = await healShopOrderAfterTokenLedgerIfNeeded(
+            db,
+            orderRef,
+            body.id,
+            sessionUser.uid,
+          );
+          if (healResult?.error) {
+            res.status(healResult.status || 400).json({ success: false, error: healResult.error });
+            return;
+          }
+          if (healResult?.alreadyDone) {
+            const orderDataWithId = toOrderResponse(healResult.orderSnap);
+            res.status(200).json({ success: true, data: orderDataWithId });
+            return;
+          }
+          if (healResult?.healed) {
+            const orderDataWithId = toOrderResponse(healResult.orderSnap);
+            await logOrderActivity(
+              'ORDER_PAID_WITH_TOKENS_HEALED',
+              {
+                orderId: body.id,
+                orderNumber: orderDataWithId.orderNumber || '',
+                oldStatus: healResult.oldStatus || '',
+                newStatus: orderDataWithId.status || '',
+                shopTokenCost: orderDataWithId.shopTokenCost,
+              },
+              sessionUser.uid,
+              req,
+              orderDataWithId.userId || sessionUser.uid,
+            );
+            sendOrderEmail(orderDataWithId, 'status_changed', healResult.oldStatus).catch((err) => {
+              console.error('Error sending order token heal email:', err);
+            });
+            sendOrderAdminNotification(orderDataWithId, 'payment_tokens_completed').catch((err) => {
+              console.error('Error sending admin token heal notification:', err);
+            });
+            res.status(200).json({ success: true, data: orderDataWithId });
+            return;
+          }
+
+          let cfg;
+          try {
+            cfg = await getBazarCommerceConfig(db);
+          } catch (cfgErr) {
+            console.error('getBazarCommerceConfig (shop order tokens):', cfgErr);
+            res.status(500).json({ success: false, error: 'Nie udało się odczytać konfiguracji żetonów.' });
+            return;
+          }
+
+          const tokenCost = computeShopOrderTokenCost(
+            existingOrder.total,
+            cfg.tokenPricing?.tokenPriceCents,
+          );
+          if (!tokenCost) {
+            res.status(400).json({ success: false, error: 'Brak kwoty do pokrycia żetonami.' });
+            return;
+          }
+
+          try {
+            await acquireShopTokenPayLock(db, orderRef, body.id, sessionUser.uid);
+          } catch (lockErr) {
+            if (lockErr.code === 'ALREADY_DONE') {
+              const refreshed = await orderRef.get();
+              res.status(200).json({ success: true, data: toOrderResponse(refreshed) });
+              return;
+            }
+            const code = lockErr.status || 500;
+            res.status(code).json({
+              success: false,
+              error: lockErr.message || 'Nie udało się rozpocząć płatności żetonami.',
+            });
+            return;
+          }
+
+          try {
+            await consumeTokens(db, {
+              userId: sessionUser.uid,
+              tokens: tokenCost,
+              reasonKey: SHOP_ORDER_TOKEN_REASON_KEY,
+              reasonLabel: `Zamówienie sklepowe ${existingOrder.orderNumber || body.id}`,
+              purchaseId: body.id,
+              note: `orderId=${body.id}`,
+            });
+          } catch (consumeErr) {
+            await releaseShopTokenPayLock(db, body.id);
+            res.status(400).json({
+              success: false,
+              error: consumeErr.message || 'Nie udało się pobrać żetonów.',
+            });
+            return;
+          }
+
+          const oldStatusForEmail = existingOrder.status;
+          const nowTs = admin.firestore.FieldValue.serverTimestamp();
+          try {
+            await orderRef.update({
+              status: 'realizacja',
+              paymentPaidAt: nowTs,
+              paymentVerifiedAt: nowTs,
+              paymentVerificationMethod: 'tokens',
+              shopTokenCost: tokenCost,
+              updatedAt: nowTs,
+              updatedByUser: sessionUser.uid,
+              paymentVerificationStartedAt: admin.firestore.FieldValue.delete(),
+              paymentVerificationFailedAt: admin.firestore.FieldValue.delete(),
+            });
+          } catch (updateErr) {
+            console.error('Order update after token consume:', updateErr);
+            res.status(500).json({
+              success: false,
+              error:
+                'Żetony zostały pobrane, ale zapis zamówienia się nie powiódł. Odśwież profil za chwilę — system dokończy zamówienie automatycznie. W razie problemu napisz na kontakt@strzelca.pl.',
+            });
+            return;
+          }
+
+          await releaseShopTokenPayLock(db, body.id);
+
+          const updatedOrder = await orderRef.get();
+          const orderDataWithId = toOrderResponse(updatedOrder);
+
+          await logOrderActivity(
+            'ORDER_PAID_WITH_TOKENS_BY_USER',
+            {
+              orderId: updatedOrder.id,
+              orderNumber: orderDataWithId.orderNumber || '',
+              oldStatus: oldStatusForEmail || '',
+              newStatus: orderDataWithId.status || '',
+              shopTokenCost: tokenCost,
+            },
+            sessionUser.uid,
+            req,
+            updatedOrder.data().userId || sessionUser.uid,
+          );
+
+          sendOrderEmail(orderDataWithId, 'status_changed', oldStatusForEmail).catch((err) => {
+            console.error('Error sending order token payment email:', err);
+          });
+          sendOrderAdminNotification(orderDataWithId, 'payment_tokens_completed').catch((err) => {
+            console.error('Error sending admin token payment notification:', err);
           });
 
           res.status(200).json({ success: true, data: orderDataWithId });

@@ -325,22 +325,43 @@ function makeStyles() {
       max-height: calc(100vh - 32px);
       box-sizing: border-box;
     }
+    /* Wspólny dolny pasek (np. Bazar): wiadomości obok innych przycisków, wyśrodkowany. */
+    .wrap--dock {
+      position: relative;
+      right: auto;
+      bottom: auto;
+      z-index: 1;
+      max-width: none;
+      max-height: none;
+    }
+    .wrap--dock .panel {
+      right: auto;
+      left: 50%;
+      transform: translateX(-50%);
+    }
     .btn {
       width: 56px;
       height: 56px;
       border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.18);
+      border: none;
       background: rgba(10,10,10,0.78);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      box-shadow: 0 14px 40px rgba(0,0,0,0.45);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.18),
+        0 14px 40px rgba(0,0,0,0.45);
       display: inline-flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       position: relative;
+      transition: box-shadow 0.2s ease;
     }
-    .btn:hover { border-color: rgba(193,154,107,0.8); }
+    .btn:hover {
+      box-shadow:
+        0 0 0 1px rgba(193,154,107,0.8),
+        0 14px 40px rgba(0,0,0,0.45);
+    }
     .badge {
       position: absolute;
       top: -6px;
@@ -1270,14 +1291,22 @@ async function main() {
   }
 
   // UI
+  const dock = document.getElementById("bazar-bottom-dock");
+  const useDock = !!dock;
   const host = document.createElement("div");
   host.id = "strzelca-messages-widget";
-  document.body.appendChild(host);
+  if (useDock) {
+    host.style.flexShrink = "0";
+    host.style.display = "block";
+    dock.appendChild(host);
+  } else {
+    document.body.appendChild(host);
+  }
   const shadow = host.attachShadow({ mode: "open" });
   shadow.appendChild(makeStyles());
 
   const wrap = document.createElement("div");
-  wrap.className = "wrap";
+  wrap.className = useDock ? "wrap wrap--dock" : "wrap";
 
   const btn = document.createElement("button");
   btn.className = "btn";

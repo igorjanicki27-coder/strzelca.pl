@@ -85,8 +85,34 @@
             background-repeat: no-repeat;
             display: flex;
             flex-direction: column;
+            padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
         }
         .coyote-text { color: var(--coyote); font-family: 'Orbitron', sans-serif; }
+
+        @keyframes bazar-nav-brand-in {
+            from {
+                opacity: 0;
+                transform: translateY(-0.3rem);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes bazar-nav-border-soft {
+            0%, 100% { border-bottom-color: rgba(24, 24, 27, 1); }
+            50% { border-bottom-color: rgba(193, 154, 107, 0.28); }
+        }
+        .bazar-nav {
+            animation: bazar-nav-border-soft 14s ease-in-out infinite;
+        }
+        .bazar-nav__brand {
+            animation: bazar-nav-brand-in 0.78s cubic-bezier(0.22, 1, 0.36, 1) 0.06s both;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .bazar-nav { animation: none; }
+            .bazar-nav__brand { animation: none; }
+        }
 
         .cat-btn {
             padding: 8px 13px;
@@ -452,9 +478,54 @@
                 linear-gradient(120deg, rgba(59,130,246,0.12), transparent 40%);
             pointer-events: none;
         }
+        .filter-bar.search-shell {
+            border-radius: 999px;
+            padding: 10px 10px 16px 22px;
+            background:
+                linear-gradient(145deg, rgba(255,255,255,0.16), rgba(255,255,255,0.04)),
+                rgba(12,12,16,0.28);
+            border: 1px solid rgba(255,255,255,0.24);
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.22),
+                inset 0 -1px 0 rgba(0,0,0,0.12),
+                0 12px 40px rgba(0,0,0,0.22);
+            backdrop-filter: blur(28px) saturate(1.35);
+            -webkit-backdrop-filter: blur(28px) saturate(1.35);
+        }
         .search-shell > * {
             position: relative;
             z-index: 1;
+        }
+        .bazar-add-offer-fab {
+            width: 56px;
+            height: 56px;
+            border-radius: 9999px;
+            border: none;
+            flex-shrink: 0;
+            background: linear-gradient(155deg, #4ade80 0%, #16a34a 55%, #15803d 100%);
+            color: #052e16;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow:
+                0 14px 36px rgba(34, 197, 94, 0.42),
+                0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+        }
+        .bazar-add-offer-fab:hover {
+            transform: translateY(-2px) scale(1.04);
+            filter: brightness(1.06);
+            box-shadow:
+                0 18px 44px rgba(34, 197, 94, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.28) inset;
+        }
+        .bazar-add-offer-fab:focus-visible {
+            outline: 2px solid #86efac;
+            outline-offset: 3px;
+        }
+        .bazar-add-offer-fab:active {
+            transform: translateY(0) scale(0.98);
         }
         .search-toolbar {
             display: flex;
@@ -463,43 +534,62 @@
             gap: 10px;
         }
         .liquid-search {
-            flex: 1 1 360px;
-            max-width: 720px;
-            min-height: 54px;
+            flex: 1 1 auto;
+            min-width: 0;
+            min-height: 48px;
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 0 16px;
-            border-radius: 999px;
-            border: 1px solid rgba(255,255,255,0.14);
-            background:
-                linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04)),
-                rgba(8,8,10,0.55);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 16px 36px rgba(0,0,0,0.24);
-            backdrop-filter: blur(20px);
-        }
-        .liquid-search i {
-            color: #d2b286;
-            font-size: 17px;
+            gap: 10px;
+            padding: 0;
+            border: none;
+            background: transparent;
+            box-shadow: none;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
         }
         .liquid-search .filter-input {
             border: none !important;
             background: transparent !important;
-            padding: 0 !important;
-            min-height: 54px;
+            padding: 12px 8px 12px 0 !important;
+            min-height: 48px;
             box-shadow: none !important;
+            flex: 1 1 auto;
+            min-width: 0;
         }
         .liquid-search .filter-input:focus {
             border: none !important;
+            outline: none;
         }
         .liquid-search .filter-input::placeholder {
-            color: #8d8d94;
+            color: rgba(228,228,232,0.45);
         }
-        .toolbar-actions {
-            display: flex;
-            flex-wrap: wrap;
+        .liquid-search-submit {
+            flex-shrink: 0;
+            width: 44px;
+            height: 44px;
+            border: none;
+            border-radius: 50%;
+            margin-right: 2px;
+            display: inline-flex;
             align-items: center;
-            gap: 10px;
+            justify-content: center;
+            cursor: pointer;
+            color: #0a0a0a;
+            background: linear-gradient(160deg, rgba(214,184,140,0.95), rgba(193,154,107,0.88));
+            box-shadow: 0 2px 12px rgba(193,154,107,0.25);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+        }
+        .liquid-search-submit:hover {
+            transform: scale(1.05);
+            filter: brightness(1.06);
+            box-shadow: 0 4px 18px rgba(193,154,107,0.35);
+        }
+        .liquid-search-submit:focus-visible {
+            outline: 2px solid rgba(255,255,255,0.5);
+            outline-offset: 2px;
+        }
+        .liquid-search-submit i {
+            font-size: 16px;
         }
         .toolbar-btn {
             min-height: 48px;
@@ -835,15 +925,29 @@
         .filter-select:focus {
             border-color: rgba(193,154,107,0.5);
         }
-        .floating-controls-stack {
+        .bazar-bottom-dock {
             position: fixed;
-            right: 16px;
-            bottom: calc(var(--strzelca-search-launcher-bottom, 16px) + 56px + 14px);
-            z-index: 2147483646;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 2147483640;
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
             gap: 12px;
-            align-items: flex-end;
+            padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+            pointer-events: none;
+            box-sizing: border-box;
+        }
+        .bazar-bottom-dock > * {
+            pointer-events: auto;
+        }
+        #bazar-bottom-dock #strzelca-messages-widget {
+            flex-shrink: 0;
+            display: block;
+            line-height: 0;
         }
         .floating-trigger-btn {
             width: 56px;
@@ -851,22 +955,26 @@
             padding: 0;
             margin: 0;
             border-radius: 999px;
-            border: 1px solid rgba(193, 154, 107, 0.45);
+            border: none;
             background: rgba(10, 10, 10, 0.78);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+            box-shadow:
+                0 0 0 1px rgba(193, 154, 107, 0.45),
+                0 14px 40px rgba(0, 0, 0, 0.45);
             display: inline-flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             color: rgba(193, 154, 107, 0.95);
             font-size: 1.05rem;
-            transition: border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+            transition: box-shadow 0.2s ease, color 0.2s ease, transform 0.2s ease;
         }
         .floating-trigger-btn:hover,
         .floating-trigger-btn.is-active {
-            border-color: rgba(193, 154, 107, 0.8);
+            box-shadow:
+                0 0 0 1px rgba(193, 154, 107, 0.8),
+                0 14px 40px rgba(0, 0, 0, 0.45);
             color: #fff;
             transform: translateY(-1px);
         }
@@ -879,9 +987,10 @@
             inset: 0;
             z-index: 2147483645;
             display: flex;
-            align-items: flex-end;
-            justify-content: flex-end;
-            padding: 20px 16px 150px;
+            align-items: center;
+            justify-content: center;
+            padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+            overflow-y: auto;
             background: rgba(0, 0, 0, 0.4);
             backdrop-filter: blur(6px);
             -webkit-backdrop-filter: blur(6px);
@@ -1216,15 +1325,19 @@
         @media (max-width: 768px) {
             .offer-card, .show-all-card { flex: 0 0 calc((100% - 20px) / 2); }
             .gallery-main { height: 280px; }
-            .filter-bar { padding: 20px; border-radius: 24px; }
+            .filter-bar:not(.search-shell) { padding: 20px; border-radius: 24px; }
+            .filter-bar.search-shell { padding: 10px 10px 16px 18px; }
             .floating-modal-overlay {
-                align-items: flex-end;
-                justify-content: stretch;
-                padding: 12px 12px 132px;
+                align-items: center;
+                justify-content: center;
+                padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
             }
-            .floating-modal-panel,
+            .floating-modal-panel {
+                width: min(560px, 100%);
+                border-radius: 20px;
+            }
             .floating-modal-panel--sort {
-                width: 100%;
+                width: min(320px, 100%);
                 border-radius: 20px;
             }
             .hero-stats-grid,
@@ -1234,15 +1347,8 @@
             .filter-header-copy strong {
                 font-size: 24px;
             }
-            .liquid-search,
-            .toolbar-actions {
+            .liquid-search {
                 width: 100%;
-            }
-            .toolbar-actions {
-                justify-content: stretch;
-            }
-            .toolbar-actions > * {
-                flex: 1 1 calc(50% - 6px);
             }
             .toolbar-btn {
                 width: 100%;
@@ -1272,9 +1378,6 @@
         @media (max-width: 480px) {
             .offer-card, .show-all-card { flex: 0 0 100%; }
             .gallery-main { height: 220px; }
-            .toolbar-actions > * {
-                flex-basis: 100%;
-            }
         }
         @media (max-width: 768px) {
             .main-wrapper {
@@ -1299,48 +1402,47 @@
 </head>
 <body>
     <div class="main-wrapper">
-        <div id="user-panel" class="fixed top-4 right-4 z-50 hidden">
-            <div class="relative">
-                <button id="user-avatar-button" class="w-12 h-12 rounded-full bg-[#C19A6B] flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-80 transition shadow-lg overflow-hidden" onclick="toggleUserMenu()">
-                    <div id="user-avatar" class="w-full h-full flex items-center justify-center"><i class="fa-solid fa-user"></i></div>
-                </button>
-                <div id="user-menu" class="absolute top-14 right-0 bg-zinc-900/95 backdrop-blur-md border border-zinc-700 rounded-2xl p-4 shadow-2xl min-w-[220px] hidden">
-                    <div class="space-y-2">
-                        <div id="user-display-name" class="text-white font-semibold text-sm mb-3 pb-3 border-b border-zinc-700"></div>
-                        <a href="#" onclick="event.preventDefault(); showMyOffers();" class="block text-zinc-300 hover:text-[#C19A6B] transition text-sm"><i class="fa-solid fa-tags mr-2"></i>Moje oferty</a>
-                        <a id="profile-link" href="https://konto.strzelca.pl/profil.html" class="block text-zinc-300 hover:text-[#C19A6B] transition text-sm"><i class="fa-solid fa-user mr-2"></i>Mój profil</a>
-                        <button onclick="logout()" class="block w-full text-left text-zinc-300 hover:text-red-400 transition text-sm"><i class="fa-solid fa-sign-out-alt mr-2"></i>Wyloguj się</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div id="login-button" class="fixed top-4 right-4 z-50">
-            <a href="https://konto.strzelca.pl/login.html" data-open-login-modal class="text-[#C19A6B] w-12 h-12 flex items-center justify-center transition-transform duration-200 hover:scale-125 hover:text-[#d4b896]" title="Zaloguj się"><i class="fa-solid fa-arrow-right text-3xl"></i></a>
-        </div>
-
-        <nav class="h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative" role="navigation">
+        <nav class="bazar-nav h-[73px] border-b border-zinc-900 sticky top-0 bg-black/95 z-50 backdrop-blur-md flex items-center relative" role="navigation">
             <a href="https://strzelca.pl" class="absolute left-4 md:left-8 text-zinc-500 hover:text-white transition text-xl z-[60]"><i class="fa-solid fa-arrow-left"></i></a>
             <div class="container mx-auto px-6 flex justify-center items-center">
-                <a href="https://bazar.strzelca.pl" class="uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400 hover:text-white transition no-underline">
+                <a href="https://bazar.strzelca.pl" class="bazar-nav__brand uppercase font-bold text-[11px] tracking-[0.3em] font-[Orbitron] text-zinc-400 hover:text-white transition no-underline">
                     BAZAR.<span class="coyote-text">STRZELCA</span>.PL
                 </a>
             </div>
-            <button id="btn-add-offer" onclick="openCreateOfferModal()" class="absolute right-16 md:right-20 bg-[#C19A6B] text-black h-10 px-3 rounded-xl text-xs font-black uppercase tracking-[0.14em] hover:bg-white transition hidden flex items-center justify-center">
-                <i class="fa-solid fa-plus mr-1"></i><span class="hidden sm:inline">OGŁOSZENIE</span>
-            </button>
+            <div id="bazar-nav-tray" class="absolute right-2 md:right-4 top-0 bottom-0 z-[60] flex items-center gap-2 md:gap-2.5 pr-1 md:pr-0">
+                <button id="btn-add-offer" onclick="openCreateOfferModal()" class="bg-[#C19A6B] text-black h-10 px-3.5 rounded-xl text-xs font-black uppercase tracking-[0.14em] hover:bg-white transition hidden shrink-0 items-center justify-center">
+                    <i class="fa-solid fa-plus mr-1"></i><span class="hidden sm:inline">OGŁOSZENIE</span>
+                </button>
+                <div id="bazar-nav-user-cluster" class="flex items-center gap-1 shrink-0">
+                    <div id="user-panel" class="relative hidden">
+                        <div class="relative">
+                            <button id="user-avatar-button" class="w-12 h-12 rounded-full bg-[#C19A6B] flex items-center justify-center text-white font-bold cursor-pointer hover:opacity-80 transition shadow-lg overflow-hidden" onclick="toggleUserMenu()">
+                                <div id="user-avatar" class="w-full h-full flex items-center justify-center"><i class="fa-solid fa-user"></i></div>
+                            </button>
+                            <div id="user-menu" class="absolute top-14 right-0 bg-zinc-900/95 backdrop-blur-md border border-zinc-700 rounded-2xl p-4 shadow-2xl min-w-[220px] hidden">
+                                <div class="space-y-2">
+                                    <div id="user-display-name" class="text-white font-semibold text-sm mb-3 pb-3 border-b border-zinc-700"></div>
+                                    <a href="#" onclick="event.preventDefault(); showMyOffers();" class="block text-zinc-300 hover:text-[#C19A6B] transition text-sm"><i class="fa-solid fa-tags mr-2"></i>Moje oferty</a>
+                                    <a id="profile-link" href="https://konto.strzelca.pl/profil.html" class="block text-zinc-300 hover:text-[#C19A6B] transition text-sm"><i class="fa-solid fa-user mr-2"></i>Mój profil</a>
+                                    <button onclick="logout()" class="block w-full text-left text-zinc-300 hover:text-red-400 transition text-sm"><i class="fa-solid fa-sign-out-alt mr-2"></i>Wyloguj się</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="login-button" class="relative">
+                        <a href="https://konto.strzelca.pl/login.html" data-open-login-modal class="text-[#C19A6B] w-12 h-12 flex items-center justify-center transition-transform duration-200 hover:scale-125 hover:text-[#d4b896]" title="Zaloguj się"><i class="fa-solid fa-arrow-right text-3xl"></i></a>
+                    </div>
+                </div>
+            </div>
         </nav>
 
         <div class="container mx-auto px-4 md:px-6 py-4">
             <section class="filter-bar search-shell mb-6">
                 <div class="search-toolbar">
-                    <label class="liquid-search" for="search-input">
-                        <i class="fa-solid fa-magnifying-glass"></i>
-                        <input type="text" id="search-input" class="filter-input w-full" placeholder="Szukaj po nazwie, opisie, lokalizacji lub sprzedawcy..." onkeydown="if(event.key==='Enter')applyFilters(true)">
-                    </label>
-                    <div class="toolbar-actions">
-                        <button type="button" onclick="applyFilters(true)" class="toolbar-btn toolbar-btn--primary">
-                            <i class="fa-solid fa-search"></i>
-                            <span>Szukaj</span>
+                    <div class="liquid-search">
+                        <input type="text" id="search-input" class="filter-input w-full" placeholder="Szukaj po nazwie, opisie, lokalizacji lub sprzedawcy..." onkeydown="if(event.key==='Enter')applyFilters(true)" aria-label="Szukaj w ogłoszeniach">
+                        <button type="button" class="liquid-search-submit" onclick="applyFilters(true)" aria-label="Szukaj">
+                            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
@@ -1356,7 +1458,7 @@
             </section>
         </div>
 
-        <main class="container mx-auto px-4 md:px-6 pb-12 flex-grow" id="main-content">
+        <main class="container mx-auto px-4 md:px-6 pb-6 flex-grow" id="main-content">
             <div id="carousels-container"></div>
             <div id="filtered-results" class="hidden results-panel">
                 <div class="flex justify-between items-center mb-4">
@@ -1514,12 +1616,15 @@
             </div>
         </div>
 
-        <div class="floating-controls-stack" aria-label="Szybkie sterowanie bazarem">
-            <button type="button" id="filters-toggle-button" class="floating-trigger-btn" onclick="toggleFiltersPanel()" aria-label="Filtry" title="Filtry">
-                <i class="fa-solid fa-sliders"></i>
+        <div id="bazar-bottom-dock" class="bazar-bottom-dock" aria-label="Skróty Bazaru">
+            <button type="button" id="btn-add-offer-fab" onclick="openCreateOfferModal()" class="bazar-add-offer-fab" aria-label="Dodaj ogłoszenie" title="Dodaj ogłoszenie">
+                <i class="fa-solid fa-plus text-xl" aria-hidden="true"></i>
             </button>
             <button type="button" id="sort-menu-button" class="floating-trigger-btn" onclick="toggleSortMenu()" aria-haspopup="menu" aria-expanded="false" aria-label="Sortowanie" title="Sortowanie">
                 <i class="fa-solid fa-arrow-down-wide-short"></i>
+            </button>
+            <button type="button" id="filters-toggle-button" class="floating-trigger-btn" onclick="toggleFiltersPanel()" aria-label="Filtry" title="Filtry">
+                <i class="fa-solid fa-sliders"></i>
             </button>
         </div>
 
@@ -2075,9 +2180,10 @@
                 return;
             }
             suggestions.classList.remove('hidden');
+            const kindLiteral = kind === 'create' ? 'create' : 'search';
             suggestions.innerHTML = state.suggestions.map((item) => {
                 const payload = encodeURIComponent(JSON.stringify(item));
-                return `<button type="button" class="location-option" data-payload="${payload}" onclick="selectLocationSuggestion(${JSON.stringify(kind)}, this.dataset.payload)">
+                return `<button type="button" class="location-option" data-payload="${payload}" onclick="selectLocationSuggestion('${kindLiteral}', this.dataset.payload)">
                     ${escapeHtml(item.label || item.name || item.wojewodztwoLabel || '')}
                     <small>${escapeHtml(item.type === 'province' ? 'Województwo' : (item.wojewodztwoLabel || 'Miejscowość'))}</small>
                 </button>`;
@@ -2468,12 +2574,17 @@
             closeSortMenu();
         };
 
-        document.addEventListener('click', (event) => {
-            if (!event.target.closest('.location-picker')) {
-                hideLocationSuggestions('search');
-                hideLocationSuggestions('create');
-            }
-        });
+        document.addEventListener(
+            'click',
+            (event) => {
+                const t = event.target;
+                if (t && typeof t.closest === 'function' && !t.closest('.location-picker')) {
+                    hideLocationSuggestions('search');
+                    hideLocationSuggestions('create');
+                }
+            },
+            true
+        );
 
         window.clearFilters = () => {
             document.getElementById('search-input').value = '';
@@ -3563,7 +3674,10 @@
             if (user) {
                 loginBtn.classList.add("hidden");
                 userPanel.classList.remove("hidden");
-                if (addOfferBtn) addOfferBtn.classList.remove("hidden");
+                if (addOfferBtn) {
+                    addOfferBtn.classList.remove("hidden");
+                    addOfferBtn.classList.add("flex");
+                }
                 const displayName = user.displayName || user.email.split("@")[0];
                 if (userDisplayName) userDisplayName.textContent = displayName;
 
@@ -3610,7 +3724,10 @@
             } else {
                 loginBtn.classList.remove("hidden");
                 userPanel.classList.add("hidden");
-                if (addOfferBtn) addOfferBtn.classList.add("hidden");
+                if (addOfferBtn) {
+                    addOfferBtn.classList.add("hidden");
+                    addOfferBtn.classList.remove("flex");
+                }
             }
         }
 
@@ -3653,9 +3770,9 @@
         renderCarousels();
         await openOfferFromSlugParam();
     </script>
-    <script type="module" src="https://strzelca.pl/bazar-commerce-ui.mjs?v=2026-04-12-2"></script>
-    <script type="module" src="https://strzelca.pl/auth-widget.mjs?v=2026-04-12-4"></script>
-    <script type="module" src="https://strzelca.pl/messages-widget.mjs?v=2026-04-13-1"></script>
-    <script type="module" src="https://strzelca.pl/global-search-widget.mjs?v=2026-03-24-1"></script>
+    <script type="module" src="https://strzelca.pl/bazar-commerce-ui.mjs?v=2026-04-13-1"></script>
+    <script type="module" src="https://strzelca.pl/auth-widget.mjs?v=2026-04-13-2"></script>
+    <script type="module" src="https://strzelca.pl/messages-widget.mjs?v=2026-04-13-3"></script>
+    <script type="module" src="https://strzelca.pl/global-search-widget.mjs?v=2026-04-13-2"></script>
 </body>
 </html>

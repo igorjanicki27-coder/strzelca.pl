@@ -669,11 +669,13 @@ function ensureStyles() {
       width: 54px;
       height: 54px;
       border-radius: 999px;
-      border: 1px solid rgba(239,68,68,0.35);
+      border: none;
       background: rgba(10, 10, 10, 0.78);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      box-shadow: 0 14px 40px rgba(0,0,0,0.45);
+      box-shadow:
+        0 0 0 1px rgba(239,68,68,0.35),
+        0 14px 40px rgba(0,0,0,0.45);
       display: none;
       align-items: center;
       justify-content: center;
@@ -682,9 +684,12 @@ function ensureStyles() {
       text-decoration: none;
       font-weight: 900;
       user-select: none;
+      transition: box-shadow 0.2s ease, color 0.2s ease;
     }
     #strzelca-admin-fab:hover {
-      border-color: rgba(239,68,68,0.7);
+      box-shadow:
+        0 0 0 1px rgba(239,68,68,0.7),
+        0 14px 40px rgba(0,0,0,0.45);
       color: #fff;
     }
     #strzelca-admin-fab span {

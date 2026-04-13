@@ -879,7 +879,10 @@ function renderOrderFormModal({
             <div id="order-company-fields" class="hidden rounded-3xl border border-zinc-800/80 bg-zinc-950/45 p-5 md:p-6">
               <div class="flex flex-col gap-1 mb-4">
                 <h3 class="text-lg font-bold text-white">Dane firmy</h3>
-                <p class="text-sm text-zinc-500">Zamówienie firmowe bez faktury VAT.</p>
+                <p class="text-sm text-zinc-500">
+                  Zamówienie firmowe: dokument bez VAT do odliczenia —
+                  <button type="button" class="text-[#C19A6B] font-medium underline underline-offset-2 hover:text-white transition" onclick="window.openStrzelcaVatExemptInfoModal && window.openStrzelcaVatExemptInfoModal()">faktura zwolniona z VAT</button>.
+                </p>
               </div>
               <div class="grid gap-4 md:grid-cols-2">
                 <div>
@@ -986,6 +989,12 @@ function renderOrderFormModal({
                   </div>
                 </div>
 
+                <p class="mt-4 text-xs leading-relaxed text-zinc-500">
+                  Dokument sprzedaży:
+                  <button type="button" class="text-[#C19A6B] font-medium underline underline-offset-2 hover:text-white transition" onclick="window.openStrzelcaVatExemptInfoModal && window.openStrzelcaVatExemptInfoModal()">faktura zwolniona z VAT</button>
+                  — bez podatku VAT na dokumencie (brak VAT do odliczenia dla firm).
+                </p>
+
                 <p class="mt-auto pt-5 text-[12px] leading-relaxed text-zinc-500">
                   ${escapeHtml(disclaimerText)}
                   Złożenie zamówienia oznacza akceptację
@@ -1019,7 +1028,8 @@ function renderOrderFormModal({
               <i class="fa-solid fa-times" aria-hidden="true"></i>
             </button>
           </div>
-          <p class="mt-4 text-sm leading-relaxed text-zinc-300">Faktura tzw. zwolniona, którą wystawiam, dokumentuje sprzedaż zwolnioną z VAT na podstawie art. 113 ustawy o podatku od towarów i usług. Zgodnie z przepisami podatnik nie jest zobowiązany do naliczania podatku VAT.</p>
+          <p class="mt-4 text-sm leading-relaxed text-zinc-300">Dokument sprzedaży będzie wystawiony jako faktura zwolniona z VAT (bez naliczonego podatku VAT na dokumencie).</p>
+          <button type="button" onclick="window.openStrzelcaVatExemptInfoModal && window.openStrzelcaVatExemptInfoModal()" class="mt-4 w-full rounded-2xl border border-[#C19A6B]/35 bg-[#C19A6B]/10 px-4 py-3 text-sm font-semibold text-[#C19A6B] hover:bg-[#C19A6B]/20 transition">Czym jest faktura zwolniona z VAT?</button>
           <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button type="button" onclick="window.cancelStrzelcaOrderCompanyMode()" class="rounded-2xl border border-zinc-700/80 px-4 py-3 text-sm font-semibold text-zinc-300 hover:bg-zinc-800 transition">
               Cofnij
@@ -1030,10 +1040,36 @@ function renderOrderFormModal({
           </div>
         </div>
       </div>
+
+      <div id="strzelca-vat-exempt-info-modal" class="hidden fixed inset-0 z-[240] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm"
+           role="dialog" aria-modal="true" aria-labelledby="strzelca-vat-exempt-title"
+           onclick="if (event.target === this) window.closeStrzelcaVatExemptInfoModal && window.closeStrzelcaVatExemptInfoModal()">
+        <div class="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-[28px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(24,24,24,0.98),rgba(8,8,8,0.98))] p-6 shadow-2xl" onclick="event.stopPropagation()">
+          <div class="flex items-start justify-between gap-3">
+            <h3 id="strzelca-vat-exempt-title" class="text-xl font-black text-white font-[Orbitron]">Faktura zwolniona z VAT</h3>
+            <button type="button" onclick="window.closeStrzelcaVatExemptInfoModal && window.closeStrzelcaVatExemptInfoModal()" class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700/80 text-zinc-400 hover:text-white transition" aria-label="Zamknij">
+              <i class="fa-solid fa-times" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="mt-4 space-y-4 text-sm leading-relaxed text-zinc-300">
+            <p><strong class="text-white">Faktura zwolniona z VAT</strong> to dokument sprzedaży wystawiany, gdy sprzedawca korzysta ze zwolnienia z podatku VAT (m.in. na podstawie art. 113 ustawy o VAT). Na takim dokumencie nie ma podziałki netto / VAT — płacisz wyłącznie kwotę brutto widoczną przy zamówieniu.</p>
+            <p><strong class="text-white">Klient prywatny:</strong> nadal otrzymujesz normalny dowód zakupu do reklamacji i kontaktu z obsługą. Dla zakupów na własny użytek <strong class="text-white">nic „ekstra” z tego tytułu się nie zmienia</strong> — po prostu nie ma na dokumencie VAT do odliczenia.</p>
+            <p><strong class="text-white">Firma:</strong> nie jest to faktura VAT z podatkiem do odliczenia w rozliczeniu firmy. Jeśli potrzebujecie pełnej faktury VAT od podatnika VAT, musicie ustalić to bezpośrednio ze sprzedawcą (inna ścieżka dokumentowa).</p>
+          </div>
+          <button type="button" onclick="window.closeStrzelcaVatExemptInfoModal && window.closeStrzelcaVatExemptInfoModal()" class="mt-6 w-full rounded-2xl bg-[#C19A6B] px-4 py-3 text-sm font-bold text-black hover:bg-[#b18a5f] transition">Rozumiem</button>
+        </div>
+      </div>
     </div>
   `;
 
   document.body.appendChild(modal);
+
+  window.openStrzelcaVatExemptInfoModal = function openStrzelcaVatExemptInfoModal() {
+    document.getElementById("strzelca-vat-exempt-info-modal")?.classList.remove("hidden");
+  };
+  window.closeStrzelcaVatExemptInfoModal = function closeStrzelcaVatExemptInfoModal() {
+    document.getElementById("strzelca-vat-exempt-info-modal")?.classList.add("hidden");
+  };
 
   const liveIds = [
     "order-first-name",

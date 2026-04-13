@@ -3471,6 +3471,8 @@
 
           // ===== FUNKCJE ZAMÓWIEŃ =====
           let profileOrdersCache = [];
+          /** Cena 1 żetonu z konfiguracji Bazaru (grosze); używana do podglądu kosztu zamówienia sklepowego. */
+          let profileShopTokenPriceCents = 500;
           let profileShootingReservationsCache = [];
           let profileReturnsCache = [];
           let activeReturnClaimDetail = null;
@@ -3531,6 +3533,14 @@
 
           function formatCurrency(value) {
             return `${(Number(value) || 0).toFixed(2)} zł`;
+          }
+
+          function computeProfileShopOrderTokenCost(total, tokenPriceCents) {
+            const cents = Math.max(1, parseInt(tokenPriceCents, 10) || 500);
+            const t = Math.round((Math.max(0, Number(total) || 0) + Number.EPSILON) * 100) / 100;
+            if (t <= 0) return 0;
+            const totalCents = Math.round(t * 100);
+            return Math.max(1, Math.ceil(totalCents / cents));
           }
 
           function getOrderStatusMeta(status) {
@@ -3629,6 +3639,14 @@
             const canPay =
               ["oczekuje_na_platnosc", "platnosc_zakonczona_niepowodzeniem"].includes(order.status) &&
               !!order.paymentLinkUrl;
+            const isShopOrder = order.orderContext !== "training";
+            const shopTokenCostPreview = isShopOrder
+              ? computeProfileShopOrderTokenCost(order.total, profileShopTokenPriceCents)
+              : 0;
+            const canPayWithTokens =
+              isShopOrder &&
+              ["oczekuje_na_platnosc", "platnosc_zakonczona_niepowodzeniem"].includes(order.status) &&
+              shopTokenCostPreview > 0;
             const classes = options.compact
               ? {
                   // "Edytuj" ma wyglądać jak "Zwrot / reklamacja" (neutralny przycisk)
@@ -3640,6 +3658,8 @@
                   neutral:
                     "bg-zinc-700 text-white px-4 py-2 rounded-lg hover:bg-zinc-600 transition text-sm",
                   pay: "bg-sky-500 text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition text-sm",
+                  payTokens:
+                    "bg-amber-500 text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition text-sm",
                 }
               : {
                   // "Edytuj" ma wyglądać jak "Zwrot / reklamacja" (neutralny przycisk)
@@ -3651,11 +3671,14 @@
                   neutral:
                     "bg-zinc-700 text-white px-4 py-2 rounded-lg hover:bg-zinc-600 transition",
                   pay: "bg-sky-500 text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition",
+                  payTokens:
+                    "bg-amber-500 text-black px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition",
                 };
             let actionButtonCount = 1;
             if (canEdit) actionButtonCount += 2;
             if (canAcceptQuote) actionButtonCount += 2;
             if (canPay) actionButtonCount += 1;
+            if (canPayWithTokens) actionButtonCount += 1;
             const singleAction = actionButtonCount === 1;
             const containerClass = options.compact
               ? singleAction
@@ -3690,6 +3713,13 @@
                   canPay
                     ? `<button type="button" onclick="payOrder('${order.id}')" class="${classes.pay}">
                         <i class="fa-solid fa-credit-card mr-2"></i>Opłać
+                      </button>`
+                    : ""
+                }
+                ${
+                  canPayWithTokens
+                    ? `<button type="button" onclick="payOrderWithTokens('${order.id}')" class="${classes.payTokens}" title="Żetony z Bazaru — cena wg ustawień sklepu żetonów">
+                        <i class="fa-solid fa-coins mr-2"></i>Opłać ${shopTokenCostPreview} żetonami
                       </button>`
                     : ""
                 }
@@ -3931,11 +3961,17 @@
               const headers = await getProfileApiHeaders();
               const baseApiUrl = getStrzelcaApiUrl("/api/orders");
               const apiUrl = `${baseApiUrl}?scope=mine&userId=${encodeURIComponent(currentUser.uid)}`;
-              const response = await fetch(apiUrl, {
-                method: "GET",
-                headers,
-                credentials: baseApiUrl.startsWith("http") ? "include" : "same-origin",
-              });
+              const bazarUrl = `${getStrzelcaApiUrl("/api/bazar")}?action=token-summary`;
+              const cred = baseApiUrl.startsWith("http") ? "include" : "same-origin";
+              const [response, bazarResponse] = await Promise.all([
+                fetch(apiUrl, { method: "GET", headers, credentials: cred }),
+                fetch(bazarUrl, { method: "GET", headers, credentials: cred }),
+              ]);
+              const bazarData = await bazarResponse.json().catch(() => null);
+              if (bazarResponse.ok && bazarData?.config?.tokenPricing?.tokenPriceCents != null) {
+                const c = parseInt(bazarData.config.tokenPricing.tokenPriceCents, 10);
+                if (Number.isFinite(c) && c > 0) profileShopTokenPriceCents = c;
+              }
               const data = await response.json().catch(() => null);
               if (!response.ok || !data?.success) {
                 throw new Error(data?.error || "Nie udało się pobrać zamówień.");
@@ -4278,6 +4314,66 @@
                 openOrderDetailsModal(orderId);
               }
               alert(error.message || "Nie udało się rozpocząć płatności.");
+            }
+          };
+
+          window.payOrderWithTokens = async function (orderId) {
+            const order = profileOrdersCache.find((item) => item.id === orderId);
+            if (!order) return;
+            if (order.orderContext === "training") {
+              alert("Płatność żetonami dotyczy zamówień ze sklepu.");
+              return;
+            }
+            const tokenCost = computeProfileShopOrderTokenCost(order.total, profileShopTokenPriceCents);
+            if (!tokenCost) {
+              alert("Dla tego zamówienia nie można obliczyć kosztu w żetonach (brak kwoty).");
+              return;
+            }
+            if (
+              !["oczekuje_na_platnosc", "platnosc_zakonczona_niepowodzeniem"].includes(order.status)
+            ) {
+              alert("To zamówienie nie oczekuje już na płatność.");
+              return;
+            }
+            const plnLabel = order.totalDisplay || formatCurrency(order.total);
+            if (
+              !confirm(
+                `Opłacić zamówienie ${order.orderNumber || ""}?\n\nZ konta zostanie pobrane ${tokenCost} żetonów (wg aktualnej ceny żetonu w Bazaru).\nKwota zamówienia: ${plnLabel}.`,
+              )
+            ) {
+              return;
+            }
+            try {
+              const headers = await getProfileApiHeaders();
+              const apiUrl = getStrzelcaApiUrl("/api/orders");
+              const response = await fetch(apiUrl, {
+                method: "PUT",
+                headers,
+                credentials: apiUrl.startsWith("http") ? "include" : "same-origin",
+                body: JSON.stringify({
+                  id: orderId,
+                  mode: "user_pay_with_tokens",
+                }),
+              });
+              const data = await response.json().catch(() => null);
+              if (!response.ok || !data?.success) {
+                throw new Error(data?.error || "Nie udało się opłacić zamówienia żetonami.");
+              }
+              const idx = profileOrdersCache.findIndex((item) => item.id === orderId);
+              if (idx >= 0 && data.data) {
+                profileOrdersCache[idx] = { ...profileOrdersCache[idx], ...data.data, id: orderId };
+              }
+              renderOrderCards(profileOrdersCache);
+              if (document.getElementById("order-details-modal")?.classList.contains("show")) {
+                openOrderDetailsModal(orderId);
+              }
+              if (typeof window.refreshBazarTokenSummary === "function") {
+                window.refreshBazarTokenSummary();
+              }
+              alert("Zamówienie zostało opłacone żetonami. Status: w realizacji.");
+            } catch (error) {
+              console.error("payOrderWithTokens:", error);
+              alert(error.message || "Nie udało się opłacić zamówienia żetonami.");
             }
           };
 
@@ -5263,12 +5359,12 @@
     <script type="module" src="https://strzelca.pl/bazar-profile-ui.mjs?v=2026-04-12-2"></script>
     <script
       type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-04-12-4"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-04-13-2"
     ></script>
     <script
       type="module"
-      src="https://strzelca.pl/messages-widget.mjs?v=2026-04-13-1"
+      src="https://strzelca.pl/messages-widget.mjs?v=2026-04-13-2"
     ></script>
-    <script type="module" src="https://strzelca.pl/global-search-widget.mjs?v=2026-03-24-1"></script>
+    <script type="module" src="https://strzelca.pl/global-search-widget.mjs?v=2026-04-13-2"></script>
   </body>
 </html>

@@ -126,15 +126,123 @@
         justify-content: space-between;
       }
       .hub-button {
+        position: relative;
+        isolation: isolate;
         background: rgba(20, 20, 20, 0.8);
         border: 1px solid #333;
-        transition: 0.3s;
         cursor: pointer;
+        transition:
+          transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+          background 0.35s ease,
+          border-color 0.35s ease,
+          box-shadow 0.38s ease;
       }
-      .hub-button:hover:not(.disabled) {
-        border-color: var(--coyote);
+      /* „Prąd” po obwodzie: obracający się stożek + maska pierścienia */
+      .hub-button::before {
+        content: "";
+        position: absolute;
+        inset: -2px;
+        border-radius: inherit;
+        z-index: 0;
+        pointer-events: none;
+        padding: 2px;
+        background: conic-gradient(
+          from 0deg,
+          var(--coyote) 0deg,
+          rgba(193, 154, 107, 0.75) 52deg,
+          rgba(193, 154, 107, 0.12) 105deg,
+          transparent 148deg,
+          transparent 212deg,
+          rgba(193, 154, 107, 0.12) 255deg,
+          rgba(193, 154, 107, 0.75) 308deg,
+          var(--coyote) 360deg
+        );
+        -webkit-mask:
+          linear-gradient(#fff 0 0) content-box,
+          linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask:
+          linear-gradient(#fff 0 0) content-box,
+          linear-gradient(#fff 0 0);
+        mask-composite: exclude;
+        opacity: 0;
+        transition: opacity 0.28s ease;
+        animation: hub-tile-border-flow 1.22s linear infinite;
+        animation-play-state: paused;
+        will-change: transform;
+      }
+      .hub-button:hover:not(.disabled)::before,
+      .hub-button:focus-visible:not(.disabled)::before {
+        opacity: 1;
+        animation-play-state: running;
+      }
+      @keyframes hub-tile-border-flow {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .hub-button:hover:not(.disabled),
+      .hub-button:focus-visible:not(.disabled) {
+        border-color: rgba(51, 51, 51, 0.45);
         transform: translateY(-5px);
         background: rgba(30, 30, 30, 0.9);
+        box-shadow: 0 14px 36px rgba(0, 0, 0, 0.42);
+      }
+      .hub-button > * {
+        position: relative;
+        z-index: 1;
+      }
+      .hub-button svg,
+      .hub-button img {
+        transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), filter 0.4s ease;
+      }
+      .hub-button:hover:not(.disabled) svg,
+      .hub-button:hover:not(.disabled) img,
+      .hub-button:focus-visible:not(.disabled) svg,
+      .hub-button:focus-visible:not(.disabled) img {
+        transform: scale(1.07);
+        filter: drop-shadow(0 0 11px rgba(193, 154, 107, 0.35));
+      }
+      .hub-button span {
+        transition: color 0.35s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .hub-button:hover:not(.disabled) span,
+      .hub-button:focus-visible:not(.disabled) span {
+        color: rgba(248, 244, 236, 0.98);
+        transform: translateY(-1px);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .hub-button {
+          transition-duration: 0.18s;
+        }
+        .hub-button::before {
+          animation: none;
+          transform: none;
+        }
+        .hub-button:hover:not(.disabled)::before,
+        .hub-button:focus-visible:not(.disabled)::before {
+          opacity: 0;
+        }
+        .hub-button:hover:not(.disabled),
+        .hub-button:focus-visible:not(.disabled) {
+          border-color: var(--coyote);
+        }
+        .hub-button svg,
+        .hub-button img,
+        .hub-button span {
+          transition-duration: 0.15s;
+        }
+        .hub-button:hover:not(.disabled) svg,
+        .hub-button:hover:not(.disabled) img,
+        .hub-button:focus-visible:not(.disabled) svg,
+        .hub-button:focus-visible:not(.disabled) img {
+          transform: none;
+          filter: none;
+        }
+        .hub-button:hover:not(.disabled) span,
+        .hub-button:focus-visible:not(.disabled) span {
+          transform: none;
+        }
       }
       .hub-button.disabled {
         opacity: 0.25;
@@ -864,6 +972,7 @@
         logAuthReady: true,
         logSSO: true,
       });
+      window.strzelcaFirebaseAuth = auth;
 
       void (async () => {
         try {
@@ -2048,13 +2157,13 @@
     </script>
     <script
       type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-04-12-4"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-04-13-2"
     ></script>
     <script
       type="module"
-      src="https://strzelca.pl/messages-widget.mjs?v=2026-04-13-1"
+      src="https://strzelca.pl/messages-widget.mjs?v=2026-04-13-2"
     ></script>
-    <script type="module" src="https://strzelca.pl/global-search-widget.mjs?v=2026-03-24-1"></script>
-    <script type="module" src="https://strzelca.pl/token-balance-badge.mjs?v=2026-04-13-2"></script>
+    <script type="module" src="https://strzelca.pl/global-search-widget.mjs?v=2026-04-13-2"></script>
+    <script type="module" src="https://strzelca.pl/token-balance-badge.mjs?v=2026-04-13-3"></script>
   </body>
 </html>

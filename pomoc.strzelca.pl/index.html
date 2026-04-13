@@ -414,21 +414,25 @@
             padding: 0;
             margin: 0;
             border-radius: 999px;
-            border: 1px solid rgba(193, 154, 107, 0.45);
+            border: none;
             background: rgba(10, 10, 10, 0.78);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+            box-shadow:
+                0 0 0 1px rgba(193, 154, 107, 0.45),
+                0 14px 40px rgba(0, 0, 0, 0.45);
             display: inline-flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             color: rgba(193, 154, 107, 0.95);
             font-size: 1.12rem;
-            transition: border-color 0.2s ease, color 0.2s ease;
+            transition: box-shadow 0.2s ease, color 0.2s ease;
         }
         .filter-trigger-btn:hover {
-            border-color: rgba(193, 154, 107, 0.8);
+            box-shadow:
+                0 0 0 1px rgba(193, 154, 107, 0.8),
+                0 14px 40px rgba(0, 0, 0, 0.45);
             color: #fff;
         }
         .filter-trigger-btn:focus-visible {
@@ -1009,6 +1013,15 @@ const firebaseConfig = {
                 .replace(/'/g, '&#39;');
         }
 
+        /** Kadrowanie zdjęć z panelu admina (jak przy produktach): posX, posY, zoom na obiekcie { url, ... }. */
+        function charityImageFrameStyle(img) {
+            if (!img || typeof img !== 'object') return '';
+            const posX = typeof img.posX === 'number' ? img.posX : 50;
+            const posY = typeof img.posY === 'number' ? img.posY : 50;
+            const zoom = typeof img.zoom === 'number' ? img.zoom : 1;
+            return `object-position:${posX}% ${posY}%;transform:scale(${zoom});transform-origin:${posX}% ${posY}%`;
+        }
+
         function getPinnedDonationsResolved() {
             const d = pinnedDonationsData || {};
             const title = d.title || 'Dobrowolne wpłaty na rzecz rozwoju firmy';
@@ -1063,14 +1076,18 @@ const firebaseConfig = {
             const p = getPinnedDonationsResolved();
             const title = escapeHtml(p.title);
             let coverImage = '';
+            let coverFrameStyle = '';
             if (p.images.length > 0) {
-                coverImage = escapeHtml(p.images[0].url);
+                const first = p.images[0];
+                coverImage = escapeHtml(typeof first === 'string' ? first : first.url);
+                coverFrameStyle = charityImageFrameStyle(typeof first === 'string' ? null : first);
             }
+            const coverStyleAttr = coverFrameStyle ? ` style="${coverFrameStyle}"` : '';
             return `
                 <article class="card-dark charity-card cursor-pointer hover:border-coyote transition" onclick="window.openPinnedDonationsDetails()">
                     <div class="charity-card-inner justify-between p-0">
                         <div class="flex flex-col flex-1 min-h-0">
-                            ${coverImage ? `<div class="charity-image-wrap h-48 md:h-56 shrink-0"><img src="${coverImage}" alt="" class="w-full h-full object-cover"></div>` : '<div class="charity-image-wrap h-48 md:h-56 shrink-0 bg-zinc-800 flex items-center justify-center"><i class="fa-solid fa-seedling text-4xl charity-fa-coyote opacity-90" aria-hidden="true"></i></div>'}
+                            ${coverImage ? `<div class="charity-image-wrap h-48 md:h-56 shrink-0"><img src="${coverImage}" alt="" class="w-full h-full object-cover"${coverStyleAttr}></div>` : '<div class="charity-image-wrap h-48 md:h-56 shrink-0 bg-zinc-800 flex items-center justify-center"><i class="fa-solid fa-seedling text-4xl charity-fa-coyote opacity-90" aria-hidden="true"></i></div>'}
                             <div class="p-4 md:p-6 pb-0 text-center flex flex-col flex-1 min-h-0">
                                 <h3 class="text-lg md:text-xl font-bold uppercase font-[Orbitron] coyote-text leading-tight mb-2 shrink-0">${title}</h3>
                                 <div class="flex-1 min-h-0 min-w-0" aria-hidden="true"></div>
@@ -1258,11 +1275,15 @@ const firebaseConfig = {
         function buildCharityCard(item) {
             const title = escapeHtml(item.title || '');
             let coverImage = '';
+            let coverFrameStyle = '';
             if (item.images && item.images.length > 0) {
-                coverImage = escapeHtml(item.images[0].url);
+                const first = item.images[0];
+                coverImage = escapeHtml(typeof first === 'string' ? first : first.url);
+                coverFrameStyle = charityImageFrameStyle(typeof first === 'string' ? null : first);
             } else if (item.image) {
                 coverImage = escapeHtml(item.image);
             }
+            const coverStyleAttr = coverFrameStyle ? ` style="${coverFrameStyle}"` : '';
             const eventDate = item.date
                 ? (typeof item.date?.toDate === 'function' ? item.date.toDate() : new Date(item.date))
                 : null;
@@ -1319,7 +1340,7 @@ const firebaseConfig = {
                 <article class="card-dark charity-card cursor-pointer hover:border-coyote transition" data-charity-id="${item.id}" onclick="window.openCharityDetails('${item.id}')">
                     <div class="charity-card-inner justify-between p-0">
                         <div class="flex flex-col flex-1 min-h-0">
-                            ${coverImage ? `<div class="charity-image-wrap h-48 md:h-56 shrink-0"><img src="${coverImage}" alt="${title}" class="w-full h-full object-cover"></div>` : '<div class="charity-image-wrap h-48 md:h-56 shrink-0 bg-zinc-800 flex items-center justify-center"><i class="fa-solid fa-hand-holding-heart text-4xl text-zinc-600"></i></div>'}
+                            ${coverImage ? `<div class="charity-image-wrap h-48 md:h-56 shrink-0"><img src="${coverImage}" alt="${title}" class="w-full h-full object-cover"${coverStyleAttr}></div>` : '<div class="charity-image-wrap h-48 md:h-56 shrink-0 bg-zinc-800 flex items-center justify-center"><i class="fa-solid fa-hand-holding-heart text-4xl text-zinc-600"></i></div>'}
                             <div class="p-4 md:p-6 pb-2 text-center flex flex-col flex-1">
                                 <h3 class="text-lg md:text-xl font-bold uppercase font-[Orbitron] coyote-text leading-tight mb-2">${title}</h3>
                                 ${dateMetaHtml}
@@ -1366,18 +1387,36 @@ const firebaseConfig = {
 
         function buildCharityModalCarouselHtml(allImages) {
             const cid = 'chcar_' + Date.now();
-            if (!allImages.length) {
+            const normalized = (allImages || [])
+                .map((x) => {
+                    if (typeof x === 'string') return { url: x, posX: 50, posY: 50, zoom: 1 };
+                    if (x && x.url) {
+                        return {
+                            url: x.url,
+                            posX: typeof x.posX === 'number' ? x.posX : 50,
+                            posY: typeof x.posY === 'number' ? x.posY : 50,
+                            zoom: typeof x.zoom === 'number' ? x.zoom : 1,
+                        };
+                    }
+                    return null;
+                })
+                .filter(Boolean);
+            if (!normalized.length) {
                 return {
                     html: `<div class="w-full h-48 md:h-64 bg-zinc-800 flex items-center justify-center"><i class="fa-solid fa-hand-holding-heart text-5xl text-zinc-700"></i></div>`,
                     init: () => {}
                 };
             }
-            const slides = allImages.map((src, i) => `
+            const slides = normalized.map((im, i) => {
+                const st = charityImageFrameStyle(im);
+                const stAttr = st ? ` style="${st}"` : '';
+                return `
                 <div class="charity-modal-carousel-slide h-64 md:h-96">
-                    <img src="${escapeHtml(src)}" class="w-full h-full object-cover" alt="Zdjęcie ${i + 1}" />
+                    <img src="${escapeHtml(im.url)}" class="w-full h-full object-cover" alt="Zdjęcie ${i + 1}"${stAttr} />
                 </div>
-            `).join('');
-            const multi = allImages.length > 1;
+            `;
+            }).join('');
+            const multi = normalized.length > 1;
             const html = `
                 <div class="charity-modal-carousel w-full bg-black relative">
                     <div class="overflow-hidden w-full">
@@ -1393,7 +1432,7 @@ const firebaseConfig = {
             `;
             return {
                 html,
-                init: () => window.initCharityModalCarousel(cid, allImages.length)
+                init: () => window.initCharityModalCarousel(cid, normalized.length)
             };
         }
 
@@ -1407,7 +1446,7 @@ const firebaseConfig = {
             const body = document.getElementById('charity-details-body');
 
             const allImages = item.images && item.images.length > 0
-                ? item.images.map(img => img.url)
+                ? item.images.map((img) => (typeof img === 'string' ? img : img))
                 : (item.image ? [item.image] : []);
             const actionState = getCharityActionState(item, new Date());
             const toneClass = getCharityActionToneClass(actionState).trim();
@@ -1451,7 +1490,7 @@ const firebaseConfig = {
             const content = document.getElementById('charity-details-content');
             const body = document.getElementById('charity-details-body');
 
-            const allImages = p.images.map((img) => (typeof img === 'string' ? img : img.url)).filter(Boolean);
+            const allImages = p.images.map((img) => (typeof img === 'string' ? img : img)).filter((x) => x && (typeof x === 'string' ? x : x.url));
             const { html: imagesHtml, init: initCarousel } = buildCharityModalCarouselHtml(allImages);
 
             const title = escapeHtml(p.title);
@@ -2265,13 +2304,13 @@ const firebaseConfig = {
     </script>
     <script
       type="module"
-      src="https://strzelca.pl/auth-widget.mjs?v=2026-04-12-4"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-04-13-2"
     ></script>
     <script
       type="module"
-      src="https://strzelca.pl/messages-widget.mjs?v=2026-04-13-1"
+      src="https://strzelca.pl/messages-widget.mjs?v=2026-04-13-2"
     ></script>
-    <script type="module" src="https://strzelca.pl/global-search-widget.mjs?v=2026-03-24-1"></script>
-  <script type="module" src="https://strzelca.pl/token-balance-badge.mjs?v=2026-04-13-2"></script>
+    <script type="module" src="https://strzelca.pl/global-search-widget.mjs?v=2026-04-13-2"></script>
+  <script type="module" src="https://strzelca.pl/token-balance-badge.mjs?v=2026-04-13-3"></script>
 </body>
 </html>
