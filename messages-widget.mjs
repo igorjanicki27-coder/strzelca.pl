@@ -361,7 +361,10 @@ function makeStyles() {
     .panel {
       position: absolute;
       right: 0;
-      top: 70px;
+      /* Nad przyciskiem: .wrap ma wysokość tylko z przycisku (panel jest absolute),
+         więc top:70px wypychało panel pod viewport — stąd „niewidoczny” modal. */
+      bottom: calc(100% + 14px);
+      top: auto;
       width: min(calc(100vw - 32px), 900px);
       max-width: calc(100vw - 32px);
       height: min(calc(100vh - 100px), 600px);
@@ -817,7 +820,8 @@ function makeStyles() {
         height: min(calc(100vh - 80px), 600px);
         max-height: calc(100vh - 80px);
         right: 8px;
-        top: 80px;
+        bottom: calc(100% + 12px);
+        top: auto;
       }
       .grid { grid-template-columns: 1fr; }
       .left { display: none; }

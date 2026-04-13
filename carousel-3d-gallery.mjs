@@ -6,8 +6,8 @@ function injectStyles() {
     style.id = STYLE_ID;
     style.textContent = `
         .carousel-3d-viewport {
-            perspective: 1600px;
-            perspective-origin: 50% 42%;
+            /* bez perspective — sam rotateY/translateZ dawał mocny „coverflow” / skos */
+            perspective: none;
             /* clipuje powiększone kafelki — bez tego nachodzą na strzałki (sąsiednie kolumny grida) */
             overflow: hidden;
             padding-inline: clamp(6px, 1.5vw, 18px);
@@ -15,7 +15,7 @@ function injectStyles() {
         }
 
         .carousel-3d-track {
-            transform-style: preserve-3d;
+            transform-style: flat;
             padding-block: clamp(12px, 2.2vw, 24px);
         }
 
@@ -30,8 +30,7 @@ function injectStyles() {
             --carousel-3d-saturate: 1;
             --carousel-3d-brightness: 1;
             transform-origin: center center;
-            transform-style: preserve-3d;
-            backface-visibility: hidden;
+            transform-style: flat;
             transition:
                 transform 280ms cubic-bezier(0.22, 0.61, 0.36, 1),
                 opacity 280ms ease,
@@ -62,11 +61,6 @@ function injectStyles() {
         }
 
         @media (max-width: 700px) {
-            .carousel-3d-viewport {
-                perspective: 1100px;
-                perspective-origin: 50% 48%;
-            }
-
             .carousel-3d-track {
                 padding-block: 8px;
             }
@@ -116,20 +110,16 @@ export function attachCarousel3dGallery({ viewport, track, cardSelector }) {
             const distance = Math.abs(relative);
             const visible = rect.right > viewportRect.left && rect.left < viewportRect.right;
 
-            /* Umiarkowany scale — duży (1.1) + gap w flexie dawał fizyczne nakładanie kafelków */
+            /* Płaski układ: scale + blur/opacity — bez rotateY / Z (wcześniej „skosne” kafelki) */
             const scale = disabled
                 ? 1
                 : singleCard
                     ? 1.03
                     : clamp(1.035 - distance * 0.1, 0.78, 1.035);
-            const shiftZ = disabled
-                ? 0
-                : singleCard
-                    ? 95
-                    : Math.round(clamp(110 - distance * 100, -55, 110));
-            const shiftY = disabled ? 0 : Math.round(clamp(distance * 20, 0, 44));
-            const shiftX = disabled ? 0 : Math.round(relative * -30);
-            const rotateY = disabled ? 0 : clamp(relative * -24, -28, 28);
+            const shiftZ = 0;
+            const shiftY = disabled ? 0 : Math.round(clamp(distance * 14, 0, 32));
+            const shiftX = 0;
+            const rotateY = 0;
             const opacity = disabled ? 1 : clamp((visible ? 1 : 0.75) - distance * 0.18, 0.24, 1);
             const blur = disabled ? 0 : clamp(distance * 0.45, 0, 1.1);
             const saturate = disabled ? 1 : clamp(1.18 - distance * 0.14, 0.78, 1.18);

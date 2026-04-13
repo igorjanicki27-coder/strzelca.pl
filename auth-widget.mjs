@@ -1877,7 +1877,7 @@ async function bootstrapMessagesWidget() {
   try {
     if (!window.__strzelcaMessagesWidgetBootstrap) {
       window.__strzelcaMessagesWidgetBootstrap = true;
-      import("https://strzelca.pl/messages-widget.mjs?v=2026-03-23-1").catch(() => {});
+      import("https://strzelca.pl/messages-widget.mjs?v=2026-04-13-1").catch(() => {});
     }
   } catch {}
 }
