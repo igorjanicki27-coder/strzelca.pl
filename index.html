@@ -95,6 +95,11 @@
       rel="stylesheet"
     />
     <style>
+      @property --hub-tile-border-angle {
+        syntax: "<angle>";
+        inherits: false;
+        initial-value: 0deg;
+      }
       :root {
         --coyote: #c19a6b;
       }
@@ -137,7 +142,7 @@
           border-color 0.35s ease,
           box-shadow 0.38s ease;
       }
-      /* „Prąd” po obwodzie: obracający się stożek + maska pierścienia */
+      /* „Nitka” po obwodzie: stożek z animowanym kątem (bez rotate na warstwie — brak wystających rogów) */
       .hub-button::before {
         content: "";
         position: absolute;
@@ -146,16 +151,16 @@
         z-index: 0;
         pointer-events: none;
         padding: 2px;
+        --hub-tile-border-angle: 0deg;
         background: conic-gradient(
-          from 0deg,
-          var(--coyote) 0deg,
-          rgba(193, 154, 107, 0.75) 52deg,
-          rgba(193, 154, 107, 0.12) 105deg,
-          transparent 148deg,
-          transparent 212deg,
-          rgba(193, 154, 107, 0.12) 255deg,
-          rgba(193, 154, 107, 0.75) 308deg,
-          var(--coyote) 360deg
+          from var(--hub-tile-border-angle),
+          transparent 0deg,
+          transparent 334deg,
+          rgba(193, 154, 107, 0.4) 342deg,
+          var(--coyote) 348deg,
+          var(--coyote) 352deg,
+          rgba(193, 154, 107, 0.4) 358deg,
+          transparent 360deg
         );
         -webkit-mask:
           linear-gradient(#fff 0 0) content-box,
@@ -167,9 +172,8 @@
         mask-composite: exclude;
         opacity: 0;
         transition: opacity 0.28s ease;
-        animation: hub-tile-border-flow 1.22s linear infinite;
+        animation: hub-tile-border-flow 1.35s linear infinite;
         animation-play-state: paused;
-        will-change: transform;
       }
       .hub-button:hover:not(.disabled)::before,
       .hub-button:focus-visible:not(.disabled)::before {
@@ -178,7 +182,7 @@
       }
       @keyframes hub-tile-border-flow {
         to {
-          transform: rotate(360deg);
+          --hub-tile-border-angle: 360deg;
         }
       }
       .hub-button:hover:not(.disabled),
@@ -217,7 +221,7 @@
         }
         .hub-button::before {
           animation: none;
-          transform: none;
+          --hub-tile-border-angle: 0deg;
         }
         .hub-button:hover:not(.disabled)::before,
         .hub-button:focus-visible:not(.disabled)::before {
@@ -2164,6 +2168,6 @@
       src="https://strzelca.pl/messages-widget.mjs?v=2026-04-13-2"
     ></script>
     <script type="module" src="https://strzelca.pl/global-search-widget.mjs?v=2026-04-13-2"></script>
-    <script type="module" src="https://strzelca.pl/token-balance-badge.mjs?v=2026-04-13-3"></script>
+    <script type="module" src="https://strzelca.pl/token-balance-badge.mjs?v=2026-04-13-4"></script>
   </body>
 </html>

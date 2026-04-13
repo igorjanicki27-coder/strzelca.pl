@@ -325,20 +325,6 @@ function makeStyles() {
       max-height: calc(100vh - 32px);
       box-sizing: border-box;
     }
-    /* Wspólny dolny pasek (np. Bazar): wiadomości obok innych przycisków, wyśrodkowany. */
-    .wrap--dock {
-      position: relative;
-      right: auto;
-      bottom: auto;
-      z-index: 1;
-      max-width: none;
-      max-height: none;
-    }
-    .wrap--dock .panel {
-      right: auto;
-      left: 50%;
-      transform: translateX(-50%);
-    }
     .btn {
       width: 56px;
       height: 56px;
@@ -1290,23 +1276,15 @@ async function main() {
     console.debug("checkIfAdmin error:", e);
   }
 
-  // UI
-  const dock = document.getElementById("bazar-bottom-dock");
-  const useDock = !!dock;
+  // UI — zawsze `position: fixed` w prawym dolnym rogu (Bazar ma osobny dock na +/sort/filtry).
   const host = document.createElement("div");
   host.id = "strzelca-messages-widget";
-  if (useDock) {
-    host.style.flexShrink = "0";
-    host.style.display = "block";
-    dock.appendChild(host);
-  } else {
-    document.body.appendChild(host);
-  }
+  document.body.appendChild(host);
   const shadow = host.attachShadow({ mode: "open" });
   shadow.appendChild(makeStyles());
 
   const wrap = document.createElement("div");
-  wrap.className = useDock ? "wrap wrap--dock" : "wrap";
+  wrap.className = "wrap";
 
   const btn = document.createElement("button");
   btn.className = "btn";

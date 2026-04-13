@@ -108,13 +108,6 @@ function renderJetonChip(summary) {
   chip.innerHTML = `<i class="fa-solid fa-coins"></i><span>${escapeHtml(summary.balance || 0)}</span>`;
 }
 
-function installTopControls() {
-  const addOfferBtn = document.getElementById('btn-add-offer');
-  if (addOfferBtn) {
-    addOfferBtn.innerHTML = '<i class="fa-solid fa-plus mr-1.5"></i>OGŁOSZENIE';
-  }
-}
-
 function closeJetonPackagesModal() {
   document.getElementById('bazar-jeton-modal')?.remove();
   document.body.style.overflow = '';
@@ -1000,7 +993,6 @@ function installHookOverrides() {
 
 window.addEventListener('load', () => {
   installHookOverrides();
-  installTopControls();
   const tryInit = async () => {
     if (!window.strzelcaFirebaseAuth?.currentUser) return false;
     await loadJetonSummary();

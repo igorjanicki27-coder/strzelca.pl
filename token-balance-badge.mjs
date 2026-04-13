@@ -767,6 +767,7 @@ function injectTokenBadgeStyles() {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   overflow: hidden;
+  z-index: 10;
 }
 #global-token-badge.global-token-badge > * {
   position: relative;
