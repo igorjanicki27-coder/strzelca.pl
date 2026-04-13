@@ -618,6 +618,37 @@
             white-space: pre-wrap;
             overflow-wrap: anywhere;
         }
+        .blog-comment-inline-edit {
+            margin-top: 8px;
+        }
+        .blog-comment-inline-textarea {
+            width: 100%;
+            min-height: 132px;
+            border-radius: 18px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(5,5,5,0.72);
+            color: #fafafa;
+            padding: 16px 18px;
+            line-height: 1.6;
+            resize: vertical;
+            outline: none;
+        }
+        .blog-comment-inline-textarea:focus {
+            border-color: rgba(193,154,107,0.42);
+            box-shadow: 0 0 0 2px rgba(193,154,107,0.14);
+        }
+        .blog-comment-inline-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .blog-comment-inline-note {
+            color: #a1a1aa;
+            font-size: 0.82rem;
+            margin-top: 10px;
+        }
         .blog-comment-actions {
             display: flex;
             flex-wrap: wrap;
@@ -630,6 +661,41 @@
             flex-direction: column;
             gap: 12px;
             margin-top: 12px;
+        }
+        .blog-comment-thread-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            border: 1px solid rgba(193,154,107,0.28);
+            border-radius: 999px;
+            background: rgba(193,154,107,0.1);
+            color: var(--coyote-light);
+            font-size: 0.82rem;
+            font-weight: 700;
+            padding: 8px 14px;
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        }
+        .blog-comment-thread-toggle:hover {
+            background: rgba(193,154,107,0.16);
+            border-color: rgba(193,154,107,0.42);
+            transform: translateY(-1px);
+        }
+        .blog-comment-thread-toggle.is-expanded {
+            background: rgba(255,255,255,0.04);
+            color: #e4e4e7;
+            border-color: rgba(255,255,255,0.14);
+        }
+        .blog-comment-thread-toggle-count {
+            color: inherit;
+        }
+        .blog-comment-thread-toggle-icon {
+            font-size: 0.74rem;
+            transition: transform 0.2s ease;
+        }
+        .blog-comment-thread-toggle.is-expanded .blog-comment-thread-toggle-icon {
+            transform: rotate(180deg);
         }
         .blog-comment-history-entry {
             border: 1px solid rgba(255,255,255,0.08);
@@ -2119,6 +2185,7 @@ const firebaseConfig = {
         let currentBlogDetailId = null;
         let currentBlogComments = [];
         let currentBlogCommentLikes = new Set();
+        const expandedBlogReplyThreads = new Set();
         let currentBlogPostLiked = false;
         const blogPostLikedByUser = new Set();
         const blogPostLikeInflightIds = new Set();
@@ -2354,6 +2421,25 @@ const firebaseConfig = {
             return roots;
         }
 
+        function getBlogCommentReplyCount(comment) {
+            if (Array.isArray(comment?.children) && comment.children.length) return comment.children.length;
+            return Number(comment?.replyCount || 0);
+        }
+
+        function getReplyLabel(count) {
+            if (count === 1) return "1 odpowiedź";
+            const mod10 = count % 10;
+            const mod100 = count % 100;
+            if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return `${count} odpowiedzi`;
+            return `${count} odpowiedzi`;
+        }
+
+        function resizeBlogInlineEditTextarea(textarea) {
+            if (!textarea) return;
+            textarea.style.height = "auto";
+            textarea.style.height = `${Math.max(132, Math.min(textarea.scrollHeight, 320))}px`;
+        }
+
         function updateBlogPostStatsInLocalState(postId, patch = {}) {
             const applyPatch = (entry) => {
                 if (!entry || entry.id !== postId) return entry;
@@ -2469,7 +2555,7 @@ const firebaseConfig = {
             const guestOverlay = document.getElementById("blog-comment-guest-overlay");
             const activeUser = getActiveAuthUser();
             const authPending = !activeUser && !blogAuthStateReady;
-            const requiresCooldown = !currentEditingCommentId;
+            const requiresCooldown = true;
             const remainingSeconds = requiresCooldown ? getRemainingBlogCommentSeconds() : 0;
             const cooldownActive = requiresCooldown && remainingSeconds > 0;
 
@@ -2500,9 +2586,7 @@ const firebaseConfig = {
                 } else if (cooldownActive) {
                     note.textContent = `Kolejny komentarz w tym wpisie możesz dodać za ${remainingSeconds} s.`;
                 } else {
-                    note.textContent = currentEditingCommentId
-                        ? "Edytujesz swój komentarz. Zapisze się historia zmian."
-                        : "";
+                    note.textContent = "";
                 }
             }
 
@@ -2614,18 +2698,24 @@ const firebaseConfig = {
             if (!content || !modal) return;
 
             const history = Array.isArray(comment.editHistory) ? comment.editHistory : [];
-            if (!history.length) {
-                content.innerHTML = '<div class="text-zinc-500">Brak zapisanej historii zmian.</div>';
-            } else {
-                content.innerHTML = history
+            const currentEntryHtml = `
+                <div class="blog-comment-history-entry">
+                    <div class="text-xs text-zinc-400 mb-2">Aktualna wersja • ${formatDate(comment.editedAt || comment.updatedAt || comment.createdAt)}</div>
+                    <div class="blog-comment-content">${nl2brSafe(comment.contentText || '')}</div>
+                </div>
+            `;
+            const historyHtml = history.length
+                ? history
                     .map((entry, index) => `
                         <div class="blog-comment-history-entry">
-                            <div class="text-xs text-zinc-400 mb-2">Wersja ${history.length - index} • ${formatDate(entry.editedAt || entry.updatedAt || entry.createdAt)}</div>
+                            <div class="text-xs text-zinc-400 mb-2">Wcześniejsza wersja ${index + 1} • ${formatDate(entry.editedAt || entry.updatedAt || entry.createdAt)}</div>
                             <div class="blog-comment-content">${nl2brSafe(entry.contentText || '')}</div>
                         </div>
                     `)
-                    .join("");
-            }
+                    .join("")
+                : '<div class="text-zinc-500">Brak zapisanych wcześniejszych wersji komentarza.</div>';
+
+            content.innerHTML = currentEntryHtml + historyHtml;
             modal.classList.remove("hidden");
         }
 
@@ -2634,6 +2724,10 @@ const firebaseConfig = {
             const canDelete = canModerateBlogCommentsOnClient() && comment.status === "active";
             const isDeleted = comment.status === "deleted";
             const liked = currentBlogCommentLikes.has(comment.id);
+            const isEditing = currentEditingCommentId === comment.id;
+            const replyCount = getBlogCommentReplyCount(comment);
+            const hasRootThreadToggle = depth === 0 && replyCount > 0;
+            const isRepliesExpanded = expandedBlogReplyThreads.has(comment.id);
             const avatarHtml = comment.userAvatar
                 ? `<img src="${comment.userAvatar}" alt="${escapeHtml(comment.userDisplayName || 'Użytkownik')}" />`
                 : escapeHtml((comment.userDisplayName || "U")[0] || "U");
@@ -2657,31 +2751,77 @@ const firebaseConfig = {
                             </button>
                         ` : ''}
                     </div>
-                    <div class="blog-comment-content">${isDeleted ? '<em>Komentarz usunięty przez moderację.</em>' : nl2brSafe(comment.contentText || '')}</div>
-                    <div class="blog-comment-actions">
-                        ${!isDeleted ? `
-                            <button type="button" class="blog-comment-action ${liked ? 'is-active' : ''}" data-comment-like="${escapeHtml(comment.id)}">
-                                <i class="fa-solid fa-heart"></i>
-                                <span>${Number(comment.likeCount || 0)}</span>
-                            </button>
-                            <button type="button" class="blog-comment-action" data-comment-reply="${escapeHtml(comment.id)}">
-                                <i class="fa-solid fa-reply"></i>
-                                <span>Odpowiedz</span>
-                            </button>
-                            ${canEdit ? `
-                                <button type="button" class="blog-comment-action" data-comment-edit="${escapeHtml(comment.id)}">
-                                    <i class="fa-solid fa-pen"></i>
-                                    <span>Edytuj</span>
+                    ${isEditing ? `
+                        <div class="blog-comment-inline-edit">
+                            <textarea class="blog-comment-inline-textarea" data-comment-inline-textarea="${escapeHtml(comment.id)}" maxlength="3000" spellcheck="true" autocapitalize="sentences">${escapeHtml(comment.contentText || "")}</textarea>
+                            <div class="blog-comment-inline-actions">
+                                <button type="button" class="blog-comment-action" data-comment-save-edit="${escapeHtml(comment.id)}">
+                                    <i class="fa-solid fa-floppy-disk"></i>
+                                    <span>Zapisz</span>
                                 </button>
+                                <button type="button" class="blog-comment-action" data-comment-cancel-edit="${escapeHtml(comment.id)}">
+                                    <i class="fa-solid fa-xmark"></i>
+                                    <span>Anuluj</span>
+                                </button>
+                            </div>
+                            <div class="blog-comment-inline-note">Historia zmian zapisze się po aktualizacji komentarza.</div>
+                        </div>
+                    ` : `
+                        <div class="blog-comment-content">${isDeleted ? '<em>Komentarz usunięty przez moderację.</em>' : nl2brSafe(comment.contentText || '')}</div>
+                        <div class="blog-comment-actions">
+                            ${!isDeleted ? `
+                                <button type="button" class="blog-comment-action ${liked ? 'is-active' : ''}" data-comment-like="${escapeHtml(comment.id)}">
+                                    <i class="fa-solid fa-heart"></i>
+                                    <span>${Number(comment.likeCount || 0)}</span>
+                                </button>
+                                <button type="button" class="blog-comment-action" data-comment-reply="${escapeHtml(comment.id)}">
+                                    <i class="fa-solid fa-reply"></i>
+                                    <span>Odpowiedz</span>
+                                </button>
+                                ${canEdit ? `
+                                    <button type="button" class="blog-comment-action" data-comment-edit="${escapeHtml(comment.id)}">
+                                        <i class="fa-solid fa-pen"></i>
+                                        <span>Edytuj</span>
+                                    </button>
+                                ` : ''}
                             ` : ''}
-                        ` : ''}
-                    </div>
-                    ${comment.children?.length ? `<div class="blog-comment-children">${comment.children.map((child) => renderBlogCommentItem(child, depth + 1)).join('')}</div>` : ''}
+                        </div>
+                    `}
+                    ${hasRootThreadToggle ? `
+                        <button
+                            type="button"
+                            class="blog-comment-thread-toggle ${isRepliesExpanded ? 'is-expanded' : ''}"
+                            data-comment-toggle-replies="${escapeHtml(comment.id)}"
+                            aria-expanded="${isRepliesExpanded ? 'true' : 'false'}"
+                        >
+                            <span class="blog-comment-thread-toggle-count">${escapeHtml(getReplyLabel(replyCount))}</span>
+                            <i class="fa-solid fa-chevron-down blog-comment-thread-toggle-icon" aria-hidden="true"></i>
+                        </button>
+                    ` : ''}
+                    ${comment.children?.length && (!hasRootThreadToggle || isRepliesExpanded) ? `<div class="blog-comment-children">${comment.children.map((child) => renderBlogCommentItem(child, depth + 1)).join('')}</div>` : ''}
                 </div>
             `;
         }
 
         function bindBlogCommentActions() {
+            document.querySelectorAll("[data-comment-inline-textarea]").forEach((textarea) => {
+                resizeBlogInlineEditTextarea(textarea);
+                if (textarea.dataset.inlineReady === "1") return;
+                textarea.dataset.inlineReady = "1";
+                textarea.addEventListener("input", () => resizeBlogInlineEditTextarea(textarea));
+                requestAnimationFrame(() => resizeBlogInlineEditTextarea(textarea));
+            });
+
+            document.querySelectorAll("[data-comment-toggle-replies]").forEach((button) => {
+                button.addEventListener("click", () => {
+                    const commentId = button.getAttribute("data-comment-toggle-replies") || "";
+                    if (!commentId) return;
+                    if (expandedBlogReplyThreads.has(commentId)) expandedBlogReplyThreads.delete(commentId);
+                    else expandedBlogReplyThreads.add(commentId);
+                    renderBlogComments();
+                });
+            });
+
             document.querySelectorAll("[data-comment-like]").forEach((button) => {
                 button.addEventListener("click", async () => {
                     if (!getActiveAuthUser()) {
@@ -2743,12 +2883,32 @@ const firebaseConfig = {
             document.querySelectorAll("[data-comment-edit]").forEach((button) => {
                 button.addEventListener("click", () => {
                     const commentId = button.getAttribute("data-comment-edit") || "";
-                    const comment = findBlogCommentById(commentId);
-                    if (!comment) return;
-                    setBlogCommentMode({
-                        editId: commentId,
-                        text: comment.contentText || "",
-                        banner: "Edytujesz swój komentarz. Historia zmian będzie dostępna pod etykietą „Edytowany”.",
+                    if (!commentId) return;
+                    currentEditingCommentId = commentId;
+                    renderBlogComments();
+                    const textarea = document.querySelector(`[data-comment-inline-textarea="${CSS.escape(commentId)}"]`);
+                    if (textarea) {
+                        textarea.focus();
+                        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+                    }
+                });
+            });
+
+            document.querySelectorAll("[data-comment-cancel-edit]").forEach((button) => {
+                button.addEventListener("click", () => {
+                    currentEditingCommentId = "";
+                    renderBlogComments();
+                });
+            });
+
+            document.querySelectorAll("[data-comment-save-edit]").forEach((button) => {
+                button.addEventListener("click", async () => {
+                    const commentId = button.getAttribute("data-comment-save-edit") || "";
+                    if (!commentId || !currentBlogDetailId) return;
+                    const textarea = document.querySelector(`[data-comment-inline-textarea="${CSS.escape(commentId)}"]`);
+                    await window.submitBlogComment(currentBlogDetailId, {
+                        commentId,
+                        content: textarea?.value || "",
                     });
                 });
             });
@@ -2808,6 +2968,7 @@ const firebaseConfig = {
             currentBlogDetailId = postId;
             currentBlogComments = [];
             currentBlogCommentLikes = new Set();
+            expandedBlogReplyThreads.clear();
             currentBlogPostLiked = false;
             resetBlogCommentComposer();
             restoreBlogCommentCooldown(postId);
@@ -4007,25 +4168,27 @@ const firebaseConfig = {
             }
         };
 
-        window.submitBlogComment = async (postId) => {
+        window.submitBlogComment = async (postId, options = {}) => {
             const activeUser = getActiveAuthUser();
             if (!activeUser) {
                 showNotification("Musisz być zalogowany, aby dodać komentarz.");
                 return;
             }
 
+            const editCommentId = String(options.commentId || "");
+            const isInlineEdit = !!editCommentId;
             const textarea = document.getElementById("blog-comment-textarea");
-            const content = textarea?.value || "";
+            const content = typeof options.content === "string" ? options.content : (textarea?.value || "");
             try {
                 const result = await fetchBlogInteractionsApi({
-                    action: currentEditingCommentId ? "comment.edit" : "comment.create",
+                    action: isInlineEdit ? "comment.edit" : "comment.create",
                     postId,
-                    commentId: currentEditingCommentId || undefined,
-                    parentId: currentEditingCommentId ? undefined : (currentReplyToCommentId || undefined),
+                    commentId: editCommentId || undefined,
+                    parentId: isInlineEdit ? undefined : (currentReplyToCommentId || undefined),
                     content,
                 });
 
-                if (!currentEditingCommentId) {
+                if (!isInlineEdit) {
                     persistBlogCommentCooldown(postId, activeUser.uid, Number(result.cooldownUntil || (Date.now() + 30 * 1000)));
                     const post = allEvents.find((entry) => entry.id === postId);
                     updateBlogPostStatsInLocalState(postId, {
@@ -4033,10 +4196,14 @@ const firebaseConfig = {
                     });
                 }
 
-                resetBlogCommentComposer();
+                if (isInlineEdit) {
+                    currentEditingCommentId = "";
+                } else {
+                    resetBlogCommentComposer();
+                }
                 await loadBlogPostInteractions(postId);
             } catch (error) {
-                if (error.code === "comment_cooldown" && error.remainingSeconds) {
+                if (!isInlineEdit && error.code === "comment_cooldown" && error.remainingSeconds) {
                     persistBlogCommentCooldown(postId, activeUser.uid, Date.now() + Number(error.remainingSeconds) * 1000);
                 }
                 showNotification(error.message || "Nie udało się zapisać komentarza.");
