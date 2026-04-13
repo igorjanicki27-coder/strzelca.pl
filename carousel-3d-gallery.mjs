@@ -8,12 +8,15 @@ function injectStyles() {
         .carousel-3d-viewport {
             perspective: 1600px;
             perspective-origin: 50% 42%;
-            overflow: visible;
+            /* clipuje powiększone kafelki — bez tego nachodzą na strzałki (sąsiednie kolumny grida) */
+            overflow: hidden;
+            padding-inline: clamp(6px, 1.5vw, 18px);
+            box-sizing: border-box;
         }
 
         .carousel-3d-track {
             transform-style: preserve-3d;
-            padding-block: clamp(10px, 2vw, 20px);
+            padding-block: clamp(12px, 2.2vw, 24px);
         }
 
         .carousel-3d-card {
@@ -113,18 +116,19 @@ export function attachCarousel3dGallery({ viewport, track, cardSelector }) {
             const distance = Math.abs(relative);
             const visible = rect.right > viewportRect.left && rect.left < viewportRect.right;
 
+            /* Umiarkowany scale — duży (1.1) + gap w flexie dawał fizyczne nakładanie kafelków */
             const scale = disabled
                 ? 1
                 : singleCard
-                    ? 1.04
-                    : clamp(1.1 - distance * 0.18, 0.72, 1.1);
+                    ? 1.03
+                    : clamp(1.035 - distance * 0.1, 0.78, 1.035);
             const shiftZ = disabled
                 ? 0
                 : singleCard
-                    ? 110
-                    : Math.round(clamp(130 - distance * 120, -70, 130));
-            const shiftY = disabled ? 0 : Math.round(clamp(distance * 24, 0, 52));
-            const shiftX = disabled ? 0 : Math.round(relative * -24);
+                    ? 95
+                    : Math.round(clamp(110 - distance * 100, -55, 110));
+            const shiftY = disabled ? 0 : Math.round(clamp(distance * 20, 0, 44));
+            const shiftX = disabled ? 0 : Math.round(relative * -30);
             const rotateY = disabled ? 0 : clamp(relative * -24, -28, 28);
             const opacity = disabled ? 1 : clamp((visible ? 1 : 0.75) - distance * 0.18, 0.24, 1);
             const blur = disabled ? 0 : clamp(distance * 0.45, 0, 1.1);
