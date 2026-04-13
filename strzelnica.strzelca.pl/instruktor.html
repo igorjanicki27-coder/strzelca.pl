@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://strzelca.pl/consent.js?v=2026-02-06-1"></script>
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-04-12-1" />
+    <link rel="icon" type="image/svg+xml" href="https://strzelca.pl/ikona.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Bebas+Neue&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <title>Panel instruktora — STRZELNICA STRZELCA</title>
+    <style>
+      :root {
+        --coyote: #c19a6b;
+        --text: #f6f4ef;
+        --muted: #b5aea4;
+        --line: rgba(255, 255, 255, 0.08);
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Manrope", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top, rgba(193, 154, 107, 0.12), transparent 32%),
+          linear-gradient(180deg, #060606 0%, #0b0b0b 100%);
+      }
+      .notice {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        z-index: 100;
+        padding: 0.9rem 1rem;
+        border-radius: 14px;
+        background: rgba(12, 12, 12, 0.92);
+        border: 1px solid rgba(193, 154, 107, 0.24);
+      }
+      .hidden {
+        display: none !important;
+      }
+      .shell {
+        width: min(1180px, calc(100vw - 1rem));
+        margin: 0 auto;
+      }
+      .topbar {
+        padding: 1rem 0;
+      }
+      .topbar-row,
+      .split {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+      }
+      .brand {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 2rem;
+        letter-spacing: 0.08em;
+      }
+      .brand small {
+        display: block;
+        color: var(--muted);
+        font-family: "Manrope", sans-serif;
+        font-size: 0.9rem;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 0.95fr 1.05fr;
+        gap: 1rem;
+      }
+      .panel,
+      .instruktor-card,
+      .simple-list-card {
+        background: rgba(17, 17, 17, 0.88);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        padding: 1.35rem;
+        backdrop-filter: blur(16px);
+      }
+      h1,
+      h2 {
+        margin: 0 0 1rem 0;
+        font-family: "Bebas Neue", sans-serif;
+        letter-spacing: 0.05em;
+      }
+      h1 {
+        font-size: clamp(2.8rem, 8vw, 4.6rem);
+      }
+      p.lead,
+      .instruktor-card p,
+      .simple-list-card small {
+        color: var(--muted);
+        line-height: 1.7;
+      }
+      .tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+      }
+      .tag-list span {
+        display: inline-flex;
+        padding: 0.32rem 0.72rem;
+        border-radius: 999px;
+        background: rgba(193, 154, 107, 0.12);
+        color: var(--coyote);
+      }
+      .list-stack {
+        display: grid;
+        gap: 0.8rem;
+      }
+      .simple-list-card {
+        padding: 1rem;
+      }
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.9rem;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+      }
+      .field-full {
+        grid-column: 1 / -1;
+      }
+      label {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      input,
+      select,
+      textarea {
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text);
+        padding: 0.85rem 1rem;
+        font: inherit;
+      }
+      textarea {
+        min-height: 100px;
+        resize: vertical;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.55rem;
+        padding: 0.85rem 1.15rem;
+        border-radius: 999px;
+        border: 0;
+        background: var(--coyote);
+        color: #090909;
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .empty-box {
+        text-align: center;
+        color: var(--muted);
+        border: 1px dashed rgba(255, 255, 255, 0.12);
+        border-radius: 18px;
+        padding: 2rem 1rem;
+      }
+      @media (max-width: 900px) {
+        .grid,
+        .form-grid {
+          grid-template-columns: 1fr;
+        }
+        .topbar-row,
+        .split {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="shooting-range-notice" class="notice hidden"></div>
+
+    <header class="topbar">
+      <div class="shell topbar-row">
+        <a class="brand" href="https://strzelnica.strzelca.pl/">
+          PANEL INSTRUKTORA
+          <small>STRZELNICA STRZELCA</small>
+        </a>
+        <a class="btn" href="https://strzelnica.strzelca.pl/rezerwacja">Rezerwacja</a>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="panel">
+        <h1>Grafik, dyspozycyjność i przypisane rezerwacje</h1>
+        <p class="lead">
+          Ten panel jest dostępny tylko dla rangi instruktor, operatora strzelnicy, moderatora i administratora. Pozwala ustawiać dyspozycyjność oraz śledzić przypisane szkolenia.
+        </p>
+      </section>
+
+      <section class="grid">
+        <div class="panel">
+          <div class="split">
+            <h2>Instruktorzy</h2>
+          </div>
+          <div id="instructor-list" class="list-stack">
+            <div class="empty-box">Ładowanie listy instruktorów...</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Dodaj dyspozycyjność</h2>
+          <form id="availability-form" class="form-grid">
+            <div class="field">
+              <label for="availability-instructor-id">ID instruktora</label>
+              <input id="availability-instructor-id" name="instructorId" type="text" placeholder="Puste = moje konto" />
+            </div>
+            <div class="field">
+              <label for="availability-status">Status</label>
+              <select id="availability-status" name="status">
+                <option value="available">Dostępny</option>
+                <option value="blocked">Niedostępny</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="availability-start">Od</label>
+              <input id="availability-start" name="startsAt" type="datetime-local" />
+            </div>
+            <div class="field">
+              <label for="availability-end">Do</label>
+              <input id="availability-end" name="endsAt" type="datetime-local" />
+            </div>
+            <div class="field field-full">
+              <label for="availability-note">Notatka</label>
+              <textarea id="availability-note" name="note" placeholder="Na przykład: szkolenie dynamiczne, tylko karabinek, dyżur weekendowy."></textarea>
+            </div>
+            <div class="field field-full">
+              <button class="btn" type="submit">Zapisz dyspozycyjność</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="panel">
+          <h2>Dyspozycyjność</h2>
+          <div id="availability-list" class="list-stack">
+            <div class="empty-box">Ładowanie dyspozycyjności...</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Przypisane rezerwacje</h2>
+          <div id="reservation-list" class="list-stack">
+            <div class="empty-box">Ładowanie przypisanych rezerwacji...</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./instruktor.mjs"></script>
+  </body>
+</html>

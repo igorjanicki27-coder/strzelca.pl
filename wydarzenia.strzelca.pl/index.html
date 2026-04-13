@@ -230,7 +230,7 @@
         .modal-floating-social {
             position: absolute;
             left: 50%;
-            bottom: 0;
+            bottom: max(1rem, env(safe-area-inset-bottom, 0px));
             transform: translateX(-50%);
             z-index: 8;
             display: flex;
@@ -241,12 +241,12 @@
             width: calc(100% - 1.5rem);
             max-width: max-content;
             margin: 0 auto;
-            padding: 0.55rem 0.75rem;
-            background: rgba(10, 10, 10, 0.82);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 999px;
-            box-shadow: 0 16px 44px rgba(0,0,0,0.38);
-            backdrop-filter: blur(14px);
+            padding: 0;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            backdrop-filter: none;
         }
         .modal-floating-social--off {
             display: none !important;
@@ -254,7 +254,6 @@
         @media (max-width: 640px) {
             .modal-floating-social {
                 width: calc(100% - 1rem);
-                padding: 0.45rem 0.55rem;
                 gap: 8px;
             }
         }
@@ -642,26 +641,23 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            margin-top: 12px;
-            border: 1px solid rgba(193,154,107,0.28);
-            border-radius: 999px;
-            background: rgba(193,154,107,0.1);
+            margin-left: auto;
+            border: none;
+            background: transparent;
             color: var(--coyote-light);
             font-size: 0.82rem;
             font-weight: 700;
-            padding: 8px 14px;
+            padding: 0;
             cursor: pointer;
-            transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+            white-space: nowrap;
+            transition: color 0.2s ease, opacity 0.2s ease;
         }
         .blog-comment-thread-toggle:hover {
-            background: rgba(193,154,107,0.16);
-            border-color: rgba(193,154,107,0.42);
-            transform: translateY(-1px);
+            color: #f3d8b3;
+            opacity: 0.95;
         }
         .blog-comment-thread-toggle.is-expanded {
-            background: rgba(255,255,255,0.04);
             color: #e4e4e7;
-            border-color: rgba(255,255,255,0.14);
         }
         .blog-comment-thread-toggle-count {
             color: inherit;
@@ -1256,11 +1252,11 @@
             font-size: 0.9rem;
         }
 
-        /* Nad globalnym wyszukiwaniem (launcher bottom 86px, h 56px w global-search-widget.mjs); 14px jak odstęp między wyszukiwaniem a wiadomościami */
+        /* Nad globalnym wyszukiwaniem; pozycja launchera jest ustawiana dynamicznie przez global-search-widget.mjs */
         .filter-trigger-btn {
             position: fixed;
             right: 16px;
-            bottom: calc(86px + 56px + 14px);
+            bottom: calc(var(--strzelca-search-launcher-bottom, 16px) + 56px + 14px);
             z-index: 2147483646;
             width: 56px;
             height: 56px;
@@ -1958,8 +1954,8 @@
 
         <!-- Event Detail Modal -->
         <div id="event-modal" class="fixed inset-0 z-50 hidden event-detail-modal flex flex-col items-center justify-center p-2 md:p-4 gap-3" onclick="if(!event.target.closest('#event-modal-panel')) closeEventModal()">
-                <div id="event-modal-panel" class="relative bg-zinc-950/90 backdrop-blur-md border border-white/10 rounded-xl md:rounded-2xl max-w-3xl w-full max-h-[min(88vh,calc(100dvh-7rem))] overflow-y-auto shadow-2xl ring-1 ring-white/5">
-                    <div class="p-4 pb-24 md:p-6 md:pb-28 lg:p-8 lg:pb-32">
+                <div id="event-modal-panel" class="relative bg-zinc-950/90 backdrop-blur-md border border-white/10 rounded-xl md:rounded-2xl max-w-3xl w-full max-h-[min(88vh,calc(100dvh-7rem))] overflow-hidden shadow-2xl ring-1 ring-white/5">
+                    <div class="max-h-[min(88vh,calc(100dvh-7rem))] overflow-y-auto p-4 pb-24 md:p-6 md:pb-28 lg:p-8 lg:pb-32">
                         <div class="flex justify-between items-start mb-4 md:mb-6">
                             <div class="min-w-0 flex-1 pr-4">
                                 <h2 id="modal-title" class="text-xl md:text-2xl lg:text-3xl font-bold coyote-text mb-3 break-words"></h2>
@@ -2053,9 +2049,10 @@
           getHeaderProfileFromCache,
           setHeaderProfileCache,
         } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
-        import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
+        import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-04-13-1";
         import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-27-1";
         import { syncCarouselDotsNav } from "https://strzelca.pl/carousel-dots.mjs?v=2026-03-24-1";
+        import { attachCarousel3dGallery } from "https://strzelca.pl/carousel-3d-gallery.mjs?v=2026-04-13-1";
         import {
             initNewsletterOptInFromEmptyCarousels,
             buildEmptyCarouselArticleHtml,
@@ -2516,6 +2513,7 @@ const firebaseConfig = {
                 });
             }
             syncEventCarouselDots();
+            eventsCarousel3d.refresh();
         }
 
         function consumeQueuedEventMove() {
@@ -2612,8 +2610,14 @@ const firebaseConfig = {
 
         window.addEventListener('resize', () => {
             window.requestAnimationFrame(updateEventsCarouselControls);
+            eventsCarousel3d.refresh();
         });
 
+        const eventsCarousel3d = attachCarousel3dGallery({
+            viewport: document.querySelector('#arsenal .carousel-viewport'),
+            track: document.getElementById('events-track'),
+            cardSelector: '.event-carousel-card',
+        });
         const _wydarzeniaEventsVp = document.querySelector('#arsenal .carousel-viewport');
         if (_wydarzeniaEventsVp) {
             attachHorizontalCarouselSwipe(_wydarzeniaEventsVp, {
@@ -2957,6 +2961,31 @@ const firebaseConfig = {
             try {
                 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
                 const maxAttempts = 3;
+                const applyLoadedEvents = (rawPayload) => {
+                    const rawList = Array.isArray(rawPayload) ? rawPayload : [];
+                    allEvents = rawList
+                        .map((ev) => {
+                            const dateObj = resolveEventDateObj(ev);
+                            if (!dateObj) {
+                                console.warn('Wydarzenie bez poprawnej daty, pomijam:', ev?.id);
+                                return null;
+                            }
+                            const merged = { ...ev, dateObj };
+                            return {
+                                ...merged,
+                                status: isEventCompleted(merged) ? 'completed' : 'active',
+                            };
+                        })
+                        .filter(Boolean);
+                    allEvents.sort((a, b) => {
+                        if (a.pinned && !b.pinned) return -1;
+                        if (!a.pinned && b.pinned) return 1;
+                        return compareEvents(a, b);
+                    });
+                    updateLastUpdate();
+                    applyFilters();
+                    void refreshEventUserLikes();
+                };
 
                 for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                     try {
@@ -2966,6 +2995,10 @@ const firebaseConfig = {
                             doc,
                             idbKey: "list:events",
                             metaDocId: "events",
+                            onCachedData: (cachedPayload) => {
+                                if (!Array.isArray(cachedPayload)) return;
+                                applyLoadedEvents(cachedPayload);
+                            },
                             fetchFresh: async () => {
                                 let querySnapshot;
                                 try {
@@ -3007,29 +3040,7 @@ const firebaseConfig = {
                                 return built;
                             },
                         });
-                        const rawList = Array.isArray(payload) ? payload : [];
-                        allEvents = rawList
-                            .map((ev) => {
-                                const dateObj = resolveEventDateObj(ev);
-                                if (!dateObj) {
-                                    console.warn('Wydarzenie bez poprawnej daty, pomijam:', ev?.id);
-                                    return null;
-                                }
-                                const merged = { ...ev, dateObj };
-                                return {
-                                    ...merged,
-                                    status: isEventCompleted(merged) ? 'completed' : 'active',
-                                };
-                            })
-                            .filter(Boolean);
-                        allEvents.sort((a, b) => {
-                            if (a.pinned && !b.pinned) return -1;
-                            if (!a.pinned && b.pinned) return 1;
-                            return compareEvents(a, b);
-                        });
-                        updateLastUpdate();
-                        applyFilters();
-                        void refreshEventUserLikes();
+                        applyLoadedEvents(payload);
                         if (!eventAutoOpenDone && eventAutoOpenId) {
                             eventAutoOpenDone = true;
                             showEventDetail(eventAutoOpenId);
@@ -4044,20 +4055,20 @@ const firebaseConfig = {
                                         <span>Edytuj</span>
                                     </button>
                                 ` : ''}
+                                ${hasRootThreadToggle ? `
+                                    <button
+                                        type="button"
+                                        class="blog-comment-thread-toggle ${isRepliesExpanded ? 'is-expanded' : ''}"
+                                        data-comment-toggle-replies="${escapeHtml(comment.id)}"
+                                        aria-expanded="${isRepliesExpanded ? 'true' : 'false'}"
+                                    >
+                                        <span class="blog-comment-thread-toggle-count">${escapeHtml(getReplyLabel(replyCount))}</span>
+                                        <i class="fa-solid fa-chevron-down blog-comment-thread-toggle-icon" aria-hidden="true"></i>
+                                    </button>
+                                ` : ''}
                             ` : ''}
                         </div>
                     `}
-                    ${hasRootThreadToggle ? `
-                        <button
-                            type="button"
-                            class="blog-comment-thread-toggle ${isRepliesExpanded ? 'is-expanded' : ''}"
-                            data-comment-toggle-replies="${escapeHtml(comment.id)}"
-                            aria-expanded="${isRepliesExpanded ? 'true' : 'false'}"
-                        >
-                            <span class="blog-comment-thread-toggle-count">${escapeHtml(getReplyLabel(replyCount))}</span>
-                            <i class="fa-solid fa-chevron-down blog-comment-thread-toggle-icon" aria-hidden="true"></i>
-                        </button>
-                    ` : ''}
                     ${comment.children?.length && (!hasRootThreadToggle || isRepliesExpanded) ? `<div class="blog-comment-children">${comment.children.map((child) => renderEventCommentItem(child, depth + 1)).join('')}</div>` : ''}
                 </div>
             `;
@@ -4844,5 +4855,6 @@ const firebaseConfig = {
       src="https://strzelca.pl/messages-widget.mjs?v=2026-03-23-1"
     ></script>
     <script type="module" src="https://strzelca.pl/global-search-widget.mjs?v=2026-03-24-1"></script>
-  </body>
+    <script type="module" src="https://strzelca.pl/token-balance-badge.mjs?v=2026-04-13-2"></script>
+</body>
 </html>

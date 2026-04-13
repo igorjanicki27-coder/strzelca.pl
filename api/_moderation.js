@@ -5,7 +5,7 @@ const OPERATOR_SCOPES = {
   shop: 'shop',
   help: 'help',
   events: 'events',
-  trainings: 'trainings',
+  shootingRange: 'shootingRange',
   bazaar: 'bazaar',
   users: 'users',
   contact: 'contact',

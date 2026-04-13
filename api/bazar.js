@@ -27,6 +27,7 @@ const {
   listPromoCodes,
   savePromoCode,
   setPromoCodeStatus,
+  listBazarPromoClaims,
   getUserTokenSummary,
   listTokenHistory,
   consumeTokens,
@@ -389,6 +390,7 @@ module.exports = async (req, res) => {
         success: true,
         summary,
         config: {
+          tokenPricing: cfg.tokenPricing,
           packages: cfg.packages.filter((pkg) => pkg.active !== false),
           actions: cfg.actions,
           privateFreeActiveOffers: cfg.privateFreeActiveOffers,
@@ -463,8 +465,9 @@ module.exports = async (req, res) => {
       if (!user) return res.status(401).json({ success: false, error: 'Wymagane zalogowanie' });
       const code = normalizeText(url.searchParams.get('code') || '', 64);
       const packageId = normalizeText(url.searchParams.get('packageId') || '', 80);
+      const tokens = Math.max(0, parseInt(url.searchParams.get('tokens'), 10) || 0);
       if (!code) return res.status(400).json({ success: false, error: 'Podaj kod promocyjny.' });
-      const validated = await validatePromoCodeForUser(db, code, user.uid, { packageId });
+      const validated = await validatePromoCodeForUser(db, code, user.uid, { packageId, tokens });
       return res.json({
         success: true,
         promoCode: {
@@ -522,8 +525,10 @@ module.exports = async (req, res) => {
       const result = await createTokenPurchaseCheckoutSession(db, {
         userId: user.uid,
         packageId: normalizeText(body.packageId || '', 80),
+        tokens: Math.max(0, parseInt(body.tokens, 10) || 0),
         truthConfirmed: body.truthConfirmed === true,
         buyerInput: body.buyerInput || {},
+        promoCode: normalizeText(body.promoCode || '', 64),
       });
       return res.json({ success: true, ...result });
     }
@@ -1045,6 +1050,12 @@ module.exports = async (req, res) => {
       await requireAdminUser(req);
       const promoCodes = await listPromoCodes(db, 200);
       return res.json({ success: true, promoCodes });
+    }
+
+    if (req.method === 'GET' && action === 'admin' && subAction === 'promo-code-claims') {
+      await requireAdminUser(req);
+      const claims = await listBazarPromoClaims(db, 200);
+      return res.json({ success: true, claims });
     }
 
     if (req.method === 'POST' && action === 'admin' && subAction === 'promo-codes') {

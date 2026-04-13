@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://strzelca.pl/consent.js?v=2026-02-06-1"></script>
+    <meta
+      name="description"
+      content="STRZELNICA STRZELCA — rezerwacje osi, szkolenia z instruktorem, vouchery żetonowe i premium doświadczenie strzeleckie online."
+    />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://strzelnica.strzelca.pl/" />
+    <meta property="og:site_name" content="STRZELCA.PL" />
+    <meta property="og:locale" content="pl_PL" />
+    <meta property="og:title" content="STRZELNICA STRZELCA" />
+    <meta
+      property="og:description"
+      content="Strzelnica otwarta z rezerwacjami online, szkoleniami i voucherami żetonowymi."
+    />
+    <meta property="og:url" content="https://strzelnica.strzelca.pl/" />
+    <meta property="og:type" content="website" />
+    <link rel="icon" type="image/svg+xml" href="https://strzelca.pl/ikona.svg" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-04-12-1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Bebas+Neue&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <title>STRZELNICA STRZELCA</title>
+    <style>
+      :root {
+        --coyote: #c19a6b;
+        --bg: #0a0908;
+        --card: rgba(18, 18, 18, 0.84);
+        --line: rgba(193, 154, 107, 0.2);
+        --text: #f6f4ef;
+        --muted: #b5aea4;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background:
+          radial-gradient(circle at top, rgba(193, 154, 107, 0.12), transparent 34%),
+          linear-gradient(180deg, #060606 0%, #0b0b0b 100%);
+        color: var(--text);
+        font-family: "Manrope", sans-serif;
+      }
+      body.strzelca-keep-footer {
+        overflow-x: hidden;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      .notice {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        z-index: 120;
+        padding: 0.9rem 1rem;
+        border-radius: 14px;
+        background: rgba(12, 12, 12, 0.9);
+        border: 1px solid var(--line);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+      }
+      .notice.hidden {
+        display: none;
+      }
+      .strzelnica-shell {
+        width: min(1220px, calc(100vw - 2rem));
+        margin: 0 auto;
+      }
+      .topbar {
+        position: fixed;
+        inset: 0 0 auto 0;
+        z-index: 90;
+        backdrop-filter: blur(18px);
+        background: linear-gradient(180deg, rgba(5, 5, 5, 0.82), rgba(5, 5, 5, 0.28));
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .topbar-row {
+        min-height: 76px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+      .brand {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+      }
+      .brand strong {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 2rem;
+        letter-spacing: 0.08em;
+      }
+      .brand span {
+        color: var(--muted);
+        font-size: 0.8rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+      .topbar nav {
+        display: flex;
+        gap: 1rem;
+        color: var(--muted);
+      }
+      .topbar nav a:hover {
+        color: var(--text);
+      }
+      .topbar-actions {
+        display: flex;
+        gap: 0.75rem;
+      }
+      .btn,
+      .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.6rem;
+        padding: 0.85rem 1.2rem;
+        border-radius: 999px;
+        font-weight: 700;
+        transition: transform 0.3s ease, background 0.3s ease, color 0.3s ease;
+      }
+      .btn {
+        background: var(--coyote);
+        color: #0b0b0b;
+      }
+      .btn-secondary {
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .btn:hover,
+      .btn-secondary:hover {
+        transform: translateY(-1px);
+      }
+      .cinematic-hero {
+        position: relative;
+        min-height: 320vh;
+      }
+      .hero-pin {
+        position: sticky;
+        top: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+      }
+      .hero-scene {
+        position: absolute;
+        inset: 0;
+        background-size: cover;
+        background-position: center;
+        will-change: transform, filter;
+      }
+      .hero-foreground {
+        position: absolute;
+        inset: 0;
+        background-repeat: no-repeat;
+        background-position: center bottom;
+        background-size: cover;
+        pointer-events: none;
+        opacity: 0.9;
+        will-change: transform, opacity;
+      }
+      .hero-copy-wrap {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        z-index: 2;
+      }
+      .hero-copy {
+        width: min(720px, 100%);
+      }
+      .hero-eyebrow {
+        color: var(--coyote);
+        text-transform: uppercase;
+        letter-spacing: 0.24em;
+        font-size: 0.8rem;
+        margin-bottom: 1.15rem;
+      }
+      .hero-title {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: clamp(4rem, 11vw, 8rem);
+        line-height: 0.93;
+        letter-spacing: 0.02em;
+        margin: 0 0 1rem 0;
+      }
+      .hero-lead {
+        width: min(560px, 100%);
+        color: var(--muted);
+        font-size: 1.02rem;
+        line-height: 1.75;
+        margin-bottom: 1.4rem;
+      }
+      .hero-badge {
+        display: inline-flex;
+        padding: 0.35rem 0.8rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: var(--muted);
+        margin-bottom: 1.4rem;
+      }
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+      }
+      .hero-shell {
+        position: absolute;
+        left: 50%;
+        bottom: 5vh;
+        transform: translateX(-50%);
+        z-index: 3;
+        width: min(1180px, calc(100vw - 2rem));
+        padding: 1.2rem;
+        border-radius: 28px;
+        background:
+          linear-gradient(180deg, rgba(22, 21, 19, 0.9), rgba(12, 12, 12, 0.97)),
+          rgba(12, 12, 12, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.38);
+        will-change: transform, opacity, border-radius;
+      }
+      .hero-shell-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.9rem;
+      }
+      .hero-shell-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 20px;
+        padding: 1.2rem;
+      }
+      .hero-shell-card span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        margin-bottom: 0.85rem;
+      }
+      .hero-shell-card strong {
+        display: block;
+        font-size: 1.65rem;
+      }
+      .page-section {
+        padding: 7rem 0;
+      }
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: end;
+        margin-bottom: 2rem;
+      }
+      .section-header h2 {
+        font-size: clamp(2rem, 4vw, 3.6rem);
+        margin: 0;
+        font-family: "Bebas Neue", sans-serif;
+        letter-spacing: 0.04em;
+      }
+      .section-header p {
+        color: var(--muted);
+        max-width: 580px;
+        margin: 0;
+        line-height: 1.7;
+      }
+      .grid-three {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1.2rem;
+      }
+      .strzelnica-card,
+      .content-box,
+      .location-box,
+      .gallery-card,
+      .strzelnica-faq-item {
+        background: var(--card);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 24px;
+        backdrop-filter: blur(18px);
+      }
+      .offer-card,
+      .package-card,
+      .lane-card {
+        padding: 1.2rem;
+      }
+      .offer-eyebrow,
+      .package-badge {
+        display: inline-flex;
+        border-radius: 999px;
+        background: rgba(193, 154, 107, 0.12);
+        color: var(--coyote);
+        padding: 0.32rem 0.75rem;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+      }
+      .lane-card-media {
+        height: 240px;
+        overflow: hidden;
+        border-radius: 18px;
+        margin-bottom: 1rem;
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .lane-card-media img,
+      .gallery-card img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .lane-card-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+      }
+      .lane-card-meta,
+      .package-card-footer,
+      .offer-card-footer {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.7rem;
+        color: var(--muted);
+      }
+      .lane-card-pricing {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.8rem;
+        align-items: center;
+        margin-top: 1rem;
+      }
+      .cta-panel {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 1.2rem;
+        align-items: stretch;
+      }
+      .cta-card {
+        padding: 2rem;
+      }
+      .cta-card h3 {
+        margin-top: 0;
+        font-size: 2rem;
+      }
+      .cta-card p {
+        color: var(--muted);
+        line-height: 1.7;
+      }
+      .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1rem;
+      }
+      .gallery-card {
+        overflow: hidden;
+        min-height: 220px;
+      }
+      .gallery-empty {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--muted);
+      }
+      .content-box,
+      .location-box {
+        padding: 2rem;
+      }
+      .location-grid {
+        display: grid;
+        grid-template-columns: 0.95fr 1.05fr;
+        gap: 1.2rem;
+      }
+      .location-map {
+        min-height: 420px;
+        width: 100%;
+        border: 0;
+        border-radius: 24px;
+      }
+      .location-map.hidden {
+        display: none;
+      }
+      .strzelnica-faq-item {
+        padding: 1rem 1.2rem;
+      }
+      .strzelnica-faq-item summary {
+        list-style: none;
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .strzelnica-faq-item summary::-webkit-details-marker {
+        display: none;
+      }
+      .faq-answer {
+        margin-top: 0.9rem;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+      .site-footer {
+        padding: 2rem 0 3rem;
+        color: var(--muted);
+      }
+      @media (max-width: 1080px) {
+        .grid-three,
+        .gallery-grid,
+        .cta-panel,
+        .location-grid,
+        .hero-shell-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 900px) {
+        .topbar nav {
+          display: none;
+        }
+        .cinematic-hero {
+          min-height: auto;
+        }
+        .hero-pin {
+          position: relative;
+          min-height: auto;
+          padding-top: 8rem;
+          padding-bottom: 3rem;
+        }
+        .hero-copy-wrap {
+          position: relative;
+          min-height: 80vh;
+        }
+        .hero-shell {
+          position: relative;
+          left: auto;
+          bottom: auto;
+          transform: none;
+          width: 100%;
+          margin-top: -3rem;
+        }
+      }
+      @media (max-width: 720px) {
+        .strzelnica-shell {
+          width: min(100vw - 1rem, 1220px);
+        }
+        .grid-three,
+        .gallery-grid,
+        .cta-panel,
+        .location-grid,
+        .hero-shell-grid {
+          grid-template-columns: 1fr;
+        }
+        .hero-title {
+          font-size: clamp(3rem, 17vw, 5.4rem);
+        }
+        .section-header {
+          flex-direction: column;
+          align-items: start;
+        }
+      }
+    </style>
+  </head>
+  <body class="strzelca-keep-footer">
+    <div id="shooting-range-notice" class="notice hidden"></div>
+
+    <header class="topbar">
+      <div class="strzelnica-shell topbar-row">
+        <a class="brand" href="https://strzelnica.strzelca.pl/">
+          <strong>STRZELNICA</strong>
+          <span>STRZELCA.PL</span>
+        </a>
+        <nav>
+          <a href="#oferta">Oferta</a>
+          <a href="#osie">Osie</a>
+          <a href="#pakiety">Pakiety</a>
+          <a href="#faq">FAQ</a>
+          <a href="#lokalizacja">Lokalizacja</a>
+        </nav>
+        <div class="topbar-actions">
+          <a class="btn-secondary" href="https://strzelnica.strzelca.pl/instruktor">Panel instruktora</a>
+          <a class="btn" href="https://strzelnica.strzelca.pl/rezerwacja">Rezerwacja</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section id="cinematic-hero" class="cinematic-hero">
+        <div class="hero-pin">
+          <div id="hero-scene" class="hero-scene"></div>
+          <div id="hero-foreground" class="hero-foreground"></div>
+          <div id="hero-copy-wrap" class="hero-copy-wrap">
+            <div class="strzelnica-shell">
+              <div class="hero-copy">
+                <div id="hero-eyebrow" class="hero-eyebrow">STRZELNICA OTWARTA</div>
+                <div id="hero-badge" class="hero-badge">Oś 25 m • szkolenia • vouchery</div>
+                <h1 id="hero-title" class="hero-title">Wyjdź z obrazu. Wejdź na oś.</h1>
+                <p id="hero-lead" class="hero-lead"></p>
+                <div class="hero-actions">
+                  <a id="hero-primary-link" class="btn" href="https://strzelnica.strzelca.pl/rezerwacja">Zarezerwuj termin</a>
+                  <a id="hero-secondary-link" class="btn-secondary" href="#osie">Zobacz osie</a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="hero-shell" class="hero-shell">
+            <div class="hero-shell-grid">
+              <div class="hero-shell-card">
+                <span>Rezerwacje</span>
+                <strong>Konkretna oś</strong>
+                <p>Klient wybiera realny przedział godzinowy i widzi praktyczną dostępność.</p>
+              </div>
+              <div class="hero-shell-card">
+                <span>Szkolenia</span>
+                <strong>Instruktor online</strong>
+                <p>System pokazuje tylko instruktorów dostępnych w wybranym terminie.</p>
+              </div>
+              <div class="hero-shell-card">
+                <span>Płatności</span>
+                <strong>HotPay lub żetony</strong>
+                <p>Rezerwacje osi możesz opłacić online lub walutą z bazaru.</p>
+              </div>
+              <div class="hero-shell-card">
+                <span>Vouchery</span>
+                <strong>PDF + kod</strong>
+                <p>Kupujesz voucher, pobierasz certyfikat i realizujesz kod po zalogowaniu.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="oferta" class="page-section">
+        <div class="strzelnica-shell">
+          <div class="section-header">
+            <div>
+              <h2>Oferta</h2>
+              <p>Doświadczenie zaprojektowane pod strzelca, operatora i instruktora. Bez przypadkowych kroków i bez chaosu.</p>
+            </div>
+          </div>
+          <div id="oferta-grid" class="grid-three"></div>
+        </div>
+      </section>
+
+      <section id="osie" class="page-section">
+        <div class="strzelnica-shell">
+          <div class="section-header">
+            <div>
+              <h2>Osie</h2>
+              <p>Każda oś ma własny opis, stawkę godzinową, cennik firmowy i galerię zdjęć zarządzaną z panelu administratora.</p>
+            </div>
+          </div>
+          <div id="osie-grid" class="grid-three"></div>
+        </div>
+      </section>
+
+      <section id="pakiety" class="page-section">
+        <div class="strzelnica-shell">
+          <div class="section-header">
+            <div>
+              <h2>Pakiety</h2>
+              <p>Szkolenia i doświadczenia z instruktorem możesz sprzedawać jako pakiety. Strona jest gotowa na rozwijanie tej oferty.</p>
+            </div>
+          </div>
+          <div id="pakiety-grid" class="grid-three"></div>
+        </div>
+      </section>
+
+      <section id="rezerwacja" class="page-section">
+        <div class="strzelnica-shell cta-panel">
+          <div class="strzelnica-card cta-card">
+            <h3>Rezerwacja bez tarcia</h3>
+            <p>
+              Osobna ścieżka rezerwacji prowadzi użytkownika od wyboru osi lub szkolenia aż do płatności HotPay, opłaty żetonami albo rezerwacji płatnej na miejscu.
+            </p>
+            <a class="btn" href="https://strzelnica.strzelca.pl/rezerwacja">Otwórz rezerwację</a>
+          </div>
+          <div class="strzelnica-card cta-card">
+            <h3>Voucher na prezent</h3>
+            <p>
+              Kup voucher żetonowy, pobierz elegancki PDF i przekaż kod do realizacji. To gotowe rozwiązanie pod sprzedaż online.
+            </p>
+            <a class="btn-secondary" href="https://strzelnica.strzelca.pl/rezerwacja#vouchery">Kup voucher</a>
+          </div>
+        </div>
+      </section>
+
+      <section id="galeria" class="page-section">
+        <div class="strzelnica-shell">
+          <div class="section-header">
+            <div>
+              <h2>Galeria</h2>
+              <p>Zdjęcia osi i strefy wejściowej mogą być wgrywane z panelu i od razu zasilają stronę publiczną.</p>
+            </div>
+          </div>
+          <div id="gallery-grid" class="gallery-grid"></div>
+        </div>
+      </section>
+
+      <section id="pierwsza-wizyta" class="page-section">
+        <div class="strzelnica-shell">
+          <div class="content-box">
+            <div class="section-header">
+              <div>
+                <h2>Pierwsza wizyta</h2>
+                <p>Nowy użytkownik przechodzi obowiązkową akceptację regulaminu i wymaganych oświadczeń jeszcze przed pierwszą rezerwacją.</p>
+              </div>
+            </div>
+            <div id="first-visit-copy"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="regulaminy" class="page-section">
+        <div class="strzelnica-shell">
+          <div class="content-box">
+            <div class="section-header">
+              <div>
+                <h2>Regulaminy i bezpieczeństwo</h2>
+                <p>Treści regulaminowe i instrukcje bezpieczeństwa są gotowe do rozwijania z poziomu zaplecza.</p>
+              </div>
+            </div>
+            <div id="regulations-copy"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" class="page-section">
+        <div class="strzelnica-shell">
+          <div class="section-header">
+            <div>
+              <h2>FAQ</h2>
+              <p>Najważniejsze pytania i odpowiedzi utrzymywane bezpośrednio w konfiguracji strzelnicy.</p>
+            </div>
+          </div>
+          <div id="faq-list" class="grid-three"></div>
+        </div>
+      </section>
+
+      <section id="lokalizacja" class="page-section">
+        <div class="strzelnica-shell location-grid">
+          <div class="location-box">
+            <div class="section-header">
+              <div>
+                <h2>Lokalizacja</h2>
+                <p id="location-lead"></p>
+              </div>
+            </div>
+            <strong id="location-name"></strong>
+            <p id="location-address"></p>
+            <div class="hero-actions">
+              <a class="btn" href="https://strzelnica.strzelca.pl/rezerwacja">Zarezerwuj termin</a>
+              <a class="btn-secondary" href="https://konto.strzelca.pl/profil.html">Profil użytkownika</a>
+            </div>
+          </div>
+          <iframe
+            id="location-map"
+            class="location-map hidden"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            allowfullscreen
+            title="Mapa dojazdu do strzelnicy"
+          ></iframe>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="strzelnica-shell">
+        STRZELNICA STRZELCA.PL • Rezerwacje, szkolenia, vouchery i panel instruktora.
+      </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+    <script>
+      if (window.gsap && window.ScrollTrigger) {
+        window.gsap.registerPlugin(window.ScrollTrigger);
+      }
+    </script>
+    <script type="module" src="./landing.mjs"></script>
+  </body>
+</html>

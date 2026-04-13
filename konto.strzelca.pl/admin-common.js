@@ -10,7 +10,7 @@ class AdminCommon {
       'strzelca.pl',
       'sklep.strzelca.pl',
       'bazar.strzelca.pl',
-      'szkolenia.strzelca.pl',
+      'strzelnica.strzelca.pl',
       'wydarzenia.strzelca.pl',
       'blog.strzelca.pl',
       'pomoc.strzelca.pl',

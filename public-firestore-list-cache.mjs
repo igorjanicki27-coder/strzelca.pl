@@ -124,6 +124,7 @@ const NO_META_VERSION_SENTINEL = -1;
  * @param {string} opts.metaDocId — id w publicListCacheMeta (np. "products")
  * @param {() => Promise<any>} opts.fetchFresh — zwraca surową listę/obiekt do zapisu
  * @param {number} [opts.noMetaCacheTtlMs=0] — jeśli > 0 i brak meta w Firestore, użyj cache z IDB nie starszego niż TTL (bez getDocs)
+ * @param {(payload:any, meta:{version:number|null,savedAt:number|null,stale:boolean}) => void|Promise<void>} [opts.onCachedData]
  */
 export async function loadWithVersionCache({
   db,
@@ -133,12 +134,29 @@ export async function loadWithVersionCache({
   metaDocId,
   fetchFresh,
   noMetaCacheTtlMs = 0,
+  onCachedData,
 }) {
-  const remoteV = await readPublicListVersion(db, getDoc, docFn, metaDocId);
-  const local = await idbGet(idbKey);
+  const localPromise = idbGet(idbKey).catch(() => null);
+  const remoteVPromise = readPublicListVersion(db, getDoc, docFn, metaDocId);
+  const local = await localPromise;
+  const localPayload = local && local.payload !== undefined ? fromStorableDeep(local.payload) : undefined;
 
-  if (remoteV !== null && local && local.v === remoteV && local.payload !== undefined) {
-    return { fromCache: true, version: remoteV, payload: fromStorableDeep(local.payload) };
+  if (localPayload !== undefined && typeof onCachedData === "function") {
+    try {
+      await onCachedData(localPayload, {
+        version: typeof local?.v === "number" ? local.v : null,
+        savedAt: typeof local?.savedAt === "number" ? local.savedAt : null,
+        stale: true,
+      });
+    } catch (e) {
+      console.warn("[publicListCacheMeta] onCachedData failed:", e?.message || e);
+    }
+  }
+
+  const remoteV = await remoteVPromise;
+
+  if (remoteV !== null && local && local.v === remoteV && localPayload !== undefined) {
+    return { fromCache: true, version: remoteV, payload: localPayload };
   }
 
   if (
@@ -146,7 +164,7 @@ export async function loadWithVersionCache({
     noMetaCacheTtlMs > 0 &&
     local &&
     local.v === NO_META_VERSION_SENTINEL &&
-    local.payload !== undefined &&
+    localPayload !== undefined &&
     typeof local.savedAt === "number"
   ) {
     const age = Date.now() - local.savedAt;
@@ -154,7 +172,7 @@ export async function loadWithVersionCache({
       return {
         fromCache: true,
         version: null,
-        payload: fromStorableDeep(local.payload),
+        payload: localPayload,
         noMetaStale: true,
       };
     }

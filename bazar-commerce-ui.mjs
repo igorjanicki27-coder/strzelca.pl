@@ -204,6 +204,7 @@ function getPromoState() {
     appliedCode: null,
     packagePreviews: null,
     selectedPackageId: null,
+    customTokens: '',
   };
 }
 
@@ -212,6 +213,78 @@ function setPromoState(nextState) {
     ...getPromoState(),
     ...(nextState || {}),
   };
+}
+
+function getTokenPricingConfig() {
+  return window.__bazarTokenPricing || {
+    tokenPriceCents: 0,
+    presetQuantities: [10, 50, 100, 1000],
+    maxPurchaseQuantity: 10000,
+  };
+}
+
+function getQuantityDiscountPercent(tokens) {
+  const quantity = Math.max(0, parseInt(tokens, 10) || 0);
+  if (quantity >= 10000) return 15;
+  if (quantity >= 1000) return 10;
+  if (quantity >= 100) return 5;
+  if (quantity >= 50) return 2;
+  return 0;
+}
+
+function computeCustomTokenPricing(tokens) {
+  const quantity = Math.max(1, parseInt(tokens, 10) || 1);
+  const cfg = getTokenPricingConfig();
+  const basePriceCents = quantity * Math.max(0, parseInt(cfg.tokenPriceCents, 10) || 0);
+  const discountPercent = getQuantityDiscountPercent(quantity);
+  const effectivePriceCents = Math.max(0, Math.round(basePriceCents * (100 - discountPercent) / 100));
+  const pricePerTokenCents = Math.max(0, Math.round(effectivePriceCents / quantity));
+  return {
+    id: `custom_${quantity}`,
+    label: `${quantity} ${pluralizeŻetony(quantity)}`,
+    tokens: quantity,
+    priceCents: basePriceCents,
+    effectivePriceCents,
+    pricePerTokenCents,
+    discountPercent,
+    isCustom: true,
+  };
+}
+
+function resolveSelectedTokenPackage(packages, state = getPromoState()) {
+  const customTokens = Math.max(0, parseInt(state.customTokens, 10) || 0);
+  if (customTokens > 0) {
+    return computeCustomTokenPricing(customTokens);
+  }
+  const selectedId = state.selectedPackageId || packages[0]?.id || '';
+  return packages.find((pkg) => pkg.id === selectedId) || packages[0] || null;
+}
+
+function buildCustomQuantityMarkup(state = getPromoState()) {
+  const cfg = getTokenPricingConfig();
+  const customTokens = String(state.customTokens || '');
+  return `
+    <div class="rounded-3xl border border-zinc-700 bg-zinc-900/55 p-5 space-y-3">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <div class="text-xs uppercase tracking-[0.18em] text-zinc-500 mb-2">Własna liczba żetonów</div>
+          <div class="text-sm text-zinc-300">Wpisz dowolną ilość od 1 do ${escapeHtml(cfg.maxPurchaseQuantity || 10000)}. Zniżka liczy się automatycznie.</div>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr),auto] gap-4 items-end">
+        <label class="block">
+          <span class="block text-xs uppercase tracking-[0.18em] text-zinc-500 mb-2">Ilość żetonów</span>
+          <input id="bazar-custom-token-quantity" type="number" min="1" max="${escapeHtml(cfg.maxPurchaseQuantity || 10000)}" class="filter-input w-full" value="${escapeHtml(customTokens)}" placeholder="np. 275">
+        </label>
+        <button type="button" id="bazar-custom-token-clear" class="px-4 py-3 rounded-2xl border border-zinc-700 text-zinc-300 text-sm font-black uppercase tracking-[0.12em] hover:border-[#C19A6B] hover:text-white transition">
+          Wyczyść
+        </button>
+      </div>
+      <div class="text-xs text-zinc-500">
+        Progi rabatowe: 0-49 bez zniżki, 50-99: 2%, 100-999: 5%, 1000-9999: 10%, dokładnie 10000: 15%.
+      </div>
+    </div>
+  `;
 }
 
 function buildPackageCardsMarkup(packages, promoState) {
@@ -289,6 +362,7 @@ function renderJetonModal(modal, packages) {
   const state = getPromoState();
   const selectedPackageId = state.selectedPackageId || packages[0]?.id || '';
   setPromoState({ selectedPackageId });
+  const selectedPkg = resolveSelectedTokenPackage(packages, getPromoState());
   modal.innerHTML = `
     <div class="modal-panel max-w-5xl overflow-hidden" onclick="event.stopPropagation()">
       <div class="relative overflow-hidden">
@@ -311,12 +385,12 @@ function renderJetonModal(modal, packages) {
             <div class="rounded-3xl border border-zinc-700 bg-zinc-900/55 p-5">
               <div class="flex flex-col md:flex-row md:items-end gap-4">
                 <div class="flex-1">
-                  <div class="text-xs uppercase tracking-[0.18em] text-zinc-500 mb-2">Kod promocyjny</div>
-                  <input id="bazar-promo-code-input" type="text" class="filter-input w-full" maxlength="64" value="${escapeHtml(state.code || '')}" placeholder="Wpisz kod rabatowy lub gratisowy">
+                  <div class="text-xs uppercase tracking-[0.18em] text-zinc-500 mb-2">Voucher / kod żetonów</div>
+                  <input id="bazar-promo-code-input" type="text" class="filter-input w-full" maxlength="64" value="${escapeHtml(state.code || '')}" placeholder="Wpisz kod na darmowe żetony">
                 </div>
                 <div class="flex gap-3">
                   <button type="button" id="bazar-promo-apply" class="px-4 py-3 rounded-2xl border border-[#C19A6B]/40 text-[#C19A6B] text-sm font-black uppercase tracking-[0.12em] hover:bg-[#C19A6B]/10 transition">
-                    Zastosuj
+                    Sprawdź
                   </button>
                 </div>
               </div>
@@ -324,6 +398,7 @@ function renderJetonModal(modal, packages) {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               ${buildPackageCardsMarkup(packages, getPromoState())}
             </div>
+            ${buildCustomQuantityMarkup(getPromoState())}
           </section>
           <section class="space-y-5 xl:sticky xl:top-4">
             ${buildBuyerFieldsMarkup()}
@@ -349,9 +424,20 @@ function renderJetonModal(modal, packages) {
   modal.querySelector('#bazar-jeton-close')?.addEventListener('click', closeJetonPackagesModal);
   modal.querySelectorAll('[data-package-id]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      setPromoState({ selectedPackageId: btn.getAttribute('data-package-id') || '' });
+      setPromoState({ selectedPackageId: btn.getAttribute('data-package-id') || '', customTokens: '' });
       renderJetonModal(modal, packages);
     });
+  });
+  modal.querySelector('#bazar-custom-token-quantity')?.addEventListener('input', (event) => {
+    const maxQuantity = getTokenPricingConfig().maxPurchaseQuantity || 10000;
+    const raw = Math.max(0, parseInt(event.target?.value, 10) || 0);
+    const nextValue = raw > 0 ? String(Math.min(raw, maxQuantity)) : '';
+    setPromoState({ customTokens: nextValue, selectedPackageId: '' });
+    renderJetonModal(modal, packages);
+  });
+  modal.querySelector('#bazar-custom-token-clear')?.addEventListener('click', () => {
+    setPromoState({ customTokens: '', selectedPackageId: packages[0]?.id || '' });
+    renderJetonModal(modal, packages);
   });
   modal.querySelector('#bazar-promo-apply')?.addEventListener('click', async () => {
     const code = modal.querySelector('#bazar-promo-code-input')?.value?.trim() || '';
@@ -360,8 +446,8 @@ function renderJetonModal(modal, packages) {
       return;
     }
     try {
-      const selected = getPromoState().selectedPackageId || packages[0]?.id || '';
-      const data = await apiGet(`/promo-code-preview?code=${encodeURIComponent(code)}&packageId=${encodeURIComponent(selected)}`);
+      const selected = resolveSelectedTokenPackage(packages, getPromoState());
+      const data = await apiGet(`/promo-code-preview?code=${encodeURIComponent(code)}&packageId=${encodeURIComponent(selected?.id || '')}&tokens=${encodeURIComponent(selected?.tokens || 0)}`);
       setPromoState({
         code,
         appliedCode: data.promoCode || null,
@@ -390,9 +476,9 @@ function renderJetonModal(modal, packages) {
     }
   });
   modal.querySelector('#bazar-jeton-checkout')?.addEventListener('click', async () => {
-    const selectedPackage = getPromoState().selectedPackageId || packages[0]?.id || '';
-    if (!selectedPackage) {
-      alert('Wybierz pakiet żetonów.');
+    const selectedPackage = resolveSelectedTokenPackage(packages, getPromoState());
+    if (!selectedPackage?.tokens) {
+      alert('Wybierz liczbę żetonów.');
       return;
     }
     const truthConfirmed = modal.querySelector('#bazar-jeton-truth-confirm')?.checked === true;
@@ -409,7 +495,8 @@ function renderJetonModal(modal, packages) {
     button?.setAttribute('disabled', 'disabled');
     try {
       const data = await apiJson('/tokens/checkout-session', 'POST', {
-        packageId: selectedPackage,
+        packageId: selectedPackage.isCustom ? '' : selectedPackage.id,
+        tokens: selectedPackage.tokens,
         truthConfirmed,
         buyerInput: collectBuyerInput(modal),
         promoCode: applied?.code || '',
@@ -421,16 +508,17 @@ function renderJetonModal(modal, packages) {
     }
   });
 
-  const previewPkg = (Array.isArray(getPromoState().packagePreviews) && getPromoState().packagePreviews.length
-    ? getPromoState().packagePreviews
-    : packages).find((pkg) => pkg.id === (getPromoState().selectedPackageId || selectedPackageId)) || packages[0];
-  const effectivePrice = Number(previewPkg?.effectivePriceCents ?? previewPkg?.priceCents ?? 0);
   const selectedTarget = modal.querySelector('#bazar-selected-package');
   if (selectedTarget) {
     selectedTarget.innerHTML = `
-      <div class="text-lg font-bold">${escapeHtml(buildPackageDisplayLabel(previewPkg || {}))}</div>
-      <div class="text-sm text-zinc-500 mt-1">${formatMoneyCents(Math.round(effectivePrice / Math.max(1, Number(previewPkg?.tokens || 1))))} zł / żeton</div>
-      <div class="text-2xl font-black text-[#C19A6B] mt-3">${formatMoneyCents(effectivePrice)} zł</div>
+      <div class="text-lg font-bold">${escapeHtml(buildPackageDisplayLabel(selectedPkg || {}))}</div>
+      <div class="text-sm text-zinc-500 mt-1">${formatMoneyCents(Math.round(Number(selectedPkg?.pricePerTokenCents || 0)))} zł / żeton</div>
+      <div class="text-2xl font-black text-[#C19A6B] mt-3">${formatMoneyCents(Number(selectedPkg?.effectivePriceCents || 0))} zł</div>
+      <div class="text-xs text-zinc-500 mt-2">
+        ${Number(selectedPkg?.discountPercent || 0) > 0
+          ? `Rabat ilościowy: -${escapeHtml(selectedPkg?.discountPercent || 0)}%`
+          : 'Bez rabatu ilościowego'}
+      </div>
     `;
   }
 }
@@ -555,6 +643,7 @@ async function loadJetonSummary() {
   try {
     const data = await apiGet('/token-summary');
     window.__bazarJetonPackages = data.config?.packages || [];
+    window.__bazarTokenPricing = data.config?.tokenPricing || null;
     window.__bazarBuyerPrefill = data.buyerPrefill || {};
     window.__bazarBuyerProfile = data.profile || {};
     renderJetonChip(data.summary || {});

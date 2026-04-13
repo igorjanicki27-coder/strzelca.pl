@@ -11,22 +11,22 @@ const BAZAR_PROMO_CODES = 'bazarPromoCodes';
 const BAZAR_PROMO_CLAIMS = 'bazarPromoClaims';
 
 const DEFAULT_BAZAR_COMMERCE_CONFIG = {
-  version: 1,
+  version: 2,
   currency: 'pln',
   privateFreeActiveOffers: 5,
   privateFreeRefreshDays: 25,
   companyTokenValidityDays: 365,
   publicationDurationDays: 30,
+  tokenPricing: {
+    tokenPriceCents: 500,
+    presetQuantities: [10, 50, 100, 1000],
+    maxPurchaseQuantity: 10000,
+  },
   promotionDefaults: {
     pinDays: 7,
     highlightDays: 7,
   },
-  packages: [
-    { id: 'tokens_1', label: '1 żeton', tokens: 1, priceCents: 500, active: true },
-    { id: 'tokens_10', label: '10 żetonów', tokens: 10, priceCents: 4000, active: true },
-    { id: 'tokens_50', label: '50 żetonów', tokens: 50, priceCents: 15000, active: true },
-    { id: 'tokens_100', label: '100 żetonów', tokens: 100, priceCents: 20000, active: true },
-  ],
+  packages: [],
   actions: {
     private_extra_listing: {
       label: 'Publikacja oferty ponad darmowy limit',
@@ -130,6 +130,86 @@ function normalizePackage(pkg) {
   };
 }
 
+function pluralizeŻetony(count) {
+  const value = Math.abs(Number(count) || 0);
+  if (value === 1) return 'żeton';
+  const mod10 = value % 10;
+  const mod100 = value % 100;
+  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return 'żetony';
+  return 'żetonów';
+}
+
+function buildTokenPackageId(tokens, isCustom = false) {
+  const normalizedTokens = Math.max(1, parseInt(tokens, 10) || 1);
+  return isCustom ? `custom_${normalizedTokens}` : `tokens_${normalizedTokens}`;
+}
+
+function buildTokenPackageLabel(tokens) {
+  const normalizedTokens = Math.max(1, parseInt(tokens, 10) || 1);
+  return `${normalizedTokens} ${pluralizeŻetony(normalizedTokens)}`;
+}
+
+function getTokenDiscountPercent(tokens) {
+  const quantity = Math.max(0, parseInt(tokens, 10) || 0);
+  if (quantity >= 10000) return 15;
+  if (quantity >= 1000) return 10;
+  if (quantity >= 100) return 5;
+  if (quantity >= 50) return 2;
+  return 0;
+}
+
+function computeTokenPricingForQuantity(tokens, tokenPriceCents) {
+  const normalizedTokens = Math.max(1, parseInt(tokens, 10) || 1);
+  const normalizedPrice = Math.max(0, parseInt(tokenPriceCents, 10) || 0);
+  const discountPercent = getTokenDiscountPercent(normalizedTokens);
+  const basePriceCents = normalizedTokens * normalizedPrice;
+  const effectivePriceCents = Math.max(0, Math.round(basePriceCents * (100 - discountPercent) / 100));
+  const pricePerTokenCents = Math.max(0, Math.round(effectivePriceCents / normalizedTokens));
+  return {
+    tokens: normalizedTokens,
+    basePriceCents,
+    effectivePriceCents,
+    pricePerTokenCents,
+    discountPercent,
+  };
+}
+
+function normalizeTokenPricing(raw, fallback = DEFAULT_BAZAR_COMMERCE_CONFIG.tokenPricing) {
+  const row = raw && typeof raw === 'object' ? raw : {};
+  const presetRaw = Array.isArray(row.presetQuantities) && row.presetQuantities.length
+    ? row.presetQuantities
+    : Array.isArray(fallback?.presetQuantities) && fallback.presetQuantities.length
+      ? fallback.presetQuantities
+      : DEFAULT_BAZAR_COMMERCE_CONFIG.tokenPricing.presetQuantities;
+  const presetQuantities = Array.from(new Set(
+    presetRaw
+      .map((value) => Math.max(1, parseInt(value, 10) || 0))
+      .filter((value) => value > 0),
+  )).sort((a, b) => a - b);
+  return {
+    tokenPriceCents: Math.max(0, parseInt(row.tokenPriceCents, 10) || fallback?.tokenPriceCents || 0),
+    presetQuantities: presetQuantities.length ? presetQuantities : clone(DEFAULT_BAZAR_COMMERCE_CONFIG.tokenPricing.presetQuantities),
+    maxPurchaseQuantity: Math.min(10000, Math.max(1, parseInt(row.maxPurchaseQuantity, 10) || fallback?.maxPurchaseQuantity || 10000)),
+  };
+}
+
+function buildPackagesFromTokenPricing(tokenPricing) {
+  return tokenPricing.presetQuantities.map((tokens) => {
+    const pricing = computeTokenPricingForQuantity(tokens, tokenPricing.tokenPriceCents);
+    return {
+      id: buildTokenPackageId(tokens, false),
+      label: buildTokenPackageLabel(tokens),
+      tokens,
+      priceCents: pricing.basePriceCents,
+      effectivePriceCents: pricing.effectivePriceCents,
+      pricePerTokenCents: pricing.pricePerTokenCents,
+      discountPercent: pricing.discountPercent,
+      active: true,
+      isCustom: false,
+    };
+  });
+}
+
 function normalizeAction(actionKey, row, fallback) {
   const src = row && typeof row === 'object' ? row : {};
   return {
@@ -187,7 +267,7 @@ function isPromoCodeTimeActive(code, nowMs = Date.now()) {
 }
 
 function buildPackagePreview(pkg, discountPercent = 0) {
-  const basePriceCents = Math.max(0, parseInt(pkg?.priceCents, 10) || 0);
+  const basePriceCents = Math.max(0, parseInt(pkg?.basePriceCents ?? pkg?.priceCents, 10) || 0);
   const tokens = Math.max(1, parseInt(pkg?.tokens, 10) || 1);
   const normalizedPercent = Math.max(0, Math.min(100, parseInt(discountPercent, 10) || 0));
   const discountedPriceCents = Math.max(0, Math.round(basePriceCents * (100 - normalizedPercent) / 100));
@@ -207,9 +287,10 @@ function buildPackagePreview(pkg, discountPercent = 0) {
 function normalizeCommerceConfig(raw) {
   const cfg = raw && typeof raw === 'object' ? raw : {};
   const defaults = clone(DEFAULT_BAZAR_COMMERCE_CONFIG);
-  const packages = Array.isArray(cfg.packages) && cfg.packages.length
+  const tokenPricing = normalizeTokenPricing(cfg.tokenPricing || cfg, defaults.tokenPricing);
+  const packageOverrides = Array.isArray(cfg.packages) && cfg.packages.length
     ? cfg.packages.map(normalizePackage).filter((item) => item.id && item.tokens > 0)
-    : defaults.packages;
+    : [];
   const actions = {};
   const sourceActions = cfg.actions && typeof cfg.actions === 'object' ? cfg.actions : {};
   for (const [key, fallback] of Object.entries(defaults.actions)) {
@@ -222,6 +303,7 @@ function normalizeCommerceConfig(raw) {
     privateFreeRefreshDays: Math.max(0, parseInt(cfg.privateFreeRefreshDays, 10) || defaults.privateFreeRefreshDays),
     companyTokenValidityDays: Math.max(1, parseInt(cfg.companyTokenValidityDays, 10) || defaults.companyTokenValidityDays),
     publicationDurationDays: Math.max(1, parseInt(cfg.publicationDurationDays, 10) || defaults.publicationDurationDays),
+    tokenPricing,
     promotionDefaults: {
       pinDays: Math.max(
         1,
@@ -232,7 +314,16 @@ function normalizeCommerceConfig(raw) {
         parseInt(cfg.promotionDefaults?.highlightDays, 10) || defaults.promotionDefaults.highlightDays,
       ),
     },
-    packages,
+    packages: buildPackagesFromTokenPricing(tokenPricing).map((pkg) => {
+      const override = packageOverrides.find((item) => item.tokens === pkg.tokens) || null;
+      if (!override) return pkg;
+      return {
+        ...pkg,
+        id: override.id || pkg.id,
+        label: override.label || pkg.label,
+        active: override.active !== false,
+      };
+    }),
     actions,
     reportingReasons:
       Array.isArray(cfg.reportingReasons) && cfg.reportingReasons.length
@@ -479,6 +570,32 @@ async function validatePromoCodeForUser(db, codeRaw, uid, options = {}) {
     packages: packagePreviews,
     packagePreview: matchedPackage,
   };
+}
+
+async function listBazarPromoClaims(db, limitCount = 200) {
+  const snapshot = await db
+    .collection(BAZAR_PROMO_CLAIMS)
+    .orderBy('updatedAt', 'desc')
+    .limit(Math.max(1, Math.min(parseInt(limitCount, 10) || 200, 300)))
+    .get();
+
+  const rows = await Promise.all(snapshot.docs.map(async (docSnap) => {
+    const data = docSnap.data() || {};
+    const userId = normalizeText(data.userId || '', 120);
+    const profile = userId ? await getDecodedUserProfile(db, userId).catch(() => null) : null;
+    return {
+      id: docSnap.id,
+      code: normalizeText(data.code || '', 64),
+      userId,
+      userDisplayName: normalizeText(profile?.displayName || '', 120),
+      userEmail: normalizeText(profile?.email || '', 180),
+      count: Math.max(0, parseInt(data.count, 10) || 0),
+      updatedAt: data.updatedAt || null,
+      redemptions: Array.isArray(data.redemptions) ? data.redemptions.slice().reverse() : [],
+    };
+  }));
+
+  return rows;
 }
 
 async function finalizePromoCodeUsage(db, payload) {
@@ -843,10 +960,25 @@ async function createTokenPurchaseCheckoutSession(db, payload) {
   const profile = await getDecodedUserProfile(db, payload.userId);
   assertProfileReadyForTokenPurchase(profile);
   const cfg = await getBazarCommerceConfig(db);
-  const pkg = cfg.packages.find((item) => item.id === payload.packageId && item.active !== false);
-  if (!pkg) {
-    throw new Error('Wybrany pakiet żetonów nie istnieje lub jest wyłączony.');
+  const requestedTokens = Math.max(0, parseInt(payload.tokens, 10) || 0);
+  const presetPkg = cfg.packages.find((item) => item.id === payload.packageId && item.active !== false);
+  const finalTokens = presetPkg?.tokens || requestedTokens;
+  if (!finalTokens) throw new Error('Wybierz liczbę żetonów.');
+  if (finalTokens > cfg.tokenPricing.maxPurchaseQuantity) {
+    throw new Error(`Maksymalnie możesz kupić ${cfg.tokenPricing.maxPurchaseQuantity} żetonów na raz.`);
   }
+  const pricing = computeTokenPricingForQuantity(finalTokens, cfg.tokenPricing.tokenPriceCents);
+  const pkg = {
+    id: presetPkg?.id || buildTokenPackageId(finalTokens, !cfg.tokenPricing.presetQuantities.includes(finalTokens)),
+    label: presetPkg?.label || buildTokenPackageLabel(finalTokens),
+    tokens: finalTokens,
+    priceCents: pricing.basePriceCents,
+    effectivePriceCents: pricing.effectivePriceCents,
+    pricePerTokenCents: pricing.pricePerTokenCents,
+    discountPercent: pricing.discountPercent,
+    active: true,
+    isCustom: !cfg.tokenPricing.presetQuantities.includes(finalTokens),
+  };
   if (payload.truthConfirmed !== true) {
     throw new Error('Potwierdź prawdziwość danych do dokumentu sprzedaży.');
   }
@@ -854,7 +986,7 @@ async function createTokenPurchaseCheckoutSession(db, payload) {
   const buyer = resolveInvoiceBuyerSnapshot(profile, payload.buyerInput);
   const promoCodeRaw = normalizeText(payload.promoCode || '', 64).toUpperCase();
   let promoCodeData = null;
-  let effectivePriceCents = pkg.priceCents;
+  let effectivePriceCents = pkg.effectivePriceCents;
   if (promoCodeRaw) {
     const promoValidation = await validatePromoCodeForUser(db, promoCodeRaw, payload.userId, {
       packageId: pkg.id,
@@ -877,6 +1009,9 @@ async function createTokenPurchaseCheckoutSession(db, payload) {
     tokens: pkg.tokens,
     amountCents: effectivePriceCents,
     baseAmountCents: pkg.priceCents,
+    unitPriceCents: cfg.tokenPricing.tokenPriceCents,
+    quantityDiscountPercent: pkg.discountPercent || 0,
+    isCustomQuantity: pkg.isCustom === true,
     currency: cfg.currency,
     roleSnapshot: profile.role,
     companyVerificationStatus: profile.companyVerificationStatus,
@@ -1034,6 +1169,7 @@ module.exports = {
   listPromoCodes,
   savePromoCode,
   setPromoCodeStatus,
+  listBazarPromoClaims,
   finalizePromoCodeUsage,
   getUserTokenSummary,
   listTokenHistory,

@@ -407,7 +407,7 @@
         .filter-trigger-btn {
             position: fixed;
             right: 16px;
-            bottom: calc(86px + 56px + 14px);
+            bottom: calc(var(--strzelca-search-launcher-bottom, 16px) + 56px + 14px);
             z-index: 2147483646;
             width: 56px;
             height: 56px;
@@ -719,9 +719,10 @@
           getHeaderProfileFromCache,
           setHeaderProfileCache,
         } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
-        import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-03-21-1";
+        import { loadWithVersionCache } from "https://strzelca.pl/public-firestore-list-cache.mjs?v=2026-04-13-1";
         import { attachHorizontalCarouselSwipe } from "https://strzelca.pl/carousel-swipe.mjs?v=2026-03-27-1";
         import { syncCarouselDotsNav } from "https://strzelca.pl/carousel-dots.mjs?v=2026-03-24-1";
+        import { attachCarousel3dGallery } from "https://strzelca.pl/carousel-3d-gallery.mjs?v=2026-04-13-1";
         import {
             initNewsletterOptInFromEmptyCarousels,
             buildEmptyCarouselArticleHtml,
@@ -907,6 +908,7 @@ const firebaseConfig = {
                 });
             }
             syncCharityCarouselDots();
+            charityCarousel3d.refresh();
         }
 
         function consumeQueuedCharityMove() {
@@ -1645,12 +1647,19 @@ const firebaseConfig = {
             track.style.transition = `transform ${CHARITY_CAROUSEL_DURATION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
 
             window.requestAnimationFrame(updateCharityCarouselControls);
+            charityCarousel3d.refresh();
         }
 
         window.addEventListener('resize', () => {
             window.requestAnimationFrame(updateCharityCarouselControls);
+            charityCarousel3d.refresh();
         });
 
+        const charityCarousel3d = attachCarousel3dGallery({
+            viewport: document.querySelector('#arsenal .carousel-viewport'),
+            track: document.getElementById('charity-track'),
+            cardSelector: '.charity-card',
+        });
         const _charityVp = document.querySelector('#arsenal .carousel-viewport');
         if (_charityVp) {
             attachHorizontalCarouselSwipe(_charityVp, {
@@ -2110,6 +2119,38 @@ const firebaseConfig = {
 
         async function fetchCharityActions() {
             const list = document.getElementById('charity-list-admin');
+            const applyCharityPayload = (payload) => {
+                const p = payload && typeof payload === "object" ? payload : {};
+                pinnedDonationsData = p.pinnedDonationsData ?? null;
+                charityActions = Array.isArray(p.charityActions) ? p.charityActions : [];
+                publicCharityItems = Array.isArray(p.publicCharityItems) ? p.publicCharityItems : [];
+            };
+            const renderCharityViews = () => {
+                if (list) {
+                    list.innerHTML = "";
+                    charityActions.forEach((row) => {
+                        const data = row;
+                        const rawD = data.date;
+                        const eventDate =
+                            rawD == null || rawD === ''
+                                ? null
+                                : typeof rawD?.toDate === 'function'
+                                  ? rawD.toDate()
+                                  : new Date(rawD);
+                        const hasValidDate = eventDate != null && !isNaN(eventDate.getTime());
+                        const isPast = hasValidDate && eventDate < new Date() && data.hideDate !== true;
+                        list.innerHTML += `<div class="flex justify-between items-center p-3 bg-black/40 border border-zinc-800 rounded mb-1">
+                        <span class="text-[10px] font-bold uppercase">${escapeHtml(data.title || '')}${isPast ? ' <span class="text-zinc-500">(zakończona)</span>' : ''}</span>
+                        <div class="flex space-x-2">
+                            <button onclick="window.editCharity('${data.id}')" class="text-blue-400 text-xs">Edytuj</button>
+                            <button onclick="window.deleteCharity('${data.id}')" class="text-red-400 text-xs">Usuń</button>
+                        </div>
+                    </div>`;
+                    });
+                }
+
+                renderCharityCarousel();
+            };
             try {
                 const { payload } = await loadWithVersionCache({
                     db,
@@ -2117,6 +2158,11 @@ const firebaseConfig = {
                     doc,
                     idbKey: "list:charity_pomoc",
                     metaDocId: "charity",
+                    onCachedData: (cachedPayload) => {
+                        if (!cachedPayload || typeof cachedPayload !== "object") return;
+                        applyCharityPayload(cachedPayload);
+                        renderCharityViews();
+                    },
                     fetchFresh: async () => {
                         const pinnedRef = doc(db, 'charity', PINNED_CHARITY_ID);
                         const pinnedSnap = await getDoc(pinnedRef);
@@ -2149,41 +2195,14 @@ const firebaseConfig = {
                         };
                     },
                 });
-                const p = payload && typeof payload === "object" ? payload : {};
-                pinnedDonationsData = p.pinnedDonationsData ?? null;
-                charityActions = Array.isArray(p.charityActions) ? p.charityActions : [];
-                publicCharityItems = Array.isArray(p.publicCharityItems) ? p.publicCharityItems : [];
+                applyCharityPayload(payload);
             } catch (e) {
                 console.warn("fetchCharityActions:", e?.message || e);
                 pinnedDonationsData = null;
                 charityActions = [];
                 publicCharityItems = [];
             }
-
-            if (list) {
-                list.innerHTML = "";
-                charityActions.forEach((row) => {
-                    const data = row;
-                    const rawD = data.date;
-                    const eventDate =
-                        rawD == null || rawD === ''
-                            ? null
-                            : typeof rawD?.toDate === 'function'
-                              ? rawD.toDate()
-                              : new Date(rawD);
-                    const hasValidDate = eventDate != null && !isNaN(eventDate.getTime());
-                    const isPast = hasValidDate && eventDate < new Date() && data.hideDate !== true;
-                    list.innerHTML += `<div class="flex justify-between items-center p-3 bg-black/40 border border-zinc-800 rounded mb-1">
-                    <span class="text-[10px] font-bold uppercase">${escapeHtml(data.title || '')}${isPast ? ' <span class="text-zinc-500">(zakończona)</span>' : ''}</span>
-                    <div class="flex space-x-2">
-                        <button onclick="window.editCharity('${data.id}')" class="text-blue-400 text-xs">Edytuj</button>
-                        <button onclick="window.deleteCharity('${data.id}')" class="text-red-400 text-xs">Usuń</button>
-                    </div>
-                </div>`;
-                });
-            }
-
-            renderCharityCarousel();
+            renderCharityViews();
         }
 
         function formatDateTimeForInput(date) {
@@ -2253,5 +2272,6 @@ const firebaseConfig = {
       src="https://strzelca.pl/messages-widget.mjs?v=2026-03-23-1"
     ></script>
     <script type="module" src="https://strzelca.pl/global-search-widget.mjs?v=2026-03-24-1"></script>
-  </body>
+  <script type="module" src="https://strzelca.pl/token-balance-badge.mjs?v=2026-04-13-2"></script>
+</body>
 </html>

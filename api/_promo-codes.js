@@ -5,7 +5,7 @@ const { sendTransactionalEmail } = require('./_transactional-mail');
 const PROMO_CODES_COLLECTION = 'promoCodes';
 const PROMO_CODE_USAGES_COLLECTION = 'promoCodeUsages';
 const ENCRYPTION_PREFIX = 'pc1:';
-const SHOP_TRAINING_REDIRECT_URL = 'https://szkolenia.strzelca.pl';
+const SHOP_TRAINING_REDIRECT_URL = 'https://strzelnica.strzelca.pl';
 
 function getPromoCodeLookupSecret() {
   const secret = String(
@@ -255,8 +255,8 @@ function mapPromoCodeReasonToMessage(reason, extra = {}) {
       ok: false,
       reason,
       message:
-        'Ten kod służy do uzyskania dostępu do szkolenia - przejdź do strony SZKOLENIA.STRZELCA.pl.',
-      actionLabel: 'Otwórz szkolenia',
+        'Ten kod służy do uzyskania dostępu do modułu strzelnicy - przejdź do strony STRZELNICA.STRZELCA.pl.',
+      actionLabel: 'Otwórz strzelnicę',
       actionUrl: SHOP_TRAINING_REDIRECT_URL,
     };
   }

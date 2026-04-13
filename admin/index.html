@@ -2116,8 +2116,8 @@
                 <span>Bazar</span>
               </button>
               <button type="button" class="mobile-nav-item" data-mobile-tab="szkolenia">
-                <i class="fa-solid fa-graduation-cap"></i>
-                <span>Szkolenia</span>
+                <i class="fa-solid fa-crosshairs"></i>
+                <span>Strzelnica</span>
               </button>
               <button type="button" class="mobile-nav-item" data-mobile-tab="events">
                 <i class="fa-solid fa-calendar-alt"></i>
@@ -2138,7 +2138,7 @@
               <div class="mobile-sidebar-divider" aria-hidden="true"></div>
               <button type="button" class="mobile-nav-item" data-mobile-tab="promo-codes">
                 <i class="fa-solid fa-ticket"></i>
-                <span>Kody</span>
+                <span>Żetony / Vouchery / Kody</span>
               </button>
               <button type="button" class="mobile-nav-item" data-mobile-tab="status">
                 <i class="fa-solid fa-server"></i>
@@ -3900,33 +3900,98 @@
             </div>
           </div>
 
-          <!-- Szkolenia -->
+          <!-- Strzelnica -->
           <div id="tab-szkolenia" class="tab-content">
             <div class="flex justify-between items-center mb-8">
               <h1 class="text-3xl font-bold coyote-text">
-                Zarządzanie Szkoleniami
+                Zarządzanie Strzelnicą
               </h1>
               <div class="flex items-center gap-4">
                 <button onclick="refreshTrainings()" class="text-zinc-400 hover:text-coyote transition-colors p-2" id="refresh-trainings-btn">
                   <i class="fa-solid fa-sync-alt text-lg" id="refresh-trainings-icon"></i>
                 </button>
-                <button onclick="openTrainingPublicForm()" class="btn-admin">
-                  <i class="fa-solid fa-plus mr-2"></i>
-                  Dodaj szkolenie
+                <button onclick="saveShootingRangeConfig()" class="btn-admin">
+                  <i class="fa-solid fa-save mr-2"></i>
+                  Zapisz konfigurację
                 </button>
               </div>
             </div>
 
-            <!-- Lista szkoleń -->
-            <div class="admin-card mb-8">
-                <h3 class="text-xl font-bold mb-4">Lista Szkoleń</h3>
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
+              <div class="admin-card">
+                <h3 class="text-xl font-bold mb-4">Konfiguracja strony</h3>
+                <div class="space-y-4">
+                  <div>
+                    <label class="text-sm text-zinc-400 block mb-2">Tytuł hero</label>
+                    <input id="shooting-range-hero-title" class="w-full" placeholder="Wyjdź z obrazu. Wejdź na oś." />
+                  </div>
+                  <div>
+                    <label class="text-sm text-zinc-400 block mb-2">Lead hero</label>
+                    <textarea id="shooting-range-hero-lead" class="w-full min-h-[120px]" placeholder="Krótki opis doświadczenia strzelnicy."></textarea>
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="text-sm text-zinc-400 block mb-2">Adres strzelnicy</label>
+                      <input id="shooting-range-address" class="w-full" placeholder="Adres obiektu" />
+                    </div>
+                    <div>
+                      <label class="text-sm text-zinc-400 block mb-2">Wartość 1 żetonu (PLN)</label>
+                      <input id="shooting-range-token-value" type="number" step="0.01" min="0.01" class="w-full" placeholder="1.00" />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="text-sm text-zinc-400 block mb-2">Google Maps embed URL</label>
+                    <input id="shooting-range-map-url" class="w-full" placeholder="https://www.google.com/maps/embed?..." />
+                  </div>
+                  <div>
+                    <label class="text-sm text-zinc-400 block mb-2">Galeria zdjęć (1 URL w linii)</label>
+                    <textarea id="shooting-range-gallery" class="w-full min-h-[120px]" placeholder="https://..."></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div class="admin-card">
+                <h3 class="text-xl font-bold mb-4">Szybkie dodawanie osi</h3>
+                <form id="shooting-range-lane-form" class="space-y-4">
+                  <div>
+                    <label class="text-sm text-zinc-400 block mb-2">Nazwa osi</label>
+                    <input id="shooting-range-lane-name" class="w-full" placeholder="Oś 25 m" />
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label class="text-sm text-zinc-400 block mb-2">Długość (m)</label>
+                      <input id="shooting-range-lane-length" type="number" min="1" class="w-full" placeholder="25" />
+                    </div>
+                    <div>
+                      <label class="text-sm text-zinc-400 block mb-2">Cena / h</label>
+                      <input id="shooting-range-lane-price" type="number" step="0.01" min="0" class="w-full" placeholder="150" />
+                    </div>
+                    <div>
+                      <label class="text-sm text-zinc-400 block mb-2">Cena firmowa / h</label>
+                      <input id="shooting-range-lane-company-price" type="number" step="0.01" min="0" class="w-full" placeholder="180" />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="text-sm text-zinc-400 block mb-2">Opis osi</label>
+                    <textarea id="shooting-range-lane-description" class="w-full min-h-[120px]" placeholder="Opis publiczny osi."></textarea>
+                  </div>
+                  <button type="submit" class="btn-admin">
+                    <i class="fa-solid fa-plus mr-2"></i>Dodaj oś
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+              <div class="admin-card">
+                <h3 class="text-xl font-bold mb-4">Osie i instruktorzy</h3>
                 <div id="trainings-list" class="space-y-4">
-                  <!-- Szkolenia będą ładowane dynamicznie -->
+                  <!-- Dane strzelnicy będą ładowane dynamicznie -->
                 </div>
 
                 <div id="trainings-loading" class="text-center py-8 text-zinc-400">
                   <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
-                  <p>Ładowanie szkoleń...</p>
+                  <p>Ładowanie danych strzelnicy...</p>
                 </div>
 
                 <div
@@ -3934,11 +3999,17 @@
                   class="text-center py-8 text-zinc-400 hidden"
                 >
                   <i
-                    class="fa-solid fa-graduation-cap text-4xl mb-4 text-zinc-600"
+                    class="fa-solid fa-crosshairs text-4xl mb-4 text-zinc-600"
                   ></i>
-                  <p>Brak szkoleń do wyświetlenia</p>
+                  <p>Brak skonfigurowanych osi lub instruktorów</p>
                 </div>
               </div>
+
+              <div class="admin-card">
+                <h3 class="text-xl font-bold mb-4">Rezerwacje i vouchery</h3>
+                <div id="shooting-range-admin-reservations" class="space-y-4"></div>
+              </div>
+            </div>
 
 
         </div>
@@ -4206,7 +4277,7 @@
 
           <!-- Szablony maili -->
           <div id="tab-email-templates" class="tab-content">
-            <div class="grid grid-cols-1 gap-8 max-w-6xl mx-auto">
+            <div class="grid grid-cols-1 gap-6 max-w-7xl mx-auto">
               <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
                 <div>
                   <h1 class="text-3xl font-bold coyote-text mb-2">Szablony e-mail</h1>
@@ -4227,16 +4298,16 @@
           </div>
 
           <div id="tab-promo-codes" class="tab-content">
-            <div class="grid grid-cols-1 gap-8 max-w-6xl mx-auto">
+            <div class="grid grid-cols-1 gap-6 max-w-7xl mx-auto">
               <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <h1 class="text-3xl font-bold coyote-text">Kody</h1>
+                <h1 class="text-3xl font-bold coyote-text">Żetony / Vouchery / Kody</h1>
                 <button type="button" onclick="openPromoCodeModal()" class="btn-admin text-sm px-4 py-2 shrink-0 self-start sm:self-center">
                   <i class="fa-solid fa-plus mr-2"></i>
                   Utwórz kod
                 </button>
               </div>
 
-              <div class="admin-card max-w-3xl">
+              <div class="admin-card">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div class="compact-monitor-strip">
                     <div class="compact-monitor-pill">
@@ -4265,6 +4336,22 @@
                 <div class="text-center text-zinc-500 py-10">
                   <i class="fa-solid fa-spinner fa-spin text-2xl mb-4 text-zinc-600"></i>
                   <p class="text-sm">Ładowanie kodów…</p>
+                </div>
+              </div>
+
+              <div class="admin-card">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
+                  <div>
+                    <div class="text-xs uppercase tracking-widest text-zinc-500">Historia użycia kodów sklepu i szkoleń</div>
+                    <div class="text-sm text-zinc-400 mt-1">Sprawdzisz tutaj kto i kiedy wykorzystał kod oraz przy jakim zamówieniu.</div>
+                  </div>
+                  <input id="promo-codes-usage-filter" class="w-full lg:w-96" placeholder="Filtruj po kodzie, użytkowniku, e-mailu lub numerze zamówienia" />
+                </div>
+                <div id="promo-codes-usage-list" class="grid grid-cols-1 2xl:grid-cols-2 gap-3">
+                  <div class="text-center text-zinc-500 py-6">
+                    <i class="fa-solid fa-spinner fa-spin text-xl mb-3 text-zinc-600"></i>
+                    <p class="text-sm">Ładowanie historii użycia kodów…</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -4556,6 +4643,7 @@
                     <select id="edit-role" class="w-full">
                       <option value="user">Użytkownik</option>
                       <option value="company">Firma</option>
+                      <option value="instruktor">Instruktor</option>
                       <option value="operator">Operator</option>
                       <option value="moderator">Moderator</option>
                       <option value="admin">Administrator</option>
@@ -4590,8 +4678,8 @@
                         <span>Operator ds. wydarzeń</span>
                       </label>
                       <label class="flex items-center gap-2 text-sm text-zinc-200">
-                        <input type="checkbox" class="moderator-scope-checkbox w-4 h-4" value="trainings" />
-                        <span>Operator ds. szkoleń</span>
+                        <input type="checkbox" class="moderator-scope-checkbox w-4 h-4" value="shootingRange" />
+                        <span>Operator strzelnicy</span>
                       </label>
                       <label class="flex items-center gap-2 text-sm text-zinc-200">
                         <input type="checkbox" class="moderator-scope-checkbox w-4 h-4" value="bazaar" />
@@ -5465,7 +5553,7 @@
         publicListCacheMetaBootstrapped = true;
         const moderatorMetaKeys = {
           products: "products",
-          szkolenia: "trainings",
+          szkolenia: "shootingRangePublic",
           events: "events",
           blog: "blogPosts",
           charity: "charity",
@@ -5477,7 +5565,7 @@
           ? allowedTabs
               .map((tab) => moderatorMetaKeys[tab])
               .filter((value, index, list) => value && list.indexOf(value) === index)
-          : ["products", "trainings", "events", "blogPosts", "charity", "documents", "bazarOffers"];
+          : ["products", "shootingRangePublic", "events", "blogPosts", "charity", "documents", "bazarOffers"];
         try {
           for (const k of keys) {
             const r = await getDoc(doc(db, "publicListCacheMeta", k));
@@ -5609,13 +5697,13 @@
         status: { label: "Status", description: "Monitoring usług, domen i indeksów." },
         products: { label: "Sklep", description: "Produkty, opisy i sprzedaż sklepu." },
         bazar: { label: "Bazar", description: "Ogłoszenia i oferty użytkowników." },
-        szkolenia: { label: "Szkolenia", description: "Materiały, dostęp i kursy online." },
+        szkolenia: { label: "Strzelnica", description: "Rezerwacje, osie, instruktorzy i vouchery." },
         events: { label: "Wydarzenia", description: "Eventy, zapisy i harmonogram." },
         blog: { label: "Blog", description: "Wpisy, szkice i publikacja treści." },
         charity: { label: "Pomoc", description: "Zbiórki i materiały pomocowe." },
         dokumenty: { label: "Dokumenty", description: "Pliki, formularze i publikacje PDF." },
         "email-templates": { label: "Szablony maili", description: "Gotowe wiadomości i treści transakcyjne." },
-        "promo-codes": { label: "Kody", description: "Promocje, zniżki i kody dostępowe." },
+        "promo-codes": { label: "Żetony / Vouchery / Kody", description: "Kody sklepu, vouchery żetonów i historia użycia." },
       };
       const QUICKNAV_PRIMARY_ORDER = [
         "dashboard",
@@ -5638,7 +5726,7 @@
         status: "fa-server",
         products: "fa-shopping-cart",
         bazar: "fa-store",
-        szkolenia: "fa-graduation-cap",
+        szkolenia: "fa-crosshairs",
         events: "fa-calendar-alt",
         blog: "fa-blog",
         charity: "fa-heart",
@@ -5651,6 +5739,7 @@
       let productsList = [];
       let trainingsList = [];
       let promoCodesList = [];
+      let promoCodeUsagesList = [];
       let documentsList = [];
       let currentTrainingId = null;
       let currentConversationId = null;
@@ -5667,7 +5756,7 @@
       const OPERATOR_SCOPE_ORDER = [
         "shop",
         "bazaar",
-        "trainings",
+        "shootingRange",
         "events",
         "blog",
         "help",
@@ -5681,7 +5770,7 @@
         shop: "Operator ds. sklepu",
         help: "Operator ds. pomocy",
         events: "Operator ds. wydarzeń",
-        trainings: "Operator ds. szkoleń",
+        shootingRange: "Operator strzelnicy",
         bazaar: "Operator ds. bazaru",
       };
 
@@ -5749,7 +5838,7 @@
         shop: "sklepu",
         help: "pomocy",
         events: "wydarzeń",
-        trainings: "szkoleń",
+        shootingRange: "strzelnicy",
         bazaar: "bazaru",
       };
       const OPERATOR_SCOPE_TO_TABS = {
@@ -5759,7 +5848,7 @@
         shop: ["products", "orders", "invoices", "returns"],
         help: ["charity"],
         events: ["events"],
-        trainings: ["szkolenia"],
+        shootingRange: ["szkolenia"],
         bazaar: ["bazar"],
       };
       const ALL_OPERATOR_TABS = Array.from(
@@ -5821,6 +5910,7 @@
         const role = String(userData?.role || "user").toLowerCase();
         if (role === "admin") return "ADMINISTRATOR";
         if (role === "company") return "FIRMA";
+        if (role === "instruktor") return "INSTRUKTOR";
         if (role === "operator") return "OPERATOR";
         if (role === "moderator") return "MODERATOR";
         return "UŻYTKOWNIK";
@@ -5830,6 +5920,7 @@
         const role = String(userData?.role || "user").toLowerCase();
         if (role === "admin") return "role-admin";
         if (role === "company") return "role-company";
+        if (role === "instruktor") return "role-operator";
         if (role === "operator") return "role-operator";
         if (role === "moderator") return "role-moderator";
         return userData?.emailVerified ? "role-user-verified" : "role-user";
@@ -9936,10 +10027,12 @@
                                       <select id="user-role-select" class="w-full" onchange="changeUserRoleFromDetails('${currentEditingUser.id}', this.value)">
                                           <option value="user" ${decryptedUser.role === "user" ? "selected" : ""}>Użytkownik</option>
                                           <option value="company" ${decryptedUser.role === "company" ? "selected" : ""}>Firma</option>
+                                          <option value="instruktor" ${decryptedUser.role === "instruktor" ? "selected" : ""}>Instruktor</option>
                                           <option value="operator" ${decryptedUser.role === "operator" ? "selected" : ""}>Operator</option>
                                           <option value="moderator" ${decryptedUser.role === "moderator" ? "selected" : ""}>Moderator</option>
                                           <option value="admin" ${decryptedUser.role === "admin" ? "selected" : ""}>Administrator</option>
                                       </select>
+                                      ${decryptedUser.role === "instruktor" ? `<div class="mt-3 text-sm text-coyote">Panel instruktora i dyspozycyjność</div>` : ""}
                                       ${decryptedUser.role === "operator" ? `<div class="mt-3 text-sm text-cyan-300">${formatOperatorSummary(decryptedUser.operatorScopes)}</div>` : ""}
                                       ${decryptedUser.role === "moderator" ? `<div class="mt-3 text-sm text-violet-300">Moderator</div>` : ""}
                               </div>
@@ -11226,6 +11319,7 @@
         const roleNames = {
           user: "Użytkownik",
           company: "Firma",
+          instruktor: "Instruktor",
           operator: "Operator",
           moderator: "Moderator",
           admin: "Administrator"
@@ -15485,7 +15579,7 @@
         "strzelca.pl",
         "sklep.strzelca.pl",
         "bazar.strzelca.pl",
-        "szkolenia.strzelca.pl",
+        "strzelnica.strzelca.pl",
         "wydarzenia.strzelca.pl",
         "blog.strzelca.pl",
         "pomoc.strzelca.pl",
@@ -16348,7 +16442,7 @@
         const HOME_HUB_TILE_DEFS = [
           { id: "sklep", label: "Sklep" },
           { id: "bazar", label: "Bazar" },
-          { id: "szkolenia", label: "Szkolenia" },
+          { id: "strzelnica", label: "Strzelnica" },
           { id: "wydarzenia", label: "Wydarzenia" },
           { id: "blog", label: "Blog" },
           { id: "pomoc", label: "Pomoc" },
@@ -18215,16 +18309,40 @@
         }
       };
 
-      // Funkcje zarządzania szkoleniami
+      // Funkcje zarządzania strzelnicą
+      const SHOOTING_RANGE_API_BASE = "https://strzelca.pl/api/shooting-range";
+
+      async function getShootingRangeApiHeaders() {
+        const headers = { "Content-Type": "application/json" };
+        if (auth?.currentUser) {
+          try {
+            const token = await auth.currentUser.getIdToken();
+            if (token) headers.Authorization = `Bearer ${token}`;
+          } catch (_) {}
+        }
+        return headers;
+      }
+
       async function loadTrainings() {
         try {
-          const q = query(collection(db, "trainings"), orderBy("order", "asc"));
-          const snapshot = await getDocs(q);
-          trainingsList = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-
+          const headers = await getShootingRangeApiHeaders();
+          const response = await fetch(`${SHOOTING_RANGE_API_BASE}/admin/summary`, {
+            method: "GET",
+            headers,
+            credentials: "include",
+          });
+          const data = await response.json().catch(() => null);
+          if (!response.ok || !data?.success) {
+            throw new Error(data?.error || "Nie udało się pobrać danych strzelnicy.");
+          }
+          trainingsList = Array.isArray(data.lanes) ? data.lanes : [];
+          window.shootingRangeAdminData = data;
+          document.getElementById("shooting-range-hero-title").value = data.config?.heroTitle || "";
+          document.getElementById("shooting-range-hero-lead").value = data.config?.heroLead || "";
+          document.getElementById("shooting-range-address").value = data.config?.locationAddress || "";
+          document.getElementById("shooting-range-token-value").value = data.config?.tokenValue || 1;
+          document.getElementById("shooting-range-map-url").value = data.config?.locationMapEmbedUrl || "";
+          document.getElementById("shooting-range-gallery").value = Array.isArray(data.config?.gallery) ? data.config.gallery.join("\n") : "";
           renderTrainingsList();
           document.getElementById("trainings-loading").classList.add("hidden");
           if (trainingsList.length === 0) {
@@ -18233,41 +18351,165 @@
             document.getElementById("trainings-empty").classList.add("hidden");
           }
         } catch (error) {
-          console.error("Error loading trainings:", error);
-          showNotification("Błąd ładowania szkoleń.", "error");
+          console.error("Error loading shooting range summary:", error);
+          showNotification("Błąd ładowania strzelnicy.", "error");
           document.getElementById("trainings-loading").classList.add("hidden");
         }
       }
 
       function renderTrainingsList() {
-        const trainingsHtml = trainingsList
+        const lanesHtml = trainingsList
           .map(
-            (training, index) => `
+            (lane) => `
                 <div class="flex justify-between items-center p-3 bg-zinc-800 rounded-lg border border-zinc-700">
                     <div class="flex-1">
-                        <div class="font-semibold text-white">${training.title}</div>
-                        <div class="text-sm text-zinc-400">${training.individualPricing === true ? 'Cena ustalana indywidualnie' : `${training.price} zł`}</div>
+                        <div class="font-semibold text-white">${lane.name}</div>
+                        <div class="text-sm text-zinc-400">${lane.lengthMeters} m • ${lane.pricePerHour} zł / h • firma ${lane.companyPricePerHour} zł / h</div>
                         <div class="text-xs text-zinc-500 mt-1">
-                          ${training.available === true ? '<span class="text-green-400">Dostępne dla wszystkich</span>' : '<span class="text-yellow-400">Ograniczony dostęp</span>'}
+                          ${lane.isActive === true ? '<span class="text-green-400">Aktywna oś publiczna</span>' : '<span class="text-yellow-400">Ukryta oś</span>'}
                         </div>
                     </div>
                     <div class="flex flex-wrap gap-2 justify-end">
-                        <button onclick="openTrainingPublicForm('${training.id}')" class="text-blue-400 hover:text-blue-300 px-2 py-1 border border-blue-400 rounded text-xs">Edytuj</button>
-                        <button onclick="openTrainingAccessModal('${training.id}')" class="text-amber-400 hover:text-amber-300 px-2 py-1 border border-amber-400 rounded text-xs">Dostęp</button>
-                        <button onclick="openTrainingContentForm('${training.id}')" class="text-green-400 hover:text-green-300 px-2 py-1 border border-green-400 rounded text-xs">Treść</button>
-                        <button onclick="moveTrainingUp('${training.id}')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 border border-zinc-400 rounded text-xs" ${index === 0 ? 'disabled' : ''} title="Przenieś wyżej">↑</button>
-                        <button onclick="moveTrainingDown('${training.id}')" class="text-zinc-400 hover:text-zinc-300 px-2 py-1 border border-zinc-400 rounded text-xs" ${index === trainingsList.length - 1 ? 'disabled' : ''} title="Przenieś niżej">↓</button>
-                        <button onclick="deleteTraining('${training.id}')" class="text-red-400 hover:text-red-300 px-2 py-1 border border-red-400 rounded text-xs">Usuń</button>
+                        <span class="text-xs border border-zinc-600 rounded px-2 py-1 text-zinc-400">${lane.slug || lane.id}</span>
                     </div>
                 </div>
             `,
           )
           .join("");
 
+        const instructors = Array.isArray(window.shootingRangeAdminData?.instructors)
+          ? window.shootingRangeAdminData.instructors
+          : [];
+        const instructorsHtml = instructors.length
+          ? `
+            <div class="pt-4 border-t border-zinc-800">
+              <h4 class="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-3">Instruktorzy</h4>
+              <div class="space-y-3">
+                ${instructors
+                  .map((instructor) => `
+                    <div class="rounded-lg border border-zinc-700 bg-zinc-900/70 p-3">
+                      <div class="font-semibold text-white">${instructor.displayName || instructor.userId}</div>
+                      <div class="text-sm text-zinc-400">${Array.isArray(instructor.specialties) ? instructor.specialties.join(", ") : "Brak specjalizacji"}</div>
+                    </div>
+                  `)
+                  .join("")}
+              </div>
+            </div>
+          `
+          : "";
+
         document.getElementById("trainings-list").innerHTML =
-          trainingsHtml ||
-          '<div class="text-center text-zinc-500 py-4">Brak szkoleń</div>';
+          (lanesHtml ? `${lanesHtml}${instructorsHtml}` : "") ||
+          '<div class="text-center text-zinc-500 py-4">Brak osi strzelnicy</div>';
+
+        const reservationsWrap = document.getElementById("shooting-range-admin-reservations");
+        if (reservationsWrap) {
+          const reservations = Array.isArray(window.shootingRangeAdminData?.reservations)
+            ? window.shootingRangeAdminData.reservations
+            : [];
+          const vouchers = Array.isArray(window.shootingRangeAdminData?.vouchers)
+            ? window.shootingRangeAdminData.vouchers
+            : [];
+          reservationsWrap.innerHTML = `
+            <div class="space-y-3">
+              <h4 class="text-sm font-bold uppercase tracking-widest text-zinc-500">Ostatnie rezerwacje</h4>
+              ${
+                reservations.length
+                  ? reservations
+                      .slice(0, 8)
+                      .map((reservation) => `
+                        <div class="rounded-lg border border-zinc-700 bg-zinc-900/70 p-3">
+                          <div class="font-semibold text-white">${reservation.reservationNumber || reservation.id}</div>
+                          <div class="text-sm text-zinc-400">${reservation.laneName || "Oś"} • ${reservation.status}</div>
+                        </div>
+                      `)
+                      .join("")
+                  : '<div class="text-sm text-zinc-500">Brak rezerwacji.</div>'
+              }
+            </div>
+            <div class="space-y-3 pt-4 border-t border-zinc-800">
+              <h4 class="text-sm font-bold uppercase tracking-widest text-zinc-500">Vouchery</h4>
+              ${
+                vouchers.length
+                  ? vouchers
+                      .slice(0, 8)
+                      .map((voucher) => `
+                        <div class="rounded-lg border border-zinc-700 bg-zinc-900/70 p-3">
+                          <div class="font-semibold text-white">${voucher.code || voucher.id}</div>
+                          <div class="text-sm text-zinc-400">${voucher.tokens} żetonów • ${voucher.status}</div>
+                        </div>
+                      `)
+                      .join("")
+                  : '<div class="text-sm text-zinc-500">Brak voucherów.</div>'
+              }
+            </div>
+          `;
+        }
       }
+
+      window.saveShootingRangeConfig = async () => {
+        try {
+          const headers = await getShootingRangeApiHeaders();
+          const payload = {
+            heroTitle: document.getElementById("shooting-range-hero-title")?.value || "",
+            heroLead: document.getElementById("shooting-range-hero-lead")?.value || "",
+            locationAddress: document.getElementById("shooting-range-address")?.value || "",
+            tokenValue: parseFloat(document.getElementById("shooting-range-token-value")?.value || "1") || 1,
+            locationMapEmbedUrl: document.getElementById("shooting-range-map-url")?.value || "",
+            gallery: (document.getElementById("shooting-range-gallery")?.value || "")
+              .split("\n")
+              .map((row) => row.trim())
+              .filter(Boolean),
+          };
+          const response = await fetch(`${SHOOTING_RANGE_API_BASE}/admin/config/save`, {
+            method: "POST",
+            headers,
+            credentials: "include",
+            body: JSON.stringify(payload),
+          });
+          const data = await response.json().catch(() => null);
+          if (!response.ok || !data?.success) {
+            throw new Error(data?.error || "Nie udało się zapisać konfiguracji strzelnicy.");
+          }
+          showNotification("Konfiguracja strzelnicy została zapisana.", "success");
+          await loadTrainings();
+        } catch (error) {
+          showNotification(error.message || "Błąd zapisu konfiguracji.", "error");
+        }
+      };
+
+      window.addEventListener("DOMContentLoaded", () => {
+        const laneForm = document.getElementById("shooting-range-lane-form");
+        if (!laneForm) return;
+        laneForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          try {
+            const headers = await getShootingRangeApiHeaders();
+            const payload = {
+              name: document.getElementById("shooting-range-lane-name")?.value || "",
+              lengthMeters: parseInt(document.getElementById("shooting-range-lane-length")?.value || "25", 10) || 25,
+              pricePerHour: parseFloat(document.getElementById("shooting-range-lane-price")?.value || "0") || 0,
+              companyPricePerHour: parseFloat(document.getElementById("shooting-range-lane-company-price")?.value || "0") || 0,
+              description: document.getElementById("shooting-range-lane-description")?.value || "",
+            };
+            const response = await fetch(`${SHOOTING_RANGE_API_BASE}/admin/entity/lane`, {
+              method: "POST",
+              headers,
+              credentials: "include",
+              body: JSON.stringify(payload),
+            });
+            const data = await response.json().catch(() => null);
+            if (!response.ok || !data?.success) {
+              throw new Error(data?.error || "Nie udało się dodać osi.");
+            }
+            laneForm.reset();
+            showNotification("Dodano nową oś strzelnicy.", "success");
+            await loadTrainings();
+          } catch (error) {
+            showNotification(error.message || "Błąd dodawania osi.", "error");
+          }
+        });
+      });
 
       // ============================================
       // MODAL PUBLICZNYCH INFORMACJI SZKOLENIA
@@ -26855,9 +27097,48 @@
         if (expiredEl) expiredEl.textContent = String(expiredCount);
       }
 
+      function renderPromoCodeUsages(list) {
+        const target = document.getElementById("promo-codes-usage-list");
+        if (!target) return;
+        promoCodeUsagesList = Array.isArray(list) ? list.slice() : [];
+        const filterValue = String(document.getElementById("promo-codes-usage-filter")?.value || "").trim().toLowerCase();
+        const rows = promoCodeUsagesList.filter((row) => {
+          if (!filterValue) return true;
+          return [row.maskedCode, row.codeId, row.userId, row.displayName, row.email, row.orderNumber, row.orderId, row.itemTitle, row.context, row.purpose]
+            .map((value) => String(value || "").toLowerCase())
+            .some((value) => value.includes(filterValue));
+        });
+        if (!rows.length) {
+          target.innerHTML = `
+            <div class="text-center text-zinc-500 py-6">
+              <i class="fa-solid fa-clock-rotate-left text-2xl mb-3 text-zinc-600"></i>
+              <p class="text-sm">Brak użyć kodów do wyświetlenia.</p>
+            </div>
+          `;
+          return;
+        }
+        target.innerHTML = rows.map((row) => `
+          <div class="rounded-2xl border border-zinc-700 bg-zinc-950/35 p-4">
+            <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-3">
+              <div>
+                <div class="font-semibold text-white">${escapeHtml(row.maskedCode || row.codeId || "Kod")}</div>
+                <div class="text-sm text-zinc-300 mt-1">${escapeHtml(row.displayName || "Użytkownik")} ${row.email ? `• ${escapeHtml(row.email)}` : ""}</div>
+                ${row.userId ? `<div class="text-[11px] uppercase tracking-widest text-zinc-600 mt-2">UID: ${escapeHtml(row.userId)}</div>` : ""}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3 text-xs">
+                  <div class="rounded-xl border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-zinc-400">${escapeHtml(row.context || "zamówienie")} • ${escapeHtml(row.itemTitle || "—")}</div>
+                  <div class="rounded-xl border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-zinc-400">${escapeHtml(row.orderNumber || row.orderId || "Brak numeru zamówienia")}</div>
+                </div>
+              </div>
+              <div class="text-xs text-zinc-500 whitespace-nowrap">${escapeHtml(formatDateTimeValue(row.redeemedAt))}</div>
+            </div>
+          </div>
+        `).join("");
+      }
+
       window.loadPromoCodes = async function() {
         try {
           const listEl = document.getElementById("promo-codes-list");
+          const usageEl = document.getElementById("promo-codes-usage-list");
           if (listEl) {
             listEl.innerHTML = `
               <div class="text-center text-zinc-500 py-10">
@@ -26866,22 +27147,48 @@
               </div>
             `;
           }
+          if (usageEl) {
+            usageEl.innerHTML = `
+              <div class="text-center text-zinc-500 py-6">
+                <i class="fa-solid fa-spinner fa-spin text-xl mb-3 text-zinc-600"></i>
+                <p class="text-sm">Ładowanie historii użycia kodów…</p>
+              </div>
+            `;
+          }
           const includeExpired =
             document.getElementById("promo-codes-show-expired")?.checked === true;
           const queryString = includeExpired ? "?includeExpired=true" : "";
-          const data = await fetchPromoCodesApi("GET", null, queryString);
+          const [data, usageData] = await Promise.all([
+            fetchPromoCodesApi("GET", null, queryString),
+            fetchPromoCodesApi("GET", null, "?view=usages"),
+          ]);
           promoCodesList = Array.isArray(data.data) ? data.data : [];
           updatePromoCodesSummary(promoCodesList);
           renderPromoCodesList(promoCodesList);
+          renderPromoCodeUsages(Array.isArray(usageData.data) ? usageData.data : []);
+          const usageFilter = document.getElementById("promo-codes-usage-filter");
+          if (usageFilter && !usageFilter.dataset.bound) {
+            usageFilter.dataset.bound = "1";
+            usageFilter.addEventListener("input", () => renderPromoCodeUsages(promoCodeUsagesList));
+          }
         } catch (error) {
           console.error("loadPromoCodes:", error);
           updatePromoCodesSummary([]);
           const listEl = document.getElementById("promo-codes-list");
+          const usageEl = document.getElementById("promo-codes-usage-list");
           if (listEl) {
             listEl.innerHTML = `
               <div class="admin-card text-center text-red-400 py-10">
                 <i class="fa-solid fa-triangle-exclamation text-3xl mb-4"></i>
                 <p class="text-sm">${escapeHtml(error.message || "Błąd ładowania kodów.")}</p>
+              </div>
+            `;
+          }
+          if (usageEl) {
+            usageEl.innerHTML = `
+              <div class="text-center text-red-400 py-6">
+                <i class="fa-solid fa-triangle-exclamation text-2xl mb-3"></i>
+                <p class="text-sm">${escapeHtml(error.message || "Błąd ładowania historii użycia kodów.")}</p>
               </div>
             `;
           }

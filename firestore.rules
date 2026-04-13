@@ -29,6 +29,12 @@ service cloud.firestore {
         get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role == 'moderator';
     }
 
+    function isInstructor() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role == 'instruktor';
+    }
+
     function hasOperatorScope(scope) {
       return isOperator() &&
         get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.operatorScopes is list &&
@@ -52,7 +58,7 @@ service cloud.firestore {
     }
 
     function validRole(role) {
-      return role is string && (role == 'user' || role == 'company' || role == 'operator' || role == 'admin' || role == 'moderator');
+      return role is string && (role == 'user' || role == 'company' || role == 'operator' || role == 'admin' || role == 'moderator' || role == 'instruktor');
     }
 
     function validSelfServiceRole(role) {
@@ -62,7 +68,7 @@ service cloud.firestore {
     function validOperatorScopes(scopes) {
       return scopes is list &&
         scopes.size() <= 8 &&
-        scopes.hasOnly(['blog', 'shop', 'help', 'events', 'trainings', 'bazaar', 'users', 'contact']);
+        scopes.hasOnly(['blog', 'shop', 'help', 'events', 'shootingRange', 'bazaar', 'users', 'contact']);
     }
 
     function currentUserRole() {
@@ -76,7 +82,7 @@ service cloud.firestore {
     function validAudienceRoles(roles) {
       return roles is list &&
         roles.size() <= 8 &&
-        roles.hasOnly(['user', 'company', 'operator', 'admin', 'moderator']);
+        roles.hasOnly(['user', 'company', 'operator', 'admin', 'moderator', 'instruktor']);
     }
 
     function notificationAudienceAllowsCurrentUser(allUsers, targetRoles, targetUserIds) {
@@ -99,7 +105,7 @@ service cloud.firestore {
     function canManagePublicListCache(key) {
       return isAdminOrSuperAdmin() ||
         (key == 'products' && hasBackofficeScope('shop')) ||
-        (key == 'trainings' && hasBackofficeScope('trainings')) ||
+        (key == 'shootingRangePublic' && hasBackofficeScope('shootingRange')) ||
         (key == 'events' && hasBackofficeScope('events')) ||
         (key == 'blogPosts' && hasBackofficeScope('blog')) ||
         (key == 'charity' && hasBackofficeScope('help')) ||
@@ -412,7 +418,95 @@ service cloud.firestore {
 
     match /trainings/{trainingId} {
       allow read: if true;
-      allow create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('trainings');
+      allow create, update, delete: if false;
+    }
+
+    match /shootingRanges/{rangeId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('shootingRange');
+    }
+
+    match /shootingLanes/{laneId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('shootingRange');
+    }
+
+    match /shootingOffers/{offerId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('shootingRange');
+    }
+
+    match /shootingPackages/{packageId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('shootingRange');
+    }
+
+    match /shootingBlocks/{blockId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('shootingRange');
+    }
+
+    match /shootingInstructors/{instructorId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('shootingRange');
+    }
+
+    match /shootingInstructorAvailability/{availabilityId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdminOrSuperAdmin() || hasBackofficeScope('shootingRange') ||
+        (isInstructor() && request.resource.data.instructorId == request.auth.uid);
+      allow delete: if isAdminOrSuperAdmin() || hasBackofficeScope('shootingRange');
+    }
+
+    match /shootingReservations/{reservationId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.instructorId == request.auth.uid ||
+        isAdminOrSuperAdmin() ||
+        hasBackofficeScope('shootingRange')
+      );
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        isAdminOrSuperAdmin() ||
+        hasBackofficeScope('shootingRange') ||
+        resource.data.userId == request.auth.uid
+      );
+      allow delete: if isAdminOrSuperAdmin() || hasBackofficeScope('shootingRange');
+    }
+
+    match /shootingVouchers/{voucherId} {
+      allow read: if isAuthenticated() && (
+        resource.data.buyerUserId == request.auth.uid ||
+        resource.data.redeemedByUserId == request.auth.uid ||
+        isAdminOrSuperAdmin() ||
+        hasBackofficeScope('shootingRange')
+      );
+      allow create: if isAuthenticated() && request.resource.data.buyerUserId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        isAdminOrSuperAdmin() ||
+        hasBackofficeScope('shootingRange')
+      );
+      allow delete: if isAdminOrSuperAdmin() || hasBackofficeScope('shootingRange');
+    }
+
+    match /shootingVoucherRedemptions/{redemptionId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isAdminOrSuperAdmin() ||
+        hasBackofficeScope('shootingRange')
+      );
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('shootingRange');
+    }
+
+    match /shootingPolicies/{policyId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('shootingRange');
+    }
+
+    match /shootingMedia/{mediaId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('shootingRange');
     }
 
     match /events/{eventId} {
@@ -489,12 +583,7 @@ service cloud.firestore {
     }
 
     match /trainingAccess/{accessId} {
-      allow read: if isAuthenticated() && (
-        resource.data.userId == request.auth.uid ||
-        isAdminOrSuperAdmin() ||
-        hasBackofficeScope('trainings')
-      );
-      allow create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('trainings');
+      allow read, create, update, delete: if false;
     }
 
     match /promoCodes/{codeId} {
@@ -507,65 +596,20 @@ service cloud.firestore {
 
     match /courseLessons/{lessonId} {
       // Odczyt: zalogowani użytkownicy (dostęp sprawdzany w kodzie aplikacji)
-      allow read: if isAuthenticated();
+      allow read: if false;
       
       // Zapis: tylko admin
-      allow create, update, delete: if isAdminOrSuperAdmin() || hasBackofficeScope('trainings');
+      allow create, update, delete: if false;
     }
 
     // Liczniki numerów certyfikatów szkoleniowych (tylko +1 na kurs; zapis w transakcji z publicTrainingCertificates)
     match /trainingCertificateCounters/{trainingId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() &&
-        request.resource.data.keys().hasOnly(['lastSerial']) &&
-        request.resource.data.lastSerial is int &&
-        request.resource.data.lastSerial == 1;
-      allow update: if isAuthenticated() &&
-        request.resource.data.keys().hasOnly(['lastSerial']) &&
-        resource.data.lastSerial is int &&
-        request.resource.data.lastSerial == resource.data.lastSerial + 1;
-      allow delete: if false;
+      allow read, create, update, delete: if false;
     }
 
     // Publiczny rejestr certyfikatów (weryfikacja + lista na certyfikaty.html)
     match /publicTrainingCertificates/{certId} {
-      allow get, list: if true;
-
-      allow create: if isAuthenticated() &&
-        certId == request.resource.data.trainingId + '_' + request.auth.uid &&
-        request.resource.data.userId == request.auth.uid &&
-        request.resource.data.keys().hasOnly([
-          'certificateNumber',
-          'courseSlug',
-          'courseTitle',
-          'serialNumber',
-          'trainingId',
-          'recipientName',
-          'userId',
-          'issuedAt',
-        ]) &&
-        request.resource.data.trainingId is string &&
-        request.resource.data.trainingId.size() >= 4 &&
-        request.resource.data.trainingId.size() <= 128 &&
-        request.resource.data.serialNumber is int &&
-        request.resource.data.serialNumber >= 1 &&
-        request.resource.data.serialNumber < 10000000 &&
-        request.resource.data.recipientName is string &&
-        request.resource.data.recipientName.size() >= 1 &&
-        request.resource.data.recipientName.size() <= 200 &&
-        request.resource.data.courseTitle is string &&
-        request.resource.data.courseTitle.size() >= 1 &&
-        request.resource.data.courseTitle.size() <= 300 &&
-        request.resource.data.courseSlug is string &&
-        request.resource.data.courseSlug.size() >= 1 &&
-        request.resource.data.courseSlug.size() <= 120 &&
-        request.resource.data.certificateNumber is string &&
-        request.resource.data.certificateNumber.size() >= 16 &&
-        request.resource.data.certificateNumber.size() <= 500 &&
-        request.resource.data.certificateNumber.matches('^STRZELCA\\.PL/[A-Z0-9_]+/[1-9][0-9]{0,6}$') &&
-        request.resource.data.issuedAt == request.time;
-
-      allow update, delete: if false;
+      allow get, list, create, update, delete: if false;
     }
 
     match /courseProgress/{progressId} {

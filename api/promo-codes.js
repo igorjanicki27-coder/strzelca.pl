@@ -8,6 +8,7 @@ const {
 } = require('./_sso-utils');
 const {
   PROMO_CODES_COLLECTION,
+  PROMO_CODE_USAGES_COLLECTION,
   evaluatePromoCodeForOrder,
   sanitizePromoCodeInput,
   serializePromoCodeForAdmin,
@@ -144,6 +145,44 @@ module.exports = async (req, res) => {
 
     if (req.method === 'GET') {
       if (!(await requireAdmin(sessionUser, res))) return;
+
+      if (String(req.query?.view || '').trim() === 'usages') {
+        const snapshot = await db
+          .collection(PROMO_CODE_USAGES_COLLECTION)
+          .orderBy('redeemedAt', 'desc')
+          .limit(300)
+          .get();
+        const data = await Promise.all(snapshot.docs.map(async (docSnap) => {
+          const row = docSnap.data() || {};
+          const userId = String(row.userId || '').trim();
+          let displayName = '';
+          let email = '';
+          if (userId) {
+            try {
+              const profileDoc = await db.collection('userProfiles').doc(userId).get();
+              const profile = profileDoc.exists ? profileDoc.data() || {} : {};
+              displayName = String(profile.displayName || '').trim();
+              email = String(profile.email || '').trim();
+            } catch (_) {}
+          }
+          return {
+            id: docSnap.id,
+            codeId: String(row.codeId || '').trim(),
+            userId,
+            displayName,
+            email,
+            orderId: String(row.orderId || '').trim(),
+            orderNumber: String(row.orderNumber || '').trim(),
+            context: String(row.context || '').trim(),
+            itemTitle: String(row.itemTitle || '').trim(),
+            purpose: String(row.purpose || '').trim(),
+            redeemedAt: row.redeemedAt || null,
+            maskedCode: String(row.maskedCode || '').trim(),
+          };
+        }));
+        res.status(200).json({ success: true, data });
+        return;
+      }
 
       const includeExpired = readBooleanQuery(req.query?.includeExpired, false);
       const snapshot = await db

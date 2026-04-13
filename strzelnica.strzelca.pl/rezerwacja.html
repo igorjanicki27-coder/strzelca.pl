@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://strzelca.pl/consent.js?v=2026-02-06-1"></script>
+    <meta
+      name="description"
+      content="Rezerwacja osi, szkolenia z instruktorem i vouchery żetonowe — STRZELNICA STRZELCA."
+    />
+    <link rel="canonical" href="https://strzelnica.strzelca.pl/rezerwacja" />
+    <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-04-12-1" />
+    <link rel="icon" type="image/svg+xml" href="https://strzelca.pl/ikona.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Bebas+Neue&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <title>Rezerwacja — STRZELNICA STRZELCA</title>
+    <style>
+      :root {
+        --coyote: #c19a6b;
+        --bg: #090909;
+        --panel: rgba(17, 17, 17, 0.88);
+        --line: rgba(255, 255, 255, 0.08);
+        --muted: #b2aca1;
+        --text: #f6f4ef;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Manrope", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top, rgba(193, 154, 107, 0.12), transparent 28%),
+          linear-gradient(180deg, #060606 0%, #0b0b0b 100%);
+      }
+      .shell {
+        width: min(1220px, calc(100vw - 1rem));
+        margin: 0 auto;
+      }
+      .notice {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        z-index: 100;
+        padding: 0.9rem 1rem;
+        border-radius: 14px;
+        background: rgba(12, 12, 12, 0.92);
+        border: 1px solid rgba(193, 154, 107, 0.24);
+      }
+      .hidden {
+        display: none !important;
+      }
+      .topbar {
+        padding: 1rem 0;
+      }
+      .topbar-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+      }
+      .brand {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 2rem;
+        letter-spacing: 0.08em;
+      }
+      .brand small {
+        display: block;
+        color: var(--muted);
+        font-size: 0.9rem;
+        font-family: "Manrope", sans-serif;
+      }
+      .btn,
+      .ghost-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.55rem;
+        padding: 0.85rem 1.15rem;
+        border-radius: 999px;
+        border: 0;
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .btn {
+        background: var(--coyote);
+        color: #090909;
+      }
+      .ghost-btn {
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        border: 1px solid var(--line);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 1rem;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        padding: 1.4rem;
+        backdrop-filter: blur(16px);
+      }
+      h1,
+      h2 {
+        font-family: "Bebas Neue", sans-serif;
+        letter-spacing: 0.05em;
+        margin: 0 0 1rem 0;
+      }
+      h1 {
+        font-size: clamp(2.8rem, 7vw, 4.6rem);
+      }
+      p.lead {
+        color: var(--muted);
+        line-height: 1.7;
+        max-width: 760px;
+      }
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.9rem;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+      }
+      .field-full {
+        grid-column: 1 / -1;
+      }
+      label {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      input,
+      select,
+      textarea {
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text);
+        padding: 0.9rem 1rem;
+        font: inherit;
+      }
+      textarea {
+        min-height: 110px;
+        resize: vertical;
+      }
+      .slot-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.7rem;
+      }
+      .slot-chip {
+        padding: 0.9rem;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text);
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        align-items: start;
+      }
+      .slot-chip small {
+        color: var(--muted);
+      }
+      .slot-chip.is-selected {
+        border-color: rgba(193, 154, 107, 0.8);
+        background: rgba(193, 154, 107, 0.12);
+      }
+      .slot-chip.is-disabled {
+        opacity: 0.35;
+      }
+      .summary-list {
+        display: grid;
+        gap: 0.8rem;
+      }
+      .summary-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding-bottom: 0.8rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .summary-row span {
+        color: var(--muted);
+      }
+      .checkbox-list {
+        display: grid;
+        gap: 0.8rem;
+        margin: 1rem 0;
+      }
+      .checkbox-list label {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        color: var(--text);
+      }
+      .subsection {
+        margin-top: 1.4rem;
+      }
+      .list-stack {
+        display: grid;
+        gap: 0.8rem;
+      }
+      .reservation-card,
+      .voucher-card {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.03);
+        padding: 1rem;
+      }
+      .reservation-card-side,
+      .voucher-card-side {
+        display: grid;
+        gap: 0.5rem;
+        justify-items: end;
+      }
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.3rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .empty-box {
+        text-align: center;
+        color: var(--muted);
+        border: 1px dashed rgba(255, 255, 255, 0.12);
+        border-radius: 18px;
+        padding: 2rem 1rem;
+      }
+      @media (max-width: 980px) {
+        .grid,
+        .form-grid {
+          grid-template-columns: 1fr;
+        }
+        .slot-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 640px) {
+        .slot-grid {
+          grid-template-columns: 1fr;
+        }
+        .reservation-card,
+        .voucher-card,
+        .topbar-row {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .reservation-card-side,
+        .voucher-card-side {
+          justify-items: start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="shooting-range-notice" class="notice hidden"></div>
+    <div id="hotpay-form-mount" class="hidden"></div>
+
+    <header class="topbar">
+      <div class="shell topbar-row">
+        <a class="brand" href="https://strzelnica.strzelca.pl/">
+          STRZELNICA
+          <small>STRZELCA.PL</small>
+        </a>
+        <div>
+          <a class="ghost-btn" href="https://konto.strzelca.pl/profil.html">Profil użytkownika</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="panel">
+        <h1>Rezerwacja i vouchery</h1>
+        <p class="lead">
+          Wybierasz konkretną oś, praktyczny slot czasowy i sposób płatności. Szkolenia z instruktorem pokazują wyłącznie dostępnych instruktorów.
+        </p>
+      </section>
+
+      <section class="grid">
+        <div class="panel">
+          <h2>Nowa rezerwacja</h2>
+          <form id="reservation-form">
+            <div class="form-grid">
+              <div class="field">
+                <label for="reservation-type">Typ rezerwacji</label>
+                <select id="reservation-type" name="type">
+                  <option value="lane">Rezerwacja osi</option>
+                  <option value="training">Szkolenie z instruktorem</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="payment-method">Płatność</label>
+                <select id="payment-method" name="paymentMethod">
+                  <option value="hotpay">HotPay</option>
+                  <option value="tokens">Żetony</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="reservation-lane">Oś</label>
+                <select id="reservation-lane" name="laneId"></select>
+              </div>
+              <div class="field">
+                <label for="reservation-date">Data</label>
+                <input id="reservation-date" name="date" type="date" />
+              </div>
+              <div id="package-wrap" class="field field-full hidden">
+                <label for="reservation-package">Pakiet szkoleniowy</label>
+                <select id="reservation-package" name="packageId"></select>
+              </div>
+              <div id="instructor-wrap" class="field field-full hidden">
+                <label for="reservation-instructor">Instruktor</label>
+                <select id="reservation-instructor" name="instructorId">
+                  <option value="">Najpierw wybierz slot</option>
+                </select>
+              </div>
+              <input id="reservation-start" name="startsAt" type="hidden" />
+              <input id="reservation-end" name="endsAt" type="hidden" />
+              <div class="field field-full">
+                <label>Dostępne sloty</label>
+                <div id="availability-grid" class="slot-grid"></div>
+              </div>
+              <div class="field field-full">
+                <label for="reservation-notes">Notatki do rezerwacji</label>
+                <textarea id="reservation-notes" name="notes" placeholder="Dodatkowe uwagi dla operatora lub instruktora."></textarea>
+              </div>
+            </div>
+
+            <div class="checkbox-list">
+              <label>
+                <input type="checkbox" name="policyAccepted" />
+                <span>Akceptuję regulamin strzelnicy. Ta zgoda jest obowiązkowa przy pierwszej rezerwacji.</span>
+              </label>
+              <div id="lane-declarations">
+                <label>
+                  <input type="checkbox" name="isAdult" />
+                  <span>Oświadczam, że jestem osobą pełnoletnią.</span>
+                </label>
+                <label>
+                  <input type="checkbox" name="hasRangeOfficerPermission" />
+                  <span>Oświadczam, że posiadam uprawnienia prowadzącego strzelanie.</span>
+                </label>
+              </div>
+            </div>
+
+            <button class="btn" type="submit">Zarezerwuj termin</button>
+          </form>
+        </div>
+
+        <aside class="panel">
+          <h2>Podsumowanie</h2>
+          <div class="summary-list">
+            <div class="summary-row">
+              <span>Oś</span>
+              <strong id="summary-range">Wybierz oś</strong>
+            </div>
+            <div class="summary-row">
+              <span>Termin</span>
+              <strong id="summary-slot">Wybierz termin</strong>
+            </div>
+            <div class="summary-row">
+              <span>Płatność</span>
+              <strong id="summary-price">0,00 zł</strong>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h2>Twoje rezerwacje</h2>
+            <div id="my-reservations-list" class="list-stack">
+              <div class="empty-box">Zaloguj się, aby zobaczyć listę rezerwacji.</div>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <section id="vouchery" class="grid">
+        <div class="panel">
+          <h2>Kup voucher</h2>
+          <form id="voucher-form" class="form-grid">
+            <div class="field">
+              <label for="voucher-token-count">Liczba żetonów</label>
+              <input id="voucher-token-count" type="number" name="tokens" min="1" step="1" />
+            </div>
+            <div class="field">
+              <label for="voucher-recipient-name">Dla kogo</label>
+              <input id="voucher-recipient-name" type="text" name="recipientName" placeholder="Imię i nazwisko obdarowanego" />
+            </div>
+            <div class="field field-full">
+              <label for="voucher-message">Wiadomość na voucherze</label>
+              <textarea id="voucher-message" name="message" placeholder="Krótka dedykacja lub komunikat."></textarea>
+            </div>
+            <div class="field field-full">
+              <button class="btn" type="submit">Kup voucher przez HotPay</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel">
+          <h2>Zrealizuj voucher</h2>
+          <form id="voucher-redeem-form" class="form-grid">
+            <div class="field field-full">
+              <label for="voucher-code">Kod vouchera</label>
+              <input id="voucher-code" type="text" name="code" placeholder="STRZELNICA-XXXX-XXXX-XXXX" />
+            </div>
+            <div class="field field-full">
+              <button class="ghost-btn" type="submit">Dopisz żetony do konta</button>
+            </div>
+          </form>
+
+          <div class="subsection">
+            <h2>Twoje vouchery</h2>
+            <div id="voucher-list" class="list-stack">
+              <div class="empty-box">Zaloguj się, aby zobaczyć swoje vouchery.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./rezerwacja.mjs"></script>
+  </body>
+</html>

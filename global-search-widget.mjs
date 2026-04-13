@@ -28,6 +28,11 @@ function normalizeText(input) {
     .trim();
 }
 
+function setLauncherBottomCssVar(bottomPx) {
+  if (typeof document === "undefined") return;
+  document.documentElement.style.setProperty("--strzelca-search-launcher-bottom", `${bottomPx}px`);
+}
+
 function stripHtml(input) {
   if (!input) return "";
   return String(input)
@@ -436,8 +441,10 @@ async function main() {
   function updateLauncherOffset() {
     if (currentUser) {
       launcher.style.bottom = "88px";
+      setLauncherBottomCssVar(88);
     } else {
       launcher.style.removeProperty("bottom");
+      setLauncherBottomCssVar(16);
     }
   }
 

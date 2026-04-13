@@ -1,6 +1,39 @@
 (function () {
   if (typeof window === 'undefined') return;
 
+  const adminVoucherState = {
+    promoCodes: [],
+    promoClaims: [],
+  };
+
+  function countVoucherRedemptions(claims) {
+    return (Array.isArray(claims) ? claims : []).reduce((sum, claim) => {
+      if (Array.isArray(claim?.redemptions) && claim.redemptions.length) return sum + claim.redemptions.length;
+      return sum + Number(claim?.count || 0);
+    }, 0);
+  }
+
+  function updateVoucherSummary() {
+    const codes = Array.isArray(adminVoucherState.promoCodes) ? adminVoucherState.promoCodes : [];
+    const claims = Array.isArray(adminVoucherState.promoClaims) ? adminVoucherState.promoClaims : [];
+    const activeCount = codes.filter((item) => item?.active !== false).length;
+    const inactiveCount = codes.filter((item) => item?.active === false).length;
+    const claimCount = countVoucherRedemptions(claims);
+    const uniqueUsers = new Set(
+      claims
+        .map((claim) => String(claim?.userId || '').trim())
+        .filter(Boolean)
+    ).size;
+    const activeEl = document.getElementById('bazar-promo-count-active');
+    const inactiveEl = document.getElementById('bazar-promo-count-inactive');
+    const claimsEl = document.getElementById('bazar-promo-count-claims');
+    const usersEl = document.getElementById('bazar-promo-count-users');
+    if (activeEl) activeEl.textContent = String(activeCount);
+    if (inactiveEl) inactiveEl.textContent = String(inactiveCount);
+    if (claimsEl) claimsEl.textContent = String(claimCount);
+    if (usersEl) usersEl.textContent = String(uniqueUsers);
+  }
+
   function esc(value) {
     return String(value ?? '')
       .replace(/&/g, '&amp;')
@@ -62,13 +95,13 @@
   }
 
   function ensureBazarBackofficeUi() {
-    const tab = document.getElementById('tab-bazar');
+    const tab = document.getElementById('tab-promo-codes');
     if (!tab || document.getElementById('bazar-commerce-admin-root')) return;
     const root = document.createElement('div');
     root.id = 'bazar-commerce-admin-root';
     root.className = 'space-y-8 mt-8';
     root.innerHTML = `
-      <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <section class="admin-card">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-xl font-bold coyote-text">Cennik i żetony</h2>
@@ -83,7 +116,7 @@
           <div id="bazar-company-queue" class="space-y-3 text-sm text-zinc-300"></div>
         </section>
       </div>
-      <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <section class="admin-card">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-xl font-bold coyote-text">Zgłoszenia ogłoszeń</h2>
@@ -97,7 +130,7 @@
           <div id="bazar-purchases-queue" class="space-y-3 text-sm text-zinc-300"></div>
         </section>
       </div>
-      <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <section class="admin-card">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-xl font-bold coyote-text">Webhooki Stripe</h2>
@@ -125,33 +158,38 @@
       </div>
       <section class="admin-card">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-bold coyote-text">Kody promocyjne żetonów</h2>
+          <h2 class="text-xl font-bold coyote-text">Żetony / Vouchery / Kody</h2>
         </div>
-        <div class="grid grid-cols-1 xl:grid-cols-[0.95fr,1.05fr] gap-8">
-          <section class="rounded-2xl border border-zinc-700 bg-zinc-900/40 p-4 space-y-4">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <div class="rounded-2xl border border-zinc-700 bg-zinc-950/35 px-4 py-3">
+            <div class="text-[11px] uppercase tracking-widest text-zinc-500">Aktywne vouchery</div>
+            <div id="bazar-promo-count-active" class="text-2xl font-semibold text-white mt-1">0</div>
+          </div>
+          <div class="rounded-2xl border border-zinc-700 bg-zinc-950/35 px-4 py-3">
+            <div class="text-[11px] uppercase tracking-widest text-zinc-500">Wyłączone</div>
+            <div id="bazar-promo-count-inactive" class="text-2xl font-semibold text-white mt-1">0</div>
+          </div>
+          <div class="rounded-2xl border border-zinc-700 bg-zinc-950/35 px-4 py-3">
+            <div class="text-[11px] uppercase tracking-widest text-zinc-500">Łączne użycia</div>
+            <div id="bazar-promo-count-claims" class="text-2xl font-semibold text-white mt-1">0</div>
+          </div>
+          <div class="rounded-2xl border border-zinc-700 bg-zinc-950/35 px-4 py-3">
+            <div class="text-[11px] uppercase tracking-widest text-zinc-500">Użytkownicy</div>
+            <div id="bazar-promo-count-users" class="text-2xl font-semibold text-white mt-1">0</div>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 xl:grid-cols-[0.84fr,1.16fr] gap-5">
+          <section class="rounded-2xl border border-zinc-700 bg-zinc-900/40 p-4 lg:p-5 space-y-4">
             <div>
-              <div class="text-xs uppercase tracking-widest text-zinc-500 mb-2">Nowy kod</div>
-              <p class="text-sm text-zinc-500">Kod może obniżać cenę pakietu żetonów albo dopisywać żetony do konta bez płatności.</p>
+              <div class="text-xs uppercase tracking-widest text-zinc-500 mb-2">Nowy voucher żetonów</div>
+              <p class="text-sm text-zinc-500">Tutaj tworzysz wyłącznie kody na darmowe żetony. Zniżki do sklepu zostają w standardowej sekcji kodów powyżej.</p>
             </div>
+            <label class="block">
+              <span class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">Kod</span>
+              <input id="bazar-promo-code" class="w-full" maxlength="64" placeholder="BAZAR-START" />
+            </label>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <label class="block">
-                <span class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">Kod</span>
-                <input id="bazar-promo-code" class="w-full" maxlength="64" placeholder="BAZAR-START" />
-              </label>
-              <label class="block">
-                <span class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">Typ</span>
-                <select id="bazar-promo-kind" class="w-full">
-                  <option value="discount">Rabat na zakup</option>
-                  <option value="grant">Gratisowe żetony</option>
-                </select>
-              </label>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <label class="block" id="bazar-promo-discount-wrap">
-                <span class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">Rabat (%)</span>
-                <input id="bazar-promo-discount" class="w-full" type="number" min="1" max="100" value="10" />
-              </label>
-              <label class="block hidden" id="bazar-promo-grant-wrap">
                 <span class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">Żetony gratis</span>
                 <input id="bazar-promo-grant" class="w-full" type="number" min="1" value="1" />
               </label>
@@ -186,15 +224,30 @@
             </label>
             <button type="button" id="bazar-promo-save-btn" class="btn-admin">Zapisz kod</button>
           </section>
-          <section class="space-y-4">
-            <div class="flex items-center justify-between gap-4">
-              <div>
-                <div class="text-xs uppercase tracking-widest text-zinc-500">Lista kodów</div>
-                <div class="text-sm text-zinc-400 mt-1">Kody gratisowe dodają żetony do konta, a rabatowe zmieniają cenę pakietów w modalu zakupu.</div>
+          <section class="space-y-4 min-w-0">
+            <section class="rounded-2xl border border-zinc-700 bg-zinc-900/30 p-4 space-y-3">
+              <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                <div>
+                  <div class="text-xs uppercase tracking-widest text-zinc-500">Lista voucherów</div>
+                  <div class="text-sm text-zinc-400 mt-1">Kody dodające żetony do konta po wpisaniu przez użytkownika.</div>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3 lg:items-center">
+                  <input id="bazar-promo-filter" class="w-full sm:w-72" placeholder="Filtruj vouchery po kodzie lub notatce" />
+                  <button type="button" id="bazar-promo-refresh-btn" class="px-4 py-2 rounded-xl border border-zinc-700 text-zinc-200 hover:border-[#C19A6B] hover:text-white transition">Odśwież</button>
+                </div>
               </div>
-              <button type="button" id="bazar-promo-refresh-btn" class="px-4 py-2 rounded-xl border border-zinc-700 text-zinc-200 hover:border-[#C19A6B] hover:text-white transition">Odśwież</button>
-            </div>
-            <div id="bazar-promo-list" class="space-y-3 text-sm text-zinc-300"></div>
+              <div id="bazar-promo-list" class="grid grid-cols-1 2xl:grid-cols-2 gap-3 text-sm text-zinc-300"></div>
+            </section>
+            <section class="rounded-2xl border border-zinc-700 bg-zinc-900/30 p-4 space-y-3">
+              <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                <div>
+                  <div class="text-xs uppercase tracking-widest text-zinc-500">Historia użycia voucherów</div>
+                  <div class="text-sm text-zinc-400 mt-1">Filtruj po kodzie, użytkowniku, e-mailu albo UID.</div>
+                </div>
+                <input id="bazar-promo-claims-filter" class="w-full lg:w-80" placeholder="Filtruj po kodzie, użytkowniku lub e-mailu" />
+              </div>
+              <div id="bazar-promo-claims-list" class="grid grid-cols-1 2xl:grid-cols-2 gap-3 text-sm text-zinc-300"></div>
+            </section>
           </section>
         </div>
       </section>
@@ -205,30 +258,32 @@
   function renderConfig(config) {
     const el = document.getElementById('bazar-commerce-config');
     if (!el) return;
-    const packages = Array.isArray(config.packages) ? config.packages : [];
+    const tokenPricing = config.tokenPricing || {};
     const actions = config.actions || {};
     el.innerHTML = `
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <label>
+          <span class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">Cena 1 żetonu (gr)</span>
+          <input type="number" id="bazar-cfg-token-price" class="w-full" min="0" value="${esc(tokenPricing.tokenPriceCents || 0)}" />
+        </label>
+        <label>
+          <span class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">Max liczba żetonów na raz</span>
+          <input type="number" id="bazar-cfg-max-quantity" class="w-full" min="1" max="10000" value="${esc(tokenPricing.maxPurchaseQuantity || 10000)}" />
+        </label>
         <label>
           <span class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">Darmowe aktywne oferty prywatne</span>
           <input type="number" id="bazar-cfg-free-limit" class="w-full" value="${esc(config.privateFreeActiveOffers || 5)}" />
         </label>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <label>
           <span class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">Darmowe odświeżenie prywatne po dniach</span>
           <input type="number" id="bazar-cfg-free-refresh" class="w-full" value="${esc(config.privateFreeRefreshDays || 25)}" />
         </label>
-      </div>
-      <div class="border border-zinc-700 rounded-2xl p-4">
-        <div class="text-xs uppercase tracking-widest text-zinc-500 mb-3">Pakiety żetonów</div>
-        <div class="space-y-3">
-          ${packages.map((pkg, idx) => `
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-3" data-package-row="${idx}">
-              <input class="w-full" data-field="label" value="${esc(pkg.label)}" />
-              <input class="w-full" type="number" data-field="tokens" value="${esc(pkg.tokens)}" />
-              <input class="w-full" type="number" data-field="priceCents" value="${esc(pkg.priceCents)}" />
-              <label class="flex items-center gap-2 text-sm"><input type="checkbox" data-field="active" ${pkg.active !== false ? 'checked' : ''} /> aktywny</label>
-            </div>
-          `).join('')}
+        <div class="rounded-2xl border border-zinc-700 bg-zinc-900/40 p-4 text-xs text-zinc-400">
+          <div class="uppercase tracking-widest text-zinc-500 mb-2">Automatyczne pakiety</div>
+          <div>Presety zakupu: <strong class="text-zinc-100">10, 50, 100, 1000</strong></div>
+          <div class="mt-2">Zniżki: <strong class="text-zinc-100">50-99: 2%</strong>, <strong class="text-zinc-100">100-999: 5%</strong>, <strong class="text-zinc-100">1000-9999: 10%</strong>, <strong class="text-zinc-100">10000: 15%</strong>.</div>
         </div>
       </div>
       <div class="border border-zinc-700 rounded-2xl p-4">
@@ -248,13 +303,6 @@
   }
 
   async function saveConfig() {
-    const packages = Array.from(document.querySelectorAll('[data-package-row]')).map((row, idx) => ({
-      id: `tokens_${idx === 0 ? 1 : idx === 1 ? 10 : idx === 2 ? 50 : 100}`,
-      label: row.querySelector('[data-field="label"]')?.value || '',
-      tokens: Number(row.querySelector('[data-field="tokens"]')?.value || 0),
-      priceCents: Number(row.querySelector('[data-field="priceCents"]')?.value || 0),
-      active: row.querySelector('[data-field="active"]')?.checked === true,
-    }));
     const actions = {};
     document.querySelectorAll('[data-action-row]').forEach((row) => {
       const key = row.getAttribute('data-action-row');
@@ -269,7 +317,11 @@
       await apiJson('/admin/config', 'PUT', {
         privateFreeActiveOffers: Number(document.getElementById('bazar-cfg-free-limit')?.value || 5),
         privateFreeRefreshDays: Number(document.getElementById('bazar-cfg-free-refresh')?.value || 25),
-        packages,
+        tokenPricing: {
+          tokenPriceCents: Number(document.getElementById('bazar-cfg-token-price')?.value || 0),
+          presetQuantities: [10, 50, 100, 1000],
+          maxPurchaseQuantity: Number(document.getElementById('bazar-cfg-max-quantity')?.value || 10000),
+        },
         actions,
       });
       window.showNotification?.('Konfiguracja Bazaru została zapisana.', 'success');
@@ -411,36 +463,50 @@
   }
 
   function renderPromoCodes(promoCodes) {
+    adminVoucherState.promoCodes = Array.isArray(promoCodes) ? promoCodes.slice() : [];
+    updateVoucherSummary();
     const el = document.getElementById('bazar-promo-list');
     if (!el) return;
-    if (!promoCodes.length) {
-      el.innerHTML = '<div class="text-zinc-500">Brak zapisanych kodów promocyjnych.</div>';
+    const filterValue = String(document.getElementById('bazar-promo-filter')?.value || '').trim().toLowerCase();
+    const rows = adminVoucherState.promoCodes.filter((item) => {
+      if (!filterValue) return true;
+      return [item.code, item.note]
+        .map((value) => String(value || '').toLowerCase())
+        .some((value) => value.includes(filterValue));
+    });
+    if (!rows.length) {
+      el.innerHTML = '<div class="text-zinc-500 rounded-2xl border border-dashed border-zinc-700 px-4 py-6">Brak zapisanych kodów promocyjnych.</div>';
       return;
     }
-    el.innerHTML = promoCodes.map((item) => {
-      const isGrant = item.kind === 'grant';
-      const detail = isGrant
-        ? `${esc(item.grantTokens || 0)} ${pluralizeŻetony(item.grantTokens || 0)}`
-        : `Rabat ${esc(item.discountPercent || 0)}%`;
+    el.innerHTML = rows.map((item) => {
+      const detail = `${esc(item.grantTokens || 0)} ${pluralizeŻetony(item.grantTokens || 0)}`;
       const usage = item.maxTotalUses > 0
         ? `${esc(item.usageCount || 0)} / ${esc(item.maxTotalUses)} użyć`
         : `${esc(item.usageCount || 0)} użyć`;
       return `
-        <article class="rounded-2xl border border-zinc-700 bg-zinc-900/40 p-4">
-          <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+        <article class="rounded-2xl border border-zinc-700 bg-zinc-950/35 p-4">
+          <div class="flex flex-col gap-3">
             <div>
               <div class="flex flex-wrap items-center gap-2">
                 <div class="font-semibold text-white">${esc(item.code || 'KOD')}</div>
                 <span class="px-2 py-1 rounded-full text-[11px] font-bold ${item.active !== false ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300' : 'bg-zinc-500/10 border border-zinc-500/30 text-zinc-400'}">
                   ${item.active !== false ? 'Aktywny' : 'Wyłączony'}
                 </span>
-                <span class="px-2 py-1 rounded-full text-[11px] font-bold ${isGrant ? 'bg-sky-500/15 border border-sky-500/30 text-sky-300' : 'bg-[#C19A6B]/15 border border-[#C19A6B]/30 text-[#C19A6B]'}">
-                  ${isGrant ? 'Gratisowe żetony' : 'Rabat na zakup'}
+                <span class="px-2 py-1 rounded-full text-[11px] font-bold bg-sky-500/15 border border-sky-500/30 text-sky-300">
+                  Voucher żetonów
                 </span>
               </div>
-              <div class="text-sm text-zinc-300 mt-2">${detail}</div>
-              <div class="text-xs text-zinc-500 mt-2">${usage} • max na użytkownika: ${esc(item.maxUsesPerUser || 1)}</div>
-              <div class="text-xs text-zinc-500 mt-1">Od: ${esc(fmtDateTime(item.startsAt))} • Do: ${esc(fmtDateTime(item.expiresAt))}</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+                <div class="rounded-xl border border-zinc-800 bg-zinc-900/40 px-3 py-2">
+                  <div class="text-[10px] uppercase tracking-widest text-zinc-600 mb-1">Wartość</div>
+                  <div class="text-sm text-zinc-200">${detail}</div>
+                </div>
+                <div class="rounded-xl border border-zinc-800 bg-zinc-900/40 px-3 py-2">
+                  <div class="text-[10px] uppercase tracking-widest text-zinc-600 mb-1">Użycia</div>
+                  <div class="text-sm text-zinc-200">${usage}</div>
+                </div>
+              </div>
+              <div class="text-xs text-zinc-500 mt-2">Max na użytkownika: ${esc(item.maxUsesPerUser || 1)} • Od: ${esc(fmtDateTime(item.startsAt))} • Do: ${esc(fmtDateTime(item.expiresAt))}</div>
               ${item.note ? `<div class="text-xs text-zinc-400 mt-2">${esc(item.note)}</div>` : ''}
             </div>
             <div class="flex flex-wrap gap-2">
@@ -467,10 +533,40 @@
     });
   }
 
-  function syncPromoKindFields() {
-    const kind = document.getElementById('bazar-promo-kind')?.value || 'discount';
-    document.getElementById('bazar-promo-discount-wrap')?.classList.toggle('hidden', kind !== 'discount');
-    document.getElementById('bazar-promo-grant-wrap')?.classList.toggle('hidden', kind !== 'grant');
+  function renderPromoClaims(claims) {
+    adminVoucherState.promoClaims = Array.isArray(claims) ? claims.slice() : [];
+    updateVoucherSummary();
+    const el = document.getElementById('bazar-promo-claims-list');
+    if (!el) return;
+    const filterValue = String(document.getElementById('bazar-promo-claims-filter')?.value || '').trim().toLowerCase();
+    const rows = adminVoucherState.promoClaims.filter((claim) => {
+      if (!filterValue) return true;
+      return [claim.code, claim.userDisplayName, claim.userEmail, claim.userId]
+        .map((value) => String(value || '').toLowerCase())
+        .some((value) => value.includes(filterValue));
+    });
+    if (!rows.length) {
+      el.innerHTML = '<div class="text-zinc-500 rounded-2xl border border-dashed border-zinc-700 px-4 py-6">Brak użytych voucherów.</div>';
+      return;
+    }
+    el.innerHTML = rows.map((claim) => `
+      <article class="rounded-2xl border border-zinc-700 bg-zinc-950/35 p-4">
+        <div class="flex flex-col gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="font-semibold text-white">${esc(claim.code || 'KOD')}</div>
+            <span class="text-xs text-zinc-500">${esc(claim.count || 0)} użyć</span>
+          </div>
+          <div class="text-sm text-zinc-300">${esc(claim.userDisplayName || 'Użytkownik')} ${claim.userEmail ? `• ${esc(claim.userEmail)}` : ''}</div>
+          ${claim.userId ? `<div class="text-[11px] uppercase tracking-widest text-zinc-600">UID: ${esc(claim.userId)}</div>` : ''}
+          ${Array.isArray(claim.redemptions) && claim.redemptions.length ? claim.redemptions.map((row) => `
+            <div class="text-xs text-zinc-500 border-t border-zinc-800 pt-2">
+              ${esc(fmtDateTime(row.usedAt || row.redeemedAt || claim.updatedAt))} • ${row.grantTokens ? `${esc(row.grantTokens)} ${pluralizeŻetony(row.grantTokens)}` : esc(row.kind || 'użycie')}
+              ${row.purchaseId ? ` • purchaseId: ${esc(row.purchaseId)}` : ''}
+            </div>
+          `).join('') : `<div class="text-xs text-zinc-500">Ostatnia aktywność: ${esc(fmtDateTime(claim.updatedAt))}</div>`}
+        </div>
+      </article>
+    `).join('');
   }
 
   function bindManualGrant() {
@@ -505,25 +601,29 @@
   }
 
   function bindPromoCodes() {
-    const kindSelect = document.getElementById('bazar-promo-kind');
     const saveBtn = document.getElementById('bazar-promo-save-btn');
     const refreshBtn = document.getElementById('bazar-promo-refresh-btn');
-    if (kindSelect && !kindSelect.dataset.bound) {
-      kindSelect.dataset.bound = '1';
-      kindSelect.addEventListener('change', syncPromoKindFields);
-    }
-    syncPromoKindFields();
+    const filterInput = document.getElementById('bazar-promo-filter');
+    const claimsFilterInput = document.getElementById('bazar-promo-claims-filter');
     if (refreshBtn && !refreshBtn.dataset.bound) {
       refreshBtn.dataset.bound = '1';
       refreshBtn.addEventListener('click', () => loadBazarCommerceAdmin());
+    }
+    if (filterInput && !filterInput.dataset.bound) {
+      filterInput.dataset.bound = '1';
+      filterInput.addEventListener('input', () => renderPromoCodes(adminVoucherState.promoCodes));
+    }
+    if (claimsFilterInput && !claimsFilterInput.dataset.bound) {
+      claimsFilterInput.dataset.bound = '1';
+      claimsFilterInput.addEventListener('input', () => renderPromoClaims(adminVoucherState.promoClaims));
     }
     if (!saveBtn || saveBtn.dataset.bound) return;
     saveBtn.dataset.bound = '1';
     saveBtn.addEventListener('click', async () => {
       const payload = {
         code: (document.getElementById('bazar-promo-code')?.value || '').trim().toUpperCase(),
-        kind: document.getElementById('bazar-promo-kind')?.value || 'discount',
-        discountPercent: Number(document.getElementById('bazar-promo-discount')?.value || 0),
+        kind: 'grant',
+        discountPercent: 0,
         grantTokens: Number(document.getElementById('bazar-promo-grant')?.value || 0),
         maxTotalUses: Number(document.getElementById('bazar-promo-max-total')?.value || 0),
         maxUsesPerUser: Number(document.getElementById('bazar-promo-max-user')?.value || 1),
@@ -553,13 +653,14 @@
   async function loadBazarCommerceAdmin() {
     ensureBazarBackofficeUi();
     try {
-      const [configData, companiesData, reportsData, purchasesData, webhooksData, promoCodesData] = await Promise.all([
+      const [configData, companiesData, reportsData, purchasesData, webhooksData, promoCodesData, promoClaimsData] = await Promise.all([
         apiGet('/admin/config'),
         apiGet('/admin/companies'),
         apiGet('/admin/reports'),
         apiGet('/admin/purchases'),
         apiGet('/admin/webhooks'),
         apiGet('/admin/promo-codes'),
+        apiGet('/admin/promo-code-claims'),
       ]);
       renderConfig(configData.config || {});
       renderCompanies(companiesData.companies || []);
@@ -567,6 +668,7 @@
       renderPurchases(purchasesData.purchases || []);
       renderWebhooks(webhooksData.webhooks || []);
       renderPromoCodes(promoCodesData.promoCodes || []);
+      renderPromoClaims(promoClaimsData.claims || []);
       bindManualGrant();
       bindPromoCodes();
     } catch (error) {
@@ -574,10 +676,10 @@
     }
   }
 
-  const originalLoadBazar = window.loadBazar;
-  window.loadBazar = async function patchedLoadBazar() {
-    if (typeof originalLoadBazar === 'function') {
-      await originalLoadBazar();
+  const originalLoadPromoCodes = window.loadPromoCodes;
+  window.loadPromoCodes = async function patchedLoadPromoCodes() {
+    if (typeof originalLoadPromoCodes === 'function') {
+      await originalLoadPromoCodes();
     }
     await loadBazarCommerceAdmin();
   };

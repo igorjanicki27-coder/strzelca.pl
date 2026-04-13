@@ -223,7 +223,8 @@
       .contact-modal-overlay {
         position: fixed;
         inset: 0;
-        z-index: 100;
+        /* Nad sticky nav / karuzelą; pod modalem logowania auth-widget (2147483646) i belką SSO (2147483647). */
+        z-index: 2147483640;
         background: rgba(0,0,0,0.92);
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
@@ -258,22 +259,6 @@
       html.kontakt-embed body {
         overflow: visible !important;
         min-height: 100vh !important;
-      }
-      html.kontakt-embed .contact-modal-overlay.kontakt-embed-visible {
-        position: static !important;
-        inset: auto !important;
-        min-height: 100vh !important;
-        background: transparent !important;
-        backdrop-filter: none !important;
-        -webkit-backdrop-filter: none !important;
-        display: flex !important;
-        align-items: flex-start !important;
-        justify-content: center !important;
-        padding: 1rem !important;
-        z-index: 1 !important;
-      }
-      html.kontakt-embed .contact-modal-overlay.kontakt-embed-visible.hidden {
-        display: flex !important;
       }
 
       input, select, textarea {
@@ -808,6 +793,7 @@
         getHeaderProfileFromCache,
         setHeaderProfileCache,
       } from "https://strzelca.pl/header-profile-cache.mjs?v=2026-03-21-1";
+      import { attachCarousel3dGallery } from "https://strzelca.pl/carousel-3d-gallery.mjs?v=2026-04-13-1";
       import { redirectIfHubTileDisabled } from "https://strzelca.pl/hub-tile-subdomain-guard.mjs?v=2026-04-08-1";
 
       await redirectIfHubTileDisabled("kontakt");
@@ -941,6 +927,10 @@
         } else {
           if (loginBtn) loginBtn.classList.remove("hidden");
           if (userPanel) userPanel.classList.add("hidden");
+          if (formCardDesc) {
+            formCardDesc.innerHTML =
+              '<i class="fa-solid fa-envelope-open-text" style="color: var(--coyote);"></i> Otwórz formularz kontaktowy';
+          }
         }
       }
 
@@ -957,12 +947,20 @@
         updateUserInterface(user);
       });
 
+      const contactCarousel3d = attachCarousel3dGallery({
+        viewport: document.querySelector('#arsenal .carousel-viewport'),
+        track: document.getElementById('contact-track'),
+        cardSelector: '.contact-card',
+      });
+      window.addEventListener('resize', () => {
+        contactCarousel3d.refresh();
+      });
+
       if (document.documentElement.classList.contains("kontakt-embed")) {
         const modal = document.getElementById("contact-form-modal");
         if (modal) {
           modal.onclick = null;
           modal.classList.remove("hidden");
-          modal.classList.add("kontakt-embed-visible");
         }
         const params = new URLSearchParams(location.search);
         const rawPrefill = params.get("prefill");
@@ -1082,5 +1080,6 @@
     <script type="module" src="https://strzelca.pl/auth-widget.mjs?v=2026-04-12-4"></script>
     <script type="module" src="https://strzelca.pl/messages-widget.mjs?v=2026-03-23-1"></script>
     <script type="module" src="https://strzelca.pl/global-search-widget.mjs?v=2026-03-24-1"></script>
-  </body>
+  <script type="module" src="https://strzelca.pl/token-balance-badge.mjs?v=2026-04-13-2"></script>
+</body>
 </html>

@@ -24,8 +24,8 @@ const services = [
     type: 'website'
   },
   {
-    name: 'szkolenia.strzelca.pl',
-    url: 'https://szkolenia.strzelca.pl',
+    name: 'strzelnica.strzelca.pl',
+    url: 'https://strzelnica.strzelca.pl',
     type: 'website'
   },
   {

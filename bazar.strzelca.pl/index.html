@@ -66,22 +66,23 @@
         }
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: var(--dark-bg);
+            background-color: #0a0a0a;
             color: #e5e5e5;
             margin: 0;
             overflow-x: hidden;
         }
         .main-wrapper {
             min-height: 100vh;
+            min-height: 100dvh;
             width: 100%;
             background-color: #0a0a0a;
             background-image:
                 var(--strzelca-bg-vignette),
-                linear-gradient(rgba(10,10,10,0.55) 0%, #0a0a0a 40%),
+                linear-gradient(rgba(10, 10, 10, 0.1) 0%, rgba(10, 10, 10, 0.4) 50%, #0a0a0a 100%),
                 url('https://strzelca.pl/tlo.png');
             background-size: cover, cover, cover;
             background-position: center center, top center, top center;
-            background-attachment: fixed;
+            background-repeat: no-repeat;
             display: flex;
             flex-direction: column;
         }
@@ -379,17 +380,21 @@
             font-size: 12px;
             color: #9a9aa0;
         }
-        .seller-segment {
-            display: inline-flex;
+        .seller-segment,
+        .condition-segment {
+            display: flex;
             align-items: center;
             flex-wrap: wrap;
             gap: 8px;
-            padding: 6px;
+            padding: 8px;
             border-radius: 16px;
             background: rgba(255,255,255,0.03);
             border: 1px solid rgba(255,255,255,0.08);
+            width: 100%;
+            box-sizing: border-box;
         }
-        .seller-segment button {
+        .seller-segment button,
+        .condition-segment button {
             border: none;
             background: transparent;
             color: #a3a3a6;
@@ -401,10 +406,29 @@
             letter-spacing: 0.08em;
             cursor: pointer;
             transition: background 0.2s ease, color 0.2s ease;
+            flex: 1 1 auto;
+            min-width: 0;
+            text-align: center;
         }
-        .seller-segment button.active {
+        .seller-segment button.active,
+        .condition-segment button.active {
             background: rgba(29, 78, 216, 0.22);
             color: #dbeafe;
+        }
+        .seller-condition-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+            align-items: start;
+        }
+        @media (max-width: 640px) {
+            .seller-condition-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+        }
+        .filter-block--seller-condition .seller-condition-cell {
+            min-width: 0;
         }
         .filter-bar {
             position: relative;
@@ -662,7 +686,10 @@
             margin-top: 8px;
             color: #8f8f97;
             font-size: 12px;
-            min-height: 18px;
+            line-height: 1.45;
+        }
+        .location-meta.hidden {
+            display: none;
         }
         .radius-row {
             display: grid;
@@ -676,15 +703,45 @@
             border: 1px solid rgba(255,255,255,0.08);
             background: rgba(0,0,0,0.22);
         }
-        .price-range-values {
-            display: inline-flex;
+        .price-range-inputs-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .price-input-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+        }
+        .price-input-label {
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #8f8f97;
+        }
+        .price-input-field {
+            display: flex;
             align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            color: #f3f4f6;
+            gap: 8px;
+        }
+        .price-input-field .filter-input {
+            flex: 1 1 auto;
+            min-width: 0;
+            margin: 0 !important;
+        }
+        .price-input-unit {
+            flex-shrink: 0;
             font-size: 13px;
             font-weight: 700;
-            margin-bottom: 10px;
+            color: #c4c4cc;
+        }
+        @media (max-width: 480px) {
+            .price-range-inputs-row {
+                grid-template-columns: 1fr;
+            }
         }
         .range-track-wrap {
             position: relative;
@@ -777,6 +834,121 @@
         }
         .filter-select:focus {
             border-color: rgba(193,154,107,0.5);
+        }
+        .floating-controls-stack {
+            position: fixed;
+            right: 16px;
+            bottom: calc(var(--strzelca-search-launcher-bottom, 16px) + 56px + 14px);
+            z-index: 2147483646;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: flex-end;
+        }
+        .floating-trigger-btn {
+            width: 56px;
+            height: 56px;
+            padding: 0;
+            margin: 0;
+            border-radius: 999px;
+            border: 1px solid rgba(193, 154, 107, 0.45);
+            background: rgba(10, 10, 10, 0.78);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: rgba(193, 154, 107, 0.95);
+            font-size: 1.05rem;
+            transition: border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+        }
+        .floating-trigger-btn:hover,
+        .floating-trigger-btn.is-active {
+            border-color: rgba(193, 154, 107, 0.8);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+        .floating-trigger-btn:focus-visible {
+            outline: 2px solid rgba(193, 154, 107, 0.65);
+            outline-offset: 3px;
+        }
+        .floating-modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2147483645;
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            padding: 20px 16px 150px;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+        .floating-modal-panel {
+            width: min(560px, calc(100vw - 32px));
+            max-height: min(78vh, 820px);
+            overflow-y: auto;
+            padding: 20px;
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: linear-gradient(180deg, rgba(14,14,14,0.98), rgba(10,10,10,0.95));
+            box-shadow: 0 26px 80px rgba(0,0,0,0.42);
+        }
+        .floating-modal-panel--sort {
+            width: min(320px, calc(100vw - 32px));
+            padding: 14px;
+        }
+        .floating-modal-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .floating-modal-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1rem;
+            font-weight: 800;
+            color: #f4e0c0;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .floating-close-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.04);
+            color: #d4d4d8;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .floating-close-btn:hover {
+            color: #fff;
+            border-color: rgba(193,154,107,0.35);
+        }
+        .floating-filters-body {
+            padding-top: 4px;
+        }
+        .floating-filters-body .filters-grid {
+            grid-template-columns: repeat(1, minmax(0, 1fr));
+        }
+        .floating-filters-body .filter-block,
+        .floating-filters-body .filter-block--wide,
+        .floating-filters-body .filter-block--narrow,
+        .floating-filters-body .filter-block--full {
+            grid-column: 1 / -1;
+        }
+        .sort-modal-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
         .offer-card {
             position: relative;
@@ -1045,6 +1217,16 @@
             .offer-card, .show-all-card { flex: 0 0 calc((100% - 20px) / 2); }
             .gallery-main { height: 280px; }
             .filter-bar { padding: 20px; border-radius: 24px; }
+            .floating-modal-overlay {
+                align-items: flex-end;
+                justify-content: stretch;
+                padding: 12px 12px 132px;
+            }
+            .floating-modal-panel,
+            .floating-modal-panel--sort {
+                width: 100%;
+                border-radius: 20px;
+            }
             .hero-stats-grid,
             .detail-data-grid {
                 grid-template-columns: 1fr;
@@ -1156,22 +1338,6 @@
                         <input type="text" id="search-input" class="filter-input w-full" placeholder="Szukaj po nazwie, opisie, lokalizacji lub sprzedawcy..." onkeydown="if(event.key==='Enter')applyFilters(true)">
                     </label>
                     <div class="toolbar-actions">
-                        <button type="button" id="filters-toggle-button" class="toolbar-btn toolbar-btn--ghost" onclick="toggleFiltersPanel()">
-                            <i class="fa-solid fa-sliders"></i>
-                            <span>Filtry</span>
-                        </button>
-                        <div class="sort-control">
-                            <button type="button" id="sort-menu-button" class="toolbar-btn toolbar-btn--ghost" onclick="toggleSortMenu()" aria-haspopup="menu" aria-expanded="false">
-                                <i class="fa-solid fa-arrow-down-wide-short"></i>
-                                <span id="sort-current-label">Najnowsze</span>
-                            </button>
-                            <div id="sort-menu" class="sort-menu hidden" role="menu" aria-labelledby="sort-menu-button">
-                                <button type="button" class="sort-menu-item active" data-sort="newest" onclick="setSortOption('newest')">Najnowsze</button>
-                                <button type="button" class="sort-menu-item" data-sort="price_asc" onclick="setSortOption('price_asc')">Cena: od najniższej</button>
-                                <button type="button" class="sort-menu-item" data-sort="price_desc" onclick="setSortOption('price_desc')">Cena: od najwyższej</button>
-                                <button type="button" class="sort-menu-item" data-sort="oldest" onclick="setSortOption('oldest')">Najstarsze</button>
-                            </div>
-                        </div>
                         <button type="button" onclick="applyFilters(true)" class="toolbar-btn toolbar-btn--primary">
                             <i class="fa-solid fa-search"></i>
                             <span>Szukaj</span>
@@ -1187,8 +1353,40 @@
                 </select>
 
                 <div id="active-filters" class="active-filters hidden"></div>
+            </section>
+        </div>
 
-                <div id="advanced-filters" class="filters-panel hidden">
+        <main class="container mx-auto px-4 md:px-6 pb-12 flex-grow" id="main-content">
+            <div id="carousels-container"></div>
+            <div id="filtered-results" class="hidden results-panel">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold"><span id="filtered-title">Wyniki wyszukiwania</span> <span class="text-zinc-500 text-sm" id="filtered-count"></span></h2>
+                    <button onclick="clearFilters()" class="text-zinc-400 hover:text-[#C19A6B] text-sm"><i class="fa-solid fa-arrow-left mr-1"></i>Powrót do kategorii</button>
+                </div>
+                <div id="filtered-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"></div>
+                <div id="filtered-empty" class="text-center py-16 text-zinc-500 hidden">
+                    <i class="fa-solid fa-search text-4xl mb-4"></i>
+                    <p>Brak ofert spełniających kryteria</p>
+                </div>
+            </div>
+            <div id="loading-main" class="text-center py-16 text-zinc-400">
+                <i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i>
+                <p class="text-sm uppercase tracking-widest">Ładowanie ofert...</p>
+            </div>
+        </main>
+
+        <div id="filters-floating-modal" class="floating-modal-overlay hidden" onclick="if(event.target === this) closeFiltersModal()">
+            <div class="floating-modal-panel" onclick="event.stopPropagation()">
+                <div class="floating-modal-head">
+                    <div class="floating-modal-title">
+                        <i class="fa-solid fa-sliders"></i>
+                        <span>Filtry</span>
+                    </div>
+                    <button type="button" class="floating-close-btn" onclick="closeFiltersModal()" aria-label="Zamknij filtry">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+                <div class="floating-filters-body filters-panel">
                     <div class="filters-grid">
                         <div class="filter-block filter-block--full">
                             <div class="filter-block-label">Kategorie</div>
@@ -1205,22 +1403,30 @@
                             </div>
                         </div>
 
-                        <div class="filter-block filter-block--narrow">
-                            <div class="filter-block-label">Sprzedawca</div>
-                            <div class="seller-segment" id="seller-type-segment">
-                                <button type="button" class="active" data-seller-type="" onclick="setSellerTypeFilter('')">Wszyscy</button>
-                                <button type="button" data-seller-type="private" onclick="setSellerTypeFilter('private')">Prywatne</button>
-                                <button type="button" data-seller-type="company" onclick="setSellerTypeFilter('company')">Firmy</button>
+                        <div class="filter-block filter-block--full filter-block--seller-condition">
+                            <div class="seller-condition-grid">
+                                <div class="seller-condition-cell">
+                                    <div class="filter-block-label">Sprzedawca</div>
+                                    <div class="seller-segment" id="seller-type-segment" role="group" aria-label="Typ sprzedawcy">
+                                        <button type="button" class="active" data-seller-type="" onclick="setSellerTypeFilter('')">Wszyscy</button>
+                                        <button type="button" data-seller-type="private" onclick="setSellerTypeFilter('private')">Prywatne</button>
+                                        <button type="button" data-seller-type="company" onclick="setSellerTypeFilter('company')">Firmy</button>
+                                    </div>
+                                </div>
+                                <div class="seller-condition-cell">
+                                    <div class="filter-block-label">Stan</div>
+                                    <div class="condition-segment" id="condition-segment" role="group" aria-label="Stan przedmiotu">
+                                        <button type="button" class="active" data-condition="" onclick="setConditionFilter('')">Wszystkie</button>
+                                        <button type="button" data-condition="NOWY" onclick="setConditionFilter('NOWY')">Nowy</button>
+                                        <button type="button" data-condition="UZYWANY" onclick="setConditionFilter('UZYWANY')">Używany</button>
+                                    </div>
+                                    <select id="filter-condition" class="hidden" aria-hidden="true" tabindex="-1">
+                                        <option value="">Wszystkie</option>
+                                        <option value="NOWY">Nowy</option>
+                                        <option value="UZYWANY">Używany</option>
+                                    </select>
+                                </div>
                             </div>
-                        </div>
-
-                        <div class="filter-block filter-block--narrow">
-                            <label class="filter-block-label" for="filter-condition">Stan</label>
-                            <select id="filter-condition" class="filter-select w-full">
-                                <option value="">Wszystkie</option>
-                                <option value="NOWY">Nowy</option>
-                                <option value="UZYWANY">Używany</option>
-                            </select>
                         </div>
 
                         <div class="filter-block filter-block--wide">
@@ -1243,21 +1449,33 @@
                                     </select>
                                 </div>
                             </div>
-                            <div id="filter-location-meta" class="location-meta">Po kliknięciu pokażemy województwa, a po wpisaniu także miejscowości.</div>
+                            <div id="filter-location-meta" class="location-meta hidden" aria-live="polite"></div>
                         </div>
 
                         <div class="filter-block filter-block--full">
                             <div class="filter-block-label">Cena</div>
                             <div class="price-range-shell">
-                                <div class="price-range-values">
-                                    <span id="price-range-label-min">0 zł</span>
-                                    <span id="price-range-label-max">0 zł</span>
+                                <div class="price-range-inputs-row">
+                                    <label class="price-input-wrap" for="filter-price-min-field">
+                                        <span class="price-input-label">Od</span>
+                                        <span class="price-input-field">
+                                            <input type="number" id="filter-price-min-field" class="filter-input w-full" min="0" step="1" inputmode="numeric" value="0" onchange="syncPriceRange('field-min')">
+                                            <span class="price-input-unit">zł</span>
+                                        </span>
+                                    </label>
+                                    <label class="price-input-wrap" for="filter-price-max-field">
+                                        <span class="price-input-label">Do</span>
+                                        <span class="price-input-field">
+                                            <input type="number" id="filter-price-max-field" class="filter-input w-full" min="0" step="1" inputmode="numeric" value="100000" onchange="syncPriceRange('field-max')">
+                                            <span class="price-input-unit">zł</span>
+                                        </span>
+                                    </label>
                                 </div>
                                 <div class="range-track-wrap">
                                     <div class="range-track-bg"></div>
                                     <div id="price-range-active" class="range-track-active"></div>
-                                    <input type="range" id="filter-price-min" class="range-input" min="0" max="100000" step="100" value="0" oninput="syncPriceRange('min')">
-                                    <input type="range" id="filter-price-max" class="range-input" min="0" max="100000" step="100" value="100000" oninput="syncPriceRange('max')">
+                                    <input type="range" id="filter-price-min" class="range-input" min="0" max="100000" step="1" value="0" oninput="syncPriceRange('min')">
+                                    <input type="range" id="filter-price-max" class="range-input" min="0" max="100000" step="1" value="100000" oninput="syncPriceRange('max')">
                                 </div>
                             </div>
                         </div>
@@ -1267,33 +1485,43 @@
                         <button type="button" onclick="clearFilters()" class="text-zinc-400 hover:text-white text-sm transition">
                             Wyczyść
                         </button>
-                        <button type="button" onclick="applyFilters(true)" class="toolbar-btn toolbar-btn--primary">
+                        <button type="button" onclick="applyFilters(true); closeFiltersModal();" class="toolbar-btn toolbar-btn--primary">
                             <i class="fa-solid fa-check"></i>
                             <span>Zastosuj</span>
                         </button>
                     </div>
                 </div>
-            </section>
+            </div>
         </div>
 
-        <main class="container mx-auto px-4 md:px-6 pb-12 flex-grow" id="main-content">
-            <div id="carousels-container"></div>
-            <div id="filtered-results" class="hidden results-panel">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold"><span id="filtered-title">Wyniki wyszukiwania</span> <span class="text-zinc-500 text-sm" id="filtered-count"></span></h2>
-                    <button onclick="clearFilters()" class="text-zinc-400 hover:text-[#C19A6B] text-sm"><i class="fa-solid fa-arrow-left mr-1"></i>Powrót do kategorii</button>
+        <div id="sort-floating-modal" class="floating-modal-overlay hidden" onclick="if(event.target === this) closeSortModal()">
+            <div class="floating-modal-panel floating-modal-panel--sort" onclick="event.stopPropagation()">
+                <div class="floating-modal-head">
+                    <div class="floating-modal-title">
+                        <i class="fa-solid fa-arrow-down-wide-short"></i>
+                        <span>Sortowanie</span>
+                    </div>
+                    <button type="button" class="floating-close-btn" onclick="closeSortModal()" aria-label="Zamknij sortowanie">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
                 </div>
-                <div id="filtered-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"></div>
-                <div id="filtered-empty" class="text-center py-16 text-zinc-500 hidden">
-                    <i class="fa-solid fa-search text-4xl mb-4"></i>
-                    <p>Brak ofert spełniających kryteria</p>
+                <div id="sort-menu" class="sort-modal-list" role="menu" aria-label="Opcje sortowania">
+                    <button type="button" class="sort-menu-item active" data-sort="newest" onclick="setSortOption('newest')">Najnowsze</button>
+                    <button type="button" class="sort-menu-item" data-sort="price_asc" onclick="setSortOption('price_asc')">Cena: od najniższej</button>
+                    <button type="button" class="sort-menu-item" data-sort="price_desc" onclick="setSortOption('price_desc')">Cena: od najwyższej</button>
+                    <button type="button" class="sort-menu-item" data-sort="oldest" onclick="setSortOption('oldest')">Najstarsze</button>
                 </div>
             </div>
-            <div id="loading-main" class="text-center py-16 text-zinc-400">
-                <i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i>
-                <p class="text-sm uppercase tracking-widest">Ładowanie ofert...</p>
-            </div>
-        </main>
+        </div>
+
+        <div class="floating-controls-stack" aria-label="Szybkie sterowanie bazarem">
+            <button type="button" id="filters-toggle-button" class="floating-trigger-btn" onclick="toggleFiltersPanel()" aria-label="Filtry" title="Filtry">
+                <i class="fa-solid fa-sliders"></i>
+            </button>
+            <button type="button" id="sort-menu-button" class="floating-trigger-btn" onclick="toggleSortMenu()" aria-haspopup="menu" aria-expanded="false" aria-label="Sortowanie" title="Sortowanie">
+                <i class="fa-solid fa-arrow-down-wide-short"></i>
+            </button>
+        </div>
 
     </div>
 
@@ -1540,6 +1768,13 @@
             });
         }
 
+        function syncConditionButtons() {
+            const v = document.getElementById('filter-condition')?.value || '';
+            document.querySelectorAll('#condition-segment [data-condition]').forEach((btn) => {
+                btn.classList.toggle('active', btn.getAttribute('data-condition') === v);
+            });
+        }
+
         function buildOfferCardHTML(offer) {
             const condLabel = offer.condition === 'NOWY' ? 'Nowy' : 'Używany';
             const condClass = offer.condition === 'NOWY' ? 'badge-nowy' : 'badge-uzywany';
@@ -1687,10 +1922,6 @@
             return allOffers.filter((offer) => offer.status === 'ACTIVE');
         }
 
-        function formatPriceLabel(value) {
-            return `${Math.max(0, Number(value || 0)).toLocaleString('pl-PL')} zł`;
-        }
-
         function calculatePriceRangeMax() {
             const highest = getActiveOffers().reduce((max, offer) => Math.max(max, getOfferPriceValue(offer)), 0);
             const rounded = highest > 0 ? Math.ceil(highest / 1000) * 1000 : 100000;
@@ -1698,33 +1929,64 @@
         }
 
         function syncPriceRange(mode) {
-            const minInput = document.getElementById('filter-price-min');
-            const maxInput = document.getElementById('filter-price-max');
-            const minLabel = document.getElementById('price-range-label-min');
-            const maxLabel = document.getElementById('price-range-label-max');
+            const minRange = document.getElementById('filter-price-min');
+            const maxRange = document.getElementById('filter-price-max');
+            const minField = document.getElementById('filter-price-min-field');
+            const maxField = document.getElementById('filter-price-max-field');
             const active = document.getElementById('price-range-active');
-            if (!minInput || !maxInput || !minLabel || !maxLabel || !active) return;
+            if (!minRange || !maxRange || !active) return;
 
             priceRangeMax = calculatePriceRangeMax();
-            minInput.max = String(priceRangeMax);
-            maxInput.max = String(priceRangeMax);
+            minRange.max = String(priceRangeMax);
+            maxRange.max = String(priceRangeMax);
+            if (minField) minField.max = String(priceRangeMax);
+            if (maxField) maxField.max = String(priceRangeMax);
+
             if (mode === true || mode === 'reset') {
-                minInput.value = '0';
-                maxInput.value = String(priceRangeMax);
+                minRange.value = '0';
+                maxRange.value = String(priceRangeMax);
+                if (minField) minField.value = '0';
+                if (maxField) maxField.value = String(priceRangeMax);
+            } else if (mode === 'field-min' || mode === 'field-max') {
+                let minValue = parseFloat(String(minField?.value ?? '').replace(',', '.'));
+                let maxValue = parseFloat(String(maxField?.value ?? '').replace(',', '.'));
+                if (!Number.isFinite(minValue)) minValue = 0;
+                if (!Number.isFinite(maxValue)) maxValue = priceRangeMax;
+                minValue = Math.max(0, Math.min(minValue, priceRangeMax));
+                maxValue = Math.max(0, Math.min(maxValue, priceRangeMax));
+                if (minValue > maxValue) {
+                    if (mode === 'field-min') maxValue = minValue;
+                    else minValue = maxValue;
+                }
+                minValue = Math.round(minValue);
+                maxValue = Math.round(maxValue);
+                minRange.value = String(minValue);
+                maxRange.value = String(maxValue);
+                if (minField) minField.value = String(minValue);
+                if (maxField) maxField.value = String(maxValue);
+            } else {
+                let minValue = Math.max(0, Number(minRange.value || 0));
+                let maxValue = Math.max(0, Number(maxRange.value || priceRangeMax));
+                if (mode === 'min' && minValue > maxValue) {
+                    maxValue = minValue;
+                    maxRange.value = String(maxValue);
+                }
+                if (mode === 'max' && maxValue < minValue) {
+                    minValue = maxValue;
+                    minRange.value = String(minValue);
+                }
+                minValue = Math.min(minValue, priceRangeMax);
+                maxValue = Math.min(Math.max(maxValue, minValue), priceRangeMax);
+                minRange.value = String(minValue);
+                maxRange.value = String(maxValue);
+                if (minField) minField.value = String(Math.round(minValue));
+                if (maxField) maxField.value = String(Math.round(maxValue));
             }
 
-            let minValue = Math.max(0, Number(minInput.value || 0));
-            let maxValue = Math.max(0, Number(maxInput.value || priceRangeMax));
-            if (mode === 'min' && minValue > maxValue) maxValue = minValue;
-            if (mode === 'max' && maxValue < minValue) minValue = maxValue;
-            minValue = Math.min(minValue, priceRangeMax);
-            maxValue = Math.min(Math.max(maxValue, minValue), priceRangeMax);
-            minInput.value = String(minValue);
-            maxInput.value = String(maxValue);
-            minLabel.textContent = formatPriceLabel(minValue);
-            maxLabel.textContent = maxValue >= priceRangeMax ? `Do ${formatPriceLabel(priceRangeMax)}` : formatPriceLabel(maxValue);
-            active.style.left = `${(minValue / priceRangeMax) * 100}%`;
-            active.style.right = `${100 - (maxValue / priceRangeMax) * 100}%`;
+            const minFinal = Math.max(0, Number(minRange.value || 0));
+            const maxFinal = Math.min(Math.max(0, Number(maxRange.value || priceRangeMax)), priceRangeMax);
+            active.style.left = `${(minFinal / priceRangeMax) * 100}%`;
+            active.style.right = `${100 - (maxFinal / priceRangeMax) * 100}%`;
         }
         window.syncPriceRange = syncPriceRange;
 
@@ -1782,15 +2044,21 @@
             if (!meta) return;
             if (state.selected?.type === 'province') {
                 meta.textContent = `Wybrane województwo: ${state.selected.wojewodztwoLabel}.`;
+                meta.classList.remove('hidden');
                 return;
             }
             if (state.selected?.type === 'locality') {
                 meta.textContent = `${state.selected.label}${kind === 'search' ? ' — możesz ustawić promień.' : ''}`;
+                meta.classList.remove('hidden');
                 return;
             }
-            meta.textContent = kind === 'create'
-                ? 'Wybierz konkretną miejscowość. Pokażemy domyślnie 10 największych miast w Polsce.'
-                : 'Po kliknięciu pokażemy województwa, a po wpisaniu także miejscowości.';
+            if (kind === 'create') {
+                meta.textContent = 'Wybierz konkretną miejscowość. Pokażemy domyślnie 10 największych miast w Polsce.';
+                meta.classList.remove('hidden');
+                return;
+            }
+            meta.textContent = '';
+            meta.classList.add('hidden');
         }
 
         function hideLocationSuggestions(kind) {
@@ -1977,8 +2245,6 @@
 
         function updateSortButtonLabel() {
             const currentSort = document.getElementById('filter-sort')?.value || 'newest';
-            const labelNode = document.getElementById('sort-current-label');
-            if (labelNode) labelNode.textContent = SORT_LABELS[currentSort] || SORT_LABELS.newest;
             document.querySelectorAll('#sort-menu [data-sort]').forEach((btn) => {
                 btn.classList.toggle('active', btn.getAttribute('data-sort') === currentSort);
             });
@@ -2107,6 +2373,7 @@
             syncSellerTypeButtons();
             updateActiveFilterChips(getCurrentFilters());
             closeSortMenu();
+            closeFiltersModal();
         }
 
         window.showCarousels = showCarousels;
@@ -2118,6 +2385,12 @@
         window.setSellerTypeFilter = (value) => {
             window.currentSellerTypeFilter = String(value || '');
             syncSellerTypeButtons();
+        };
+
+        window.setConditionFilter = (value) => {
+            const sel = document.getElementById('filter-condition');
+            if (sel) sel.value = String(value || '');
+            syncConditionButtons();
         };
 
         window.toggleCategory = (btn) => {
@@ -2138,31 +2411,50 @@
         }
 
         function openFiltersPanel(forceOpen = false) {
-            const panel = document.getElementById('advanced-filters');
+            const panel = document.getElementById('filters-floating-modal');
             const trigger = document.getElementById('filters-toggle-button');
             if (!panel) return;
-            if (forceOpen) panel.classList.remove('hidden');
-            else panel.classList.toggle('hidden');
+            const shouldOpen = forceOpen || panel.classList.contains('hidden');
+            panel.classList.toggle('hidden', !shouldOpen);
             trigger?.classList.toggle('is-active', !panel.classList.contains('hidden'));
-            if (!panel.classList.contains('hidden')) syncPriceRange();
+            if (!panel.classList.contains('hidden')) {
+                closeSortMenu();
+                syncPriceRange();
+            }
         }
 
         window.toggleFiltersPanel = () => {
             openFiltersPanel(false);
         };
 
+        function closeFiltersModal() {
+            document.getElementById('filters-floating-modal')?.classList.add('hidden');
+            document.getElementById('filters-toggle-button')?.classList.remove('is-active');
+        }
+
+        window.closeFiltersModal = closeFiltersModal;
+
         function openSortMenu() {
-            document.getElementById('sort-menu')?.classList.remove('hidden');
+            document.getElementById('sort-floating-modal')?.classList.remove('hidden');
             document.getElementById('sort-menu-button')?.setAttribute('aria-expanded', 'true');
+            document.getElementById('sort-menu-button')?.classList.add('is-active');
+            closeFiltersModal();
         }
 
         function closeSortMenu() {
-            document.getElementById('sort-menu')?.classList.add('hidden');
+            document.getElementById('sort-floating-modal')?.classList.add('hidden');
             document.getElementById('sort-menu-button')?.setAttribute('aria-expanded', 'false');
+            document.getElementById('sort-menu-button')?.classList.remove('is-active');
         }
 
+        function closeSortModal() {
+            closeSortMenu();
+        }
+
+        window.closeSortModal = closeSortModal;
+
         window.toggleSortMenu = () => {
-            const menu = document.getElementById('sort-menu');
+            const menu = document.getElementById('sort-floating-modal');
             if (!menu) return;
             if (menu.classList.contains('hidden')) openSortMenu();
             else closeSortMenu();
@@ -2177,7 +2469,6 @@
         };
 
         document.addEventListener('click', (event) => {
-            if (!event.target.closest('.sort-control')) closeSortMenu();
             if (!event.target.closest('.location-picker')) {
                 hideLocationSuggestions('search');
                 hideLocationSuggestions('create');
@@ -2194,9 +2485,12 @@
             window.currentPinnedOnly = false;
             clearLocationSelection('search');
             syncSellerTypeButtons();
+            syncConditionButtons();
             syncCategoryButtons();
             updateSortButtonLabel();
             syncPriceRange(true);
+            closeSortMenu();
+            closeFiltersModal();
             showCarousels();
         };
 
@@ -2215,9 +2509,12 @@
             window.currentPinnedOnly = false;
             document.getElementById('filter-sort').value = 'newest';
             syncSellerTypeButtons();
+            syncConditionButtons();
             syncCategoryButtons();
             updateSortButtonLabel();
             syncPriceRange(true);
+            closeSortMenu();
+            closeFiltersModal();
             applyFilters(true);
         };
 
@@ -3333,6 +3630,7 @@
         syncPriceRange(true);
         syncLocationMeta('search');
         syncCategoryButtons();
+        syncConditionButtons();
 
         async function openOfferFromSlugParam() {
             const offerParam = bazarAutoOfferParam;
