@@ -769,6 +769,11 @@ function injectTokenBadgeStyles() {
   overflow: hidden;
   z-index: 10;
 }
+#global-token-badge.global-token-badge[data-layout='nav-inline'] {
+  top: auto;
+  transform: translateZ(0);
+  position: relative;
+}
 #global-token-badge.global-token-badge > * {
   position: relative;
   z-index: 1;
@@ -780,6 +785,10 @@ function injectTokenBadgeStyles() {
     0 0 16px rgba(var(--token-accent-rgb), 0.5),
     0 0 32px rgba(var(--token-accent-rgb), 0.22);
   transform: translateY(-50%) scale(1.045) translateZ(0);
+}
+#global-token-badge.global-token-badge[data-layout='nav-inline']:hover,
+#global-token-badge.global-token-badge[data-layout='nav-inline']:focus-visible {
+  transform: scale(1.045) translateZ(0);
 }
 #global-token-badge.global-token-badge::after {
   content: '';
@@ -833,30 +842,64 @@ function injectTokenBadgeStyles() {
       0 0 0 1px rgba(var(--token-accent-rgb), 0.85),
       0 0 12px rgba(var(--token-accent-rgb), 0.35);
   }
+  #global-token-badge.global-token-badge[data-layout='nav-inline']:hover,
+  #global-token-badge.global-token-badge[data-layout='nav-inline']:focus-visible {
+    transform: translateZ(0);
+  }
 }
 `;
   document.head.appendChild(style);
 }
 
+function getBazarNavInlineMount() {
+  const tray = document.getElementById('bazar-nav-tray');
+  const cluster = document.getElementById('bazar-nav-user-cluster');
+  if (!tray || !cluster || cluster.parentElement !== tray) return null;
+  return { tray, before: cluster };
+}
+
 function ensureTokenBadge() {
   injectTokenBadgeStyles();
-  let badge = document.getElementById('global-token-badge');
-  if (badge) return badge;
   const avatarButton = document.getElementById('user-avatar-button');
-  if (!avatarButton || !avatarButton.parentElement) return null;
-  badge = document.createElement('button');
-  badge.id = 'global-token-badge';
-  badge.type = 'button';
-  badge.className = 'global-token-badge absolute right-14 md:right-16 top-1/2 flex h-10 min-w-[54px] px-3 text-sm font-black text-[#C19A6B] hidden items-center justify-center gap-2';
-  badge.innerHTML = '<i class="fa-solid fa-coins"></i><span>…</span>';
-  badge.addEventListener('click', async () => {
-    try {
-      await openTokenModal();
-    } catch (error) {
-      alert(error.message || 'Nie udało się otworzyć panelu żetonów.');
+  if (!avatarButton?.parentElement) return null;
+
+  const navMount = getBazarNavInlineMount();
+  const inline = Boolean(navMount);
+  const cls = inline
+    ? 'global-token-badge flex h-10 min-w-[54px] px-3 text-sm font-black text-[#C19A6B] hidden items-center justify-center gap-2 shrink-0 relative'
+    : 'global-token-badge absolute right-14 md:right-16 top-1/2 flex h-10 min-w-[54px] px-3 text-sm font-black text-[#C19A6B] hidden items-center justify-center gap-2';
+
+  let badge = document.getElementById('global-token-badge');
+  if (!badge) {
+    badge = document.createElement('button');
+    badge.id = 'global-token-badge';
+    badge.type = 'button';
+    badge.innerHTML = '<i class="fa-solid fa-coins"></i><span>…</span>';
+    badge.addEventListener('click', async () => {
+      try {
+        await openTokenModal();
+      } catch (error) {
+        alert(error.message || 'Nie udało się otworzyć panelu żetonów.');
+      }
+    });
+    if (inline) {
+      navMount.tray.insertBefore(badge, navMount.before);
+    } else {
+      avatarButton.parentElement.appendChild(badge);
     }
-  });
-  avatarButton.parentElement.appendChild(badge);
+  } else if (inline) {
+    badge.setAttribute('data-layout', 'nav-inline');
+    if (badge.parentElement !== navMount.tray) {
+      navMount.tray.insertBefore(badge, navMount.before);
+    }
+  } else {
+    badge.removeAttribute('data-layout');
+    if (badge.parentElement !== avatarButton.parentElement) {
+      avatarButton.parentElement.appendChild(badge);
+    }
+  }
+
+  badge.className = cls;
   return badge;
 }
 
@@ -879,36 +922,65 @@ function ensureMenuShortcut() {
   menu.insertBefore(btn, menu.firstChild);
 }
 
+function hideTokenBalanceBadge() {
+  const badge = document.getElementById('global-token-badge');
+  if (badge) {
+    badge.classList.add('hidden');
+    badge.classList.remove('flex');
+    badge.removeAttribute('title');
+  }
+  document.getElementById('global-token-badge-link')?.remove();
+}
+
 async function loadTokenBalanceBadge() {
   const auth = window.strzelcaFirebaseAuth;
   if (!auth?.currentUser) return;
+
+  const badge = ensureTokenBadge();
+  if (!badge) return;
+
+  badge.classList.remove('hidden');
+  badge.classList.add('flex');
+  badge.removeAttribute('title');
+  badge.innerHTML = '<i class="fa-solid fa-coins"></i><span>…</span>';
+
   try {
     tokenModalState.summaryData = await apiGet('/token-summary');
-    const badge = ensureTokenBadge();
-    if (badge) {
-      badge.classList.remove('hidden');
-      badge.classList.add('flex');
-      badge.innerHTML = `<i class="fa-solid fa-coins"></i><span>${escapeHtml(tokenModalState.summaryData.summary?.balance || 0)}</span>`;
-    }
-    ensureMenuShortcut();
+    badge.innerHTML = `<i class="fa-solid fa-coins"></i><span>${escapeHtml(tokenModalState.summaryData.summary?.balance ?? 0)}</span>`;
   } catch (error) {
     console.warn('token-balance-badge:', error);
+    badge.innerHTML = '<i class="fa-solid fa-coins"></i><span>–</span>';
+    badge.title = 'Nie udało się pobrać salda. Kliknij, aby otworzyć panel żetonów.';
   }
+  ensureMenuShortcut();
 }
 
-window.addEventListener('load', () => {
-  const tryInit = () => {
-    if (!window.strzelcaFirebaseAuth?.currentUser) return false;
-    loadTokenBalanceBadge().catch(() => null);
-    return true;
-  };
-  if (tryInit()) return;
+let tokenBadgeAuthListenerBound = false;
+function bindTokenBadgeAuthListener() {
+  if (tokenBadgeAuthListenerBound) return true;
+  const auth = window.strzelcaFirebaseAuth;
+  if (!auth?.onAuthStateChanged) return false;
+  tokenBadgeAuthListenerBound = true;
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      loadTokenBalanceBadge().catch(() => null);
+    } else {
+      hideTokenBalanceBadge();
+    }
+  });
+  return true;
+}
+
+function initTokenBalanceBadge() {
+  if (bindTokenBadgeAuthListener()) return;
   let attempts = 0;
   const timer = setInterval(() => {
     attempts += 1;
-    if (tryInit() || attempts > 15) clearInterval(timer);
-  }, 700);
-});
+    if (bindTokenBadgeAuthListener() || attempts > 80) clearInterval(timer);
+  }, 150);
+}
+
+initTokenBalanceBadge();
 
 window.openStrzelcaVatExemptInfoModal ??= () => {
   ensureAuxiliaryModals();

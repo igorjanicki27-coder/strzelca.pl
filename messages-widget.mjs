@@ -274,6 +274,14 @@ function getApiUrl(path) {
   return `https://strzelca.pl${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+/** Statyczne assety z głównej domeny (np. tlo:ikony/…) — ten sam wzorzec co getApiUrl. */
+function getStrzelcaStaticUrl(path) {
+  const isMain = (window.location?.hostname || "") === "strzelca.pl";
+  const p = path.startsWith("/") ? path : `/${path}`;
+  if (isMain) return p;
+  return `https://strzelca.pl${p}`;
+}
+
 async function getFirebaseApiKey() {
   try {
     const cached = localStorage.getItem("firebase_web_api_key");
@@ -492,6 +500,7 @@ function makeStyles() {
       overflow: hidden;
     }
     .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .avatar img.avatarBrandMark { object-fit: contain; padding: 5px; box-sizing: border-box; }
     .convText { min-width: 0; flex: 1 1 auto; }
     .convNameRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .convName { font-weight: 900; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1609,6 +1618,8 @@ async function main() {
     supportUnread: 0,
   };
 
+  const supportAvatarUrl = getStrzelcaStaticUrl("/tlo:ikony/ikona_czarna.svg");
+
   function applyUnreadBadge() {
     const totalUnreadWithSupport =
       (Number(state.unreadTotal || 0) || 0) + (Number(state.supportUnread || 0) || 0);
@@ -1770,26 +1781,30 @@ async function main() {
     window.addEventListener("storage", badgeStorageHandler);
   }
 
-  function renderAvatar(el, name, avatarUrl) {
+  function renderAvatar(el, name, avatarUrl, avatarImgClass) {
     el.innerHTML = "";
     if (avatarUrl) {
       const img = document.createElement("img");
       img.src = avatarUrl;
-      img.alt = "Avatar";
+      img.alt = name ? `Avatar: ${name}` : "Avatar";
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.referrerPolicy = "no-referrer";
+      if (avatarImgClass) img.className = avatarImgClass;
       el.appendChild(img);
       return;
     }
     el.textContent = firstLetter(name);
   }
 
-  function renderConvItem({ key, active, name, sub, unread, avatar, letter, onClick, onDelete, canDelete }) {
+  function renderConvItem({ key, active, name, sub, unread, avatar, letter, avatarImgClass, onClick, onDelete, canDelete }) {
     const conv = document.createElement("div");
     conv.className = `conv ${active ? "active" : ""}`;
     conv.dataset.key = key;
 
     const av = document.createElement("div");
     av.className = "avatar";
-    renderAvatar(av, name || letter, avatar || null);
+    renderAvatar(av, name || letter, avatar || null, avatarImgClass);
 
     const text = document.createElement("div");
     text.className = "convText";
@@ -1867,8 +1882,9 @@ async function main() {
         name: supportName,
         sub: state.supportLastText || "Pomoc / zgłoszenia",
         unread: supportUnread,
-        avatar: null,
-        letter: "S",
+        avatar: supportAvatarUrl,
+        letter: "P",
+        avatarImgClass: "avatarBrandMark",
         onClick: () => selectPeer(SUPPORT_PEER_ID, supportName),
       })
     );
@@ -2920,7 +2936,10 @@ async function main() {
     panel.style.display = "block";
     if (!convUnsub) subscribeConversations();
     if (!supportBadgeUnsub) subscribeSupportBadgeListener();
-    selectPeer(state.selectedPeerId, state.selectedPeerId === SUPPORT_PEER_ID ? "Obsługa Strzelca.pl" : "Wiadomości");
+    selectPeer(
+      state.selectedPeerId,
+      state.selectedPeerId === SUPPORT_PEER_ID ? "Pomoc STRZELCA.PL" : "Wiadomości",
+    );
   }
 
   // Otwieranie z zewnątrz (np. kafelek na kontakt.strzelca.pl): nie możemy wywołać openPanel()

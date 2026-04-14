@@ -9,7 +9,7 @@
  *   await initVisitTracker();
  */
 
-/** Dzisiejszy dzień w strefie lokalnej (spójnie z panelem admina) */
+/** Dzisiejszy dzień w czasie lokalnym (spójnie z panelem admina) */
 function localCalendarDayKey() {
   const d = new Date();
   const y = d.getFullYear();

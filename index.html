@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="STRZELCA.PL — portal strzelecki: sklep, bazar ogłoszeń, strzelnica, wydarzenia i blog. Społeczność i wyposażenie dla strzelców w całej Polsce."
+      content="Jedno miejsce dla strzelców: sklep, bazar ogłoszeń, rezerwacje strzelnicy, wydarzenia i blog. Sprzęt, oferty i społeczność STRZELCA.PL w całej Polsce."
     />
     <meta
       name="keywords"
@@ -14,17 +14,17 @@
     <meta name="author" content="Strzelca.pl" />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://strzelca.pl/" />
-    <!-- Hub dostępny także jako strefa.strzelca.pl — duplikat konsolidujemy do kanonicznego hosta -->
+    <!-- Hub działa pod kanonicznym hostem strzelca.pl -->
     <link rel="alternate" hreflang="pl" href="https://strzelca.pl/" />
     <link rel="alternate" hreflang="x-default" href="https://strzelca.pl/" />
 
     <!-- Open Graph / udostępnianie -->
     <meta property="og:site_name" content="STRZELCA.PL" />
     <meta property="og:locale" content="pl_PL" />
-    <meta property="og:title" content="STRZELCA.PL — portal strzelecki" />
+    <meta property="og:title" content="STRZELCA.PL | Portal zrzeszający strzelców." />
     <meta
       property="og:description"
-      content="Sklep, bazar, strzelnica, wydarzenia i blog — jeden ekosystem marki STRZELCA dla strzelców i pasjonatów strzelectwa w Polsce."
+      content="Sklep, ogłoszenia, rezerwacje osi, wydarzenia i wiedza w jednym miejscu. STRZELCA.PL łączy sprzęt, społeczność i praktykę strzelecką."
     />
     <!-- TODO: jeśli dodasz stały plik OG (np. og-default.jpg 1200×630), podmień URL poniżej -->
     <meta property="og:image" content="https://strzelca.pl/tlo:logo/logo.transparent.png" />
@@ -32,10 +32,10 @@
     <meta property="og:type" content="website" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="STRZELCA.PL — portal strzelecki" />
+    <meta name="twitter:title" content="STRZELCA.PL | Portal zrzeszający strzelców." />
     <meta
       name="twitter:description"
-      content="Sklep, bazar, strzelnica, wydarzenia i blog — ekosystem STRZELCA dla strzelców w Polsce."
+      content="Sklep, ogłoszenia, rezerwacje osi, wydarzenia i wiedza w jednym miejscu. STRZELCA.PL dla strzelców w całej Polsce."
     />
     <meta name="twitter:image" content="https://strzelca.pl/tlo:logo/logo.transparent.png" />
 
@@ -46,7 +46,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-    <title>STRZELCA.PL — portal strzelecki: sklep, bazar, strzelnica, wydarzenia, blog</title>
+    <title>STRZELCA.PL | Portal zrzeszający strzelców.</title>
 
     <script type="application/ld+json">
       {
@@ -57,6 +57,7 @@
             "@id": "https://strzelca.pl/#organization",
             "name": "STRZELCA.PL",
             "url": "https://strzelca.pl/",
+            "description": "Marka i serwis dla strzelców w Polsce: sklep, bazar, strzelnica, wydarzenia i blog.",
             "logo": {
               "@type": "ImageObject",
               "url": "https://strzelca.pl/tlo:logo/logo.transparent.png"
@@ -67,6 +68,7 @@
             "@id": "https://strzelca.pl/#website",
             "url": "https://strzelca.pl/",
             "name": "STRZELCA.PL",
+            "description": "Jedno miejsce dla strzelców: zakupy, ogłoszenia, strzelnica, wydarzenia i wiedza.",
             "publisher": { "@id": "https://strzelca.pl/#organization" },
             "inLanguage": "pl-PL",
             "potentialAction": {
@@ -79,7 +81,8 @@
             "@type": "WebPage",
             "@id": "https://strzelca.pl/#webpage",
             "url": "https://strzelca.pl/",
-            "name": "STRZELCA.PL — portal strzelecki",
+            "name": "STRZELCA.PL | Portal zrzeszający strzelców.",
+            "description": "Sklep, bazar ogłoszeń, rezerwacje strzelnicy, wydarzenia i blog dla strzelców w całej Polsce.",
             "isPartOf": { "@id": "https://strzelca.pl/#website" },
             "about": { "@id": "https://strzelca.pl/#organization" }
           }
@@ -171,18 +174,49 @@
           linear-gradient(#fff 0 0);
         mask-composite: exclude;
         opacity: 0;
-        transition: opacity 0.28s ease;
-        animation: hub-tile-border-flow 1.35s linear infinite;
-        animation-play-state: paused;
+      }
+      /* Po jednym obiegu „nitki” zostaje pełna obwódka (bez zapętlania). */
+      .hub-button::after {
+        content: "";
+        position: absolute;
+        inset: -2px;
+        border-radius: inherit;
+        z-index: 0;
+        pointer-events: none;
+        padding: 2px;
+        background: linear-gradient(var(--coyote), var(--coyote));
+        -webkit-mask:
+          linear-gradient(#fff 0 0) content-box,
+          linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask:
+          linear-gradient(#fff 0 0) content-box,
+          linear-gradient(#fff 0 0);
+        mask-composite: exclude;
+        opacity: 0;
+        transition: opacity 0.38s ease;
+        transition-delay: 0s;
       }
       .hub-button:hover:not(.disabled)::before,
       .hub-button:focus-visible:not(.disabled)::before {
+        animation: hub-tile-border-flow 1.28s cubic-bezier(0.22, 0.82, 0.28, 1) forwards;
+      }
+      .hub-button:hover:not(.disabled)::after,
+      .hub-button:focus-visible:not(.disabled)::after {
         opacity: 1;
-        animation-play-state: running;
+        transition-delay: 1.05s;
       }
       @keyframes hub-tile-border-flow {
-        to {
+        0% {
+          --hub-tile-border-angle: 0deg;
+          opacity: 1;
+        }
+        78% {
+          opacity: 1;
+        }
+        100% {
           --hub-tile-border-angle: 360deg;
+          opacity: 0;
         }
       }
       .hub-button:hover:not(.disabled),
@@ -222,6 +256,11 @@
         .hub-button::before {
           animation: none;
           --hub-tile-border-angle: 0deg;
+          opacity: 0;
+        }
+        .hub-button::after {
+          opacity: 0 !important;
+          transition: none;
         }
         .hub-button:hover:not(.disabled)::before,
         .hub-button:focus-visible:not(.disabled)::before {
@@ -714,7 +753,7 @@
         <h1
           class="text-3xl sm:text-4xl md:text-6xl font-black uppercase italic font-[Orbitron] tracking-tighter"
         >
-          STREFA STRZELCA<span class="coyote-text">.PL</span>
+          CENTRUM STRZELCA<span class="coyote-text">.PL</span>
         </h1>
       </header>
 
@@ -2168,6 +2207,6 @@
       src="https://strzelca.pl/messages-widget.mjs?v=2026-04-13-2"
     ></script>
     <script type="module" src="https://strzelca.pl/global-search-widget.mjs?v=2026-04-13-2"></script>
-    <script type="module" src="https://strzelca.pl/token-balance-badge.mjs?v=2026-04-13-4"></script>
+    <script type="module" src="https://strzelca.pl/token-balance-badge.mjs?v=2026-04-13-5"></script>
   </body>
 </html>
