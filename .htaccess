@@ -1,0 +1,18 @@
+# Redirect strefa.strzelca.pl to main domain
+RewriteEngine On
+RewriteCond %{HTTP_HOST} ^strefa\.strzelca\.pl$ [NC]
+RewriteRule ^(.*)$ https://strzelca.pl/$1 [R=301,L]
+
+# Ensure www is handled if needed
+# RewriteCond %{HTTP_HOST} !^www\.strzelca\.pl$ [NC]
+# RewriteRule ^(.*)$ https://www.strzelca.pl/$1 [R=301,L]
+
+# Security headers
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "SAMEORIGIN"
+Header always set X-XSS-Protection "1; mode=block"
+
+# Cache static assets
+<FilesMatch "\.(ico|pdf|flv|jpg|jpeg|png|gif|js|css|swf|svg|webp)$">
+    Header set Cache-Control "max-age=31536000, public"
+</FilesMatch>
