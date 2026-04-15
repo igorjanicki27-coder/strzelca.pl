@@ -6,7 +6,7 @@
     <script src="https://strzelca.pl/consent.js?v=2026-02-06-1"></script>
     <meta
       name="description"
-      content="STRZELNICA STRZELCA — rezerwacje osi, szkolenia z instruktorem, vouchery żetonowe i premium doświadczenie strzeleckie online."
+      content="STRZELNICA STRZELCA — rezerwacje osi, szkolenia z instruktorem, vouchery żetonowe i nowoczesna strona strzelnicy."
     />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://strzelnica.strzelca.pl/" />
@@ -15,12 +15,14 @@
     <meta property="og:title" content="STRZELNICA STRZELCA" />
     <meta
       property="og:description"
-      content="Strzelnica otwarta z rezerwacjami online, szkoleniami i voucherami żetonowymi."
+      content="Strzelnica otwarta z rezerwacjami online, szkoleniami z instruktorem, voucherami i płatnościami żetonami."
     />
     <meta property="og:url" content="https://strzelnica.strzelca.pl/" />
     <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://strzelca.pl/tlo:logo/logo.transparent.png" />
     <link rel="icon" type="image/svg+xml" href="https://strzelca.pl/ikona.svg" />
     <link rel="stylesheet" href="https://strzelca.pl/shared.css?v=2026-04-12-1" />
+    <link rel="stylesheet" href="./shared-shell.css?v=2026-04-15-1" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -33,655 +35,929 @@
     />
     <title>STRZELNICA STRZELCA</title>
     <style>
-      :root {
-        --coyote: #c19a6b;
-        --bg: #0a0908;
-        --card: rgba(18, 18, 18, 0.84);
-        --line: rgba(193, 154, 107, 0.2);
-        --text: #f6f4ef;
-        --muted: #b5aea4;
-      }
-      html,
-      body {
-        margin: 0;
-        min-height: 100%;
-        background:
-          radial-gradient(circle at top, rgba(193, 154, 107, 0.12), transparent 34%),
-          linear-gradient(180deg, #060606 0%, #0b0b0b 100%);
-        color: var(--text);
-        font-family: "Manrope", sans-serif;
-      }
-      body.strzelca-keep-footer {
-        overflow-x: hidden;
-      }
-      a {
-        color: inherit;
-        text-decoration: none;
-      }
-      .notice {
-        position: fixed;
-        top: 1rem;
-        right: 1rem;
-        z-index: 120;
-        padding: 0.9rem 1rem;
-        border-radius: 14px;
-        background: rgba(12, 12, 12, 0.9);
-        border: 1px solid var(--line);
-        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
-      }
-      .notice.hidden {
-        display: none;
-      }
-      .strzelnica-shell {
-        width: min(1220px, calc(100vw - 2rem));
-        margin: 0 auto;
-      }
-      .topbar {
-        position: fixed;
-        inset: 0 0 auto 0;
-        z-index: 90;
-        backdrop-filter: blur(18px);
-        background: linear-gradient(180deg, rgba(5, 5, 5, 0.82), rgba(5, 5, 5, 0.28));
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      }
-      .topbar-row {
-        min-height: 76px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-      }
-      .brand {
-        display: flex;
-        flex-direction: column;
-        gap: 0.15rem;
-      }
-      .brand strong {
-        font-family: "Bebas Neue", sans-serif;
-        font-size: 2rem;
-        letter-spacing: 0.08em;
-      }
-      .brand span {
-        color: var(--muted);
-        font-size: 0.8rem;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-      }
-      .topbar nav {
-        display: flex;
-        gap: 1rem;
-        color: var(--muted);
-      }
-      .topbar nav a:hover {
-        color: var(--text);
-      }
-      .topbar-actions {
-        display: flex;
-        gap: 0.75rem;
-      }
       .btn,
       .btn-secondary {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 0.6rem;
-        padding: 0.85rem 1.2rem;
+        gap: 0.65rem;
+        padding: 0.92rem 1.25rem;
         border-radius: 999px;
-        font-weight: 700;
-        transition: transform 0.3s ease, background 0.3s ease, color 0.3s ease;
+        font-weight: 800;
+        transition:
+          transform 0.25s ease,
+          background 0.25s ease,
+          color 0.25s ease,
+          border-color 0.25s ease;
       }
+
       .btn {
-        background: var(--coyote);
+        background: var(--strzelnica-coyote);
         color: #0b0b0b;
+        box-shadow: 0 14px 34px rgba(193, 154, 107, 0.16);
       }
+
       .btn-secondary {
         border: 1px solid rgba(255, 255, 255, 0.14);
-        color: var(--text);
-        background: rgba(255, 255, 255, 0.03);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--strzelnica-text);
       }
+
       .btn:hover,
-      .btn-secondary:hover {
+      .btn-secondary:hover,
+      .hero-anchor:hover {
         transform: translateY(-1px);
       }
+
       .cinematic-hero {
         position: relative;
-        min-height: 320vh;
+        min-height: 240vh;
       }
+
       .hero-pin {
         position: sticky;
-        top: 0;
-        min-height: 100vh;
+        top: 73px;
+        height: calc(100vh - 73px);
         display: flex;
         align-items: center;
+        justify-content: center;
       }
-      .hero-scene {
+
+      .hero-stage {
+        width: 100%;
+        height: 100%;
+        padding: clamp(0.9rem, 1.8vw, 1.8rem);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .hero-stage-frame {
+        position: relative;
+        width: min(100%, 1680px);
+        height: 100%;
+        min-height: 560px;
+        overflow: hidden;
+        background: #0d0d0d;
+        box-shadow: 0 40px 120px rgba(0, 0, 0, 0.42);
+        isolation: isolate;
+        transform-origin: center center;
+      }
+
+      .hero-scene,
+      .hero-scene-overlay,
+      .hero-foreground,
+      .hero-stage-noise {
         position: absolute;
         inset: 0;
+      }
+
+      .hero-scene {
         background-size: cover;
-        background-position: center;
+        background-position: center 56%;
+        transform: scale(1.02);
         will-change: transform, filter;
       }
+
+      .hero-scene-overlay {
+        background:
+          linear-gradient(180deg, rgba(7, 7, 7, 0.1) 0%, rgba(7, 7, 7, 0.24) 24%, rgba(7, 7, 7, 0.62) 100%),
+          linear-gradient(90deg, rgba(5, 5, 5, 0.78) 0%, rgba(5, 5, 5, 0.12) 52%, rgba(5, 5, 5, 0.42) 100%);
+      }
+
       .hero-foreground {
-        position: absolute;
-        inset: 0;
-        background-repeat: no-repeat;
-        background-position: center bottom;
-        background-size: cover;
-        pointer-events: none;
+        background:
+          radial-gradient(circle at 78% 18%, rgba(193, 154, 107, 0.2), transparent 22%),
+          radial-gradient(circle at 18% 78%, rgba(255, 255, 255, 0.08), transparent 20%);
         opacity: 0.9;
+        mix-blend-mode: screen;
+        pointer-events: none;
         will-change: transform, opacity;
       }
+
+      .hero-stage-noise {
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.02)),
+          radial-gradient(circle, rgba(255, 255, 255, 0.05) 0.6px, transparent 0.6px);
+        background-size: auto, 18px 18px;
+        opacity: 0.18;
+        pointer-events: none;
+      }
+
       .hero-copy-wrap {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
+        position: relative;
         z-index: 2;
+        height: 100%;
+        display: flex;
+        align-items: stretch;
       }
+
+      .hero-copy-grid {
+        height: 100%;
+        display: grid;
+        grid-template-columns: minmax(0, 1.08fr) minmax(340px, 0.92fr);
+        gap: clamp(1.25rem, 4vw, 3.25rem);
+        align-items: end;
+        padding-top: clamp(3rem, 11vh, 6rem);
+        padding-bottom: clamp(2rem, 5vh, 3rem);
+      }
+
       .hero-copy {
-        width: min(720px, 100%);
+        align-self: center;
+        max-width: 760px;
       }
+
       .hero-eyebrow {
-        color: var(--coyote);
+        margin-bottom: 1rem;
+        color: var(--strzelnica-coyote);
         text-transform: uppercase;
         letter-spacing: 0.24em;
-        font-size: 0.8rem;
-        margin-bottom: 1.15rem;
+        font-size: 0.82rem;
+        font-weight: 800;
       }
-      .hero-title {
-        font-family: "Bebas Neue", sans-serif;
-        font-size: clamp(4rem, 11vw, 8rem);
-        line-height: 0.93;
-        letter-spacing: 0.02em;
-        margin: 0 0 1rem 0;
-      }
-      .hero-lead {
-        width: min(560px, 100%);
-        color: var(--muted);
-        font-size: 1.02rem;
-        line-height: 1.75;
-        margin-bottom: 1.4rem;
-      }
+
       .hero-badge {
         display: inline-flex;
-        padding: 0.35rem 0.8rem;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.42rem 0.85rem;
+        margin-bottom: 1.2rem;
         border-radius: 999px;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        color: var(--muted);
-        margin-bottom: 1.4rem;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #f1eadf;
       }
-      .hero-actions {
+
+      .hero-title {
+        margin: 0 0 1rem 0;
+        font-family: "Bebas Neue", sans-serif;
+        font-size: clamp(4rem, 10.7vw, 8.2rem);
+        line-height: 0.92;
+        letter-spacing: 0.03em;
+      }
+
+      .hero-lead {
+        max-width: 580px;
+        margin: 0 0 1.5rem 0;
+        color: #e3dbcf;
+        font-size: 1.05rem;
+        line-height: 1.84;
+      }
+
+      .hero-actions,
+      .hero-anchor-list {
         display: flex;
         flex-wrap: wrap;
         gap: 0.8rem;
       }
-      .hero-shell {
-        position: absolute;
-        left: 50%;
-        bottom: 5vh;
-        transform: translateX(-50%);
-        z-index: 3;
-        width: min(1180px, calc(100vw - 2rem));
-        padding: 1.2rem;
-        border-radius: 28px;
-        background:
-          linear-gradient(180deg, rgba(22, 21, 19, 0.9), rgba(12, 12, 12, 0.97)),
-          rgba(12, 12, 12, 0.9);
+
+      .hero-anchor-list {
+        margin-top: 1.2rem;
+      }
+
+      .hero-anchor {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.78rem 1rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.04);
         border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.38);
+        color: #d6d0c7;
+        transition:
+          transform 0.25s ease,
+          border-color 0.25s ease,
+          color 0.25s ease;
+      }
+
+      .hero-anchor:hover {
+        border-color: rgba(193, 154, 107, 0.34);
+        color: #fff;
+      }
+
+      .hero-shell {
+        align-self: end;
+        justify-self: end;
+        width: min(460px, 100%);
+        padding: 1.3rem;
+        border-radius: 30px;
+        background:
+          linear-gradient(180deg, rgba(17, 16, 15, 0.84), rgba(9, 9, 9, 0.92)),
+          rgba(12, 12, 12, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
         will-change: transform, opacity, border-radius;
       }
+
+      .hero-shell__tag {
+        display: inline-flex;
+        margin-bottom: 1rem;
+        padding: 0.36rem 0.7rem;
+        border-radius: 999px;
+        background: rgba(193, 154, 107, 0.12);
+        color: var(--strzelnica-coyote);
+        text-transform: uppercase;
+        font-size: 0.74rem;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+      }
+
       .hero-shell-grid {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 0.9rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.85rem;
       }
+
       .hero-shell-card {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 20px;
-        padding: 1.2rem;
+        min-height: 148px;
+        padding: 1rem;
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
       }
+
       .hero-shell-card span {
         display: block;
-        color: var(--muted);
-        font-size: 0.78rem;
+        margin-bottom: 0.8rem;
+        color: var(--strzelnica-muted);
         text-transform: uppercase;
-        letter-spacing: 0.15em;
-        margin-bottom: 0.85rem;
+        letter-spacing: 0.16em;
+        font-size: 0.74rem;
       }
+
       .hero-shell-card strong {
         display: block;
-        font-size: 1.65rem;
+        font-size: 1.45rem;
+        margin-bottom: 0.45rem;
       }
-      .page-section {
-        padding: 7rem 0;
+
+      .hero-shell-card p {
+        margin: 0;
+        color: #cec7bb;
+        line-height: 1.65;
+        font-size: 0.94rem;
       }
-      .section-header {
-        display: flex;
-        justify-content: space-between;
+
+      .hero-transition {
+        position: relative;
+        z-index: 2;
+        margin-top: -4.5rem;
+        padding-bottom: 2rem;
+      }
+
+      .hero-transition__grid {
+        display: grid;
+        grid-template-columns: 1.16fr 0.84fr;
         gap: 1rem;
-        align-items: end;
-        margin-bottom: 2rem;
       }
-      .section-header h2 {
-        font-size: clamp(2rem, 4vw, 3.6rem);
+
+      .hero-transition__card {
+        padding: 1.5rem 1.4rem;
+      }
+
+      .hero-transition__card h2,
+      .cta-card h3,
+      .offer-card h3,
+      .package-card h3,
+      .lane-card h3 {
+        margin: 0 0 0.9rem 0;
+      }
+
+      .hero-transition__card p,
+      .cta-card p,
+      .offer-card p,
+      .package-card p,
+      .lane-card p,
+      .location-box p {
         margin: 0;
-        font-family: "Bebas Neue", sans-serif;
-        letter-spacing: 0.04em;
+        color: var(--strzelnica-muted);
+        line-height: 1.72;
       }
-      .section-header p {
-        color: var(--muted);
-        max-width: 580px;
-        margin: 0;
-        line-height: 1.7;
-      }
-      .grid-three {
+
+      .hero-transition__metrics {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 1.2rem;
+        gap: 0.9rem;
+        margin-top: 1.4rem;
       }
+
+      .hero-transition__metric {
+        padding-top: 0.85rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .hero-transition__metric strong {
+        display: block;
+        font-size: 1.4rem;
+      }
+
+      .page-section {
+        padding-bottom: 5.5rem;
+      }
+
+      .grid-three,
+      .gallery-grid {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .grid-three {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .gallery-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
       .strzelnica-card,
       .content-box,
       .location-box,
       .gallery-card,
-      .strzelnica-faq-item {
-        background: var(--card);
+      .strzelnica-faq-item,
+      .cta-card {
+        background:
+          linear-gradient(180deg, rgba(22, 20, 19, 0.78), rgba(12, 12, 12, 0.92)),
+          rgba(12, 12, 12, 0.86);
         border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 24px;
-        backdrop-filter: blur(18px);
+        border-radius: 28px;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: 0 22px 60px rgba(0, 0, 0, 0.22);
       }
+
       .offer-card,
       .package-card,
       .lane-card {
-        padding: 1.2rem;
+        padding: 1.3rem;
       }
+
       .offer-eyebrow,
       .package-badge {
         display: inline-flex;
+        padding: 0.35rem 0.74rem;
+        margin-bottom: 0.85rem;
         border-radius: 999px;
         background: rgba(193, 154, 107, 0.12);
-        color: var(--coyote);
-        padding: 0.32rem 0.75rem;
-        font-size: 0.8rem;
+        color: var(--strzelnica-coyote);
         text-transform: uppercase;
-        letter-spacing: 0.12em;
+        letter-spacing: 0.13em;
+        font-size: 0.76rem;
+        font-weight: 800;
       }
+
       .lane-card-media {
         height: 240px;
-        overflow: hidden;
-        border-radius: 18px;
         margin-bottom: 1rem;
-        background: rgba(255, 255, 255, 0.03);
+        overflow: hidden;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.04);
       }
+
       .lane-card-media img,
       .gallery-card img {
         width: 100%;
         height: 100%;
         object-fit: cover;
+        display: block;
       }
+
       .lane-card-placeholder {
         width: 100%;
         height: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: var(--muted);
+        color: var(--strzelnica-muted);
       }
+
       .lane-card-meta,
-      .package-card-footer,
-      .offer-card-footer {
+      .lane-card-pricing,
+      .offer-card-footer,
+      .package-card-footer {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.7rem;
-        color: var(--muted);
+        gap: 0.7rem 1rem;
       }
+
+      .lane-card-meta,
+      .offer-card-footer,
+      .package-card-footer {
+        color: var(--strzelnica-muted);
+      }
+
       .lane-card-pricing {
-        display: flex;
         justify-content: space-between;
-        gap: 0.8rem;
         align-items: center;
         margin-top: 1rem;
       }
-      .cta-panel {
+
+      .lane-card-pricing strong,
+      .offer-card-footer strong,
+      .package-card-footer strong {
+        color: #fff;
+      }
+
+      .cta-grid {
         display: grid;
-        grid-template-columns: 1.2fr 0.8fr;
-        gap: 1.2rem;
-        align-items: stretch;
-      }
-      .cta-card {
-        padding: 2rem;
-      }
-      .cta-card h3 {
-        margin-top: 0;
-        font-size: 2rem;
-      }
-      .cta-card p {
-        color: var(--muted);
-        line-height: 1.7;
-      }
-      .gallery-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: 1.08fr 0.92fr;
         gap: 1rem;
       }
-      .gallery-card {
-        overflow: hidden;
-        min-height: 220px;
+
+      .cta-card {
+        padding: 1.8rem;
       }
+
+      .cta-card h3 {
+        font-size: 2rem;
+      }
+
+      .cta-card .hero-actions {
+        margin-top: 1.4rem;
+      }
+
+      .gallery-card {
+        min-height: 220px;
+        overflow: hidden;
+      }
+
       .gallery-empty {
         grid-column: 1 / -1;
-        text-align: center;
         padding: 3rem 1rem;
-        color: var(--muted);
+        text-align: center;
+        color: var(--strzelnica-muted);
       }
+
       .content-box,
       .location-box {
         padding: 2rem;
       }
-      .location-grid {
+
+      .content-prose,
+      #first-visit-copy,
+      #regulations-copy {
+        color: #ddd6cc;
+        line-height: 1.8;
+      }
+
+      #first-visit-copy :is(p, ul, ol, li),
+      #regulations-copy :is(p, ul, ol, li) {
+        max-width: 880px;
+      }
+
+      .faq-grid {
         display: grid;
-        grid-template-columns: 0.95fr 1.05fr;
-        gap: 1.2rem;
+        gap: 1rem;
       }
-      .location-map {
-        min-height: 420px;
-        width: 100%;
-        border: 0;
-        border-radius: 24px;
-      }
-      .location-map.hidden {
-        display: none;
-      }
+
       .strzelnica-faq-item {
         padding: 1rem 1.2rem;
       }
+
       .strzelnica-faq-item summary {
-        list-style: none;
         display: flex;
         justify-content: space-between;
+        align-items: center;
         gap: 1rem;
+        list-style: none;
         cursor: pointer;
-        font-weight: 700;
+        font-weight: 800;
       }
+
       .strzelnica-faq-item summary::-webkit-details-marker {
         display: none;
       }
+
       .faq-answer {
-        margin-top: 0.9rem;
-        color: var(--muted);
-        line-height: 1.7;
+        margin-top: 0.8rem;
+        color: var(--strzelnica-muted);
+        line-height: 1.75;
       }
-      .site-footer {
-        padding: 2rem 0 3rem;
-        color: var(--muted);
+
+      .location-grid {
+        display: grid;
+        grid-template-columns: 0.96fr 1.04fr;
+        gap: 1rem;
       }
-      @media (max-width: 1080px) {
+
+      .location-box strong {
+        display: block;
+        font-size: 1.25rem;
+        margin-bottom: 0.8rem;
+      }
+
+      .location-map {
+        min-height: 440px;
+        width: 100%;
+        border: 0;
+        border-radius: 28px;
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .location-map.hidden {
+        display: none;
+      }
+
+      html.reveal-fallback .cinematic-hero {
+        min-height: auto;
+      }
+
+      html.reveal-fallback .hero-pin {
+        position: relative;
+        top: 0;
+        height: auto;
+      }
+
+      html.reveal-fallback .hero-stage {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+      }
+
+      html.reveal-fallback .hero-stage-frame {
+        min-height: 720px;
+        border-radius: 34px;
+      }
+
+      html.reveal-fallback .hero-transition {
+        margin-top: 0;
+      }
+
+      @media (max-width: 1120px) {
+        .hero-copy-grid,
+        .hero-transition__grid,
+        .cta-grid,
+        .location-grid {
+          grid-template-columns: 1fr;
+        }
+
         .grid-three,
-        .gallery-grid,
-        .cta-panel,
-        .location-grid,
-        .hero-shell-grid {
+        .gallery-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
-      }
-      @media (max-width: 900px) {
-        .topbar nav {
-          display: none;
+
+        .hero-shell {
+          justify-self: start;
         }
+      }
+
+      @media (max-width: 900px) {
         .cinematic-hero {
           min-height: auto;
         }
+
         .hero-pin {
           position: relative;
+          top: 0;
+          height: auto;
+        }
+
+        .hero-stage {
+          padding-top: 1rem;
+          padding-bottom: 1rem;
+        }
+
+        .hero-stage-frame {
           min-height: auto;
-          padding-top: 8rem;
-          padding-bottom: 3rem;
+          border-radius: 32px;
         }
-        .hero-copy-wrap {
-          position: relative;
-          min-height: 80vh;
+
+        .hero-copy-grid {
+          min-height: 740px;
+          padding-top: 3rem;
         }
-        .hero-shell {
-          position: relative;
-          left: auto;
-          bottom: auto;
-          transform: none;
-          width: 100%;
-          margin-top: -3rem;
+
+        .hero-transition {
+          margin-top: 0;
+        }
+
+        .hero-shell-grid,
+        .hero-transition__metrics {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
-      @media (max-width: 720px) {
-        .strzelnica-shell {
-          width: min(100vw - 1rem, 1220px);
+
+      @media (max-width: 640px) {
+        .hero-title {
+          font-size: clamp(3.2rem, 19vw, 5rem);
         }
+
+        .hero-copy-grid,
+        .hero-shell-grid,
         .grid-three,
         .gallery-grid,
-        .cta-panel,
-        .location-grid,
-        .hero-shell-grid {
+        .hero-transition__metrics {
           grid-template-columns: 1fr;
         }
-        .hero-title {
-          font-size: clamp(3rem, 17vw, 5.4rem);
-        }
-        .section-header {
-          flex-direction: column;
-          align-items: start;
+
+        .content-box,
+        .location-box,
+        .cta-card {
+          padding: 1.4rem;
         }
       }
     </style>
   </head>
-  <body class="strzelca-keep-footer">
-    <div id="shooting-range-notice" class="notice hidden"></div>
+  <body class="strzelnica-body strzelca-keep-footer">
+    <div id="shooting-range-notice" class="hidden"></div>
 
-    <header class="topbar">
-      <div class="strzelnica-shell topbar-row">
-        <a class="brand" href="https://strzelnica.strzelca.pl/">
-          <strong>STRZELNICA</strong>
-          <span>STRZELCA.PL</span>
+    <div class="strzelnica-main-wrapper">
+      <nav class="strzelnica-nav" role="navigation" aria-label="Nawigacja główna strzelnicy">
+        <a
+          href="https://strzelca.pl"
+          aria-label="Powrót do centrum dowodzenia"
+          class="strzelnica-nav__back"
+        >
+          <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
         </a>
-        <nav>
-          <a href="#oferta">Oferta</a>
-          <a href="#osie">Osie</a>
-          <a href="#pakiety">Pakiety</a>
-          <a href="#faq">FAQ</a>
-          <a href="#lokalizacja">Lokalizacja</a>
-        </nav>
-        <div class="topbar-actions">
-          <a class="btn-secondary" href="https://strzelnica.strzelca.pl/instruktor">Panel instruktora</a>
-          <a class="btn" href="https://strzelnica.strzelca.pl/rezerwacja">Rezerwacja</a>
+        <div class="strzelnica-nav__brand">
+          STRZELNICA.<span class="coyote-text">STRZELCA</span>.PL
         </div>
-      </div>
-    </header>
+        <span class="strzelnica-nav__ghost" aria-hidden="true"></span>
+      </nav>
 
-    <main>
-      <section id="cinematic-hero" class="cinematic-hero">
-        <div class="hero-pin">
-          <div id="hero-scene" class="hero-scene"></div>
-          <div id="hero-foreground" class="hero-foreground"></div>
-          <div id="hero-copy-wrap" class="hero-copy-wrap">
-            <div class="strzelnica-shell">
-              <div class="hero-copy">
-                <div id="hero-eyebrow" class="hero-eyebrow">STRZELNICA OTWARTA</div>
-                <div id="hero-badge" class="hero-badge">Oś 25 m • szkolenia • vouchery</div>
-                <h1 id="hero-title" class="hero-title">Wyjdź z obrazu. Wejdź na oś.</h1>
-                <p id="hero-lead" class="hero-lead"></p>
-                <div class="hero-actions">
-                  <a id="hero-primary-link" class="btn" href="https://strzelnica.strzelca.pl/rezerwacja">Zarezerwuj termin</a>
-                  <a id="hero-secondary-link" class="btn-secondary" href="#osie">Zobacz osie</a>
+      <main>
+        <section id="cinematic-hero" class="cinematic-hero">
+          <div class="hero-pin">
+            <div class="hero-stage">
+              <div id="hero-stage-frame" class="hero-stage-frame">
+                <div id="hero-scene" class="hero-scene"></div>
+                <div class="hero-scene-overlay"></div>
+                <div id="hero-foreground" class="hero-foreground"></div>
+                <div class="hero-stage-noise"></div>
+
+                <div id="hero-copy-wrap" class="hero-copy-wrap">
+                  <div class="strzelnica-page-shell hero-copy-grid">
+                    <div class="hero-copy">
+                      <div id="hero-eyebrow" class="hero-eyebrow">STRZELNICA OTWARTA</div>
+                      <div id="hero-badge" class="hero-badge">
+                        <i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i>
+                        Oś 25 m • szkolenia • vouchery
+                      </div>
+                      <h1 id="hero-title" class="hero-title">Wyjdź z obrazu. Wejdź na oś.</h1>
+                      <p id="hero-lead" class="hero-lead">
+                        Płynnie przechodzisz z filmowej sceny na otwartej strzelnicy do pełnej strony z rezerwacją, pakietami, voucherami i obsługą instruktora.
+                      </p>
+                      <div class="hero-actions">
+                        <a
+                          id="hero-primary-link"
+                          class="btn"
+                          href="https://strzelnica.strzelca.pl/rezerwacja"
+                        >
+                          <i class="fa-solid fa-calendar-check" aria-hidden="true"></i>
+                          Zarezerwuj termin
+                        </a>
+                        <a id="hero-secondary-link" class="btn-secondary" href="#osie">
+                          <i class="fa-solid fa-bullseye" aria-hidden="true"></i>
+                          Zobacz osie
+                        </a>
+                      </div>
+                      <div class="hero-anchor-list">
+                        <a class="hero-anchor" href="#oferta">
+                          <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+                          Oferta
+                        </a>
+                        <a class="hero-anchor" href="#galeria">
+                          <i class="fa-solid fa-images" aria-hidden="true"></i>
+                          Galeria
+                        </a>
+                        <a class="hero-anchor" href="#lokalizacja">
+                          <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>
+                          Lokalizacja
+                        </a>
+                      </div>
+                    </div>
+
+                    <aside id="hero-shell" class="hero-shell">
+                      <div class="hero-shell__tag">Nowy moduł strzelnicy</div>
+                      <div class="hero-shell-grid">
+                        <div class="hero-shell-card">
+                          <span>Rezerwacje</span>
+                          <strong>Konkretna oś</strong>
+                          <p>Klient wybiera realny przedział godzinowy i widzi praktyczną dostępność.</p>
+                        </div>
+                        <div class="hero-shell-card">
+                          <span>Szkolenia</span>
+                          <strong>Instruktor online</strong>
+                          <p>Przy szkoleniu pokazują się tylko instruktorzy wolni w danym terminie.</p>
+                        </div>
+                        <div class="hero-shell-card">
+                          <span>Płatności</span>
+                          <strong>HotPay lub żetony</strong>
+                          <p>Osie opłacasz online lub żetonami, szkolenia rozliczasz na miejscu.</p>
+                        </div>
+                        <div class="hero-shell-card">
+                          <span>Vouchery</span>
+                          <strong>PDF + kod</strong>
+                          <p>Kupujesz voucher żetonowy i realizujesz go po zalogowaniu na konto.</p>
+                        </div>
+                      </div>
+                    </aside>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-          <div id="hero-shell" class="hero-shell">
-            <div class="hero-shell-grid">
-              <div class="hero-shell-card">
-                <span>Rezerwacje</span>
-                <strong>Konkretna oś</strong>
-                <p>Klient wybiera realny przedział godzinowy i widzi praktyczną dostępność.</p>
+        </section>
+
+        <section class="hero-transition">
+          <div class="strzelnica-page-shell hero-transition__grid">
+            <article class="strzelnica-surface hero-transition__card">
+              <div class="strzelnica-kicker">Jedna podstrona, pełna obsługa obiektu</div>
+              <h2>Strona wygląda jak doświadczenie, ale kończy się realną rezerwacją</h2>
+              <p>
+                Hero prowadzi użytkownika przez cinematic reveal, a dalej strona przechodzi w czytelny układ z ofertą, osiami, pakietami, lokalizacją, galerią i rezerwacją. Dzięki temu nie tracimy widowiskowości, ale nie psujemy użyteczności.
+              </p>
+              <div class="hero-transition__metrics">
+                <div class="hero-transition__metric">
+                  <strong>1 h</strong>
+                  <span class="strzelnica-lead">Minimalny czas rezerwacji osi</span>
+                </div>
+                <div class="hero-transition__metric">
+                  <strong>30 min</strong>
+                  <span class="strzelnica-lead">Skok dostępnych slotów</span>
+                </div>
+                <div class="hero-transition__metric">
+                  <strong>7 dni</strong>
+                  <span class="strzelnica-lead">Samodzielne anulowanie przez klienta</span>
+                </div>
               </div>
-              <div class="hero-shell-card">
-                <span>Szkolenia</span>
-                <strong>Instruktor online</strong>
-                <p>System pokazuje tylko instruktorów dostępnych w wybranym terminie.</p>
-              </div>
-              <div class="hero-shell-card">
-                <span>Płatności</span>
-                <strong>HotPay lub żetony</strong>
-                <p>Rezerwacje osi możesz opłacić online lub walutą z bazaru.</p>
-              </div>
-              <div class="hero-shell-card">
-                <span>Vouchery</span>
-                <strong>PDF + kod</strong>
-                <p>Kupujesz voucher, pobierasz certyfikat i realizujesz kod po zalogowaniu.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+            </article>
 
-      <section id="oferta" class="page-section">
-        <div class="strzelnica-shell">
-          <div class="section-header">
-            <div>
-              <h2>Oferta</h2>
-              <p>Doświadczenie zaprojektowane pod strzelca, operatora i instruktora. Bez przypadkowych kroków i bez chaosu.</p>
-            </div>
+            <article class="strzelnica-surface hero-transition__card">
+              <div class="strzelnica-kicker">Widok premium, logika produkcyjna</div>
+              <p>
+                Nagłówek pozostaje spójny z pozostałymi podstronami, konto i żetony siedzą w prawym górnym rogu, a dalsza część strony przewija się już normalnie. To jest już baza do rozwijania prawdziwej sprzedaży strzelnicy.
+              </p>
+            </article>
           </div>
-          <div id="oferta-grid" class="grid-three"></div>
-        </div>
-      </section>
+        </section>
 
-      <section id="osie" class="page-section">
-        <div class="strzelnica-shell">
-          <div class="section-header">
-            <div>
-              <h2>Osie</h2>
-              <p>Każda oś ma własny opis, stawkę godzinową, cennik firmowy i galerię zdjęć zarządzaną z panelu administratora.</p>
-            </div>
-          </div>
-          <div id="osie-grid" class="grid-three"></div>
-        </div>
-      </section>
-
-      <section id="pakiety" class="page-section">
-        <div class="strzelnica-shell">
-          <div class="section-header">
-            <div>
-              <h2>Pakiety</h2>
-              <p>Szkolenia i doświadczenia z instruktorem możesz sprzedawać jako pakiety. Strona jest gotowa na rozwijanie tej oferty.</p>
-            </div>
-          </div>
-          <div id="pakiety-grid" class="grid-three"></div>
-        </div>
-      </section>
-
-      <section id="rezerwacja" class="page-section">
-        <div class="strzelnica-shell cta-panel">
-          <div class="strzelnica-card cta-card">
-            <h3>Rezerwacja bez tarcia</h3>
-            <p>
-              Osobna ścieżka rezerwacji prowadzi użytkownika od wyboru osi lub szkolenia aż do płatności HotPay, opłaty żetonami albo rezerwacji płatnej na miejscu.
-            </p>
-            <a class="btn" href="https://strzelnica.strzelca.pl/rezerwacja">Otwórz rezerwację</a>
-          </div>
-          <div class="strzelnica-card cta-card">
-            <h3>Voucher na prezent</h3>
-            <p>
-              Kup voucher żetonowy, pobierz elegancki PDF i przekaż kod do realizacji. To gotowe rozwiązanie pod sprzedaż online.
-            </p>
-            <a class="btn-secondary" href="https://strzelnica.strzelca.pl/rezerwacja#vouchery">Kup voucher</a>
-          </div>
-        </div>
-      </section>
-
-      <section id="galeria" class="page-section">
-        <div class="strzelnica-shell">
-          <div class="section-header">
-            <div>
-              <h2>Galeria</h2>
-              <p>Zdjęcia osi i obszaru wejściowego mogą być wgrywane z panelu i od razu zasilają stronę publiczną.</p>
-            </div>
-          </div>
-          <div id="gallery-grid" class="gallery-grid"></div>
-        </div>
-      </section>
-
-      <section id="pierwsza-wizyta" class="page-section">
-        <div class="strzelnica-shell">
-          <div class="content-box">
-            <div class="section-header">
+        <section id="oferta" class="page-section">
+          <div class="strzelnica-page-shell">
+            <div class="strzelnica-section-head">
               <div>
-                <h2>Pierwsza wizyta</h2>
-                <p>Nowy użytkownik przechodzi obowiązkową akceptację regulaminu i wymaganych oświadczeń jeszcze przed pierwszą rezerwacją.</p>
+                <h2>Oferta</h2>
+                <p>
+                  Rezerwacje osi, szkolenia z instruktorem, wydarzenia i doświadczenia sprzedawane w jednym spójnym systemie. Wszystko gotowe do dalszej rozbudowy z panelu.
+                </p>
               </div>
             </div>
-            <div id="first-visit-copy"></div>
+            <div id="oferta-grid" class="grid-three"></div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="regulaminy" class="page-section">
-        <div class="strzelnica-shell">
-          <div class="content-box">
-            <div class="section-header">
+        <section id="osie" class="page-section">
+          <div class="strzelnica-page-shell">
+            <div class="strzelnica-section-head">
               <div>
-                <h2>Regulaminy i bezpieczeństwo</h2>
-                <p>Treści regulaminowe i instrukcje bezpieczeństwa są gotowe do rozwijania z poziomu zaplecza.</p>
+                <h2>Osie</h2>
+                <p>
+                  Każda oś ma własny opis, galerię, długość, liczbę stanowisk i osobne cenniki dla klientów prywatnych oraz firm.
+                </p>
               </div>
             </div>
-            <div id="regulations-copy"></div>
+            <div id="osie-grid" class="grid-three"></div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="faq" class="page-section">
-        <div class="strzelnica-shell">
-          <div class="section-header">
-            <div>
-              <h2>FAQ</h2>
-              <p>Najważniejsze pytania i odpowiedzi utrzymywane bezpośrednio w konfiguracji strzelnicy.</p>
-            </div>
-          </div>
-          <div id="faq-list" class="grid-three"></div>
-        </div>
-      </section>
-
-      <section id="lokalizacja" class="page-section">
-        <div class="strzelnica-shell location-grid">
-          <div class="location-box">
-            <div class="section-header">
+        <section id="pakiety" class="page-section">
+          <div class="strzelnica-page-shell">
+            <div class="strzelnica-section-head">
               <div>
-                <h2>Lokalizacja</h2>
-                <p id="location-lead"></p>
+                <h2>Pakiety</h2>
+                <p>
+                  Szkolenia z instruktorem i gotowe doświadczenia mogą być sprzedawane jako pakiety z własnymi cenami, opisami i akcentami marketingowymi.
+                </p>
               </div>
             </div>
-            <strong id="location-name"></strong>
-            <p id="location-address"></p>
-            <div class="hero-actions">
-              <a class="btn" href="https://strzelnica.strzelca.pl/rezerwacja">Zarezerwuj termin</a>
-              <a class="btn-secondary" href="https://konto.strzelca.pl/profil.html">Profil użytkownika</a>
+            <div id="pakiety-grid" class="grid-three"></div>
+          </div>
+        </section>
+
+        <section id="rezerwacja" class="page-section">
+          <div class="strzelnica-page-shell cta-grid">
+            <article class="cta-card">
+              <div class="strzelnica-kicker">Panel rezerwacji</div>
+              <h3>Rezerwacja bez tarcia</h3>
+              <p>
+                Osobna ścieżka prowadzi użytkownika od wyboru osi albo szkolenia, przez dostępność i instruktora, aż do płatności HotPay, żetonami albo rozliczenia na miejscu.
+              </p>
+              <div class="hero-actions">
+                <a class="btn" href="https://strzelnica.strzelca.pl/rezerwacja">Otwórz rezerwację</a>
+                <a class="btn-secondary" href="https://konto.strzelca.pl/profil.html">Mój profil</a>
+              </div>
+            </article>
+
+            <article class="cta-card">
+              <div class="strzelnica-kicker">Vouchery żetonowe</div>
+              <h3>Sprzedaż prezentów online</h3>
+              <p>
+                Użytkownik kupuje voucher, pobiera elegancki PDF, a obdarowany realizuje kod po zalogowaniu i dopisuje żetony do swojego konta.
+              </p>
+              <div class="hero-actions">
+                <a class="btn-secondary" href="https://strzelnica.strzelca.pl/rezerwacja#vouchery">
+                  Kup voucher
+                </a>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section id="galeria" class="page-section">
+          <div class="strzelnica-page-shell">
+            <div class="strzelnica-section-head">
+              <div>
+                <h2>Galeria</h2>
+                <p>
+                  Zdjęcia osi, strefy wejściowej i wydarzeń mogą być zarządzane z panelu administratora bez przepinania kodu.
+                </p>
+              </div>
+            </div>
+            <div id="gallery-grid" class="gallery-grid"></div>
+          </div>
+        </section>
+
+        <section id="pierwsza-wizyta" class="page-section">
+          <div class="strzelnica-page-shell">
+            <div class="content-box">
+              <div class="strzelnica-section-head">
+                <div>
+                  <h2>Pierwsza wizyta</h2>
+                  <p>
+                    Klient przechodzi przez regulamin, obowiązkowe zgody i wymagane oświadczenia, zanim zapisze pierwszą rezerwację osi.
+                  </p>
+                </div>
+              </div>
+              <div id="first-visit-copy" class="content-prose"></div>
             </div>
           </div>
-          <iframe
-            id="location-map"
-            class="location-map hidden"
-            loading="lazy"
-            referrerpolicy="no-referrer-when-downgrade"
-            allowfullscreen
-            title="Mapa dojazdu do strzelnicy"
-          ></iframe>
-        </div>
-      </section>
-    </main>
+        </section>
 
-    <footer class="site-footer">
-      <div class="strzelnica-shell">
-        STRZELNICA STRZELCA.PL • Rezerwacje, szkolenia, vouchery i panel instruktora.
-      </div>
-    </footer>
+        <section id="regulaminy" class="page-section">
+          <div class="strzelnica-page-shell">
+            <div class="content-box">
+              <div class="strzelnica-section-head">
+                <div>
+                  <h2>Regulaminy i bezpieczeństwo</h2>
+                  <p>
+                    Treści bezpieczeństwa, opis pierwszego wejścia i zasady korzystania ze strzelnicy mają własne miejsce i mogą być zarządzane z zaplecza.
+                  </p>
+                </div>
+              </div>
+              <div id="regulations-copy" class="content-prose"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="faq" class="page-section">
+          <div class="strzelnica-page-shell">
+            <div class="strzelnica-section-head">
+              <div>
+                <h2>FAQ</h2>
+                <p>
+                  Najważniejsze pytania, które pomagają domknąć decyzję zakupową i uspokajają użytkownika przed pierwszą wizytą.
+                </p>
+              </div>
+            </div>
+            <div id="faq-list" class="faq-grid"></div>
+          </div>
+        </section>
+
+        <section id="lokalizacja" class="page-section">
+          <div class="strzelnica-page-shell location-grid">
+            <article class="location-box">
+              <div class="strzelnica-section-head">
+                <div>
+                  <h2>Lokalizacja</h2>
+                  <p id="location-lead"></p>
+                </div>
+              </div>
+              <strong id="location-name">STRZELNICA STRZELCA</strong>
+              <p id="location-address"></p>
+              <div class="hero-actions" style="margin-top: 1.5rem">
+                <a class="btn" href="https://strzelnica.strzelca.pl/rezerwacja">Zarezerwuj termin</a>
+                <a class="btn-secondary" href="https://strzelnica.strzelca.pl/instruktor">
+                  Panel instruktora
+                </a>
+              </div>
+            </article>
+            <iframe
+              id="location-map"
+              class="location-map hidden"
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+              allowfullscreen
+              title="Mapa dojazdu do strzelnicy"
+            ></iframe>
+          </div>
+        </section>
+      </main>
+
+      <footer class="strzelnica-footer">
+        <div class="strzelnica-page-shell strzelnica-footer__inner">
+          STRZELNICA STRZELCA.PL • Rezerwacje, szkolenia, vouchery, konto użytkownika i panel instruktora.
+        </div>
+      </footer>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
@@ -691,5 +967,13 @@
       }
     </script>
     <script type="module" src="./landing.mjs"></script>
+    <script
+      type="module"
+      src="https://strzelca.pl/auth-widget.mjs?v=2026-04-13-2"
+    ></script>
+    <script
+      type="module"
+      src="https://strzelca.pl/token-balance-badge.mjs?v=2026-04-13-5"
+    ></script>
   </body>
 </html>
